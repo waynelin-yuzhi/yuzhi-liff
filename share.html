@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>植間設計｜分享案例</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Noto Sans TC", -apple-system, sans-serif; background: #F2EDE3; color: #1B1A17; line-height: 1.7; padding: 40px 18px; }
+  .wrap { max-width: 420px; margin: 0 auto; text-align: center; }
+  .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; margin-bottom: 10px; }
+  .card { background: #FFFCF5; border-radius: 12px; padding: 28px 22px; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  h1 { font-size: 18px; margin-bottom: 6px; }
+  p { font-size: 13.5px; color: #4A4A45; }
+  .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; }
+  .ghost { display: block; width: 100%; padding: 12px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+  .muted { font-size: 11px; color: #8a8275; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN</div>
+  <div class="card" id="box">
+    <h1 id="ttl">準備分享…</h1>
+    <p id="msg">正在載入案例卡片</p>
+  </div>
+  <div class="muted">share v2 · pages</div>
+</div>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+var LIFF_ID = '2010719321-KOziooMo';
+var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+var PACK = null;
+function show(t, m, btns) {
+  document.getElementById('ttl').textContent = t;
+  document.getElementById('msg').textContent = m || '';
+  var box = document.getElementById('box');
+  box.querySelectorAll('button').forEach(function (b) { b.remove(); });
+  (btns || []).forEach(function (b) {
+    var el = document.createElement('button');
+    el.className = b.ghost ? 'ghost' : 'btn';
+    el.textContent = b.label; el.onclick = b.fn;
+    box.appendChild(el);
+  });
+}
+function getCaseId() {
+  var m = location.search.match(/[?&]case=([\w-]+)/);
+  if (m) return m[1];
+  var s = location.search.match(/liff\.state=([^&]+)/);
+  if (s) {
+    var st = decodeURIComponent(s[1]);
+    var m2 = st.match(/case=([\w-]+)/);
+    if (m2) return m2[1];
+  }
+  return '';
+}
+function openPicker() {
+  liff.shareTargetPicker([
+    { type: 'flex', altText: PACK.alt || '植間設計｜案例分享', contents: PACK.bubble }
+  ]).then(function (res) {
+    if (res) { show('已分享', '卡片已送給你選的朋友，感謝分享！', [{ label: '再分享給其他人', fn: openPicker, ghost: true }]); }
+    else { show('已取消', '沒有送出任何訊息', [{ label: '重新選擇朋友', fn: openPicker }]); }
+  }).catch(function () {
+    show('分享沒有成功', '可以改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
+  });
+}
+function copyLink() {
+  var ta = document.createElement('textarea');
+  ta.value = (PACK && PACK.url) || '';
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  show('連結已複製', '貼到任何聊天室就能分享', [{ label: '再複製一次', fn: copyLink, ghost: true }]);
+}
+function boot() {
+  var cid = getCaseId();
+  if (!cid) { show('缺少案例參數', '請重新點卡片上的分享按鈕'); return; }
+  fetch(API + '?page=case-share&case=' + cid + '&fmt=json', { redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) { show('案例載入失敗', '請稍後再試'); return; }
+      PACK = d;
+      if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
+        show('選擇要分享的朋友', '會以你的名義送出這張案例卡片', [{ label: '選擇好友分享', fn: openPicker }]);
+        setTimeout(openPicker, 350);
+      } else {
+        show('這裡無法開好友選單', '改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
+      }
+    })
+    .catch(function () { show('連線失敗', '請稍後再試', [{ label: '重試', fn: boot }]); });
+}
+liff.init({ liffId: LIFF_ID }).then(boot).catch(function () {
+  show('LINE 初始化失敗', '請重新點一次分享按鈕', [{ label: '重試', fn: boot, ghost: true }]);
+});
+</script>
+</body>
+</html>
