@@ -33,13 +33,32 @@
   .idst { font-size: 10.5px; color: #B8893E; margin-top: 4px; line-height: 1.4; }
   .idslot img { width: 100%; border-radius: 6px; display: block; }
   .ft { margin: 26px auto 12px; text-align: center; font-size: 10.5px; color: #A09A8C; line-height: 1.8; }
+  /* 即時相機（四角對位框） */
+  #cam { display: none; position: fixed; inset: 0; background: #000; z-index: 50; }
+  #camv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #camwin { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 88vw; max-width: 500px; aspect-ratio: 1.586; box-shadow: 0 0 0 200vmax rgba(0,0,0,.55); border-radius: 10px; }
+  .cnr { position: absolute; width: 26px; height: 26px; border: 0 solid #fff; }
+  .cnr.tl { left: -2px; top: -2px; border-left-width: 3.5px; border-top-width: 3.5px; border-top-left-radius: 10px; }
+  .cnr.tr { right: -2px; top: -2px; border-right-width: 3.5px; border-top-width: 3.5px; border-top-right-radius: 10px; }
+  .cnr.bl { left: -2px; bottom: -2px; border-left-width: 3.5px; border-bottom-width: 3.5px; border-bottom-left-radius: 10px; }
+  .cnr.br { right: -2px; bottom: -2px; border-right-width: 3.5px; border-bottom-width: 3.5px; border-bottom-right-radius: 10px; }
+  #camhint { position: absolute; left: 0; right: 0; top: calc(40% + 30vw); margin-top: 34px; text-align: center; color: #fff; font-size: 14px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  #cambar { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 22px calc(26px + env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: center; }
+  #camshoot { flex: 1; padding: 15px; background: #5F6E58; color: #fff; border: none; border-radius: 10px; font-size: 16.5px; font-weight: 700; }
+  #camcancel { padding: 15px 18px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 10px; font-size: 14.5px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取勞務報酬單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v5</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v6</span></div>
+</div>
+<div id="cam">
+  <video id="camv" autoplay playsinline muted></video>
+  <div id="camwin"><span class="cnr tl"></span><span class="cnr tr"></span><span class="cnr bl"></span><span class="cnr br"></span></div>
+  <div id="camhint">將身分證平放、對齊四角框內</div>
+  <div id="cambar"><button id="camcancel" type="button">取消</button><button id="camshoot" type="button">拍攝</button></div>
 </div>
 <script>
 /* LINE 內建瀏覽器偵測：Flex 按鈕有時不吃 openExternalBrowser=1 → 頁內再導一次觸發跳外部；再不行給手動指示 */
@@ -62,7 +81,6 @@ function doneCard(title, msg, err) {
   window.scrollTo(0, 0);
 }
 
-// ── 載入資料 ──
 if (!HASH) {
   doneCard('連結無效', '找不到這張勞報單；請與植間聯繫。', true);
 } else {
@@ -85,16 +103,16 @@ function render(d) {
       + '<input type="file" id="g_' + w + '" accept="image/*" style="display:none"></div>'
       + '<button type="button" class="clr" id="al_' + w + '" style="display:block;margin:2px auto 0;padding:5px">從相簿選</button></div>';
   };
-  var idCard = NEED_CAP
-    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">身分證影本（報稅申報用）</div>'
-      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">拍攝後會自動轉成黑白影本、並加上「僅供報稅申報使用」浮水印，不會留存彩色原照。</div>'
-      + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
-      + '<div style="font-size:10.5px;color:#A09A8C;margin-top:6px">點格子會直接開相機；想用拍好的照片請點「從相簿選」。</div></div>'
-    : '<div class="card" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。</div>';
   var lineWarn = IN_LINE
     ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">'
       + '現在是 LINE 內建瀏覽器、無法開相機。請點畫面角落的「…」或「分享」選單 → 選「<b>以預設瀏覽器開啟</b>」再拍攝；或改用「從相簿選」。</div>'
     : '';
+  var idCard = NEED_CAP
+    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">身分證影本（報稅申報用）</div>'
+      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">對齊框內拍攝、系統自動裁切成證件大小，並轉成黑白影本＋「僅供報稅申報使用」浮水印；不會留存彩色原照。</div>'
+      + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
+      + '<div style="font-size:10.5px;color:#A09A8C;margin-top:6px">點格子開相機對位拍攝；想用拍好的照片請點「從相簿選」。</div></div>'
+    : '<div class="card" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。</div>';
   app.innerHTML = '<h1>勞務報酬單簽收</h1><div class="sub">' + esc(NAME) + '</div>' + lineWarn
     + '<div class="card">'
     + row('工作內容', v['工作內容']) + row('工作期間', v['工作期間']) + row('所得類別', v['所得類別'])
@@ -108,14 +126,10 @@ function render(d) {
     + '<button class="btn" id="go">確認簽收</button></div>';
   if (NEED_CAP) {
     ['front', 'back'].forEach(function (w) {
-      document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () {
-        document.getElementById('f_' + w).click();
-      });
-      document.getElementById('al_' + w).addEventListener('click', function () {
-        document.getElementById('g_' + w).click();
-      });
-      document.getElementById('f_' + w).addEventListener('change', function () { idProc(w, this); });
-      document.getElementById('g_' + w).addEventListener('change', function () { idProc(w, this); });
+      document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { idPick(w); });
+      document.getElementById('al_' + w).addEventListener('click', function () { document.getElementById('g_' + w).click(); });
+      document.getElementById('f_' + w).addEventListener('change', function () { fileProc(w, this); });
+      document.getElementById('g_' + w).addEventListener('change', function () { fileProc(w, this); });
     });
   }
   initPad();
@@ -123,49 +137,112 @@ function render(d) {
   document.getElementById('go').addEventListener('click', doSign);
 }
 
-// ── 證件拍攝：縮圖 → 灰階拉對比（影印感）→ 用途浮水印 → JPEG ──
-function idProc(w, inp) {
+/* 入口：能開即時相機（框框對位）就開；不行退回系統相機 */
+function idPick(w) {
+  if (!IN_LINE && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) openCam(w);
+  else document.getElementById('f_' + w).click();
+}
+
+/* ── 即時相機：四角框對位 → 拍攝即裁切框內 ── */
+var CAM_SIDE = '', CAM_STREAM = null;
+var camEl = document.getElementById('cam'), camV = document.getElementById('camv');
+document.getElementById('camcancel').addEventListener('click', closeCam);
+document.getElementById('camshoot').addEventListener('click', shootCam);
+function openCam(w) {
+  CAM_SIDE = w;
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+    .then(function (stream) {
+      CAM_STREAM = stream;
+      camV.srcObject = stream;
+      camEl.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    })
+    .catch(function () { document.getElementById('f_' + w).click(); });
+}
+function closeCam() {
+  camEl.style.display = 'none';
+  document.body.style.overflow = '';
+  if (CAM_STREAM) { CAM_STREAM.getTracks().forEach(function (t) { t.stop(); }); CAM_STREAM = null; }
+  camV.srcObject = null;
+}
+function shootCam() {
+  if (!CAM_STREAM || !camV.videoWidth) return;
+  var vw = camV.videoWidth, vh = camV.videoHeight;
+  var ew = window.innerWidth, eh = window.innerHeight;
+  var er = ew / eh, vr = vw / vh;
+  var sw, sh, sx, sy;   /* object-fit:cover 之下、畫面上實際可見的原始像素區 */
+  if (vr > er) { sh = vh; sw = vh * er; sx = (vw - sw) / 2; sy = 0; }
+  else { sw = vw; sh = vw / er; sx = 0; sy = (vh - sh) / 2; }
+  var r = document.getElementById('camwin').getBoundingClientRect();
+  var kx = sw / ew, ky = sh / eh;
+  var cx = sx + r.left * kx, cy = sy + r.top * ky, cw = r.width * kx, ch = r.height * ky;
+  var c = document.createElement('canvas');
+  c.width = Math.round(cw); c.height = Math.round(ch);
+  c.getContext('2d').drawImage(camV, cx, cy, cw, ch, 0, 0, c.width, c.height);
+  var side = CAM_SIDE;
+  closeCam();
+  if (c.width < 500) {
+    var st = document.getElementById('st_' + side);
+    st.textContent = '解析度不足、請改用系統相機';
+    document.getElementById('f_' + side).click();
+    return;
+  }
+  applyCopy(c, side);
+}
+
+/* ── 相簿 / 系統相機路徑：整張照片進處理管線 ── */
+function fileProc(w, inp) {
   if (!inp.files || !inp.files[0]) return;
   var st = document.getElementById('st_' + w);
   st.textContent = '處理中…';
   var img = new Image();
   img.onload = function () {
-    var mx = Math.max(img.width, img.height);
-    if (mx < 1000) { st.textContent = '照片太小、請重拍'; alert('解析度不足，請靠近一點、對焦後重拍'); inp.value = ''; return; }
-    var sc = mx > 1600 ? 1600 / mx : 1;
-    var w2 = Math.round(img.width * sc), h2 = Math.round(img.height * sc);
-    var c = document.createElement('canvas'); c.width = w2; c.height = h2;
-    var x = c.getContext('2d');
-    x.drawImage(img, 0, 0, w2, h2);
-    var da = x.getImageData(0, 0, w2, h2), d = da.data, sum = 0, i, g;
-    for (i = 0; i < d.length; i += 4) {
-      g = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
-      sum += g;
-      g = (g - 128) * 1.45 + 134;
-      if (g < 0) g = 0; if (g > 255) g = 255;
-      d[i] = g; d[i + 1] = g; d[i + 2] = g;
+    if (Math.max(img.width, img.height) < 1000) {
+      st.textContent = '照片太小、請重拍';
+      alert('解析度不足，請靠近一點、對焦後重拍'); inp.value = ''; return;
     }
-    var avg = sum / (d.length / 4);
-    if (avg < 42) { st.textContent = '照片太暗、請重拍'; alert('光線不足，請在亮一點的地方重拍'); inp.value = ''; return; }
-    x.putImageData(da, 0, 0);
-    x.save(); x.translate(w2 / 2, h2 / 2); x.rotate(-0.32);
-    x.fillStyle = 'rgba(60,60,60,0.32)';
-    x.font = 'bold ' + Math.round(w2 / 16) + 'px sans-serif';
-    x.textAlign = 'center';
-    var wm = '僅供 ' + WM_YEAR + ' 年度報稅申報使用';
-    for (var yy = -h2; yy <= h2; yy += Math.round(w2 / 5)) x.fillText(wm, 0, yy);
-    x.restore();
-    var du = c.toDataURL('image/jpeg', 0.82);
-    IDS[w] = du.slice(du.indexOf(',') + 1);
-    var pv = document.getElementById('pv_' + w);
-    pv.src = du; pv.style.display = 'block';
-    document.getElementById('ph_' + w).style.display = 'none';
-    st.textContent = '看得清楚再送出；不清楚請點圖重拍';
+    applyCopy(img, w);
+    inp.value = '';
   };
   img.src = URL.createObjectURL(inp.files[0]);
 }
 
-// ── 簽名板 ──
+/* ── 共用管線：縮圖 → 灰階拉對比（影印感）→ 亮度檢核 → 用途浮水印 → JPEG ── */
+function applyCopy(src, w) {
+  var st = document.getElementById('st_' + w);
+  var mx = Math.max(src.width, src.height);
+  var sc = mx > 1600 ? 1600 / mx : 1;
+  var w2 = Math.round(src.width * sc), h2 = Math.round(src.height * sc);
+  var c = document.createElement('canvas'); c.width = w2; c.height = h2;
+  var x = c.getContext('2d');
+  x.drawImage(src, 0, 0, w2, h2);
+  var da = x.getImageData(0, 0, w2, h2), d = da.data, sum = 0, i, g;
+  for (i = 0; i < d.length; i += 4) {
+    g = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+    sum += g;
+    g = (g - 128) * 1.45 + 134;
+    if (g < 0) g = 0; if (g > 255) g = 255;
+    d[i] = g; d[i + 1] = g; d[i + 2] = g;
+  }
+  var avg = sum / (d.length / 4);
+  if (avg < 42) { st.textContent = '照片太暗、請重拍'; alert('光線不足，請在亮一點的地方重拍'); return; }
+  x.putImageData(da, 0, 0);
+  x.save(); x.translate(w2 / 2, h2 / 2); x.rotate(-0.32);
+  x.fillStyle = 'rgba(60,60,60,0.32)';
+  x.font = 'bold ' + Math.round(w2 / 16) + 'px sans-serif';
+  x.textAlign = 'center';
+  var wm = '僅供 ' + WM_YEAR + ' 年度報稅申報使用';
+  for (var yy = -h2; yy <= h2; yy += Math.round(w2 / 5)) x.fillText(wm, 0, yy);
+  x.restore();
+  var du = c.toDataURL('image/jpeg', 0.82);
+  IDS[w] = du.slice(du.indexOf(',') + 1);
+  var pv = document.getElementById('pv_' + w);
+  pv.src = du; pv.style.display = 'block';
+  document.getElementById('ph_' + w).style.display = 'none';
+  st.textContent = '看得清楚再送出；不清楚請點圖重拍';
+}
+
+/* ── 簽名板 ── */
 var CV, CX, DPR, DRAWING = false;
 function initPad() {
   CV = document.getElementById('cv'); CX = CV.getContext('2d');
@@ -184,7 +261,7 @@ function cvClear() {
   CX.setTransform(1, 0, 0, 1, 0, 0); CX.clearRect(0, 0, CV.width, CV.height); CX.scale(DPR, DPR); DREW = false;
 }
 
-// ── 送出：fetch POST（簡單請求、免預檢）→ 讀不到回應就用狀態輪詢兜底 ──
+/* ── 送出：fetch POST（簡單請求、免預檢）→ 讀不到回應就用狀態輪詢兜底 ── */
 function doSign() {
   if (NEED_CAP && (!IDS.front || !IDS.back)) { alert('請先拍攝身分證正面與背面'); return; }
   if (!DREW) { alert('請先簽名'); return; }
