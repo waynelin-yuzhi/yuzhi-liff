@@ -25,7 +25,7 @@
     <h1 id="ttl" style="font-size:13px;color:#8a8275;font-weight:400;">開啟好友選單…</h1>
     <p id="msg"></p>
   </div>
-  <div class="muted">share v4 · pages</div>
+  <div class="muted">share v5 · pages</div>
 </div>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
@@ -43,6 +43,50 @@ function show(t, m, btns) {
     el.textContent = b.label; el.onclick = b.fn;
     box.appendChild(el);
   });
+}
+function getPackedData() {
+  var m = location.search.match(/[?&]d=([A-Za-z0-9_-]+)/);
+  if (!m) {
+    var s = location.search.match(/liff\.state=([^&]+)/);
+    if (s) {
+      var st = decodeURIComponent(s[1]);
+      var m2 = st.match(/[?&]?d=([A-Za-z0-9_-]+)/);
+      if (m2) m = m2;
+    }
+  }
+  if (!m) return null;
+  try {
+    var b = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    var p = JSON.parse(decodeURIComponent(escape(atob(b))));
+    return (p && p.f) ? { p: p, raw: m[1] } : null;
+  } catch (e) { return null; }
+}
+function buildBubble(p, rawD) {
+  var caseUrl = API + '?page=cases&case=' + p.f;
+  var shareUrl = 'https://liff.line.me/' + LIFF_ID + '?d=' + rawD;
+  var bubble = {
+    type: 'bubble',
+    header: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: [
+      { type: 'text', text: 'yuzhiplant \u00b7 \u6848\u4f8b\u5206\u4eab', size: 'xs', color: '#E9EDE3' },
+      { type: 'text', text: p.t || '\u6848\u4f8b\u5206\u4eab', size: 'xl', color: '#FFFCF5', weight: 'bold', wrap: true, margin: 'sm' }
+    ]},
+    body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '20px', contents: [] },
+    footer: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '16px', paddingTop: '0px', contents: [
+      { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+        { type: 'button', style: 'primary', height: 'sm', color: '#5F6E58',
+          action: { type: 'uri', label: '\u67e5\u770b\u5b8c\u6574\u6848\u4f8b', uri: caseUrl } },
+        { type: 'button', style: 'secondary', height: 'sm', color: '#FFFCF5',
+          action: { type: 'uri', label: '\u5206\u4eab\u7d66\u670b\u53cb', uri: shareUrl } }
+      ]},
+      { type: 'text', text: '\u7167\u7247\u7686\u70ba\u690d\u9593\u5be6\u969b\u65bd\u4f5c\u5be6\u666f', size: 'xxs', color: '#8a8275', align: 'center', margin: 'sm', wrap: false }
+    ]},
+    styles: { header: { backgroundColor: '#5F6E58' }, body: { backgroundColor: '#FFFCF5' }, footer: { backgroundColor: '#FFFCF5' } }
+  };
+  if (p.x) bubble.body.contents.push({ type: 'text', text: p.x, size: 'sm', color: '#4A4A45', wrap: true });
+  if (p.c) bubble.hero = { type: 'image', url: 'https://lh3.googleusercontent.com/d/' + p.c + '=w1560',
+    size: 'full', aspectRatio: '4:3', aspectMode: 'cover', action: { type: 'uri', uri: caseUrl } };
+  return { ok: true, bubble: bubble, alt: '\u690d\u9593\uff5c\u6848\u4f8b\u5206\u4eab\uff1a' + (p.t || ''), url: caseUrl };
 }
 function getCaseId() {
   var m = location.search.match(/[?&]case=([\w-]+)/);
@@ -77,14 +121,19 @@ function copyLink() {
   try { document.execCommand('copy'); } catch (e) {}
   show('連結已複製', '貼到任何聊天室就能分享', [{ label: '再複製一次', fn: copyLink, ghost: true }]);
 }
-/* 資料抓取與 liff.init 平行跑（省 1 秒級）；快取後 GAS 端毫秒回 */
+/* v5：資料直接從網址解（零抓取）；沒帶 d 的舊卡退回 fetch 路徑 */
+var packed0 = getPackedData();
 var cid0 = getCaseId();
-var packP = cid0
-  ? fetch(API + '?page=case-share&case=' + cid0 + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
-  : Promise.resolve(null);
+var packP = packed0
+  ? Promise.resolve(buildBubble(packed0.p, packed0.raw))
+  : (cid0
+      ? fetch(API + '?page=case-share&case=' + cid0 + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
+      : Promise.resolve(null));
 function boot() {
   packP.then(function (d) {
     if (!d) {
+      var packed = getPackedData();
+      if (packed) { packP = Promise.resolve(buildBubble(packed.p, packed.raw)); boot(); return; }
       var cid = getCaseId();
       if (!cid) { show('缺少案例參數', '請重新點卡片上的分享按鈕'); return; }
       packP = fetch(API + '?page=case-share&case=' + cid + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); });
