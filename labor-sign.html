@@ -80,7 +80,8 @@ function render(d) {
   var idCard = NEED_CAP
     ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">身分證影本（報稅申報用）</div>'
       + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">拍攝後會自動轉成黑白影本、並加上「僅供報稅申報使用」浮水印，不會留存彩色原照。</div>'
-      + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div></div>'
+      + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
+      + '<div style="font-size:10.5px;color:#A09A8C;margin-top:8px">選單裡沒有「拍照」的話：先用手機相機把證件拍好，再回來從照片圖庫選取即可。</div></div>'
     : '<div class="card" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。</div>';
   app.innerHTML = '<h1>勞務報酬單簽收</h1><div class="sub">' + esc(NAME) + '</div>'
     + '<div class="card">'
