@@ -21,11 +21,11 @@
 <body>
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
-  <div class="card" id="box">
-    <h1 id="ttl">開啟好友選單中…</h1>
+  <div class="card" id="box" style="background:none;box-shadow:none;padding:8px;">
+    <h1 id="ttl" style="font-size:13px;color:#8a8275;font-weight:400;">開啟好友選單…</h1>
     <p id="msg"></p>
   </div>
-  <div class="muted">share v3 · pages</div>
+  <div class="muted">share v4 · pages</div>
 </div>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
@@ -77,21 +77,27 @@ function copyLink() {
   try { document.execCommand('copy'); } catch (e) {}
   show('連結已複製', '貼到任何聊天室就能分享', [{ label: '再複製一次', fn: copyLink, ghost: true }]);
 }
+/* 資料抓取與 liff.init 平行跑（省 1 秒級）；快取後 GAS 端毫秒回 */
+var cid0 = getCaseId();
+var packP = cid0
+  ? fetch(API + '?page=case-share&case=' + cid0 + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
+  : Promise.resolve(null);
 function boot() {
-  var cid = getCaseId();
-  if (!cid) { show('缺少案例參數', '請重新點卡片上的分享按鈕'); return; }
-  fetch(API + '?page=case-share&case=' + cid + '&fmt=json', { redirect: 'follow' })
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      if (!d || !d.ok) { show('案例載入失敗', '請稍後再試'); return; }
-      PACK = d;
-      if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
-        openPicker();
-      } else {
-        show('這裡無法開好友選單', '改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
-      }
-    })
-    .catch(function () { show('連線失敗', '請稍後再試', [{ label: '重試', fn: boot }]); });
+  packP.then(function (d) {
+    if (!d) {
+      var cid = getCaseId();
+      if (!cid) { show('缺少案例參數', '請重新點卡片上的分享按鈕'); return; }
+      packP = fetch(API + '?page=case-share&case=' + cid + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); });
+      boot(); return;
+    }
+    if (!d.ok) { show('案例載入失敗', '請稍後再試'); return; }
+    PACK = d;
+    if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
+      openPicker();
+    } else {
+      show('這裡無法開好友選單', '改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
+    }
+  }).catch(function () { show('連線失敗', '請稍後再試', [{ label: '重試', fn: boot }]); });
 }
 liff.init({ liffId: LIFF_ID }).then(boot).catch(function () {
   show('LINE 初始化失敗', '請重新點一次分享按鈕', [{ label: '重試', fn: boot, ghost: true }]);
