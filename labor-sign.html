@@ -39,9 +39,15 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取勞務報酬單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240</div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v5</span></div>
 </div>
 <script>
+/* LINE 內建瀏覽器偵測：Flex 按鈕有時不吃 openExternalBrowser=1 → 頁內再導一次觸發跳外部；再不行給手動指示 */
+var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
+if (IN_LINE && !sessionStorage.getItem('yzExtTry')) {
+  sessionStorage.setItem('yzExtTry', '1');
+  location.replace(location.href);
+}
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
 var HASH = new URLSearchParams(location.search).get('h') || '';
 var IDS = { front: '', back: '' };
@@ -85,7 +91,11 @@ function render(d) {
       + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
       + '<div style="font-size:10.5px;color:#A09A8C;margin-top:6px">點格子會直接開相機；想用拍好的照片請點「從相簿選」。</div></div>'
     : '<div class="card" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。</div>';
-  app.innerHTML = '<h1>勞務報酬單簽收</h1><div class="sub">' + esc(NAME) + '</div>'
+  var lineWarn = IN_LINE
+    ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">'
+      + '現在是 LINE 內建瀏覽器、無法開相機。請點畫面角落的「…」或「分享」選單 → 選「<b>以預設瀏覽器開啟</b>」再拍攝；或改用「從相簿選」。</div>'
+    : '';
+  app.innerHTML = '<h1>勞務報酬單簽收</h1><div class="sub">' + esc(NAME) + '</div>' + lineWarn
     + '<div class="card">'
     + row('工作內容', v['工作內容']) + row('工作期間', v['工作期間']) + row('所得類別', v['所得類別'])
     + row('給付總額', v['給付總額'] ? 'NT$ ' + v['給付總額'] : '') + row('代扣所得稅', v['代扣所得稅'])
