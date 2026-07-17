@@ -52,7 +52,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取勞務報酬單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v7</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v8</span></div>
 </div>
 <div id="cam">
   <video id="camv" autoplay playsinline muted></video>
@@ -70,7 +70,7 @@ if (IN_LINE && !sessionStorage.getItem('yzExtTry')) {
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
 var HASH = new URLSearchParams(location.search).get('h') || '';
 var IDS = { front: '', back: '' };
-var NEED_CAP = true, DREW = false, WM_YEAR = '', NAME = '';
+var NEED_CAP = true, RECAP = false, DREW = false, WM_YEAR = '', NAME = '';
 var app = document.getElementById('app');
 
 function esc(s) {
@@ -107,12 +107,14 @@ function render(d) {
     ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">'
       + '現在是 LINE 內建瀏覽器、無法開相機。請點畫面角落的「…」或「分享」選單 → 選「<b>以預設瀏覽器開啟</b>」再拍攝；或改用「從相簿選」。</div>'
     : '';
+  var gridInner = '<div style="font-size:13px;color:#4A4A45;margin-bottom:2px">身分證影本（報稅申報用）</div>'
+    + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">對齊框內拍攝、系統自動裁切成證件大小，並轉成黑白影本＋「僅供報稅申報使用」浮水印；不會留存彩色原照。</div>'
+    + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
+    + '<div style="font-size:10.5px;color:#A09A8C;margin-top:6px">點格子開相機對位拍攝；想用拍好的照片請點「從相簿選」。</div>';
   var idCard = NEED_CAP
-    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">身分證影本（報稅申報用）</div>'
-      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">對齊框內拍攝、系統自動裁切成證件大小，並轉成黑白影本＋「僅供報稅申報使用」浮水印；不會留存彩色原照。</div>'
-      + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
-      + '<div style="font-size:10.5px;color:#A09A8C;margin-top:6px">點格子開相機對位拍攝；想用拍好的照片請點「從相簿選」。</div></div>'
-    : '<div class="card" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。</div>';
+    ? '<div class="card" id="idcard">' + gridInner + '</div>'
+    : '<div class="card" id="idcard" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。'
+      + '<button type="button" class="clr" id="recap" style="display:block;padding:6px 0 0 0">換發新身分證了？點此重新拍攝</button></div>';
   app.innerHTML = '<h1>勞務報酬單簽收</h1><div class="sub">' + esc(NAME) + '</div>' + lineWarn
     + '<div class="card">'
     + row('工作內容', v['工作內容']) + row('工作期間', v['工作期間']) + row('所得類別', v['所得類別'])
@@ -126,12 +128,23 @@ function render(d) {
     + '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
     + '<button class="btn" id="go">確認簽收</button></div>';
-  if (NEED_CAP) {
+  function bindGrid() {
     ['front', 'back'].forEach(function (w) {
       document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { idPick(w); });
       document.getElementById('al_' + w).addEventListener('click', function () { document.getElementById('g_' + w).click(); });
       document.getElementById('f_' + w).addEventListener('change', function () { fileProc(w, this); });
       document.getElementById('g_' + w).addEventListener('change', function () { fileProc(w, this); });
+    });
+  }
+  if (NEED_CAP) bindGrid();
+  else {
+    var rc = document.getElementById('recap');
+    if (rc) rc.addEventListener('click', function () {
+      RECAP = true;
+      var el = document.getElementById('idcard');
+      el.removeAttribute('style');
+      el.innerHTML = gridInner;
+      bindGrid();
     });
   }
   initPad();
@@ -266,6 +279,7 @@ function cvClear() {
 /* ── 送出：fetch POST（簡單請求、免預檢）→ 讀不到回應就用狀態輪詢兜底 ── */
 function doSign() {
   if (NEED_CAP && (!IDS.front || !IDS.back)) { alert('請先拍攝身分證正面與背面'); return; }
+  if (RECAP && ((IDS.front ? 1 : 0) + (IDS.back ? 1 : 0) === 1)) { alert('重拍請正反兩面都拍；若不換、兩格留空即沿用已建檔影本'); return; }
   if (!DREW) { alert('請先簽名'); return; }
   var btn = document.getElementById('go');
   btn.disabled = true; btn.textContent = '送出中…';
