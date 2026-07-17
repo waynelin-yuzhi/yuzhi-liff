@@ -73,15 +73,17 @@ function render(d) {
   var v = d.values || {};
   var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
   var idSlot = function (w, label) {
-    return '<div class="idslot" data-side="' + w + '"><img id="pv_' + w + '" style="display:none" alt="">'
+    return '<div style="flex:1;min-width:0"><div class="idslot" data-side="' + w + '"><img id="pv_' + w + '" style="display:none" alt="">'
       + '<div id="ph_' + w + '" class="idph">點此拍攝<br>' + label + '</div><div id="st_' + w + '" class="idst"></div>'
-      + '<input type="file" id="f_' + w + '" accept="image/*" style="display:none"></div>';
+      + '<input type="file" id="f_' + w + '" accept="image/*" capture="environment" style="display:none">'
+      + '<input type="file" id="g_' + w + '" accept="image/*" style="display:none"></div>'
+      + '<button type="button" class="clr" id="al_' + w + '" style="display:block;margin:2px auto 0;padding:5px">從相簿選</button></div>';
   };
   var idCard = NEED_CAP
     ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">身分證影本（報稅申報用）</div>'
       + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">拍攝後會自動轉成黑白影本、並加上「僅供報稅申報使用」浮水印，不會留存彩色原照。</div>'
       + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div>'
-      + '<div style="font-size:10.5px;color:#A09A8C;margin-top:8px">選單裡沒有「拍照」的話：先用手機相機把證件拍好，再回來從照片圖庫選取即可。</div></div>'
+      + '<div style="font-size:10.5px;color:#A09A8C;margin-top:6px">點格子會直接開相機；想用拍好的照片請點「從相簿選」。</div></div>'
     : '<div class="card" style="padding:12px 18px;font-size:12.5px;color:#5F6E58">身分證影本已建檔，簽收後將自動附於文件。</div>';
   app.innerHTML = '<h1>勞務報酬單簽收</h1><div class="sub">' + esc(NAME) + '</div>'
     + '<div class="card">'
@@ -99,7 +101,11 @@ function render(d) {
       document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () {
         document.getElementById('f_' + w).click();
       });
+      document.getElementById('al_' + w).addEventListener('click', function () {
+        document.getElementById('g_' + w).click();
+      });
       document.getElementById('f_' + w).addEventListener('change', function () { idProc(w, this); });
+      document.getElementById('g_' + w).addEventListener('change', function () { idProc(w, this); });
     });
   }
   initPad();
