@@ -52,7 +52,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取勞務報酬單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v6</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v7</span></div>
 </div>
 <div id="cam">
   <video id="camv" autoplay playsinline muted></video>
@@ -119,7 +119,9 @@ function render(d) {
     + row('給付總額', v['給付總額'] ? 'NT$ ' + v['給付總額'] : '') + row('代扣所得稅', v['代扣所得稅'])
     + row('二代健保', v['二代健保補充保費代扣']) + row('給付方式', v['給付方式']) + row('給付日期', v['給付日期'])
     + '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">實付金額</span><b>NT$ ' + esc(v['實付金額'] || '—') + '</b></div>'
-    + '<div class="decl">本人確認上列勞務報酬內容無誤、並已如數受領。</div></div>'
+    + '<div class="decl">' + (d.amountUpper
+      ? '茲收到　植間設計股份有限公司　支付本人之勞務報酬，共計<b>新台幣' + esc(d.amountUpper) + '元整</b>；本人確認內容無誤、並已如數受領。'
+      : '本人確認上列勞務報酬內容無誤、並已如數受領。') + '</div></div>'
     + idCard
     + '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
@@ -228,8 +230,8 @@ function applyCopy(src, w) {
   if (avg < 42) { st.textContent = '照片太暗、請重拍'; alert('光線不足，請在亮一點的地方重拍'); return; }
   x.putImageData(da, 0, 0);
   x.save(); x.translate(w2 / 2, h2 / 2); x.rotate(-0.32);
-  x.fillStyle = 'rgba(60,60,60,0.32)';
-  x.font = 'bold ' + Math.round(w2 / 16) + 'px sans-serif';
+  x.fillStyle = 'rgba(120,120,120,0.16)';
+  x.font = 'bold ' + Math.round(w2 / 22) + 'px sans-serif';
   x.textAlign = 'center';
   var wm = '僅供 ' + WM_YEAR + ' 年度報稅申報使用';
   for (var yy = -h2; yy <= h2; yy += Math.round(w2 / 5)) x.fillText(wm, 0, yy);
