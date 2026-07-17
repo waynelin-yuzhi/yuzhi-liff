@@ -22,10 +22,10 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div class="card" id="box">
-    <h1 id="ttl">準備分享…</h1>
-    <p id="msg">正在載入案例卡片</p>
+    <h1 id="ttl">開啟好友選單中…</h1>
+    <p id="msg"></p>
   </div>
-  <div class="muted">share v2 · pages</div>
+  <div class="muted">share v3 · pages</div>
 </div>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
@@ -55,12 +55,16 @@ function getCaseId() {
   }
   return '';
 }
+function closeSelf() {
+  try { if (liff.isInClient && liff.isInClient()) { liff.closeWindow(); return; } } catch (e) {}
+  show('完成', '可以關閉此頁了');
+}
 function openPicker() {
   liff.shareTargetPicker([
     { type: 'flex', altText: PACK.alt || '植間設計｜案例分享', contents: PACK.bubble }
   ]).then(function (res) {
-    if (res) { show('已分享', '卡片已送給你選的朋友，感謝分享！', [{ label: '再分享給其他人', fn: openPicker, ghost: true }]); }
-    else { show('已取消', '沒有送出任何訊息', [{ label: '重新選擇朋友', fn: openPicker }]); }
+    /* 分享成功或取消都直接關窗回聊天室（Wayne：越無感越好；要再分享重按卡片即可） */
+    closeSelf();
   }).catch(function () {
     show('分享沒有成功', '可以改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
   });
@@ -82,8 +86,7 @@ function boot() {
       if (!d || !d.ok) { show('案例載入失敗', '請稍後再試'); return; }
       PACK = d;
       if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
-        show('選擇要分享的朋友', '會以你的名義送出這張案例卡片', [{ label: '選擇好友分享', fn: openPicker }]);
-        setTimeout(openPicker, 350);
+        openPicker();
       } else {
         show('這裡無法開好友選單', '改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
       }
