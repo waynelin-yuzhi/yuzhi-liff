@@ -52,7 +52,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取勞務報酬單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v8</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">labor-sign v9</span></div>
 </div>
 <div id="cam">
   <video id="camv" autoplay playsinline muted></video>
@@ -60,6 +60,7 @@
   <div id="camhint">將身分證平放、對齊四角框內</div>
   <div id="cambar"><button id="camcancel" type="button">取消</button><button id="camshoot" type="button">拍攝</button></div>
 </div>
+<script src="pad.js?v=1"></script>
 <script>
 /* LINE 內建瀏覽器偵測：Flex 按鈕有時不吃 openExternalBrowser=1 → 頁內再導一次觸發跳外部；再不行給手動指示 */
 var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
@@ -70,7 +71,7 @@ if (IN_LINE && !sessionStorage.getItem('yzExtTry')) {
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
 var HASH = new URLSearchParams(location.search).get('h') || '';
 var IDS = { front: '', back: '' };
-var NEED_CAP = true, RECAP = false, DREW = false, WM_YEAR = '', NAME = '';
+var NEED_CAP = true, RECAP = false, WM_YEAR = '', NAME = '';
 var app = document.getElementById('app');
 
 function esc(s) {
@@ -257,33 +258,19 @@ function applyCopy(src, w) {
   st.textContent = '看得清楚再送出；不清楚請點圖重拍';
 }
 
-/* ── 簽名板 ── */
-var CV, CX, DPR, DRAWING = false;
-function initPad() {
-  CV = document.getElementById('cv'); CX = CV.getContext('2d');
-  DPR = window.devicePixelRatio || 1;
-  CV.width = CV.offsetWidth * DPR; CV.height = CV.offsetHeight * DPR;
-  CX.scale(DPR, DPR); CX.lineWidth = 2.2; CX.lineCap = 'round'; CX.strokeStyle = '#1B1A17';
-  function pos(e) { var r = CV.getBoundingClientRect(); var p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
-  CV.addEventListener('mousedown', function (e) { e.preventDefault(); DRAWING = true; var p = pos(e); CX.beginPath(); CX.moveTo(p.x, p.y); });
-  CV.addEventListener('mousemove', function (e) { if (!DRAWING) return; e.preventDefault(); var p = pos(e); CX.lineTo(p.x, p.y); CX.stroke(); DREW = true; });
-  window.addEventListener('mouseup', function () { DRAWING = false; });
-  CV.addEventListener('touchstart', function (e) { e.preventDefault(); DRAWING = true; var p = pos(e); CX.beginPath(); CX.moveTo(p.x, p.y); }, { passive: false });
-  CV.addEventListener('touchmove', function (e) { if (!DRAWING) return; e.preventDefault(); var p = pos(e); CX.lineTo(p.x, p.y); CX.stroke(); DREW = true; }, { passive: false });
-  CV.addEventListener('touchend', function () { DRAWING = false; });
-}
-function cvClear() {
-  CX.setTransform(1, 0, 0, 1, 0, 0); CX.clearRect(0, 0, CV.width, CV.height); CX.scale(DPR, DPR); DREW = false;
-}
+/* ── 簽名板（共用元件 pad.js）── */
+var PAD = null;
+function initPad() { PAD = initYzPad(document.getElementById('cv')); }
+function cvClear() { if (PAD) PAD.clear(); }
 
 /* ── 送出：fetch POST（簡單請求、免預檢）→ 讀不到回應就用狀態輪詢兜底 ── */
 function doSign() {
   if (NEED_CAP && (!IDS.front || !IDS.back)) { alert('請先拍攝身分證正面與背面'); return; }
   if (RECAP && ((IDS.front ? 1 : 0) + (IDS.back ? 1 : 0) === 1)) { alert('重拍請正反兩面都拍；若不換、兩格留空即沿用已建檔影本'); return; }
-  if (!DREW) { alert('請先簽名'); return; }
+  if (!PAD || !PAD.hasInk()) { alert('請先簽名'); return; }
   var btn = document.getElementById('go');
   btn.disabled = true; btn.textContent = '送出中…';
-  var png = CV.toDataURL('image/png').split(',')[1];
+  var png = PAD.dataUrl().split(',')[1];
   var body = new URLSearchParams();
   body.append('publicSign', 'labor'); body.append('hash', HASH);
   body.append('signerName', NAME); body.append('png', png); body.append('respond', 'json');
