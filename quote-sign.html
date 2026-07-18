@@ -37,7 +37,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取報價單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">quote-sign v3</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">quote-sign v4</span></div>
 </div>
 <script src="pad.js?v=1"></script>
 <script>
@@ -112,7 +112,10 @@ function doSign() {
   fetch(API + '?publicSign=quote&respond=json', { method: 'POST', body: body, redirect: 'follow' })
     .then(function (r) { return r.json(); })
     .then(function (res) {
-      if (res && res.status === 'success') { doneCard('已完成簽回', '報價單已簽署留存、植間已收到通知，感謝您！'); }
+      if (res && res.status === 'success') {
+        doneCard('已完成簽回', '報價單已簽署留存、植間已收到通知，感謝您！',
+          false, res.confirmUrl ? '<a class="ghost" href="' + esc(res.confirmUrl) + '" target="_blank">預覽／下載已簽報價單</a>' : '');
+      }
       else { btn.disabled = false; btn.textContent = '確認簽回'; alert((res && res.msg) || '送出失敗、請再試一次'); }
     })
     .catch(function () { pollCheck(btn, 0); });
