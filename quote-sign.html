@@ -37,10 +37,16 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取報價單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">quote-sign v2</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">quote-sign v3</span></div>
 </div>
 <script src="pad.js?v=1"></script>
 <script>
+/* LINE 內建瀏覽器：簽名體驗不穩（Rene 實案）→ 自動再導一次觸發 openExternalBrowser 跳外部；跳不出去顯示指引 */
+var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
+if (IN_LINE && !sessionStorage.getItem('yzQsExt')) {
+  sessionStorage.setItem('yzQsExt', '1');
+  location.replace(location.href);
+}
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
 var HASH = new URLSearchParams(location.search).get('h') || '';
 var app = document.getElementById('app');
@@ -70,7 +76,10 @@ function render(d) {
     return;
   }
   var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
-  app.innerHTML = '<h1>報價單簽回</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>'
+  var lineWarn = IN_LINE
+    ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
+    : '';
+  app.innerHTML = '<h1>報價單簽回</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>' + lineWarn
     + '<div class="card">'
     + row('報價類型', (d.typeName || '') + (d.subtitle ? '（' + d.subtitle + '）' : ''))
     + row('報價日期', d.date)
