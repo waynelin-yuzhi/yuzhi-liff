@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>植間設計｜合約簽署</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans TC", -apple-system, sans-serif; background: #F2EDE3; color: #1B1A17; line-height: 1.7; padding: 24px 14px 60px; margin: 0; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8a8275; text-align: center; margin-bottom: 16px; }
+  .card { background: #FFFCF5; border-radius: 12px; padding: 20px 18px; box-shadow: 0 4px 16px rgba(0,0,0,.06); margin-bottom: 14px; }
+  .row { display: flex; gap: 12px; padding: 7px 0; border-bottom: .5px solid #EDE9DE; font-size: 13.5px; }
+  .row:last-child { border-bottom: none; }
+  .k { width: 96px; flex: none; font-size: 11px; color: #A09A8C; letter-spacing: .1em; padding-top: 2px; }
+  .decl { font-size: 13px; color: #4A4A45; background: #f0f3ee; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: #A09A8C; letter-spacing: .1em; margin: 4px 0 4px; }
+  .field input { width: 100%; padding: 11px 12px; border: 1px solid #C9C2B0; border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; }
+  canvas.pad { width: 100%; height: 170px; background: #fff; border: 1.5px dashed #C9C2B0; border-radius: 8px; touch-action: none; }
+  .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .btn[disabled] { opacity: .55; }
+  .ghost { display: block; width: 100%; padding: 12px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 10px; }
+  .clr { background: none; border: none; color: #8a8275; font-size: 13px; text-decoration: underline; padding: 8px; cursor: pointer; }
+  .done-card { background: #FFFCF5; border-radius: 12px; padding: 30px 22px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  .done-card h2 { color: #5F6E58; font-size: 18px; margin: 0 0 8px; }
+  .done-card h2.err { color: #A4392D; }
+  .done-card p { font-size: 14px; color: #4A4A45; margin: 0; }
+  .ft { margin: 26px auto 12px; text-align: center; font-size: 10.5px; color: #A09A8C; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN</div>
+  <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取合約</p></div></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">contract-sign v1</span></div>
+</div>
+<script src="pad.js?v=1"></script>
+<script>
+var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
+if (IN_LINE && !sessionStorage.getItem('yzCtExt')) {
+  sessionStorage.setItem('yzCtExt', '1');
+  location.replace(location.href);
+}
+var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+var HASH = new URLSearchParams(location.search).get('h') || '';
+var NEED_BANK = false;
+var app = document.getElementById('app');
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function docView(id) {
+  return 'https://waynelin-yuzhi.github.io/yuzhi-liff/doc-view.html?id=' + encodeURIComponent(id);
+}
+function doneCard(title, msg, err, extraHtml) {
+  app.innerHTML = '<div class="done-card"><h2' + (err ? ' class="err"' : '') + '>' + esc(title) + '</h2><p>' + esc(msg) + '</p>' + (extraHtml || '') + '</div>';
+  window.scrollTo(0, 0);
+}
+
+if (!HASH) {
+  doneCard('連結無效', '找不到這份合約；請與植間聯繫。', true);
+} else {
+  fetch(API + '?page=contract-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+    .then(function (r) { return r.json(); })
+    .then(render)
+    .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次連結。', true); });
+}
+
+function render(d) {
+  if (!d || d.status !== 'success') { doneCard('連結無效', (d && d.msg) || '找不到這份合約；請與植間聯繫。', true); return; }
+  if (d.state === '已簽') {
+    doneCard('已完成簽署', (d.subject || '') + '　' + (d.signer || '') + '　' + (d.signedAt || ''),
+      false, d.pdfId ? '<a class="ghost" href="' + esc(docView(d.pdfId)) + '" target="_blank">查看已簽合約</a>' : '');
+    return;
+  }
+  NEED_BANK = !!d.needBank;
+  var lineWarn = IN_LINE
+    ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
+    : '';
+  var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
+  var bankCard = NEED_BANK
+    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">承攬報酬匯款帳戶</div>'
+      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">合約未預填帳戶，請填寫您的收款帳戶——簽署時會一併寫入合約正本。</div>'
+      + '<div class="field"><label>銀行（含分行）</label><input id="bankName" placeholder="例：國泰世華銀行 連城分行"></div>'
+      + '<div class="field"><label>帳號</label><input id="bankAccount" inputmode="numeric" placeholder="請輸入帳號"></div>'
+      + '<div class="field"><label>戶名</label><input id="bankHolder" placeholder="與身分證相符之戶名"></div></div>'
+    : '';
+  app.innerHTML = '<h1>合約簽署</h1><div class="sub">' + esc(d.typeLabel || '') + '　' + esc(d.contractNo || '') + '</div>' + lineWarn
+    + '<div class="card">'
+    + row('合約編號', d.contractNo) + row('合約類型', d.typeLabel) + row('簽約對象', d.subject)
+    + (d.pdfId ? '<a class="ghost" href="' + esc(docView(d.pdfId)) + '" target="_blank">查看合約全文</a>' : '')
+    + '<div class="decl">本人已詳閱並同意本合約全部條款，茲以電子簽名確認簽署。</div></div>'
+    + bankCard
+    + '<div class="card"><div class="field"><label>' + esc(d.signerLabel || '簽署人') + '姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
+    + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
+    + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
+    + '<button class="btn" id="go">確認簽署</button></div>';
+  initPad();
+  document.getElementById('clr').addEventListener('click', cvClear);
+  document.getElementById('go').addEventListener('click', doSign);
+}
+
+var PAD = null;
+function initPad() { PAD = initYzPad(document.getElementById('cv')); }
+function cvClear() { if (PAD) PAD.clear(); }
+
+function doSign() {
+  var name = (document.getElementById('signer').value || '').trim();
+  if (!name) { alert('請填寫簽署人姓名'); return; }
+  if (NEED_BANK) {
+    var bn = (document.getElementById('bankName').value || '').trim();
+    var ba = (document.getElementById('bankAccount').value || '').trim();
+    var bh = (document.getElementById('bankHolder').value || '').trim();
+    if (!bn || !ba || !bh) { alert('請填寫完整匯款帳戶（銀行／帳號／戶名）'); return; }
+  }
+  if (!PAD || !PAD.hasInk()) { alert('請先簽名'); return; }
+  var btn = document.getElementById('go');
+  btn.disabled = true; btn.textContent = '送出中…';
+  var png = PAD.dataUrl().split(',')[1];
+  var body = new URLSearchParams();
+  body.append('publicSign', 'contract'); body.append('hash', HASH);
+  body.append('signerName', name); body.append('png', png); body.append('respond', 'json');
+  if (NEED_BANK) {
+    body.append('bankName', document.getElementById('bankName').value.trim());
+    body.append('bankAccount', document.getElementById('bankAccount').value.trim());
+    body.append('bankHolder', document.getElementById('bankHolder').value.trim());
+  }
+  fetch(API + '?publicSign=contract&respond=json', { method: 'POST', body: body, redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (res && res.status === 'success') {
+        doneCard('已完成簽署', '合約已簽署留存、植間已收到通知，感謝您！',
+          false, res.signedPdfUrl ? '<a class="ghost" href="' + esc(res.signedPdfUrl) + '" target="_blank">查看已簽合約</a>' : '');
+      }
+      else { btn.disabled = false; btn.textContent = '確認簽署'; alert((res && res.msg) || '送出失敗、請再試一次'); }
+    })
+    .catch(function () { pollCheck(btn, 0); });
+}
+function pollCheck(btn, n) {
+  fetch(API + '?page=contract-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.state === '已簽') { doneCard('已完成簽署', '合約已簽署留存、植間已收到通知，感謝您！'); }
+      else if (n < 3) { setTimeout(function () { pollCheck(btn, n + 1); }, 2500); }
+      else { btn.disabled = false; btn.textContent = '確認簽署'; alert('送出可能沒有成功，請再按一次'); }
+    })
+    .catch(function () {
+      if (n < 3) setTimeout(function () { pollCheck(btn, n + 1); }, 2500);
+      else { btn.disabled = false; btn.textContent = '確認簽署'; alert('送出可能沒有成功，請再按一次'); }
+    });
+}
+</script>
+</body>
+</html>
