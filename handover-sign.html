@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>植間設計｜點交簽收</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans TC", -apple-system, sans-serif; background: #F2EDE3; color: #1B1A17; line-height: 1.7; padding: 24px 14px 60px; margin: 0; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8a8275; text-align: center; margin-bottom: 16px; }
+  .card { background: #FFFCF5; border-radius: 12px; padding: 20px 18px; box-shadow: 0 4px 16px rgba(0,0,0,.06); margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { font-size: 10.5px; color: #A09A8C; letter-spacing: .12em; text-align: left; padding: 4px 6px; border-bottom: 1px solid #D8D3C6; }
+  td { padding: 7px 6px; border-bottom: .5px solid #EDE9DE; }
+  td.qty { text-align: center; }
+  .decl { font-size: 13px; color: #4A4A45; background: #f0f3ee; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .field label { display: block; font-size: 11px; color: #A09A8C; letter-spacing: .1em; margin: 4px 0 4px; }
+  .field input { width: 100%; padding: 11px 12px; border: 1px solid #C9C2B0; border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; }
+  canvas.pad { width: 100%; height: 170px; background: #fff; border: 1.5px dashed #C9C2B0; border-radius: 8px; touch-action: none; }
+  .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .btn[disabled] { opacity: .55; }
+  .ghost { display: block; width: 100%; padding: 12px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 10px; }
+  .clr { background: none; border: none; color: #8a8275; font-size: 13px; text-decoration: underline; padding: 8px; cursor: pointer; }
+  .done-card { background: #FFFCF5; border-radius: 12px; padding: 30px 22px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  .done-card h2 { color: #5F6E58; font-size: 18px; margin: 0 0 8px; }
+  .done-card h2.err { color: #A4392D; }
+  .done-card p { font-size: 14px; color: #4A4A45; margin: 0; }
+  .ft { margin: 26px auto 12px; text-align: center; font-size: 10.5px; color: #A09A8C; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN</div>
+  <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取點交單</p></div></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">handover-sign v1</span></div>
+</div>
+<script src="pad.js?v=1"></script>
+<script>
+var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
+if (IN_LINE && !sessionStorage.getItem('yzHoExt')) {
+  sessionStorage.setItem('yzHoExt', '1');
+  location.replace(location.href);
+}
+var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+var HASH = new URLSearchParams(location.search).get('h') || '';
+var app = document.getElementById('app');
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function doneCard(title, msg, err, extraHtml) {
+  app.innerHTML = '<div class="done-card"><h2' + (err ? ' class="err"' : '') + '>' + esc(title) + '</h2><p>' + esc(msg) + '</p>' + (extraHtml || '') + '</div>';
+  window.scrollTo(0, 0);
+}
+
+if (!HASH) {
+  doneCard('連結無效', '找不到這張點交單；請與植間聯繫。', true);
+} else {
+  fetch(API + '?page=handover&h=' + encodeURIComponent(HASH) + '&fmt=json')
+    .then(function (r) { return r.json(); })
+    .then(render)
+    .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次連結。', true); });
+}
+
+function render(d) {
+  if (!d || d.status === 'invalid') { doneCard('連結無效', '找不到這張點交單；請與植間聯繫。', true); return; }
+  if (d.status === '已簽') {
+    doneCard('已完成簽收', (d.customer || '') + '　' + (d.typeLabel || '') + '　' + (d.signer || '') + '　' + (d.signedAt || ''),
+      false, d.pdfUrl ? '<a class="ghost" href="' + esc(d.pdfUrl) + '" target="_blank">查看簽收文件</a>' : '');
+    return;
+  }
+  var lineWarn = IN_LINE
+    ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
+    : '';
+  var rows = (d.items || []).map(function (it, i) {
+    return '<tr><td style="color:#A09A8C;width:24px">' + (i + 1) + '</td><td>' + esc(it.name) + '</td><td class="qty">' + esc(it.qty) + '</td></tr>';
+  }).join('');
+  app.innerHTML = '<h1>' + esc(d.typeLabel || '點交簽收') + '</h1><div class="sub">' + esc(d.customer) + (d.quoteNo ? '　報價編號 ' + esc(d.quoteNo) : '') + '</div>' + lineWarn
+    + '<div class="card"><table><thead><tr><th>NO.</th><th>品項</th><th style="text-align:center">數量</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="decl">' + esc(d.decl || '') + '</div></div>'
+    + '<div class="card"><div class="field"><label>簽署人姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
+    + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
+    + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
+    + '<button class="btn" id="go">確認簽收</button>'
+    + '<div style="font-size:11px;color:#8a8275;text-align:center;margin-top:10px">送出後將產生簽收文件留存、本連結即完成使用</div></div>';
+  initPad();
+  document.getElementById('clr').addEventListener('click', cvClear);
+  document.getElementById('go').addEventListener('click', doSign);
+}
+
+var PAD = null;
+function initPad() { PAD = initYzPad(document.getElementById('cv')); }
+function cvClear() { if (PAD) PAD.clear(); }
+
+function doSign() {
+  var name = (document.getElementById('signer').value || '').trim();
+  if (!name) { alert('請填寫簽署人姓名'); return; }
+  if (!PAD || !PAD.hasInk()) { alert('請先簽名'); return; }
+  var btn = document.getElementById('go');
+  btn.disabled = true; btn.textContent = '送出中…';
+  var png = PAD.dataUrl().split(',')[1];
+  var body = new URLSearchParams();
+  body.append('publicSign', 'handover'); body.append('hash', HASH);
+  body.append('signerName', name); body.append('png', png); body.append('respond', 'json');
+  fetch(API + '?publicSign=handover&respond=json', { method: 'POST', body: body, redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (res && res.status === 'success') {
+        doneCard('已完成簽收', '文件已留存、植間已收到通知，感謝您！',
+          false, res.confirmUrl ? '<a class="ghost" href="' + esc(res.confirmUrl) + '" target="_blank">查看簽收文件</a>' : '');
+      }
+      else { btn.disabled = false; btn.textContent = '確認簽收'; alert((res && res.msg) || '送出失敗、請再試一次'); }
+    })
+    .catch(function () { pollCheck(btn, 0); });
+}
+function pollCheck(btn, n) {
+  fetch(API + '?page=handover&h=' + encodeURIComponent(HASH) + '&fmt=json')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.status === '已簽') { doneCard('已完成簽收', '文件已留存、植間已收到通知，感謝您！'); }
+      else if (n < 3) { setTimeout(function () { pollCheck(btn, n + 1); }, 2500); }
+      else { btn.disabled = false; btn.textContent = '確認簽收'; alert('送出可能沒有成功，請再按一次'); }
+    })
+    .catch(function () {
+      if (n < 3) setTimeout(function () { pollCheck(btn, n + 1); }, 2500);
+      else { btn.disabled = false; btn.textContent = '確認簽收'; alert('送出可能沒有成功，請再按一次'); }
+    });
+}
+</script>
+</body>
+</html>
