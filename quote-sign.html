@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>植間設計｜報價單簽回</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans TC", -apple-system, sans-serif; background: #F2EDE3; color: #1B1A17; line-height: 1.7; padding: 24px 14px 60px; margin: 0; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8a8275; text-align: center; margin-bottom: 16px; }
+  .card { background: #FFFCF5; border-radius: 12px; padding: 20px 18px; box-shadow: 0 4px 16px rgba(0,0,0,.06); margin-bottom: 14px; }
+  .row { display: flex; gap: 12px; padding: 7px 0; border-bottom: .5px solid #EDE9DE; font-size: 13.5px; }
+  .row:last-child { border-bottom: none; }
+  .k { width: 96px; flex: none; font-size: 11px; color: #A09A8C; letter-spacing: .1em; padding-top: 2px; }
+  .amt { background: #F4F1E8; border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .amt b { font-size: 19px; color: #5F6E58; }
+  .decl { font-size: 13px; color: #4A4A45; background: #f0f3ee; border-radius: 8px; padding: 12px 14px; margin: 14px 0 0; }
+  .field label { display: block; font-size: 11px; color: #A09A8C; letter-spacing: .1em; margin: 4px 0 4px; }
+  .field input { width: 100%; padding: 11px 12px; border: 1px solid #C9C2B0; border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; }
+  canvas.pad { width: 100%; height: 170px; background: #fff; border: 1.5px dashed #C9C2B0; border-radius: 8px; touch-action: none; }
+  .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .btn[disabled] { opacity: .55; }
+  .ghost { display: block; width: 100%; padding: 12px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 10px; }
+  .clr { background: none; border: none; color: #8a8275; font-size: 13px; text-decoration: underline; padding: 8px; cursor: pointer; }
+  .done-card { background: #FFFCF5; border-radius: 12px; padding: 30px 22px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  .done-card h2 { color: #5F6E58; font-size: 18px; margin: 0 0 8px; }
+  .done-card h2.err { color: #A4392D; }
+  .done-card p { font-size: 14px; color: #4A4A45; margin: 0; }
+  .ft { margin: 26px auto 12px; text-align: center; font-size: 10.5px; color: #A09A8C; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN</div>
+  <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取報價單</p></div></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">quote-sign v1</span></div>
+</div>
+<script>
+var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+var HASH = new URLSearchParams(location.search).get('h') || '';
+var DREW = false;
+var app = document.getElementById('app');
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function doneCard(title, msg, err, extraHtml) {
+  app.innerHTML = '<div class="done-card"><h2' + (err ? ' class="err"' : '') + '>' + esc(title) + '</h2><p>' + esc(msg) + '</p>' + (extraHtml || '') + '</div>';
+  window.scrollTo(0, 0);
+}
+
+if (!HASH) {
+  doneCard('連結無效', '找不到這張報價單；請與植間聯繫。', true);
+} else {
+  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+    .then(function (r) { return r.json(); })
+    .then(render)
+    .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次卡片按鈕。', true); });
+}
+
+function render(d) {
+  if (!d || d.status !== 'success') { doneCard('連結無效', (d && d.msg) || '找不到這張報價單；請與植間聯繫。', true); return; }
+  if (d.alreadySigned) {
+    doneCard('已完成簽回', (d.signer || '') + '　' + (d.signedAt || '') + ' 已簽署留存，感謝您！',
+      false, d.signedPdfUrl ? '<a class="ghost" href="' + esc(d.signedPdfUrl) + '" target="_blank">查看簽回確認書</a>' : '');
+    return;
+  }
+  var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
+  app.innerHTML = '<h1>報價單簽回</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>'
+    + '<div class="card">'
+    + row('報價類型', (d.typeName || '') + (d.subtitle ? '（' + d.subtitle + '）' : ''))
+    + row('報價日期', d.date)
+    + '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">總計金額</span><b>NT$ ' + Number(d.total || 0).toLocaleString() + '</b></div>'
+    + (d.shareUrl ? '<a class="ghost" href="' + esc(d.shareUrl) + '" target="_blank">查看完整報價單</a>' : '')
+    + '<div class="decl">本人已詳閱並同意本報價單內容，確認簽回。</div></div>'
+    + '<div class="card"><div class="field"><label>簽署人姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
+    + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
+    + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
+    + '<button class="btn" id="go">確認簽回</button></div>';
+  initPad();
+  document.getElementById('clr').addEventListener('click', cvClear);
+  document.getElementById('go').addEventListener('click', doSign);
+}
+
+var CV, CX, DPR, DRAWING = false;
+function initPad() {
+  CV = document.getElementById('cv'); CX = CV.getContext('2d');
+  DPR = window.devicePixelRatio || 1;
+  CV.width = CV.offsetWidth * DPR; CV.height = CV.offsetHeight * DPR;
+  CX.scale(DPR, DPR); CX.lineWidth = 2.2; CX.lineCap = 'round'; CX.strokeStyle = '#1B1A17';
+  function pos(e) { var r = CV.getBoundingClientRect(); var p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
+  CV.addEventListener('mousedown', function (e) { e.preventDefault(); DRAWING = true; var p = pos(e); CX.beginPath(); CX.moveTo(p.x, p.y); });
+  CV.addEventListener('mousemove', function (e) { if (!DRAWING) return; e.preventDefault(); var p = pos(e); CX.lineTo(p.x, p.y); CX.stroke(); DREW = true; });
+  window.addEventListener('mouseup', function () { DRAWING = false; });
+  CV.addEventListener('touchstart', function (e) { e.preventDefault(); DRAWING = true; var p = pos(e); CX.beginPath(); CX.moveTo(p.x, p.y); }, { passive: false });
+  CV.addEventListener('touchmove', function (e) { if (!DRAWING) return; e.preventDefault(); var p = pos(e); CX.lineTo(p.x, p.y); CX.stroke(); DREW = true; }, { passive: false });
+  CV.addEventListener('touchend', function () { DRAWING = false; });
+}
+function cvClear() {
+  CX.setTransform(1, 0, 0, 1, 0, 0); CX.clearRect(0, 0, CV.width, CV.height); CX.scale(DPR, DPR); DREW = false;
+}
+
+function doSign() {
+  var name = (document.getElementById('signer').value || '').trim();
+  if (!name) { alert('請填寫簽署人姓名'); return; }
+  if (!DREW) { alert('請先簽名'); return; }
+  var btn = document.getElementById('go');
+  btn.disabled = true; btn.textContent = '送出中…';
+  var png = CV.toDataURL('image/png').split(',')[1];
+  var body = new URLSearchParams();
+  body.append('publicSign', 'quote'); body.append('hash', HASH);
+  body.append('signerName', name); body.append('png', png); body.append('respond', 'json');
+  fetch(API + '?publicSign=quote&respond=json', { method: 'POST', body: body, redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (res && res.status === 'success') { doneCard('已完成簽回', '報價單已簽署留存、植間已收到通知，感謝您！'); }
+      else { btn.disabled = false; btn.textContent = '確認簽回'; alert((res && res.msg) || '送出失敗、請再試一次'); }
+    })
+    .catch(function () { pollCheck(btn, 0); });
+}
+function pollCheck(btn, n) {
+  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.alreadySigned) { doneCard('已完成簽回', '報價單已簽署留存、植間已收到通知，感謝您！'); }
+      else if (n < 3) { setTimeout(function () { pollCheck(btn, n + 1); }, 2500); }
+      else { btn.disabled = false; btn.textContent = '確認簽回'; alert('送出可能沒有成功，請再按一次'); }
+    })
+    .catch(function () {
+      if (n < 3) setTimeout(function () { pollCheck(btn, n + 1); }, 2500);
+      else { btn.disabled = false; btn.textContent = '確認簽回'; alert('送出可能沒有成功，請再按一次'); }
+    });
+}
+</script>
+</body>
+</html>
