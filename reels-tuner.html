@@ -221,7 +221,7 @@
     <input type="range" id="mfo" min="0" max="6" step="0.1" value="2.5" />
   </div>
 </div>
-<div class="hint">預覽片的聲音是目前版本的混音・調完送出我會照數值重混</div>
+<div class="hint">按播放＝即時試聽分軌混音（近似）・成品仍由我依參數重混原始素材</div>
 
 <div class="bar">
   <span class="plab">封面</span>
@@ -448,6 +448,62 @@ AV.forEach(([i])=>$(i).addEventListener("input",syncA));
 $("wset1").onclick=()=>{ $("ws").value=(+(vid.currentTime||$("seek").value)).toFixed(1); syncA(); };
 $("wset2").onclick=()=>{ $("we").value=(+(vid.currentTime||$("seek").value)).toFixed(1); syncA(); };
 syncA();
+
+// ─ 分軌即時試聽（Web Audio）─
+// 分軌已含出片同款濾波與基準音量；滑桿相對預設值縮放（60%/85% 時＝出片混音）。成品仍由植影所重混。
+const DURV=20.9;
+let actx=null, stems={}, playing=[];
+async function ensureAudio(){
+  if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==="suspended") await actx.resume();
+  if(!stems.music){
+    const load=async u=>actx.decodeAudioData(await (await fetch(u)).arrayBuffer());
+    [stems.music,stems.water]=await Promise.all([load("previews/stem_music.m4a"),load("previews/stem_water.m4a")]);
+  }
+}
+function envAt(pts,t){
+  if(t<=pts[0][0]) return pts[0][1];
+  for(let i=1;i<pts.length;i++){ if(t<=pts[i][0]){
+    const [t0,g0]=pts[i-1],[t1,g1]=pts[i]; return t1===t0?g1:g0+(g1-g0)*(t-t0)/(t1-t0); } }
+  return pts[pts.length-1][1];
+}
+function schedule(g,pts,t){
+  const n=actx.currentTime;
+  g.gain.cancelScheduledValues(n);
+  g.gain.setValueAtTime(envAt(pts,t),n);
+  pts.forEach(([x,v])=>{ if(x>t) g.gain.linearRampToValueAtTime(v,n+(x-t)); });
+}
+function stopAudio(){ playing.forEach(s=>{try{s.stop()}catch(_){}}); playing=[]; }
+async function startAudio(){
+  await ensureAudio(); stopAudio();
+  const t=vid.currentTime;
+  const mvG=+$("mv").value/85, wvG=+$("wv").value/60;
+  const mfi=+$("mfi").value, mfo=+$("mfo").value;
+  const ws=+$("ws").value, we=+$("we").value, wfi=+$("wfi").value, wfo=+$("wfo").value;
+  const n=actx.currentTime;
+  if(t<DURV){
+    const s=actx.createBufferSource(), g=actx.createGain();
+    s.buffer=stems.music; s.connect(g); g.connect(actx.destination);
+    schedule(g,[[0,0],[mfi,mvG],[Math.max(mfi,DURV-mfo),mvG],[DURV,0]],t);
+    s.start(n,Math.min(t,stems.music.duration-0.02));
+    s.stop(n+(DURV-t)); playing.push(s);
+  }
+  if(t<we){
+    const s=actx.createBufferSource(), g=actx.createGain();
+    s.buffer=stems.water; s.loop=true; s.connect(g); g.connect(actx.destination);
+    schedule(g,[[ws,0],[ws+wfi,wvG],[Math.max(ws+wfi,we-wfo),wvG],[we,0]],t);
+    if(t>=ws) s.start(n,(t-ws)%stems.water.duration); else s.start(n+(ws-t),0);
+    s.stop(n+(we-t)); playing.push(s);
+  }
+}
+vid.addEventListener("play",()=>{ startAudio().catch(()=>{}); });
+vid.addEventListener("pause",stopAudio);
+vid.addEventListener("seeking",()=>{ if(!vid.paused) startAudio().catch(()=>{}); });
+let adeb=null;
+AV.forEach(([i])=>$(i).addEventListener("input",()=>{
+  if(vid.paused) return;
+  clearTimeout(adeb); adeb=setTimeout(()=>startAudio().catch(()=>{}),200);
+}));
 
 async function deliver(jsonText){
   const st=$("stat");
