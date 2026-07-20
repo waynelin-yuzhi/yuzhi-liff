@@ -327,6 +327,7 @@ async function deliver(jsonText){
   st.textContent="傳送中…"; st.className="stat go";
   const obj=JSON.parse(jsonText);
   if(!obj.title) obj.title=obj.reel||"微調參數";
+  try{const q=new URLSearchParams(location.search);if(q.get("id"))obj.apId=q.get("id");}catch(_){}
   const body=new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(obj)});
   try{
     const r=await fetch(INBOX,{method:"POST",body:body});
