@@ -89,8 +89,14 @@
 </head>
 <body>
 <header>
-  <h1>植間 Reels 微調台</h1>
-  <div class="sub">TUNING PANEL / 試作01</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a id="backbtn" href="#" style="display:none;text-decoration:none;color:var(--moss);border:1px solid var(--moss);
+       border-radius:2px;padding:6px 12px;font-size:13px;white-space:nowrap">← 返回</a>
+    <div>
+      <h1>植間 Reels 微調台</h1>
+      <div class="sub">TUNING PANEL / 試作01</div>
+    </div>
+  </div>
 </header>
 
 <div class="load">
@@ -354,6 +360,16 @@ const SUBMIT_TOKEN="7c7e94a5e2af4764a94cccf49c31aa0f";
 // 從核可頁帶 ?ap=<核可token>&id=<AP-xxxx> 進來＝調整模式：送出時原件自動退回（AN-0091 追加規格）
 const Q=new URLSearchParams(location.search);
 const AP={h:Q.get("ap")||"", id:Q.get("id")||""};
+
+// 返回鍵：優先走 ?back=<核可頁網址>（整頁重新載入——GAS 頁走瀏覽器上一頁會白屏、不能靠 history）
+// 只接受 Google Apps Script 網域、避免被塞奇怪的跳轉網址
+const BACK=(u=>{try{const x=new URL(u);return /(^|\.)script\.google\.com$|(^|\.)googleusercontent\.com$/.test(x.hostname)?u:""}catch(_){return ""}})(Q.get("back")||"");
+(function(){
+  const b=$("backbtn");
+  if(BACK){ b.href=BACK; b.style.display="inline-block"; }
+  else if(history.length>1){ b.href="#"; b.style.display="inline-block";
+    b.onclick=e=>{e.preventDefault();history.back();}; }
+})();
 if(AP.h && AP.id){
   const b=document.createElement("div");
   b.className="stat go"; b.style.display="block"; b.style.marginTop="10px";
@@ -393,6 +409,12 @@ async function deliver(jsonText){
       msg+="・原件 "+AP.id+" 已自動退回";
     }
     st.textContent=msg; st.className="stat ok";
+    if(BACK){
+      const a=document.createElement("a");
+      a.href=BACK; a.textContent="← 回核可中心";
+      a.style.cssText="display:inline-block;margin-left:10px;color:#2f5d2a;text-decoration:underline";
+      st.appendChild(a);
+    }
   }catch(err){
     st.textContent="⚠ 自動傳送沒成功，請按下面「複製參數」貼給我";
     st.className="stat bad";
