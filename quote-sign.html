@@ -37,7 +37,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取報價單</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">quote-sign v6</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgver">quote-sign</span></div>
 </div>
 <script src="pad.js?v=1"></script>
 <script>
@@ -49,6 +49,8 @@ if (IN_LINE && !sessionStorage.getItem('yzQsExt')) {
 }
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
 var HASH = new URLSearchParams(location.search).get('h') || '';
+var PGV = new URLSearchParams(location.search).get('v') || '';
+if (PGV) { var _pv = document.getElementById('pgver'); if (_pv) _pv.textContent = 'quote-sign v' + PGV; }
 var app = document.getElementById('app');
 
 function esc(s) {
