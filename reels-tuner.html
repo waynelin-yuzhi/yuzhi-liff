@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>植間 Reels 微調台</title>
+<style>
+  :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--paper);color:var(--ink);font-family:"Shippori Mincho","Songti TC",serif;
+       padding:16px;max-width:640px;margin:0 auto}
+  header{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+  h1{font-size:20px;letter-spacing:.06em;font-weight:700}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.18em;margin-top:6px}
+
+  .load{border:1px dashed var(--line);background:#fff;padding:12px;border-radius:2px;margin-bottom:14px}
+  .load label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.06em}
+  .load input{width:100%;font-size:13px}
+
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{flex:1;min-width:52px;padding:9px 4px;text-align:center;cursor:pointer;border:1px solid var(--line);
+       background:#fff;font-size:13px;color:var(--body);border-radius:2px}
+  .tab.on{background:var(--moss);color:var(--paper);border-color:var(--moss)}
+
+  .stage{position:relative;width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line);
+         overflow:hidden;border-radius:2px;touch-action:none;user-select:none}
+  .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+         color:#6b6b66;font-size:13px;text-align:center;padding:24px;line-height:1.8}
+  .capbox{position:absolute;left:50%;transform:translate(-50%,-50%);width:92%;text-align:center;
+          text-shadow:0 2px 6px rgba(0,0,0,.9),0 4px 18px rgba(0,0,0,.75);padding:8px 0;display:none}
+  .capbox.show{display:block}
+  .capbox.editing{cursor:grab;outline:1px dashed rgba(255,255,255,.45);outline-offset:6px}
+  .capbox .zh{color:#fff;font-size:min(5.2vw,30px);letter-spacing:.08em;line-height:1.35}
+  .capbox .en{color:#fff;font-family:ui-sans-serif,system-ui,sans-serif;font-size:min(2.9vw,17px);
+              letter-spacing:.06em;margin-top:7px}
+
+  .bar{display:flex;align-items:center;gap:10px;margin:10px 0 4px}
+  .play{width:52px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;
+        font-family:inherit;font-size:13px;cursor:pointer}
+  #seek{flex:1;accent-color:var(--moss)}
+  .time{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);min-width:64px;text-align:right}
+  .hint{font-size:11px;color:var(--muted);text-align:center;margin:6px 0 16px;
+        font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
+
+  .field{margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em}
+  input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;
+                   font-family:inherit;font-size:15px;color:var(--ink);border-radius:2px}
+  input[type=range]{width:100%;accent-color:var(--moss)}
+  .row{display:flex;gap:12px}.row .field{flex:1}
+  .val{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--moss);float:right}
+
+  .send{width:100%;padding:15px;background:var(--moss);color:var(--paper);border:none;font-family:inherit;
+        font-size:16px;letter-spacing:.12em;cursor:pointer;margin-top:6px;border-radius:2px}
+  #out{margin-top:14px;display:none}
+  #out textarea{width:100%;height:150px;font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:10px;
+                border:1px solid var(--line);background:#fff;color:var(--body);border-radius:2px}
+  .copy{width:100%;padding:12px;background:#fff;color:var(--moss);border:1px solid var(--moss);
+        font-family:inherit;font-size:14px;letter-spacing:.1em;cursor:pointer;margin-top:8px;border-radius:2px}
+  .note{font-size:11px;color:var(--muted);line-height:1.7;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>植間 Reels 微調台</h1>
+  <div class="sub">TUNING PANEL / 試作01</div>
+</header>
+
+<div class="load">
+  <label>載入影片（檔案留在你裝置上・不會上傳）</label>
+  <input type="file" id="pick" accept="video/*" />
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="stage" id="stage">
+  <video id="vid" playsinline muted preload="metadata"></video>
+  <div class="empty" id="empty">載入影片後<br>就能一邊播放一邊調字幕</div>
+</div>
+
+<div class="bar">
+  <button class="play" id="play">播放</button>
+  <input type="range" id="seek" min="0" max="13.33" step="0.05" value="0" />
+  <span class="time" id="tval">0.00s</span>
+</div>
+<div class="hint">切到某句會自動跳到它出現的時間・可直接拖曳</div>
+
+<div class="field">
+  <label>中文字幕</label>
+  <input type="text" id="zh" />
+</div>
+<div class="field">
+  <label>英文字幕</label>
+  <input type="text" id="en" />
+</div>
+<div class="row">
+  <div class="field">
+    <label>出現時間 <span class="val" id="stv"></span></label>
+    <input type="range" id="st" min="0" max="13" step="0.1" />
+  </div>
+  <div class="field">
+    <label>停留長度 <span class="val" id="dur"></span></label>
+    <input type="range" id="du" min="0.8" max="5" step="0.1" />
+  </div>
+</div>
+
+<button class="send" id="send">送 出</button>
+
+<div id="out">
+  <textarea id="json" readonly></textarea>
+  <button class="copy" id="copy">複製參數</button>
+  <div class="note">把複製的參數貼給 Claude，我照這些數值精準重剪、出片後用 LINE 小卡通知你。</div>
+</div>
+
+<script>
+const CAPS=[
+ {zh:"每到夏天",en:"Every summer",st:0.4,du:2.1,x:0.5,y:0.71},
+ {zh:"這是我澆水的方式",en:"This is how I water",st:2.3,du:2.1,x:0.5,y:0.71},
+ {zh:"看到植物們點頭如搗蒜",en:"When every leaf nods back",st:4.3,du:2.5,x:0.5,y:0.71},
+ {zh:"我就知道他們很開心",en:"I know they're happy",st:6.6,du:2.2,x:0.5,y:0.71},
+ {zh:"這個夏天，記得讓植物多喝點水",en:"This summer, give your plants a good drink",st:8.7,du:2.3,x:0.5,y:0.71}
+];
+let cur=0, boxes=[];
+const $=id=>document.getElementById(id);
+const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
+
+CAPS.forEach((c,i)=>{
+  const b=document.createElement("div");
+  b.className="tab"+(i===0?" on":""); b.textContent=i+1;
+  b.onclick=()=>{ save(); cur=i; seekTo(CAPS[i].st+0.25); load(); };
+  tabs.appendChild(b);
+
+  const box=document.createElement("div");
+  box.className="capbox";
+  box.innerHTML='<div class="zh"></div><div class="en"></div>';
+  stage.appendChild(box); boxes.push(box);
+  box.addEventListener("mousedown",e=>startDrag(e,i));
+  box.addEventListener("touchstart",e=>startDrag(e,i),{passive:false});
+});
+
+function paint(){
+  const t=vid.duration?vid.currentTime:parseFloat($("seek").value);
+  CAPS.forEach((c,i)=>{
+    const box=boxes[i];
+    box.querySelector(".zh").textContent=(i===cur?$("zh").value:c.zh);
+    box.querySelector(".en").textContent=(i===cur?$("en").value:c.en);
+    box.style.left=(c.x*100)+"%"; box.style.top=(c.y*100)+"%";
+    const live=t>=c.st && t<=c.st+c.du;
+    box.classList.toggle("show", live || (i===cur && vid.paused));
+    box.classList.toggle("editing", i===cur && vid.paused);
+  });
+  $("tval").textContent=t.toFixed(2)+"s";
+}
+function load(){
+  const c=CAPS[cur];
+  [...tabs.children].forEach((t,i)=>t.classList.toggle("on",i===cur));
+  $("zh").value=c.zh; $("en").value=c.en;
+  $("st").value=c.st; $("du").value=c.du;
+  $("stv").textContent=c.st.toFixed(1)+"s"; $("dur").textContent=c.du.toFixed(1)+"s";
+  paint();
+}
+function save(){
+  const c=CAPS[cur];
+  c.zh=$("zh").value; c.en=$("en").value;
+  c.st=parseFloat($("st").value); c.du=parseFloat($("du").value);
+}
+function seekTo(t){ if(vid.duration){ vid.currentTime=Math.min(vid.duration,Math.max(0,t)); } $("seek").value=t; paint(); }
+
+$("pick").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  vid.src=URL.createObjectURL(f);
+  vid.onloadedmetadata=()=>{
+    $("empty").style.display="none";
+    $("seek").max=vid.duration.toFixed(2);
+    seekTo(CAPS[cur].st+0.25);
+  };
+});
+
+$("play").onclick=()=>{
+  if(!vid.src) return;
+  if(vid.paused){ vid.play(); $("play").textContent="暫停"; }
+  else { vid.pause(); $("play").textContent="播放"; }
+  paint();
+};
+vid.addEventListener("timeupdate",()=>{ $("seek").value=vid.currentTime; paint(); });
+vid.addEventListener("pause",()=>{ $("play").textContent="播放"; paint(); });
+$("seek").addEventListener("input",e=>{ if(!vid.paused) vid.pause(); seekTo(parseFloat(e.target.value)); });
+
+["zh","en"].forEach(id=>$(id).addEventListener("input",paint));
+$("st").addEventListener("input",e=>{ CAPS[cur].st=parseFloat(e.target.value);
+  $("stv").textContent=(+e.target.value).toFixed(1)+"s"; seekTo(CAPS[cur].st+0.25); });
+$("du").addEventListener("input",e=>{ CAPS[cur].du=parseFloat(e.target.value);
+  $("dur").textContent=(+e.target.value).toFixed(1)+"s"; paint(); });
+
+let dragging=false;
+const pt=e=>e.touches?e.touches[0]:e;
+function startDrag(e,i){ if(i!==cur||!vid.paused) return; dragging=true; e.preventDefault(); }
+function moveDrag(e){
+  if(!dragging) return;
+  const r=stage.getBoundingClientRect(), p=pt(e);
+  CAPS[cur].x=Math.min(.94,Math.max(.06,(p.clientX-r.left)/r.width));
+  CAPS[cur].y=Math.min(.94,Math.max(.06,(p.clientY-r.top)/r.height));
+  paint(); e.preventDefault();
+}
+window.addEventListener("mousemove",moveDrag);
+window.addEventListener("touchmove",moveDrag,{passive:false});
+window.addEventListener("mouseup",()=>dragging=false);
+window.addEventListener("touchend",()=>dragging=false);
+
+$("send").onclick=()=>{
+  save();
+  $("json").value=JSON.stringify({
+    reel:"試作01", canvas:{w:1080,h:1920},
+    captions:CAPS.map((c,i)=>({n:i+1,zh:c.zh,en:c.en,
+      start:+c.st.toFixed(2),duration:+c.du.toFixed(2),
+      pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
+      px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}}))
+  },null,1);
+  $("out").style.display="block"; $("out").scrollIntoView({behavior:"smooth"});
+};
+$("copy").onclick=async()=>{
+  try{ await navigator.clipboard.writeText($("json").value); }
+  catch(_){ $("json").select(); document.execCommand("copy"); }
+  $("copy").textContent="已複製"; setTimeout(()=>$("copy").textContent="複製參數",1600);
+};
+
+load();
+</script>
+</body>
+</html>
