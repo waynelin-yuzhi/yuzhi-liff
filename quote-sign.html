@@ -105,24 +105,19 @@ function render(d) {
   document.getElementById('go').addEventListener('click', doSign);
 }
 
-/* 文件整頁攤開（Wayne：完整顯示、跟頁面一起下滑、不要內捲不要左右移；要互動按「放大檢視」）
-   分享頁會 postMessage 實際高度 → iframe 展開成全高 × 縮放比、pointer-events:none 讓觸控直接捲外頁 */
-var DOC_W = 900, DOC_H = 0;
+/* 文件整頁攤開（Wayne 定版：完整顯示、跟頁面一起下滑、不內捲不左右移；互動一律按「放大檢視」）
+   分享頁被內嵌時自己縮到容器寬並回報實高 → 外層只把 iframe 撐到該高度、pointer-events:none 觸控直接捲外頁 */
 function fitDoc() {
-  var wrap = document.getElementById('docwrap'), fr = document.getElementById('docfr');
-  if (!wrap || !fr) return;
-  var s = Math.min(1, wrap.clientWidth / DOC_W);
-  fr.style.width = DOC_W + 'px';
-  fr.style.transform = 'scale(' + s + ')';
-  var h = DOC_H || Math.round(window.innerHeight * 0.6 / s);
-  fr.style.height = h + 'px';
-  wrap.style.height = Math.round(h * s) + 'px';
+  var fr = document.getElementById('docfr');
+  if (fr) { fr.style.width = '100%'; fr.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
 }
 window.addEventListener('message', function (ev) {
   var h = ev && ev.data && Number(ev.data.yzDocH);
   if (!h || h < 200) return;
-  DOC_H = h + 24;
-  fitDoc();
+  var wrap = document.getElementById('docwrap'), fr = document.getElementById('docfr');
+  if (!wrap || !fr) return;
+  fr.style.height = (h + 24) + 'px';
+  wrap.style.height = 'auto';
 });
 
 var PAD = null;
