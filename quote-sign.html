@@ -80,9 +80,9 @@ function render(d) {
     ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
     : '';
   app.innerHTML = '<h1>報價單簽回</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>' + lineWarn
-    + (d.shareUrl
+    + ((d.docHtml || d.shareUrl)
         ? '<div id="docwrap" style="overflow:hidden;margin:10px -6px 0">'
-          + '<iframe id="docfr" src="' + esc(d.shareUrl) + '" style="border:0;display:block;width:100%" scrolling="no"></iframe></div>'
+          + '<iframe id="docfr" style="border:0;display:block;width:100%" scrolling="no"></iframe></div>'
           + (d.pdfUrl ? '<a class="ghost" style="margin:16px 0 22px" href="' + esc(d.pdfUrl) + '" target="_blank">下載報價單 PDF</a>' : '')
         : '<div class="card">' + row('報價類型', (d.typeName || '') + (d.subtitle ? '（' + d.subtitle + '）' : '')) + row('報價日期', d.date)
           + '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">總計金額</span><b>NT$ ' + Number(d.total || 0).toLocaleString() + '</b></div></div>')
@@ -93,9 +93,36 @@ function render(d) {
     + '<button class="btn" id="go">確認簽回</button></div>';
   initPad();
   fitDoc();
+  loadDoc(d);
   window.addEventListener('resize', fitDoc);
   document.getElementById('clr').addEventListener('click', cvClear);
   document.getElementById('go').addEventListener('click', doSign);
+}
+
+/* 文件載入：優先 srcdoc 同源內嵌（不連 Google、登入帳號也不會白框；高度可精準量測）；無 docHtml 才退回舊 src 路徑 */
+function loadDoc(d) {
+  var fr = document.getElementById('docfr');
+  if (!fr) return;
+  if (d.docHtml) {
+    fr.addEventListener('load', function () { measureDoc(fr); });
+    fr.srcdoc = d.docHtml;
+  } else if (d.shareUrl) {
+    fr.src = d.shareUrl;
+  }
+}
+function measureDoc(fr) {
+  try {
+    var doc = fr.contentDocument;
+    if (!doc || !doc.body) return;
+    var apply = function () {
+      var h = Math.ceil(doc.body.getBoundingClientRect().bottom) || doc.documentElement.scrollHeight;
+      if (h > 200 && Math.abs(h + 24 - (parseInt(fr.style.height) || 0)) > 6) fr.style.height = (h + 24) + 'px';
+    };
+    apply();
+    setTimeout(apply, 400); setTimeout(apply, 1200);
+    if (window.ResizeObserver) { var t = null; new ResizeObserver(function () { clearTimeout(t); t = setTimeout(apply, 150); }).observe(doc.body); }
+    Array.prototype.forEach.call(doc.images || [], function (im) { im.addEventListener('load', apply); });
+  } catch (e) {}
 }
 
 /* 文件整頁攤開（Wayne 定版：完整顯示、跟頁面一起下滑、不內捲不左右移；互動一律按「放大檢視」）
