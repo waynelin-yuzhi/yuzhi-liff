@@ -4,7 +4,9 @@
 <meta charset="utf-8" />
 <meta name="robots" content="noindex,nofollow" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<link rel="stylesheet" href="https://use.typekit.net/svy7tqc.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600&family=Shippori+Mincho:wght@500&family=Playfair+Display:wght@500;600&family=Josefin+Sans:wght@400;600&family=Montserrat:wght@400;600&family=Cormorant+Garamond:wght@500;600&display=swap">
 <title>植間 Reels 微調台</title>
 <style>
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3}
@@ -130,21 +132,20 @@
   <div class="field">
     <label>中文字型</label>
     <select id="fzh">
-      <option value='"source-han-serif-tc",serif'>思源宋體 · 襯線</option>
-      <option value='"shippori-mincho","source-han-serif-tc",serif'>Shippori Mincho · 品牌指定</option>
-      <option value='"source-han-sans-cjk-tc",sans-serif' selected>思源黑體 · 定版</option>
-      <option value='"Songti TC",serif'>系統宋體 · 目前用</option>
+      <option value='"Noto Serif TC",serif'>思源宋體 · 襯線</option>
+      <option value='"Shippori Mincho","Noto Serif TC",serif'>Shippori Mincho · 品牌指定</option>
+      <option value='"Noto Sans TC",sans-serif' selected>思源黑體 · 定版</option>
+      <option value='"Songti TC",serif'>系統宋體</option>
     </select>
   </div>
   <div class="field">
     <label>英文字型</label>
     <select id="fen">
-      <option value='"avenir-next-lt-pro",sans-serif'>Avenir Next · 乾淨</option>
-      <option value='"josefin-sans",sans-serif'>Josefin Sans · 幾何細緻</option>
-      <option value='"montserrat",sans-serif'>Montserrat · 現代</option>
-      <option value='"cormorant-garamond",serif'>Cormorant · 優雅襯線</option>
-      <option value='"playfair-display",serif' selected>Playfair · 定版</option>
-      <option value='ui-sans-serif,system-ui,sans-serif'>系統無襯線 · 目前用</option>
+      <option value='"Playfair Display",serif' selected>Playfair · 定版</option>
+      <option value='"Cormorant Garamond",serif'>Cormorant · 優雅襯線</option>
+      <option value='"Montserrat",sans-serif'>Montserrat · 現代</option>
+      <option value='"Josefin Sans",sans-serif'>Josefin Sans · 幾何細緻</option>
+      <option value='ui-sans-serif,system-ui,sans-serif'>系統無襯線</option>
     </select>
   </div>
 </div>
@@ -213,7 +214,7 @@ const CAPS=[
  {zh:"這個夏天，記得讓植物多喝點水",en:"This summer, give your plants a good drink",st:13.9,du:4.0,x:0.5,y:0.71}
 ];
 let cur=0, boxes=[];
-const FONT={zh:'"source-han-sans-cjk-tc",sans-serif', en:'"playfair-display",serif'};
+const FONT={zh:'"Noto Sans TC",sans-serif', en:'"Playfair Display",serif'};
 const $=id=>document.getElementById(id);
 const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
 
