@@ -4,12 +4,12 @@
 <meta charset="utf-8" />
 <meta name="robots" content="noindex,nofollow" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<link rel="stylesheet" href="https://use.typekit.net/svy7tqc.css">
 <title>植間 Reels 微調台</title>
 <style>
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{background:var(--paper);color:var(--ink);font-family:"Shippori Mincho","Songti TC",serif;
-       padding:16px;max-width:640px;margin:0 auto}
+  body{background:var(--paper);color:var(--ink);font-family:"shippori-mincho","Songti TC",serif;       padding:16px;max-width:640px;margin:0 auto}
   header{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
   h1{font-size:20px;letter-spacing:.06em;font-weight:700}
   .sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.18em;margin-top:6px}
@@ -32,7 +32,7 @@
           text-shadow:0 2px 6px rgba(0,0,0,.9),0 4px 18px rgba(0,0,0,.75);padding:8px 0;display:none}
   .capbox.show{display:block}
   .capbox.editing{cursor:grab;outline:1px dashed rgba(255,255,255,.45);outline-offset:6px}
-  .capbox .zh{color:#fff;font-size:min(5.2vw,30px);letter-spacing:.08em;line-height:1.35}
+  .capbox .zh{font-family:"Songti TC",serif;color:#fff;font-size:min(5.2vw,30px);letter-spacing:.08em;line-height:1.35}
   .capbox .en{color:#fff;font-family:ui-sans-serif,system-ui,sans-serif;font-size:min(2.9vw,17px);
               letter-spacing:.06em;margin-top:7px}
 
@@ -65,6 +65,8 @@
   input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;
                    font-family:inherit;font-size:15px;color:var(--ink);border-radius:2px}
   input[type=range]{width:100%;accent-color:var(--moss)}
+  select{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;
+         font-family:inherit;font-size:14px;color:var(--ink);border-radius:2px}
   .row{display:flex;gap:12px}.row .field{flex:1}
   .val{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--moss);float:right}
 
@@ -119,13 +121,36 @@
 </div>
 <div class="hint">切到某句會自動跳到它出現的時間・可直接拖曳</div>
 
+<div class="row">
+  <div class="field">
+    <label>中文字型</label>
+    <select id="fzh">
+      <option value='"source-han-serif-tc",serif'>思源宋體 · 襯線</option>
+      <option value='"shippori-mincho","source-han-serif-tc",serif'>Shippori Mincho · 品牌指定</option>
+      <option value='"source-han-sans-cjk-tc",sans-serif'>思源黑體 · 黑體</option>
+      <option value='"Songti TC",serif'>系統宋體 · 目前用</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>英文字型</label>
+    <select id="fen">
+      <option value='"avenir-next-lt-pro",sans-serif'>Avenir Next · 乾淨</option>
+      <option value='"josefin-sans",sans-serif'>Josefin Sans · 幾何細緻</option>
+      <option value='"montserrat",sans-serif'>Montserrat · 現代</option>
+      <option value='"cormorant-garamond",serif'>Cormorant · 優雅襯線</option>
+      <option value='"playfair-display",serif'>Playfair · 高級襯線</option>
+      <option value='ui-sans-serif,system-ui,sans-serif'>系統無襯線 · 目前用</option>
+    </select>
+  </div>
+</div>
+
 <div class="field">
   <label>中文字幕</label>
   <input type="text" id="zh" />
 </div>
 <div class="field">
-  <label>英文字幕</label>
-  <input type="text" id="en" />
+  <label>英文字幕（留空我自動翻譯・要指定才填）</label>
+  <input type="text" id="en" placeholder="留空即可，我依中文自動產出" />
 </div>
 <div class="row">
   <div class="field">
@@ -155,6 +180,7 @@ const CAPS=[
  {zh:"這個夏天，記得讓植物多喝點水",en:"This summer, give your plants a good drink",st:8.7,du:2.3,x:0.5,y:0.71}
 ];
 let cur=0, boxes=[];
+const FONT={zh:'"source-han-serif-tc",serif', en:'"avenir-next-lt-pro",sans-serif'};
 const $=id=>document.getElementById(id);
 const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
 
@@ -178,6 +204,8 @@ function paint(){
     const box=boxes[i];
     box.querySelector(".zh").textContent=(i===cur?$("zh").value:c.zh);
     box.querySelector(".en").textContent=(i===cur?$("en").value:c.en);
+    box.querySelector(".zh").style.fontFamily=FONT.zh;
+    box.querySelector(".en").style.fontFamily=FONT.en;
     box.style.left=(c.x*100)+"%"; box.style.top=(c.y*100)+"%";
     const live=t>=c.st && t<=c.st+c.du;
     box.classList.toggle("show", live || (i===cur && vid.paused));
@@ -273,6 +301,9 @@ $("redo").onclick=()=>{ if(hp<hist.length-1) restore(hp+1); };
 document.querySelectorAll(".pos[data-y]").forEach(b=>{
   b.onclick=()=>{ CAPS[cur].x=0.5; CAPS[cur].y=parseFloat(b.dataset.y); paint(); snap(); };
 });
+$("fzh").onchange=e=>{ FONT.zh=e.target.value; paint(); };
+$("fen").onchange=e=>{ FONT.en=e.target.value; paint(); };
+
 $("zone").onclick=()=>{
   const on=$("zone").classList.toggle("on");
   ["igTop","igBot","igRight","igLeft"].forEach(id=>$(id).classList.toggle("show",on));
@@ -286,7 +317,10 @@ $("send").onclick=()=>{
   save();
   $("json").value=JSON.stringify({
     reel:"試作01", canvas:{w:1080,h:1920},
-    captions:CAPS.map((c,i)=>({n:i+1,zh:c.zh,en:c.en,
+    enPolicy:"留空者由 Claude 依中文自動翻譯",
+    fonts:{ zh:$("fzh").selectedOptions[0].textContent, en:$("fen").selectedOptions[0].textContent,
+            zhCss:FONT.zh, enCss:FONT.en },
+    captions:CAPS.map((c,i)=>({n:i+1,zh:c.zh,en:c.en||"(auto)",
       start:+c.st.toFixed(2),duration:+c.du.toFixed(2),
       pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
       px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}}))
