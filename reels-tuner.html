@@ -9,7 +9,8 @@
 <style>
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{background:var(--paper);color:var(--ink);font-family:"shippori-mincho","Songti TC",serif;       padding:16px;max-width:640px;margin:0 auto}
+  body{background:var(--paper);color:var(--ink);font-family:"shippori-mincho","Songti TC",serif;
+       padding:16px;max-width:640px;margin:0 auto}
   header{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
   h1{font-size:20px;letter-spacing:.06em;font-weight:700}
   .sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.18em;margin-top:6px}
@@ -65,6 +66,10 @@
   input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;
                    font-family:inherit;font-size:15px;color:var(--ink);border-radius:2px}
   input[type=range]{width:100%;accent-color:var(--moss)}
+  .stat{padding:10px 12px;margin-bottom:10px;border-radius:2px;font-size:14px;display:none}
+  .stat.go{display:block;background:#f3f0e8;color:#6b6455}
+  .stat.ok{display:block;background:#e8f0e4;color:#2f5d2a}
+  .stat.bad{display:block;background:#f6e9e4;color:#8a4a30}
   select{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;
          font-family:inherit;font-size:14px;color:var(--ink);border-radius:2px}
   .row{display:flex;gap:12px}.row .field{flex:1}
@@ -166,9 +171,10 @@
 <button class="send" id="send">送 出</button>
 
 <div id="out">
+  <div id="stat" class="stat"></div>
   <textarea id="json" readonly></textarea>
   <button class="copy" id="copy">複製參數</button>
-  <div class="note">把複製的參數貼給 Claude，我照這些數值精準重剪、出片後用 LINE 小卡通知你。</div>
+  <div class="note">送出後直接進 Claude 的收件匣、不用複製貼上。（自動傳送失敗時才用上面的複製鍵）</div>
 </div>
 
 <script>
@@ -313,6 +319,25 @@ $("zone").onclick=()=>{
 $("st").addEventListener("change",snap);
 $("du").addEventListener("change",snap);
 
+const INBOX="https://script.google.com/macros/s/AKfycbwJqSAlq1cNzMMuoidSV_y6XHLRZrToT-M_NVF98oWp5SkJvvzXTzCf79ixlWM2x54fNA/exec";
+const SUBMIT_TOKEN="a8d6561c56cab7a5f549d5d0";
+
+async function deliver(jsonText){
+  const st=$("stat");
+  st.textContent="傳送中…"; st.className="stat go";
+  const body=new URLSearchParams({payload:JSON.stringify(
+    Object.assign({token:SUBMIT_TOKEN},JSON.parse(jsonText)))});
+  try{
+    const r=await fetch(INBOX,{method:"POST",body:body});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||"unknown");
+    st.textContent="✅ 已送達 Claude（"+d.at+"）"; st.className="stat ok";
+  }catch(err){
+    st.textContent="⚠ 自動傳送沒成功，請按下面「複製參數」貼給我";
+    st.className="stat bad";
+  }
+}
+
 $("send").onclick=()=>{
   save();
   $("json").value=JSON.stringify({
@@ -326,6 +351,7 @@ $("send").onclick=()=>{
       px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}}))
   },null,1);
   $("out").style.display="block"; $("out").scrollIntoView({behavior:"smooth"});
+  deliver($("json").value);
 };
 $("copy").onclick=async()=>{
   try{ await navigator.clipboard.writeText($("json").value); }
