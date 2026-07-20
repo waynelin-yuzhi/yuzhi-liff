@@ -175,6 +175,54 @@
   </div>
 </div>
 
+<div class="hint" style="margin:16px 0 8px">─ 背景音（水聲・音樂）─</div>
+<div class="bar">
+  <span class="plab">水聲</span>
+  <button class="pos" id="wset1">目前時間＝開始</button>
+  <button class="pos" id="wset2">目前時間＝結束</button>
+</div>
+<div class="row">
+  <div class="field">
+    <label>水聲開始 <span class="val" id="wsv"></span></label>
+    <input type="range" id="ws" min="0" max="20.9" step="0.1" value="14.9" />
+  </div>
+  <div class="field">
+    <label>水聲結束 <span class="val" id="wev"></span></label>
+    <input type="range" id="we" min="0" max="20.9" step="0.1" value="20.9" />
+  </div>
+</div>
+<div class="row">
+  <div class="field">
+    <label>水聲漸入 <span class="val" id="wfiv"></span></label>
+    <input type="range" id="wfi" min="0" max="5" step="0.1" value="2.5" />
+  </div>
+  <div class="field">
+    <label>水聲漸出 <span class="val" id="wfov"></span></label>
+    <input type="range" id="wfo" min="0" max="5" step="0.1" value="1.0" />
+  </div>
+</div>
+<div class="row">
+  <div class="field">
+    <label>水聲音量 <span class="val" id="wvv"></span></label>
+    <input type="range" id="wv" min="0" max="100" step="5" value="60" />
+  </div>
+  <div class="field">
+    <label>音樂音量 <span class="val" id="mvv"></span></label>
+    <input type="range" id="mv" min="0" max="100" step="5" value="85" />
+  </div>
+</div>
+<div class="row">
+  <div class="field">
+    <label>音樂漸入 <span class="val" id="mfiv"></span></label>
+    <input type="range" id="mfi" min="0" max="5" step="0.1" value="1.5" />
+  </div>
+  <div class="field">
+    <label>音樂漸出 <span class="val" id="mfov"></span></label>
+    <input type="range" id="mfo" min="0" max="6" step="0.1" value="2.5" />
+  </div>
+</div>
+<div class="hint">預覽片的聲音是目前版本的混音・調完送出我會照數值重混</div>
+
 <div class="bar">
   <span class="plab">封面</span>
   <button class="pos" id="setcov">把目前畫面設為封面</button>
@@ -389,6 +437,18 @@ $("setcov").onclick=()=>{
   $("covt").textContent="封面 @ "+vid.currentTime.toFixed(2)+"s";
 };
 
+// 背景音控制：數值顯示 + 開始<結束互鎖
+const AV=[["ws","wsv","s"],["we","wev","s"],["wfi","wfiv","s"],["wfo","wfov","s"],
+          ["wv","wvv","%"],["mv","mvv","%"],["mfi","mfiv","s"],["mfo","mfov","s"]];
+function syncA(){
+  if(+$("we").value <= +$("ws").value+0.5) $("we").value=(+$("ws").value+0.5).toFixed(1);
+  AV.forEach(([i,v,u])=>{ $(v).textContent=$(i).value+u; });
+}
+AV.forEach(([i])=>$(i).addEventListener("input",syncA));
+$("wset1").onclick=()=>{ $("ws").value=(+(vid.currentTime||$("seek").value)).toFixed(1); syncA(); };
+$("wset2").onclick=()=>{ $("we").value=(+(vid.currentTime||$("seek").value)).toFixed(1); syncA(); };
+syncA();
+
 async function deliver(jsonText){
   const st=$("stat");
   st.textContent="傳送中…"; st.className="stat go";
@@ -433,6 +493,11 @@ $("send").onclick=()=>{
       pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
       px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}})),
     cover:cover,
+    audio:{
+      water:{start:+$("ws").value, end:+$("we").value,
+             fadeIn:+$("wfi").value, fadeOut:+$("wfo").value, volumePct:+$("wv").value},
+      music:{volumePct:+$("mv").value, fadeIn:+$("mfi").value, fadeOut:+$("mfo").value}
+    },
     firstComment:$("fc").value.trim()||null,
     collaborators:$("collab").value.split(/[,，]/).map(s=>s.trim().replace(/^@/,"")).filter(Boolean).slice(0,3),
     publishAt:$("pubat").value?$("pubat").value.replace("T"," "):null,
