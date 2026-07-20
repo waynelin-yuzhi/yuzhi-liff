@@ -90,8 +90,9 @@ function render(d) {
         : '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">總計金額</span><b>NT$ ' + Number(d.total || 0).toLocaleString() + '</b></div>')
     + (d.shareUrl
         ? '<div style="margin:14px 0 2px"><div id="docwrap" style="overflow:hidden;border:1px solid #E5E0D3;border-radius:8px;background:#fff">'
-          + '<iframe id="docfr" src="' + esc(d.shareUrl) + '" style="border:0;display:block;transform-origin:0 0;pointer-events:none" scrolling="no"></iframe></div>'
-          + '<div style="text-align:right;margin-top:6px"><a class="ghost" style="display:inline-block;width:auto;padding:8px 16px" href="' + esc(d.shareUrl) + '" target="_blank">放大檢視</a></div></div>'
+          + '<iframe id="docfr" src="' + esc(d.shareUrl) + '" style="border:0;display:block;width:100%" scrolling="no"></iframe></div>'
+          + (d.pdfUrl ? '<a class="ghost" href="' + esc(d.pdfUrl) + '" target="_blank">下載報價單 PDF</a>' : '')
+          + '</div>'
         : '')
     + '<div class="decl">本人已詳閱並同意本報價單內容，確認簽回。</div></div>'
     + '<div class="card"><div class="field"><label>簽署人姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
