@@ -39,6 +39,8 @@
   .bar{display:flex;align-items:center;gap:10px;margin:10px 0 4px}
   .play{width:52px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;
         font-family:inherit;font-size:13px;cursor:pointer}
+  .undo{width:auto;padding:9px 14px;background:#fff;color:var(--moss);border:1px solid var(--moss)}
+  .undo:disabled{color:var(--muted);border-color:var(--line);cursor:default}
   #seek{flex:1;accent-color:var(--moss)}
   .time{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);min-width:64px;text-align:right}
   .hint{font-size:11px;color:var(--muted);text-align:center;margin:6px 0 16px;
@@ -84,6 +86,11 @@
   <button class="play" id="play">播放</button>
   <input type="range" id="seek" min="0" max="13.33" step="0.05" value="0" />
   <span class="time" id="tval">0.00s</span>
+</div>
+<div class="bar">
+  <button class="play undo" id="undo" disabled>上一步</button>
+  <button class="play undo" id="redo" disabled>下一步</button>
+  <span class="time" id="hist"></span>
 </div>
 <div class="hint">切到某句會自動跳到它出現的時間・可直接拖曳</div>
 
@@ -206,8 +213,34 @@ function moveDrag(e){
 }
 window.addEventListener("mousemove",moveDrag);
 window.addEventListener("touchmove",moveDrag,{passive:false});
-window.addEventListener("mouseup",()=>dragging=false);
-window.addEventListener("touchend",()=>dragging=false);
+function endDrag(){ if(dragging){ dragging=false; snap(); } }
+window.addEventListener("mouseup",endDrag);
+window.addEventListener("touchend",endDrag);
+
+// 歷史紀錄：上一步／下一步，避免誤調
+let hist=[], hp=-1;
+function snap(){
+  save();
+  hist=hist.slice(0,hp+1);
+  hist.push(JSON.parse(JSON.stringify(CAPS)));
+  if(hist.length>60){ hist.shift(); }
+  hp=hist.length-1; hbtn();
+}
+function hbtn(){
+  $("undo").disabled = hp<=0;
+  $("redo").disabled = hp>=hist.length-1;
+  $("hist").textContent = hist.length>1 ? (hp+1)+" / "+hist.length : "";
+}
+function restore(i){
+  hp=i;
+  hist[hp].forEach((s,k)=>Object.assign(CAPS[k],s));
+  load(); hbtn();
+}
+$("undo").onclick=()=>{ if(hp>0) restore(hp-1); };
+$("redo").onclick=()=>{ if(hp<hist.length-1) restore(hp+1); };
+["zh","en"].forEach(id=>$(id).addEventListener("change",snap));
+$("st").addEventListener("change",snap);
+$("du").addEventListener("change",snap);
 
 $("send").onclick=()=>{
   save();
@@ -227,6 +260,7 @@ $("copy").onclick=async()=>{
 };
 
 load();
+snap();
 </script>
 </body>
 </html>
