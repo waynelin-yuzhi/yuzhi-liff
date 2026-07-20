@@ -319,19 +319,20 @@ $("zone").onclick=()=>{
 $("st").addEventListener("change",snap);
 $("du").addEventListener("change",snap);
 
-const INBOX="https://script.google.com/macros/s/AKfycbwJqSAlq1cNzMMuoidSV_y6XHLRZrToT-M_NVF98oWp5SkJvvzXTzCf79ixlWM2x54fNA/exec";
-const SUBMIT_TOKEN="a8d6561c56cab7a5f549d5d0";
+const INBOX="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec?action=reelsTunerSubmit";
+const SUBMIT_TOKEN="7c7e94a5e2af4764a94cccf49c31aa0f";
 
 async function deliver(jsonText){
   const st=$("stat");
   st.textContent="傳送中…"; st.className="stat go";
-  const body=new URLSearchParams({payload:JSON.stringify(
-    Object.assign({token:SUBMIT_TOKEN},JSON.parse(jsonText)))});
+  const obj=JSON.parse(jsonText);
+  if(!obj.title) obj.title=obj.reel||"微調參數";
+  const body=new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(obj)});
   try{
     const r=await fetch(INBOX,{method:"POST",body:body});
     const d=await r.json();
     if(!d.ok) throw new Error(d.error||"unknown");
-    st.textContent="✅ 已送達 Claude（"+d.at+"）"; st.className="stat ok";
+    st.textContent="✅ 已送達協作板（"+d.at+"）、植影所會自動取件"; st.className="stat ok";
   }catch(err){
     st.textContent="⚠ 自動傳送沒成功，請按下面「複製參數」貼給我";
     st.className="stat bad";
