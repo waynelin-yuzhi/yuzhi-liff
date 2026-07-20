@@ -109,7 +109,7 @@
 
 <div class="bar">
   <button class="play" id="play">播放</button>
-  <input type="range" id="seek" min="0" max="13.33" step="0.05" value="0" />
+  <input type="range" id="seek" min="0" max="20.90" step="0.05" value="0" />
   <span class="time" id="tval">0.00s</span>
 </div>
 <div class="bar">
@@ -132,7 +132,7 @@
     <select id="fzh">
       <option value='"source-han-serif-tc",serif'>思源宋體 · 襯線</option>
       <option value='"shippori-mincho","source-han-serif-tc",serif'>Shippori Mincho · 品牌指定</option>
-      <option value='"source-han-sans-cjk-tc",sans-serif'>思源黑體 · 黑體</option>
+      <option value='"source-han-sans-cjk-tc",sans-serif' selected>思源黑體 · 定版</option>
       <option value='"Songti TC",serif'>系統宋體 · 目前用</option>
     </select>
   </div>
@@ -143,7 +143,7 @@
       <option value='"josefin-sans",sans-serif'>Josefin Sans · 幾何細緻</option>
       <option value='"montserrat",sans-serif'>Montserrat · 現代</option>
       <option value='"cormorant-garamond",serif'>Cormorant · 優雅襯線</option>
-      <option value='"playfair-display",serif'>Playfair · 高級襯線</option>
+      <option value='"playfair-display",serif' selected>Playfair · 定版</option>
       <option value='ui-sans-serif,system-ui,sans-serif'>系統無襯線 · 目前用</option>
     </select>
   </div>
@@ -160,12 +160,39 @@
 <div class="row">
   <div class="field">
     <label>出現時間 <span class="val" id="stv"></span></label>
-    <input type="range" id="st" min="0" max="13" step="0.1" />
+    <input type="range" id="st" min="0" max="16" step="0.1" />
   </div>
   <div class="field">
     <label>停留長度 <span class="val" id="dur"></span></label>
     <input type="range" id="du" min="0.8" max="5" step="0.1" />
   </div>
+</div>
+
+<div class="bar">
+  <span class="plab">封面</span>
+  <button class="pos" id="setcov">把目前畫面設為封面</button>
+  <canvas id="covc" style="width:34px;height:60px;border:1px solid var(--line);border-radius:2px;display:none"></canvas>
+  <span class="time" id="covt"></span>
+</div>
+<div class="hint">先用播放桿停在想要的畫面、再按設為封面（IG 版位縮圖用）</div>
+
+<div class="field">
+  <label>首則留言（hashtag 放這裡・發佈後系統自動留言）</label>
+  <input type="text" id="fc" value="#有植Yuzhi #植間設計 #居家植栽 #陽台植物 #戶外植栽 #植物養護 #夏日植栽 #植感生活 #植栽日常 #綠意生活" />
+</div>
+<div class="row">
+  <div class="field">
+    <label>IG 共同作者（選填・最多3個・逗號分隔）</label>
+    <input type="text" id="collab" placeholder="例：帳號1, 帳號2" />
+  </div>
+  <div class="field">
+    <label>指定發佈時間（選填・核可頁預填）</label>
+    <input type="datetime-local" id="pubat" style="width:100%;padding:9px 12px;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:14px;color:var(--ink);border-radius:2px" />
+  </div>
+</div>
+<div class="field">
+  <label>給植影所的備註（想改什麼直接寫、會跟參數一起送到）</label>
+  <textarea id="note" rows="3" placeholder="例：第三句再晚半秒、封面想要亮一點的畫面" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:15px;color:var(--ink);border-radius:2px;resize:vertical"></textarea>
 </div>
 
 <button class="send" id="send">送 出</button>
@@ -179,14 +206,14 @@
 
 <script>
 const CAPS=[
- {zh:"每到夏天",en:"Every summer",st:0.4,du:2.1,x:0.5,y:0.71},
- {zh:"這是我澆水的方式",en:"This is how I water",st:2.3,du:2.1,x:0.5,y:0.71},
- {zh:"看到植物們點頭如搗蒜",en:"When every leaf nods back",st:4.3,du:2.5,x:0.5,y:0.71},
- {zh:"我就知道他們很開心",en:"I know they're happy",st:6.6,du:2.2,x:0.5,y:0.71},
- {zh:"這個夏天，記得讓植物多喝點水",en:"This summer, give your plants a good drink",st:8.7,du:2.3,x:0.5,y:0.71}
+ {zh:"每到夏天",en:"Every summer",st:0.6,du:2.3,x:0.5,y:0.71},
+ {zh:"這是我澆水的方式",en:"This is how I water",st:3.2,du:3.0,x:0.5,y:0.71},
+ {zh:"看到植物們點頭如搗蒜",en:"When every leaf nods back",st:6.6,du:3.4,x:0.5,y:0.71},
+ {zh:"我就知道他們很開心",en:"I know they're happy",st:10.3,du:3.2,x:0.5,y:0.71},
+ {zh:"這個夏天，記得讓植物多喝點水",en:"This summer, give your plants a good drink",st:13.9,du:4.0,x:0.5,y:0.71}
 ];
 let cur=0, boxes=[];
-const FONT={zh:'"source-han-serif-tc",serif', en:'"avenir-next-lt-pro",sans-serif'};
+const FONT={zh:'"source-han-sans-cjk-tc",sans-serif', en:'"playfair-display",serif'};
 const $=id=>document.getElementById(id);
 const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
 
@@ -319,8 +346,31 @@ $("zone").onclick=()=>{
 $("st").addEventListener("change",snap);
 $("du").addEventListener("change",snap);
 
-const INBOX="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec?action=reelsTunerSubmit";
+const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
+const INBOX=EXEC+"?action=reelsTunerSubmit";
 const SUBMIT_TOKEN="7c7e94a5e2af4764a94cccf49c31aa0f";
+
+// 從核可頁帶 ?ap=<核可token>&id=<AP-xxxx> 進來＝調整模式：送出時原件自動退回（AN-0091 追加規格）
+const Q=new URLSearchParams(location.search);
+const AP={h:Q.get("ap")||"", id:Q.get("id")||""};
+if(AP.h && AP.id){
+  const b=document.createElement("div");
+  b.className="stat go"; b.style.display="block"; b.style.marginTop="10px";
+  b.textContent="正在調整 "+AP.id+"・送出後原件自動退回、新參數直達植影所";
+  document.querySelector("header").appendChild(b);
+}
+
+// 封面影格選擇
+let cover=null;
+$("setcov").onclick=()=>{
+  if(!vid.duration) return;
+  if(!vid.paused) vid.pause();
+  const c=$("covc"); c.width=90; c.height=160;
+  c.getContext("2d").drawImage(vid,0,0,90,160);
+  c.style.display="block";
+  cover={frameSec:+vid.currentTime.toFixed(2)};
+  $("covt").textContent="封面 @ "+vid.currentTime.toFixed(2)+"s";
+};
 
 async function deliver(jsonText){
   const st=$("stat");
@@ -333,7 +383,15 @@ async function deliver(jsonText){
     const r=await fetch(INBOX,{method:"POST",body:body});
     const d=await r.json();
     if(!d.ok) throw new Error(d.error||"unknown");
-    st.textContent="✅ 已送達協作板（"+d.at+"）、植影所會自動取件"; st.className="stat ok";
+    let msg="✅ 已送達協作板（"+d.at+"）、植影所會自動取件";
+    if(AP.h && AP.id){
+      // 雙發：同步把核可中心原件退回（端點回應忽略即可；已處理過的件端點自行擋）
+      const fd=new URLSearchParams({approvalDecide:"1", h:AP.h, decision:"reject",
+        reason:"微調台已送新參數。Wayne 備註："+(($("note").value||"（無）").slice(0,120))});
+      try{ await fetch(EXEC,{method:"POST",body:fd,mode:"no-cors"}); }catch(_){}
+      msg+="・原件 "+AP.id+" 已自動退回";
+    }
+    st.textContent=msg; st.className="stat ok";
   }catch(err){
     st.textContent="⚠ 自動傳送沒成功，請按下面「複製參數」貼給我";
     st.className="stat bad";
@@ -350,7 +408,12 @@ $("send").onclick=()=>{
     captions:CAPS.map((c,i)=>({n:i+1,zh:c.zh,en:c.en||"(auto)",
       start:+c.st.toFixed(2),duration:+c.du.toFixed(2),
       pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
-      px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}}))
+      px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}})),
+    cover:cover,
+    firstComment:$("fc").value.trim()||null,
+    collaborators:$("collab").value.split(/[,，]/).map(s=>s.trim().replace(/^@/,"")).filter(Boolean).slice(0,3),
+    publishAt:$("pubat").value?$("pubat").value.replace("T"," "):null,
+    note:$("note").value.trim()||null
   },null,1);
   $("out").style.display="block"; $("out").scrollIntoView({behavior:"smooth"});
   deliver($("json").value);
