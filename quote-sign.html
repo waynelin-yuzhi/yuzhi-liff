@@ -88,7 +88,10 @@ function render(d) {
           + '<div style="font-size:13px;color:#4A4A45;margin:6px 0 2px">首次支付金額：<b style="color:#8a6a2e">NT$ ' + Number(d.sub.firstPay || 0).toLocaleString() + '</b></div>'
           + '<div style="font-size:11.5px;color:#8a8275;line-height:1.7">含首月月費' + (d.sub.oneTime > 0 ? '＋運費等一次性費用' : '') + (d.sub.deposit > 0 ? '＋押金 NT$ ' + Number(d.sub.deposit).toLocaleString() + '（不計稅、退租退還）' : '') + '，次月起僅收月費。</div>'
         : '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">總計金額</span><b>NT$ ' + Number(d.total || 0).toLocaleString() + '</b></div>')
-    + (d.shareUrl ? '<a class="ghost" href="' + esc(d.shareUrl) + '" target="_blank">查看完整報價單</a>' : '')
+    + (d.shareUrl
+        ? '<div style="margin:14px 0 2px"><iframe src="' + esc(d.shareUrl) + '" style="width:100%;height:72vh;border:1px solid #E5E0D3;border-radius:8px;background:#fff" loading="lazy"></iframe>'
+          + '<div style="text-align:right;margin-top:6px"><a class="ghost" style="display:inline-block;width:auto;padding:8px 16px" href="' + esc(d.shareUrl) + '" target="_blank">全螢幕開啟</a></div></div>'
+        : '')
     + '<div class="decl">本人已詳閱並同意本報價單內容，確認簽回。</div></div>'
     + '<div class="card"><div class="field"><label>簽署人姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
     + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
