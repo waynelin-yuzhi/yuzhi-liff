@@ -118,7 +118,7 @@ function measureDoc(fr) {
     if (!doc || !doc.body) return;
     var apply = function () {
       var h = Math.ceil(doc.body.getBoundingClientRect().bottom) || doc.documentElement.scrollHeight;
-      if (h > 200 && Math.abs(h + 24 - (parseInt(fr.style.height) || 0)) > 6) fr.style.height = (h + 24) + 'px';
+      if (h > 200 && Math.abs(h + 24 - (parseInt(fr.style.height) || 0)) > 6) { fr.style.height = (h + 24) + 'px'; DOC_LOCKED = true; }
     };
     apply();
     setTimeout(apply, 400); setTimeout(apply, 1200);
@@ -129,9 +129,10 @@ function measureDoc(fr) {
 
 /* 文件整頁攤開（Wayne 定版：完整顯示、跟頁面一起下滑、不內捲不左右移；互動一律按「放大檢視」）
    分享頁被內嵌時自己縮到容器寬並回報實高 → 外層只把 iframe 撐到該高度、pointer-events:none 觸控直接捲外頁 */
+var DOC_LOCKED = false;   /* 高度量定後上鎖——手機捲動收合網址列會觸發 resize、不准回頭改寫高度（邊界跳動病根） */
 function fitDoc() {
   var fr = document.getElementById('docfr');
-  if (fr) { fr.style.width = '100%'; fr.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
+  if (fr && !DOC_LOCKED) { fr.style.width = '100%'; fr.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
 }
 /* 高度只增不減＋小變動忽略——避免資源陸續載入時版面跳動、按鈕壓到文件 */
 var DOC_MAX_H = 0;
@@ -139,7 +140,7 @@ window.addEventListener('message', function (ev) {
   var h = ev && ev.data && Number(ev.data.yzDocH);
   if (!h || h < 200) return;
   if (h <= DOC_MAX_H + 8) return;
-  DOC_MAX_H = h;
+  DOC_MAX_H = h; DOC_LOCKED = true;
   var wrap = document.getElementById('docwrap'), fr = document.getElementById('docfr');
   if (!wrap || !fr) return;
   fr.style.height = (h + 32) + 'px';
