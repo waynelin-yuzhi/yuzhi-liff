@@ -28,7 +28,10 @@ grep -q 'name="robots" content="noindex' reels-tuner.html || { echo "✗ reels-t
 BIG=$(find reels-tuner.html previews frames -type f -size +2M 2>/dev/null || true)
 [ -n "$BIG" ] && { echo "✗ 超過 2MB 的檔、擋下："; echo "$BIG"; exit 1; }
 
-git add reels-tuner.html previews frames bin/studio-push.sh 2>/dev/null || true
+# 逐路徑 add（缺資料夾不會讓整串 fail 而空 commit——植影所 2026-07-21 回報的坑）
+mkdir -p previews frames
+git add -- reels-tuner.html bin/studio-push.sh
+for D in previews frames; do [ -d "$D" ] && git add -- "$D"; done
 git commit -m "$MSG"
 git push origin main
 echo "✓ 已推 GitHub Pages（約 1 分鐘生效）：https://waynelin-yuzhi.github.io/yuzhi-liff/reels-tuner.html"
