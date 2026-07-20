@@ -41,6 +41,20 @@
         font-family:inherit;font-size:13px;cursor:pointer}
   .undo{width:auto;padding:9px 14px;background:#fff;color:var(--moss);border:1px solid var(--moss)}
   .undo:disabled{color:var(--muted);border-color:var(--line);cursor:default}
+  .plab{font-size:12px;color:var(--muted);letter-spacing:.08em}
+  .pos{flex:1;padding:9px 4px;background:#fff;color:var(--moss);border:1px solid var(--moss);
+       border-radius:2px;font-family:inherit;font-size:12px;cursor:pointer}
+  .pos.on{background:var(--moss);color:var(--paper)}
+  .zone{border-color:var(--muted);color:var(--muted)}
+  .zone.on{background:var(--muted);color:#fff;border-color:var(--muted)}
+  /* IG UI 遮擋區示意（不進成品、只在面板顯示） */
+  .ig{position:absolute;background:rgba(184,90,61,.30);display:none;pointer-events:none;
+      font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#fff;padding:3px 5px;letter-spacing:.05em}
+  .ig.show{display:block}
+  #igTop{top:0;left:0;right:0;height:10.4%}
+  #igBot{bottom:0;left:0;right:0;height:16.7%}
+  #igRight{top:10.4%;bottom:16.7%;right:0;width:11.1%}
+  #igLeft{top:10.4%;bottom:16.7%;left:0;width:5.6%}
   #seek{flex:1;accent-color:var(--moss)}
   .time{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);min-width:64px;text-align:right}
   .hint{font-size:11px;color:var(--muted);text-align:center;margin:6px 0 16px;
@@ -71,7 +85,7 @@
 </header>
 
 <div class="load">
-  <label>載入影片（檔案留在你裝置上・不會上傳）</label>
+  <label>預覽片自動載入・如要改用其他影片可在此選檔（不會上傳）</label>
   <input type="file" id="pick" accept="video/*" />
 </div>
 
@@ -80,6 +94,10 @@
 <div class="stage" id="stage">
   <video id="vid" playsinline muted preload="metadata"></video>
   <div class="empty" id="empty">載入影片後<br>就能一邊播放一邊調字幕</div>
+  <div class="ig" id="igTop">帳號名・追蹤鍵</div>
+  <div class="ig" id="igBot">貼文文案・音訊・按鈕</div>
+  <div class="ig" id="igRight">互動鍵</div>
+  <div class="ig" id="igLeft"></div>
 </div>
 
 <div class="bar">
@@ -91,6 +109,13 @@
   <button class="play undo" id="undo" disabled>上一步</button>
   <button class="play undo" id="redo" disabled>下一步</button>
   <span class="time" id="hist"></span>
+</div>
+<div class="bar">
+  <span class="plab">位置</span>
+  <button class="pos" data-y="0.21">上方</button>
+  <button class="pos" data-y="0.50">中央</button>
+  <button class="pos" data-y="0.71">中下・推薦</button>
+  <button class="pos zone" id="zone">遮擋區</button>
 </div>
 <div class="hint">切到某句會自動跳到它出現的時間・可直接拖曳</div>
 
@@ -159,6 +184,10 @@ function paint(){
     box.classList.toggle("editing", i===cur && vid.paused);
   });
   $("tval").textContent=t.toFixed(2)+"s";
+  const c0=CAPS[cur];
+  document.querySelectorAll(".pos[data-y]").forEach(b=>{
+    b.classList.toggle("on", Math.abs(c0.x-0.5)<0.005 && Math.abs(c0.y-parseFloat(b.dataset.y))<0.005);
+  });
 }
 function load(){
   const c=CAPS[cur];
@@ -204,11 +233,13 @@ $("du").addEventListener("input",e=>{ CAPS[cur].du=parseFloat(e.target.value);
 let dragging=false;
 const pt=e=>e.touches?e.touches[0]:e;
 function startDrag(e,i){ if(i!==cur||!vid.paused) return; dragging=true; e.preventDefault(); }
+// IG 安全區（依 IG Reels 遮擋實測：上200px 下320px 右120px 左60px @1080x1920）
+const SAFE={top:0.15, bottom:0.79, left:0.30, right:0.70};
 function moveDrag(e){
   if(!dragging) return;
   const r=stage.getBoundingClientRect(), p=pt(e);
-  CAPS[cur].x=Math.min(.94,Math.max(.06,(p.clientX-r.left)/r.width));
-  CAPS[cur].y=Math.min(.94,Math.max(.06,(p.clientY-r.top)/r.height));
+  CAPS[cur].x=Math.min(SAFE.right,Math.max(SAFE.left,(p.clientX-r.left)/r.width));
+  CAPS[cur].y=Math.min(SAFE.bottom,Math.max(SAFE.top,(p.clientY-r.top)/r.height));
   paint(); e.preventDefault();
 }
 window.addEventListener("mousemove",moveDrag);
@@ -238,6 +269,15 @@ function restore(i){
 }
 $("undo").onclick=()=>{ if(hp>0) restore(hp-1); };
 $("redo").onclick=()=>{ if(hp<hist.length-1) restore(hp+1); };
+// 位置預設區（依 IG Reels 字幕攻略）
+document.querySelectorAll(".pos[data-y]").forEach(b=>{
+  b.onclick=()=>{ CAPS[cur].x=0.5; CAPS[cur].y=parseFloat(b.dataset.y); paint(); snap(); };
+});
+$("zone").onclick=()=>{
+  const on=$("zone").classList.toggle("on");
+  ["igTop","igBot","igRight","igLeft"].forEach(id=>$(id).classList.toggle("show",on));
+};
+
 ["zh","en"].forEach(id=>$(id).addEventListener("change",snap));
 $("st").addEventListener("change",snap);
 $("du").addEventListener("change",snap);
@@ -261,6 +301,15 @@ $("copy").onclick=async()=>{
 
 load();
 snap();
+
+// 自動載入預覽片（總管 AN-0076 准：360p + 浮水印 + previews/ 子夾）
+vid.src="previews/trial01_360p.mp4";
+vid.onloadedmetadata=()=>{
+  $("empty").style.display="none";
+  $("seek").max=vid.duration.toFixed(2);
+  seekTo(CAPS[cur].st+0.25);
+};
+vid.onerror=()=>{ $("empty").innerHTML="預覽片載入失敗<br>可用上方選檔手動載入"; };
 </script>
 </body>
 </html>
