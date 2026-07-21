@@ -77,13 +77,15 @@ const BEAT=0.7430, STEP=2, COLS=8, ROWS=8, TW=112, DUR=453;
 const SHEETS=["pov02/sheet01.jpg","pov02/sheet02.jpg","pov02/sheet03.jpg","pov02/sheet04.jpg"];
 const $=id=>document.getElementById(id);
 const vid=$("vid"), strip=$("strip");
+// 預設＝Wayne 最後送出的排刀（AN-0112）；頁面改動自動存手機、重開不丟
 let shots=[
- {nm:"整裝",st:1.0,nb:2},{nm:"推車",st:6.0,nb:1},{nm:"按電梯",st:33.5,nb:1},
- {nm:"進梯",st:44.0,nb:1},{nm:"鍵盤",st:54.0,nb:1},{nm:"出梯",st:76.5,nb:1},
- {nm:"走廊",st:84.0,nb:2},{nm:"收花",st:134.0,nb:2},{nm:"收花2",st:298.0,nb:2},
- {nm:"捧花走",st:156.0,nb:2},{nm:"擺花",st:148.0,nb:2},{nm:"擺花2",st:162.0,nb:2},
- {nm:"大盆搬",st:184.0,nb:2},{nm:"大盆擺",st:196.0,nb:2},{nm:"拍照結尾",st:244.0,nb:3}
+ {nm:"整裝",st:1.5,nb:2},{nm:"推車",st:6,nb:2},{nm:"按電梯",st:27,nb:2},
+ {nm:"進梯",st:43.5,nb:2},{nm:"鍵盤",st:53.5,nb:2},{nm:"出梯",st:77,nb:4},
+ {nm:"走廊",st:84,nb:2},{nm:"捧花走",st:156,nb:2},{nm:"擺花2",st:163.5,nb:2},
+ {nm:"收花2",st:321,nb:2},{nm:"收花",st:134,nb:2},{nm:"大盆搬",st:185.5,nb:2},
+ {nm:"大盆擺",st:195.5,nb:2},{nm:"擺花",st:145.5,nb:3},{nm:"拍照結尾",st:243.5,nb:4}
 ];
+try{ const sv=JSON.parse(localStorage.getItem("pov02_shots")||"null"); if(sv&&sv.length) shots=sv; }catch(_){}
 let cur=-1, thumbH=0, seqTimer=null;
 
 const probe=new Image();
@@ -110,6 +112,7 @@ function paint(){
     attachDrag(c,i);
     strip.appendChild(c);
   });
+  try{ localStorage.setItem("pov02_shots",JSON.stringify(shots)); }catch(_){}
   $("cnt").textContent=shots.length;
   $("tot").textContent=(shots.reduce((a,s)=>a+s.nb,0)*BEAT).toFixed(1);
   if(cur>=0&&cur<shots.length){
