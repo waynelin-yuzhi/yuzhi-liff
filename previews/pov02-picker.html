@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>試作02 選片器</title>
+<style>
+:root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--line:#E5E0D3;--warn:#8a4a30}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--paper);color:var(--ink);font-family:"Songti TC",serif;max-width:640px;margin:0 auto;padding:14px}
+h1{font-size:18px;margin-bottom:2px}
+.sub{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.14em;margin-bottom:10px}
+.help{font-size:13px;line-height:1.8;background:#fff;border:1px solid var(--line);border-radius:2px;padding:10px 12px;margin-bottom:12px}
+video{width:56%;max-width:250px;aspect-ratio:9/16;background:#000;border-radius:2px;display:block;margin:0 auto 6px}
+.tsel{text-align:center;font-family:ui-monospace,monospace;font-size:13px;color:var(--moss);margin-bottom:8px;min-height:18px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tag{flex:1;min-width:80px;padding:11px 4px;text-align:center;border:1px solid var(--moss);color:var(--moss);
+     background:#fff;border-radius:2px;font-size:14px;cursor:pointer}
+.tag.del{border-color:var(--warn);color:var(--warn)}
+.sheet{position:relative;margin-bottom:10px}
+.sheet img{width:100%;display:block;border-radius:2px}
+.mark{position:absolute;border:3px solid #E8B14E;border-radius:2px;pointer-events:none;
+      font-size:10px;color:#fff;background:rgba(232,177,78,.25)}
+.mark span{position:absolute;left:0;top:0;background:#E8B14E;color:#1B1A17;padding:1px 4px;font-family:ui-monospace,monospace}
+.cursor{position:absolute;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.5);border-radius:2px;pointer-events:none}
+#picks{margin:6px 0 12px}
+.pick{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:2px;
+      padding:8px 10px;margin-bottom:6px;font-size:14px}
+.pick b{font-family:ui-monospace,monospace;color:var(--moss)}
+.pick .x{margin-left:auto;color:var(--warn);cursor:pointer;padding:2px 8px}
+textarea{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;font-family:inherit;
+         font-size:15px;border-radius:2px;resize:vertical;margin-bottom:10px}
+.send{width:100%;padding:15px;background:var(--moss);color:var(--paper);border:none;font-family:inherit;
+      font-size:16px;letter-spacing:.12em;cursor:pointer;border-radius:2px}
+.stat{padding:10px 12px;margin-top:10px;border-radius:2px;font-size:14px;display:none}
+.stat.ok{display:block;background:#e8f0e4;color:#2f5d2a}
+.stat.bad{display:block;background:#f6e9e4;color:#8a4a30}
+</style>
+</head>
+<body>
+<h1>試作02 選片器</h1>
+<div class="sub">SHOT PICKER / 每格 2 秒 / 點格子＝指到那一刻</div>
+<div class="help">
+① 點下面縮圖任一格 → 上方播放器跳到那一刻（可播放確認）<br>
+② 確認是你要的畫面 → 按一個標籤（結尾／擺花／拍照／要這刀／不要）<br>
+③ 標完全部 → 最下面送出。<b>不用打字描述畫面、點就對了。</b>
+</div>
+<video id="vid" src="https://ytlakkxrbookftluulbo.supabase.co/storage/v1/object/public/reels-publish/pov02-proxy.mp4"
+       controls playsinline preload="metadata"></video>
+<div class="tsel" id="tsel">先點下面的縮圖格子</div>
+<div class="tags">
+  <div class="tag" data-t="結尾用這個">🏁 結尾</div>
+  <div class="tag" data-t="擺花畫面">🪴 擺花</div>
+  <div class="tag" data-t="拍照畫面">📸 拍照</div>
+  <div class="tag" data-t="要這刀">✔ 要這刀</div>
+  <div class="tag del" data-t="不要這刀">✘ 不要</div>
+</div>
+<div id="picks"></div>
+<div class="sheet" data-i="0"><img src="pov02/sheet01.jpg" alt=""></div>
+<div class="sheet" data-i="1"><img src="pov02/sheet02.jpg" alt=""></div>
+<div class="sheet" data-i="2"><img src="pov02/sheet03.jpg" alt=""></div>
+<div class="sheet" data-i="3"><img src="pov02/sheet04.jpg" alt=""></div>
+<textarea id="note" rows="2" placeholder="補充備註（選填）"></textarea>
+<button class="send" id="send">送 出 選 片</button>
+<div class="stat" id="stat"></div>
+<script>
+const DUR=453, STEP=2, COLS=8, ROWS=8;
+const $=id=>document.getElementById(id);
+const vid=$("vid");
+let cur=null, picks=[];
+const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+
+document.querySelectorAll(".sheet").forEach(sh=>{
+  sh.addEventListener("click",e=>{
+    const img=sh.querySelector("img"), r=img.getBoundingClientRect();
+    const col=Math.floor((e.clientX-r.left)/r.width*COLS);
+    const row=Math.floor((e.clientY-r.top)/r.height*ROWS);
+    const idx=(+sh.dataset.i)*COLS*ROWS + row*COLS + col;
+    const t=idx*STEP;
+    if(t>=DUR) return;
+    cur={t,sheet:sh,row,col};
+    vid.currentTime=t+0.3; vid.pause();
+    $("tsel").textContent="選中 "+fmt(t)+"（可按播放確認畫面）";
+    let c=document.querySelector(".cursor"); if(c) c.remove();
+    c=document.createElement("div"); c.className="cursor";
+    c.style.left=(col/COLS*100)+"%"; c.style.top=(row/ROWS*100)+"%";
+    c.style.width=(100/COLS)+"%"; c.style.height=(100/ROWS)+"%";
+    sh.appendChild(c);
+    c.scrollIntoView({block:"nearest"});
+  });
+});
+
+document.querySelectorAll(".tag").forEach(b=>b.onclick=()=>{
+  if(!cur){ $("tsel").textContent="先點縮圖格子再選標籤"; return; }
+  picks.push({sec:cur.t, mmss:fmt(cur.t), tag:b.dataset.t, sheet:cur.sheet, row:cur.row, col:cur.col});
+  paint();
+});
+
+function paint(){
+  document.querySelectorAll(".mark").forEach(m=>m.remove());
+  $("picks").innerHTML="";
+  picks.forEach((p,i)=>{
+    const m=document.createElement("div"); m.className="mark";
+    m.style.left=(p.col/COLS*100)+"%"; m.style.top=(p.row/ROWS*100)+"%";
+    m.style.width=(100/COLS)+"%"; m.style.height=(100/ROWS)+"%";
+    m.innerHTML="<span>"+p.tag.slice(0,2)+"</span>";
+    p.sheet.appendChild(m);
+    const d=document.createElement("div"); d.className="pick";
+    d.innerHTML="<b>"+p.mmss+"</b> "+p.tag+'<span class="x">刪</span>';
+    d.querySelector(".x").onclick=()=>{ picks.splice(i,1); paint(); };
+    d.onclick=e=>{ if(e.target.className!=="x"){ vid.currentTime=p.sec+0.3; } };
+    $("picks").appendChild(d);
+  });
+}
+
+const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
+const SUBMIT_TOKEN="7c7e94a5e2af4764a94cccf49c31aa0f";
+$("send").onclick=async()=>{
+  const st=$("stat");
+  if(!picks.length){ st.textContent="還沒有標任何格子"; st.className="stat bad"; return; }
+  const payload={title:"試作02 選片指令",
+    picks:picks.map(p=>({t:p.mmss,sec:p.sec,tag:p.tag})),
+    note:$("note").value.trim()||null};
+  try{
+    const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",
+      body:new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(payload)})});
+    const d=await r.json();
+    if(!d.ok) throw 0;
+    st.textContent="✅ 已送達（"+picks.length+" 個標記）、植影所會照這份重剪";
+    st.className="stat ok";
+  }catch(_){ st.textContent="⚠ 傳送失敗，請截圖畫面傳給植影所"; st.className="stat bad"; }
+};
+</script>
+</body>
+</html>
