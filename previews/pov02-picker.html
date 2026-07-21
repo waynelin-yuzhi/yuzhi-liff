@@ -73,6 +73,7 @@ const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%
 document.querySelectorAll(".sheet").forEach(sh=>{
   sh.addEventListener("click",e=>{
     const img=sh.querySelector("img"), r=img.getBoundingClientRect();
+    if(!r.width||!r.height) return;
     const col=Math.floor((e.clientX-r.left)/r.width*COLS);
     const row=Math.floor((e.clientY-r.top)/r.height*ROWS);
     const idx=(+sh.dataset.i)*COLS*ROWS + row*COLS + col;
