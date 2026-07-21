@@ -59,12 +59,12 @@ video{width:38%;max-width:170px;aspect-ratio:9/16;background:#000;border-radius:
     <div class="side">
       <div class="tsel" id="tsel">撥動下方底片帶選畫面</div>
       <div class="tags" id="tags">
-        <div class="tag" data-t="結尾用這個">🏁 結尾</div>
-        <div class="tag" data-t="擺花畫面">🪴 擺花</div>
-        <div class="tag" data-t="拍照畫面">📸 拍照</div>
-        <div class="tag" data-t="收花畫面">🧺 收花</div>
-        <div class="tag" data-t="要這刀">✔ 要</div>
-        <div class="tag del" data-t="不要這刀">✘ 不要</div>
+        <div class="tag" data-t="結尾用這個">結尾</div>
+        <div class="tag" data-t="擺花畫面">擺花</div>
+        <div class="tag" data-t="拍照畫面">拍照</div>
+        <div class="tag" data-t="收花畫面">收花</div>
+        <div class="tag" data-t="要這刀">要這刀</div>
+        <div class="tag del" data-t="不要這刀">不要</div>
       </div>
       <div class="addrow">
         <input id="custom" placeholder="自訂標籤（例：這裡放慢）">
@@ -173,8 +173,8 @@ $("send").onclick=async()=>{
       body:new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(payload)})});
     const d=await r.json();
     if(!d.ok) throw 0;
-    st.textContent="✅ 已送達（"+picks.length+" 個標記）"; st.className="stat ok";
-  }catch(_){ st.textContent="⚠ 傳送失敗、請截圖傳我"; st.className="stat bad"; }
+    st.textContent="已送達（"+picks.length+" 個標記）"; st.className="stat ok";
+  }catch(_){ st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad"; }
 };
 </script>
 </body>
