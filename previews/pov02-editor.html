@@ -18,6 +18,8 @@ h1{font-size:15px}
 .vwrap2 video{width:100%}
 #photoLayer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
 #photoLayer.on{display:block}
+#scrimLayer{position:absolute;inset:0;background:#000;opacity:0;display:none;pointer-events:none}
+#scrimLayer.on{display:block}
 #endLayer{position:absolute;inset:0;background:#000;display:none;align-items:center;justify-content:center}
 #endLayer.on{display:flex}
 #endLayer img{width:65%}
@@ -76,6 +78,7 @@ video{width:36%;max-width:160px;aspect-ratio:9/16;background:#000;border-radius:
     <video id="vid" src="https://ytlakkxrbookftluulbo.supabase.co/storage/v1/object/public/reels-publish/pov02-proxy.mp4"
            playsinline preload="metadata" muted></video>
     <img id="photoLayer" src="pov02/payoff.jpg" alt="">
+    <div id="scrimLayer"></div>
     <div id="endLayer"><img src="pov02/endcard.png" alt=""></div>
     <div id="capov"></div>
   </div>
@@ -242,8 +245,9 @@ function paint(){
   } else $("info").textContent="點一張卡片開始";
 }
 function stopSeq(){ if(seqTimer){clearInterval(seqTimer);seqTimer=null;} vid.pause();
-  const pl=$("photoLayer"), el=$("endLayer");
+  const pl=$("photoLayer"), el=$("endLayer"), sc=$("scrimLayer");
   if(pl){ pl.classList.remove("on"); pl.style.opacity="1"; }
+  if(sc){ sc.classList.remove("on"); sc.style.opacity="0"; }
   if(el) el.classList.remove("on");
   $("playall").textContent="從頭試看整段"; }
 function selectShot(i,preview){
@@ -355,8 +359,10 @@ $("playall").onclick=()=>{
       const el=PHOTO_LEN-left;
       const hits=caps.filter(c=>c.shot===0 && el>=c.off && el<=c.off+c.du);
       $("capov").innerHTML=hits.map(h=>`<div class="cl" style="top:${POSY[h.pos]||64}%">${h.tx.split("|")[0]}</div>`).join("");
-      if(el>=SCRIM_AT) $("photoLayer").style.opacity=String(Math.max(0,1-(el-SCRIM_AT)/(PHOTO_LEN-SCRIM_AT)));
-      if(left<=0){ phase="end"; $("photoLayer").style.opacity="1"; showLayer("end"); $("capov").innerHTML=""; tEnd=Date.now()+TAIL_LEN*1000; }
+      // 黑幕蓋上去（成品做法），不是把照片變透明——照片透明會露出底下停格的影片
+      const sc=$("scrimLayer");
+      if(el>=SCRIM_AT){ sc.classList.add("on"); sc.style.opacity=String(Math.min(1,(el-SCRIM_AT)/(PHOTO_LEN-SCRIM_AT))); }
+      if(left<=0){ phase="end"; sc.classList.remove("on"); sc.style.opacity="0"; showLayer("end"); $("capov").innerHTML=""; tEnd=Date.now()+TAIL_LEN*1000; }
     } else {
       if(Date.now()>=tEnd){ stopSeq(); showLayer(""); paint(); }
     }
