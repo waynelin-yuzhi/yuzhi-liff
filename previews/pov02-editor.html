@@ -106,6 +106,8 @@ video{width:36%;max-width:160px;aspect-ratio:9/16;background:#000;border-radius:
 </div>
 <script>
 const BEAT=0.7430, STEP=2, COLS=8, ROWS=8, TW=112, DUR=453;
+const PHOTO_LEN=3.0, TAIL_LEN=2.4, FPS=30;   // 成片結構：本體 + 成果照 + 片尾黑幕
+const SCRIM_AT=1.5;                          // 片尾黑幕在照片段的第幾秒開始淡入
 const SHEETS=["pov02/sheet01.jpg","pov02/sheet02.jpg","pov02/sheet03.jpg","pov02/sheet04.jpg"];
 const $=id=>document.getElementById(id);
 const vid=$("vid"), strip=$("strip");
@@ -132,12 +134,13 @@ let caps=[
 ];
 try{ const sc=JSON.parse(localStorage.getItem("pov02_caps")||"null"); if(sc&&sc.length) caps=sc; }catch(_){}
 
-function shotStart(i){ // 第 i 刀（1-based）在成片中的起點
+function shotStart(i){ // 第 i 刀（1-based）起點；用「累積拍點×fps 取整」與出片演算法一致
   let acc=0;
   for(let k=0;k<i-1&&k<shots.length;k++) acc+=shots[k].nb;
-  return acc*BEAT;
+  return Math.round(acc*BEAT*FPS)/FPS;
 }
-function bodyLen(){ return shots.reduce((a,s)=>a+s.nb,0)*BEAT; }
+function bodyLen(){ return Math.round(shots.reduce((a,s)=>a+s.nb,0)*BEAT*FPS)/FPS; }
+function totalLen(){ return bodyLen()+PHOTO_LEN+TAIL_LEN; }
 function capTime(c){ return c.shot===0 ? bodyLen()+c.off : shotStart(c.shot)+c.off; }
 
 function capEnd(c){ return capTime(c)+c.du; }
@@ -222,13 +225,17 @@ function paint(){
   try{ localStorage.setItem("pov02_shots",JSON.stringify(shots)); }catch(_){}
   if(typeof paintCaps==="function") paintCaps();
   $("cnt").textContent=shots.length;
-  $("tot").textContent=(shots.reduce((a,s)=>a+s.nb,0)*BEAT).toFixed(1);
+  $("tot").textContent=`${bodyLen().toFixed(1)}（＋照片 ${PHOTO_LEN} ＋片尾 ${TAIL_LEN} ＝成片 ${totalLen().toFixed(1)}）`;
   if(cur>=0&&cur<shots.length){
     const s=shots[cur];
     $("info").textContent=`#${cur+1} ${s.nm}・${s.st.toFixed(1)}s 起・${s.nb} 拍（${(s.nb*BEAT).toFixed(1)}s）`;
   } else $("info").textContent="點一張卡片開始";
 }
-function stopSeq(){ if(seqTimer){clearInterval(seqTimer);seqTimer=null;} vid.pause(); $("playall").textContent="從頭試看整段"; }
+function stopSeq(){ if(seqTimer){clearInterval(seqTimer);seqTimer=null;} vid.pause();
+  const pl=$("photoLayer"), el=$("endLayer");
+  if(pl){ pl.classList.remove("on"); pl.style.opacity="1"; }
+  if(el) el.classList.remove("on");
+  $("playall").textContent="從頭試看整段"; }
 function selectShot(i,preview){
   stopSeq(); cur=i; paint();
   if(preview){ playRange(shots[i].st, shots[i].st+shots[i].nb*BEAT); }
@@ -302,16 +309,40 @@ function attachDrag(card,idx){
 function refreshOrd(){ [...strip.children].forEach((c,i)=>{ const o=c.querySelector(".ord"); if(o) o.textContent=i+1; }); }
 
 // 從頭試看：照目前排刀順序逐刀跳播（近似成品、無轉場）
+function showLayer(mode){
+  $("photoLayer").classList.toggle("on",mode==="photo");
+  $("endLayer").classList.toggle("on",mode==="end");
+}
 $("playall").onclick=()=>{
-  if(seqTimer){ stopSeq(); return; }
+  if(seqTimer){ stopSeq(); showLayer(""); return; }
   let i=0;
-  $("playall").textContent="停止試看";
+  $("playall").textContent="停止試看"; showLayer("");
   const step=()=>{ if(i>=shots.length){ stopSeq(); return; }
     cur=i; paint();
     vid.currentTime=shots[i].st; vid.play(); };
   step();
+  let phase="body", tEnd=0;
   seqTimer=setInterval(()=>{
-    if(i<shots.length && vid.currentTime>=shots[i].st+shots[i].nb*BEAT-0.03){ i++; if(i>=shots.length){ stopSeq(); paint(); return; } vid.currentTime=shots[i].st; cur=i; paint(); }
+    if(phase==="body"){
+      if(i<shots.length && vid.currentTime>=shots[i].st+shots[i].nb*BEAT-0.03){
+        i++;
+        if(i>=shots.length){ // 本體播完 → 成果照
+          vid.pause(); phase="photo"; showLayer("photo"); tEnd=Date.now()+PHOTO_LEN*1000;
+          cur=-1; paint(); return;
+        }
+        vid.currentTime=shots[i].st; cur=i; paint();
+      }
+    } else if(phase==="photo"){
+      const left=(tEnd-Date.now())/1000;
+      // 照片段字幕（綁「成果照」那幾句）
+      const el=PHOTO_LEN-left;
+      const hits=caps.filter(c=>c.shot===0 && el>=c.off && el<=c.off+c.du);
+      $("capov").innerHTML=hits.map(h=>`<div class="cl" style="top:${POSY[h.pos]||64}%">${h.tx.split("|")[0]}</div>`).join("");
+      if(el>=SCRIM_AT) $("photoLayer").style.opacity=String(Math.max(0,1-(el-SCRIM_AT)/(PHOTO_LEN-SCRIM_AT)));
+      if(left<=0){ phase="end"; $("photoLayer").style.opacity="1"; showLayer("end"); $("capov").innerHTML=""; tEnd=Date.now()+TAIL_LEN*1000; }
+    } else {
+      if(Date.now()>=tEnd){ stopSeq(); showLayer(""); paint(); }
+    }
   },60);
 };
 
