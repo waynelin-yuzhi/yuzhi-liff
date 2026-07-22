@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>試作02 排刀台</title>
+<title>試作02 剪接表</title>
 <style>
 :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--line:#E5E0D3;--warn:#8a4a30;--gold:#E8B14E}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -30,6 +30,14 @@ video{width:36%;max-width:160px;aspect-ratio:9/16;background:#000;border-radius:
 .stat.ok{color:#2f5d2a}.stat.bad{color:var(--warn)}
 #capbox{flex:0 0 auto;background:#fff;border-top:1px solid var(--line);max-height:34vh;overflow-y:auto}
 #capbox summary{padding:9px 12px;font-size:13px;color:var(--moss);cursor:pointer;position:sticky;top:0;background:#fff}
+.caphead{padding:6px 12px;font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;border-top:1px solid var(--line)}
+.addcap{width:100%;padding:9px;border:1px dashed var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
+.capwrap{border-top:1px solid var(--line);padding:6px 12px}
+.capwrap.warn{background:#fdf3ef}
+.captime{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);padding-top:3px}
+.captime b{color:var(--moss)}
+.captime .w{color:var(--warn)}
+.capdel{color:var(--warn);background:none;border:none;font-size:15px;cursor:pointer;padding:0 4px}
 .caprow{display:flex;align-items:center;gap:6px;padding:6px 12px;border-top:1px solid var(--line);font-size:12px}
 .caprow .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .caprow select,.caprow input{font-family:inherit;font-size:12px;padding:4px;border:1px solid var(--line);border-radius:2px;background:#fff}
@@ -53,7 +61,7 @@ video{width:36%;max-width:160px;aspect-ratio:9/16;background:#000;border-radius:
 </style>
 </head>
 <body>
-<header><h1>試作02 排刀台</h1><span class="sub">按住卡片左右拖＝換順序・點卡片＝試看那刀</span></header>
+<header><h1>試作02 剪接表</h1><span class="sub">EDIT DECISION LIST・按住卡片左右拖＝換順序</span></header>
 <div class="top">
   <video id="vid" src="https://ytlakkxrbookftluulbo.supabase.co/storage/v1/object/public/reels-publish/pov02-proxy.mp4"
          playsinline preload="metadata" muted></video>
@@ -71,14 +79,16 @@ video{width:36%;max-width:160px;aspect-ratio:9/16;background:#000;border-radius:
     </div>
     <div class="play2">
       <button id="playall">從頭試看整段</button>
-      <button id="send" class="send">送出排刀</button>
+      <button id="send" class="send">送出剪接表</button>
     </div>
     <div class="stat" id="stat"></div>
   </div>
 </div>
 <details id="capbox">
-  <summary>字幕時間（綁在刀上、動排刀會自動跟著跑）</summary>
+  <summary>字幕（綁在刀上、改剪接表會自動跟著跑）</summary>
+  <div class="caphead">文字　｜　跟哪一刀　｜　延遲出現　｜　顯示多久</div>
   <div id="caplist"></div>
+  <div style="padding:8px 12px"><button id="addcap" class="addcap">＋ 加一句字幕</button></div>
 </details>
 <div class="stripzone">
   <div class="hintline">共 <span id="cnt"></span> 刀・總長 <span id="tot"></span> 秒</div>
@@ -120,24 +130,59 @@ function shotStart(i){ // 第 i 刀（1-based）在成片中的起點
 function bodyLen(){ return shots.reduce((a,s)=>a+s.nb,0)*BEAT; }
 function capTime(c){ return c.shot===0 ? bodyLen()+c.off : shotStart(c.shot)+c.off; }
 
+function capEnd(c){ return capTime(c)+c.du; }
 function paintCaps(){
   const box=$("caplist"); box.innerHTML="";
   caps.forEach((c,i)=>{
-    const r=document.createElement("div"); r.className="caprow";
-    const opts=shots.map((s,k)=>`<option value="${k+1}" ${c.shot===k+1?"selected":""}>${k+1}.${s.nm}</option>`).join("")
+    const w=document.createElement("div"); w.className="capwrap";
+    const opts=shots.map((s,k)=>`<option value="${k+1}" ${c.shot===k+1?"selected":""}>${k+1}. ${s.nm}</option>`).join("")
       +`<option value="0" ${c.shot===0?"selected":""}>成果照</option>`;
-    r.innerHTML=`<span class="tx">${c.tx}</span>
-      <select data-i="${i}" class="cs">${opts}</select>
-      <input type="number" class="co" data-i="${i}" value="${c.off}" step="0.1" min="-1" max="4">
-      <input type="number" class="cd" data-i="${i}" value="${c.du}" step="0.1" min="0.8" max="5">
-      <span class="tm">${capTime(c).toFixed(1)}s</span>`;
-    box.appendChild(r);
+    const st=capTime(c), en=capEnd(c);
+    // 同刀重疊偵測
+    const clash=caps.some((o,j)=>j!==i && o.shot===c.shot && capTime(o)<en && capEnd(o)>st);
+    if(clash) w.classList.add("warn");
+    // 超出該刀長度提醒
+    const lim = c.shot===0 ? 3.0 : shots[c.shot-1].nb*BEAT;
+    const over = (c.off + c.du) > lim + 0.35;
+    w.innerHTML=`<div class="caprow">
+        <input type="text" class="ct" data-i="${i}" value="${c.tx.replace(/"/g,'&quot;')}">
+        <button class="capdel" data-i="${i}">✕</button>
+      </div>
+      <div class="caprow">
+        <select class="cs" data-i="${i}">${opts}</select>
+        <input type="number" class="co" data-i="${i}" value="${c.off}" step="0.1" min="-1" max="6">
+        <input type="number" class="cd" data-i="${i}" value="${c.du}" step="0.1" min="0.6" max="6">
+        <select class="cp" data-i="${i}">
+          <option ${c.pos==="中下"?"selected":""}>中下</option>
+          <option ${c.pos==="上方"?"selected":""}>上方</option>
+          <option ${c.pos==="中央"?"selected":""}>中央</option>
+          <option ${c.pos==="照片"?"selected":""}>照片</option>
+        </select>
+      </div>
+      <div class="captime">出現 <b>${st.toFixed(1)}s</b> → 消失 <b>${en.toFixed(1)}s</b>
+        ${clash?'<span class="w">・和同刀另一句重疊了</span>':''}
+        ${over?'<span class="w">・超出這一刀的長度</span>':''}</div>`;
+    box.appendChild(w);
   });
-  box.querySelectorAll(".cs").forEach(el=>el.onchange=e=>{caps[+e.target.dataset.i].shot=+e.target.value; saveCaps(); paintCaps();});
-  box.querySelectorAll(".co").forEach(el=>el.onchange=e=>{caps[+e.target.dataset.i].off=+e.target.value; saveCaps(); paintCaps();});
-  box.querySelectorAll(".cd").forEach(el=>el.onchange=e=>{caps[+e.target.dataset.i].du=+e.target.value; saveCaps(); paintCaps();});
+  const bind=(cls,fn)=>box.querySelectorAll(cls).forEach(el=>el.onchange=e=>{fn(caps[+e.target.dataset.i],e.target.value); saveCaps(); paintCaps();});
+  bind(".ct",(c,v)=>c.tx=v);
+  bind(".cs",(c,v)=>c.shot=+v);
+  bind(".co",(c,v)=>c.off=+v);
+  bind(".cd",(c,v)=>c.du=+v);
+  bind(".cp",(c,v)=>c.pos=v);
+  box.querySelectorAll(".capdel").forEach(el=>el.onclick=e=>{
+    caps.splice(+e.target.dataset.i,1); saveCaps(); paintCaps(); });
 }
 function saveCaps(){ try{ localStorage.setItem("pov02_caps",JSON.stringify(caps)); }catch(_){} }
+// 一刀放兩句＝同刀號、第二句延遲拉到第一句之後
+document.addEventListener("click",e=>{
+  if(e.target.id!=="addcap") return;
+  const base = cur>=0 ? cur+1 : 1;
+  const same = caps.filter(c=>c.shot===base);
+  const off = same.length ? Math.max(...same.map(c=>c.off+c.du))+0.1 : 0.2;
+  caps.push({tx:"新字幕", shot:base, off:+off.toFixed(1), du:1.2, pos:"中下"});
+  saveCaps(); paintCaps();
+});
 
 const probe=new Image();
 probe.onload=()=>{ thumbH=Math.round(TW*(probe.naturalHeight/ROWS)/(probe.naturalWidth/COLS)); paint(); };
@@ -239,7 +284,7 @@ const SUBMIT_TOKEN="7c7e94a5e2af4764a94cccf49c31aa0f";
 $("send").onclick=async()=>{
   stopSeq();
   const st=$("stat");
-  const payload={title:"試作02 排刀指令",
+  const payload={title:"試作02 剪接表",
     shots:shots.map(s=>({name:s.nm,start:+s.st.toFixed(1),beats:s.nb})),
     captions:caps.map(c=>({text:c.tx,shot:c.shot,offset:c.off,duration:c.du,pos:c.pos,
                            at:+capTime(c).toFixed(2)}))};
@@ -248,7 +293,7 @@ $("send").onclick=async()=>{
       body:new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(payload)})});
     const d=await r.json();
     if(!d.ok) throw 0;
-    st.textContent="已送達（"+shots.length+" 刀）、照這份出片"; st.className="stat ok";
+    st.textContent="已送達（"+shots.length+" 刀 / "+caps.length+" 句字幕）"; st.className="stat ok";
   }catch(_){ st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad"; }
 };
 </script>
