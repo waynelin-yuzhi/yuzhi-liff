@@ -31,13 +31,17 @@
   .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
          color:#6b6b66;font-size:13px;text-align:center;padding:24px;line-height:1.8}
-  .capbox{position:absolute;left:50%;transform:translate(-50%,-50%);width:92%;text-align:center;
-          text-shadow:0 2px 6px rgba(0,0,0,.9),0 4px 18px rgba(0,0,0,.75);padding:8px 0;display:none}
+  .capbox{position:absolute;left:50%;transform:translate(-50%,-50%);max-width:92%;text-align:center;
+          padding:8px 0;display:none}
   .capbox.show{display:block}
   .capbox.editing{cursor:grab;outline:1px dashed rgba(255,255,255,.45);outline-offset:6px}
-  .capbox .zh{font-family:"Songti TC",serif;color:#fff;font-size:min(5.2vw,30px);letter-spacing:.08em;line-height:1.35}
-  .capbox .en{color:#fff;font-family:ui-sans-serif,system-ui,sans-serif;font-size:min(2.9vw,17px);
-              letter-spacing:.06em;margin-top:7px}
+  .capbox .zh{color:#fff;line-height:1.35}
+  .capbox .en{color:#fff}
+  /* 底色樣式三選（純白字黑影＝現行定版 / 半透明米紙 / 苔綠） */
+  .capbox.sty-paper{background:rgba(242,237,227,.86);padding:10px 20px;border-radius:2px}
+  .capbox.sty-paper .zh,.capbox.sty-paper .en{color:#1B1A17}
+  .capbox.sty-moss{background:rgba(95,110,88,.92);padding:10px 20px;border-radius:2px}
+  .capbox.sty-moss .zh,.capbox.sty-moss .en{color:#F2EDE3}
 
   .bar{display:flex;align-items:center;gap:10px;margin:10px 0 4px}
   .play{width:52px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;
@@ -156,6 +160,40 @@
   </div>
 </div>
 
+<div class="hint" style="margin:16px 0 8px">─ 字卡樣式（預設全域套用）─</div>
+<div class="bar">
+  <span class="plab">底色</span>
+  <button class="pos sty on" data-sty="plain">白字黑影</button>
+  <button class="pos sty" data-sty="paper">米紙色塊</button>
+  <button class="pos sty" data-sty="moss">苔綠色塊</button>
+</div>
+<div class="row">
+  <div class="field">
+    <label>字級（畫布 1080 基準）<span class="val" id="fsv"></span></label>
+    <input type="range" id="fs" min="38" max="72" step="1" value="52" />
+  </div>
+  <div class="field">
+    <label>中英行距 <span class="val" id="lhv"></span></label>
+    <input type="range" id="lh" min="58" max="120" step="2" value="82" />
+  </div>
+</div>
+<div class="row">
+  <div class="field">
+    <label>字距 <span class="val" id="trv"></span></label>
+    <input type="range" id="tr" min="0" max="12" step="1" value="4" />
+  </div>
+  <div class="field">
+    <label>陰影強度 <span class="val" id="shv"></span></label>
+    <input type="range" id="sh" min="0" max="100" step="5" value="63" />
+  </div>
+</div>
+<div class="bar">
+  <label style="margin:0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--body)">
+    <input type="checkbox" id="ovr" style="width:16px;height:16px;accent-color:var(--moss)" />
+    這張字卡用自己的樣式（不勾＝跟著全域）
+  </label>
+</div>
+
 <div class="field">
   <label>中文字幕</label>
   <input type="text" id="zh" />
@@ -223,6 +261,26 @@
 </div>
 <div class="hint">按播放＝即時試聽分軌混音（近似）・成品仍由我依參數重混原始素材</div>
 
+<div class="hint" style="margin:16px 0 8px">─ 調色 LUT ─</div>
+<div class="row">
+  <div class="field">
+    <label>LUT（A~E 日光植栽家族・H 室內光）</label>
+    <select id="lut">
+      <option value="A" selected>YUZHI-A 自然加強 · 預設</option>
+      <option value="B">YUZHI-B 柔霧晨光</option>
+      <option value="C">YUZHI-C 暖陽</option>
+      <option value="D">YUZHI-D 黃昏暖調</option>
+      <option value="E">YUZHI-E 低飽和霧感</option>
+      <option value="H">YUZHI-H 室內通透冷調</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>套用強度 <span class="val" id="luv"></span></label>
+    <input type="range" id="lu" min="0" max="100" step="5" value="100" />
+  </div>
+</div>
+<div class="hint">此處只記錄選擇、預覽片畫面不會即時變色（成品才真套 LUT）。要比色看六格對照圖 AP-0032。<br>選家族口訣：日光→A 系；螢光燈／室內→H。</div>
+
 <div class="bar">
   <span class="plab">封面</span>
   <button class="pos" id="setcov">把目前畫面設為封面</button>
@@ -250,6 +308,24 @@
   <textarea id="note" rows="3" placeholder="例：第三句再晚半秒、封面想要亮一點的畫面" style="width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:15px;color:var(--ink);border-radius:2px;resize:vertical"></textarea>
 </div>
 
+<div class="hint" style="margin:16px 0 8px">─ 配方存檔（字卡樣式＋LUT＋強度＋封面規則）─</div>
+<div class="row">
+  <div class="field">
+    <label>套用既有配方</label>
+    <select id="psel"><option value="">（不套用）</option></select>
+  </div>
+  <div class="field">
+    <label>配方名稱（存新的／覆蓋同名）</label>
+    <input type="text" id="pname" placeholder="例：POV 室內換花" />
+  </div>
+</div>
+<div class="bar">
+  <button class="pos" id="psave">存成配方</button>
+  <button class="pos" id="pload">套用</button>
+  <button class="pos zone" id="pdel">刪除</button>
+</div>
+<div class="hint" id="pmsg">配方存在這台手機／瀏覽器；送出時會一併帶給植影所沉澱進 repo，下支片就能直接選。</div>
+
 <button class="send" id="send">送 出</button>
 
 <div id="out">
@@ -269,6 +345,11 @@ const CAPS=[
 ];
 let cur=0, boxes=[];
 const FONT={zh:'"Noto Sans TC",sans-serif', en:'"Playfair Display",serif'};
+// 字卡樣式：全域一份，某張字卡勾「用自己的樣式」才在 CAPS[i].style 存覆寫
+const STYLE={box:"plain", sizePx:52, gapPx:82, trackPx:4, shadowPct:63};
+const LUT={name:"A", strengthPct:100};
+const styOf=i=>CAPS[i].style||STYLE;
+const curSty=()=>CAPS[cur].style||STYLE;
 const $=id=>document.getElementById(id);
 const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
 
@@ -289,11 +370,24 @@ CAPS.forEach((c,i)=>{
 function paint(){
   const t=vid.duration?vid.currentTime:parseFloat($("seek").value);
   CAPS.forEach((c,i)=>{
-    const box=boxes[i];
-    box.querySelector(".zh").textContent=(i===cur?$("zh").value:c.zh);
-    box.querySelector(".en").textContent=(i===cur?$("en").value:c.en);
-    box.querySelector(".zh").style.fontFamily=FONT.zh;
-    box.querySelector(".en").style.fontFamily=FONT.en;
+    const box=boxes[i], zhEl=box.querySelector(".zh"), enEl=box.querySelector(".en");
+    zhEl.textContent=(i===cur?$("zh").value:c.zh);
+    enEl.textContent=(i===cur?$("en").value:c.en);
+    zhEl.style.fontFamily=FONT.zh;
+    enEl.style.fontFamily=FONT.en;
+    // 樣式：畫布 1080 的數值等比縮到預覽台寬度＝所見即所得
+    const s=styOf(i), k=(stage.clientWidth||360)/1080, a=s.shadowPct/100;
+    zhEl.style.fontSize=(s.sizePx*k).toFixed(1)+"px";
+    zhEl.style.letterSpacing=(s.trackPx*k).toFixed(2)+"px";
+    enEl.style.fontSize=(s.sizePx*0.577*k).toFixed(1)+"px";
+    enEl.style.letterSpacing=(s.trackPx*0.75*k).toFixed(2)+"px";
+    enEl.style.marginTop=Math.max(0,(s.gapPx-s.sizePx*1.35)*k).toFixed(1)+"px";
+    box.classList.remove("sty-plain","sty-paper","sty-moss");
+    box.classList.add("sty-"+s.box);
+    box.style.textShadow = s.box==="plain"
+      ? "0 "+(2*k).toFixed(1)+"px "+(6*k).toFixed(1)+"px rgba(0,0,0,"+(0.9*a).toFixed(2)+"), 0 "
+        +(4*k).toFixed(1)+"px "+(18*k).toFixed(1)+"px rgba(0,0,0,"+(0.75*a).toFixed(2)+")"
+      : "none";
     box.style.left=(c.x*100)+"%"; box.style.top=(c.y*100)+"%";
     const live=t>=c.st && t<=c.st+c.du;
     box.classList.toggle("show", live || (i===cur && vid.paused));
@@ -311,7 +405,19 @@ function load(){
   $("zh").value=c.zh; $("en").value=c.en;
   $("st").value=c.st; $("du").value=c.du;
   $("stv").textContent=c.st.toFixed(1)+"s"; $("dur").textContent=c.du.toFixed(1)+"s";
+  syncSty();
   paint();
+}
+// 樣式控制項 ←→ 目前生效的樣式（全域或該張覆寫）
+function syncSty(){
+  const s=curSty();
+  $("fs").value=s.sizePx; $("lh").value=s.gapPx; $("tr").value=s.trackPx; $("sh").value=s.shadowPct;
+  $("fsv").textContent=s.sizePx+"px";
+  $("lhv").textContent=s.gapPx+"px";
+  $("trv").textContent=s.trackPx+"px";
+  $("shv").textContent=s.shadowPct+"%";
+  document.querySelectorAll(".pos.sty").forEach(b=>b.classList.toggle("on",b.dataset.sty===s.box));
+  $("ovr").checked=!!CAPS[cur].style;
 }
 function save(){
   const c=CAPS[cur];
@@ -380,7 +486,7 @@ function hbtn(){
 }
 function restore(i){
   hp=i;
-  hist[hp].forEach((s,k)=>Object.assign(CAPS[k],s));
+  hist[hp].forEach((s,k)=>{ Object.assign(CAPS[k],s); CAPS[k].style=s.style||null; });
   load(); hbtn();
 }
 $("undo").onclick=()=>{ if(hp>0) restore(hp-1); };
@@ -391,6 +497,72 @@ document.querySelectorAll(".pos[data-y]").forEach(b=>{
 });
 $("fzh").onchange=e=>{ FONT.zh=e.target.value; paint(); };
 $("fen").onchange=e=>{ FONT.en=e.target.value; paint(); };
+
+// ─ 字卡樣式包 ─
+document.querySelectorAll(".pos.sty").forEach(b=>{
+  b.onclick=()=>{ curSty().box=b.dataset.sty; syncSty(); paint(); snap(); };
+});
+[["fs","sizePx"],["lh","gapPx"],["tr","trackPx"],["sh","shadowPct"]].forEach(([id,key])=>{
+  $(id).addEventListener("input",e=>{ curSty()[key]=+e.target.value; syncSty(); paint(); });
+  $(id).addEventListener("change",snap);
+});
+$("ovr").onchange=e=>{
+  CAPS[cur].style = e.target.checked ? JSON.parse(JSON.stringify(STYLE)) : null;
+  syncSty(); paint(); snap();
+};
+
+// ─ LUT 選擇（只記錄、成品才真套；預覽不假裝變色） ─
+$("lut").onchange=e=>{ LUT.name=e.target.value; };
+$("lu").addEventListener("input",e=>{ LUT.strengthPct=+e.target.value; $("luv").textContent=e.target.value+"%"; });
+$("luv").textContent=LUT.strengthPct+"%";
+
+// ─ 配方存檔（localStorage；送出時一併帶回沉澱進 repo reel/presets/） ─
+const PKEY="yuzhiReelsPresets";
+const BUILTIN={
+  "試作01 日光澆水":{style:{box:"plain",sizePx:52,gapPx:82,trackPx:4,shadowPct:63},
+    lut:{name:"A",strengthPct:100},fonts:{zh:'"Noto Sans TC",sans-serif',en:'"Playfair Display",serif'},builtin:true},
+  "試作02 室內換花":{style:{box:"plain",sizePx:52,gapPx:82,trackPx:4,shadowPct:63},
+    lut:{name:"H",strengthPct:100},fonts:{zh:'"Noto Sans TC",sans-serif',en:'"Playfair Display",serif'},builtin:true}
+};
+const readP=()=>{ try{ return JSON.parse(localStorage.getItem(PKEY)||"{}"); }catch(_){ return {}; } };
+const writeP=o=>{ try{ localStorage.setItem(PKEY,JSON.stringify(o)); }catch(_){} };
+let usedPreset="";
+function fillP(sel){
+  const all=Object.assign({},BUILTIN,readP());
+  $("psel").innerHTML='<option value="">（不套用）</option>'+
+    Object.keys(all).map(n=>'<option value="'+n.replace(/"/g,"&quot;")+'">'+n+(all[n].builtin?" · 內建":"")+'</option>').join("");
+  if(sel) $("psel").value=sel;
+}
+function pmsg(t){ $("pmsg").textContent=t; }
+$("psave").onclick=()=>{
+  const n=$("pname").value.trim();
+  if(!n){ pmsg("請先填配方名稱再存"); return; }
+  if(BUILTIN[n]){ pmsg("這個名稱是內建配方、請換一個名字"); return; }
+  const o=readP();
+  o[n]={style:JSON.parse(JSON.stringify(STYLE)), lut:JSON.parse(JSON.stringify(LUT)),
+        fonts:{zh:FONT.zh,en:FONT.en}, cover:cover?{rule:"frameSec",frameSec:cover.frameSec}:null};
+  writeP(o); usedPreset=n; fillP(n); pmsg("已存配方「"+n+"」，送出時會一併回傳給植影所收進 repo");
+};
+$("pload").onclick=()=>{
+  const n=$("psel").value; if(!n){ pmsg("請先在左邊選一個配方"); return; }
+  const p=Object.assign({},BUILTIN,readP())[n]; if(!p) return;
+  Object.assign(STYLE,p.style||{});
+  Object.assign(LUT,p.lut||{});
+  CAPS.forEach(c=>c.style=null);
+  if(p.fonts){ FONT.zh=p.fonts.zh; FONT.en=p.fonts.en;
+    [["fzh","zh"],["fen","en"]].forEach(([id,k])=>{ const s=$(id);
+      [...s.options].forEach(o=>{ if(o.value===p.fonts[k]) s.value=o.value; }); }); }
+  $("lut").value=LUT.name; $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%";
+  usedPreset=n; $("pname").value=BUILTIN[n]?"":n;
+  load(); snap(); pmsg("已套用配方「"+n+"」（每張字卡的個別覆寫已清掉、統一吃配方）");
+};
+$("pdel").onclick=()=>{
+  const n=$("psel").value; if(!n) return;
+  if(BUILTIN[n]){ pmsg("內建配方不能刪"); return; }
+  const o=readP(); delete o[n]; writeP(o); if(usedPreset===n) usedPreset="";
+  fillP(""); pmsg("已刪除配方「"+n+"」");
+};
+fillP("");
 
 $("zone").onclick=()=>{
   const on=$("zone").classList.toggle("on");
@@ -516,7 +688,7 @@ async function deliver(jsonText){
     const r=await fetch(INBOX,{method:"POST",body:body});
     const d=await r.json();
     if(!d.ok) throw new Error(d.error||"unknown");
-    let msg="✅ 已送達協作板（"+d.at+"）、植影所會自動取件";
+    let msg="已送達協作板（"+d.at+"）、植影所會自動取件";
     if(AP.h && AP.id){
       // 雙發：同步把核可中心原件退回（端點回應忽略即可；已處理過的件端點自行擋）
       const fd=new URLSearchParams({approvalDecide:"1", h:AP.h, decision:"reject",
@@ -532,7 +704,7 @@ async function deliver(jsonText){
       st.appendChild(a);
     }
   }catch(err){
-    st.textContent="⚠ 自動傳送沒成功，請按下面「複製參數」貼給我";
+    st.textContent="自動傳送沒成功，請按下面「複製參數」貼給我";
     st.className="stat bad";
   }
 }
@@ -544,10 +716,15 @@ $("send").onclick=()=>{
     enPolicy:"留空者由 Claude 依中文自動翻譯",
     fonts:{ zh:$("fzh").selectedOptions[0].textContent, en:$("fen").selectedOptions[0].textContent,
             zhCss:FONT.zh, enCss:FONT.en },
+    style:Object.assign({scope:"global",note:"數值以 1080×1920 畫布為基準"},STYLE),
+    lut:{name:"YUZHI-"+LUT.name, file:"grade/yuzhi_"+LUT.name+".png", strengthPct:LUT.strengthPct},
+    presetName:usedPreset||null,
+    preset:(usedPreset && !BUILTIN[usedPreset]) ? readP()[usedPreset]||null : null,
     captions:CAPS.map((c,i)=>({n:i+1,zh:c.zh,en:c.en||"(auto)",
       start:+c.st.toFixed(2),duration:+c.du.toFixed(2),
       pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
-      px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)}})),
+      px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)},
+      style:c.style||null})),
     cover:cover,
     audio:{
       water:{start:+$("ws").value, end:+$("we").value,
