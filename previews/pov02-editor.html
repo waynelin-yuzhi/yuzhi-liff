@@ -21,12 +21,8 @@ h1{font-size:15px}
 #endLayer{position:absolute;inset:0;background:#000;display:none;align-items:center;justify-content:center}
 #endLayer.on{display:flex}
 #endLayer img{width:65%}
-#capov{position:absolute;left:0;right:0;text-align:center;display:none;pointer-events:none;
-       text-shadow:0 1px 3px rgba(0,0,0,.95),0 2px 8px rgba(0,0,0,.8);transform:translateY(-50%)}
-#capov.on{display:block}
+#capov{position:absolute;inset:0;pointer-events:none}
 #capov .cl{position:absolute;left:0;right:0;text-align:center;transform:translateY(-50%);color:#fff;font-size:9px;line-height:1.3;letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.95),0 2px 8px rgba(0,0,0,.8)}
-#capov .zh{color:#fff;font-size:9px;line-height:1.3;letter-spacing:.04em}
-#capov .en{color:#fff;font-size:6px;opacity:.92;margin-top:2px}
 video{width:36%;max-width:160px;aspect-ratio:9/16;background:#000;border-radius:2px}
 .side{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
 .info{font-family:ui-monospace,monospace;font-size:12px;color:var(--moss);min-height:16px}
@@ -160,7 +156,8 @@ function paintCaps(){
       +`<option value="0" ${c.shot===0?"selected":""}>成果照</option>`;
     const st=capTime(c), en=capEnd(c);
     // 同刀重疊偵測
-    const clash=caps.some((o,j)=>j!==i && o.shot===c.shot && capTime(o)<en && capEnd(o)>st);
+    const clash=caps.some((o,j)=>j!==i && capTime(o)<en && capEnd(o)>st && o.pos===c.pos);
+    const nearby=caps.some((o,j)=>j!==i && capTime(o)<en && capEnd(o)>st && o.pos!==c.pos);
     if(clash) w.classList.add("warn");
     // 超出該刀長度提醒
     const lim = c.shot===0 ? 3.0 : shots[c.shot-1].nb*BEAT;
@@ -181,7 +178,8 @@ function paintCaps(){
         </select>
       </div>
       <div class="captime">出現 <b>${st.toFixed(1)}s</b> → 消失 <b>${en.toFixed(1)}s</b>
-        ${clash?'<span class="w">・和同刀另一句重疊了</span>':''}
+        ${clash?'<span class="w">・和另一句在同位置重疊</span>':''}
+        ${nearby?'<span style="color:#8a8275">・同時另一句在別的位置</span>':''}
         ${over?'<span class="w">・超出這一刀的長度</span>':''}</div>`;
     box.appendChild(w);
   });
@@ -259,14 +257,12 @@ function timelineNow(){
   return shotStart(cur+1)+Math.max(0,inShot);
 }
 function paintCapOverlay(){
-  const t=timelineNow(); const ov=$("capov");
-  if(t<0){ ov.classList.remove("on"); return; }
-  const hit=caps.find(c=>c.shot!==0 && t>=capTime(c) && t<=capTime(c)+c.du);
-  if(!hit){ ov.classList.remove("on"); return; }
-  ov.querySelector(".zh").textContent=hit.tx.split("|")[0];
-  ov.querySelector(".en").textContent="";
-  ov.style.top=(POSY[hit.pos]||71)+"%";
-  ov.classList.add("on");
+  const ov=$("capov"); if(!ov) return;
+  const t=timelineNow();
+  if(t<0){ ov.innerHTML=""; return; }
+  const hits=caps.filter(c=>c.shot!==0 && t>=capTime(c) && t<=capTime(c)+c.du);
+  ov.innerHTML=hits.map(h=>`<div class="cl" style="top:${POSY[h.pos]||71}%">${
+    h.tx.split("|")[0].replace(/</g,"&lt;")}</div>`).join("");
 }
 vid.addEventListener("timeupdate",paintCapOverlay);
 vid.addEventListener("seeked",paintCapOverlay);
