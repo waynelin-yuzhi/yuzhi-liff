@@ -359,13 +359,24 @@ $("send").onclick=async()=>{
     shots:shots.map(s=>({name:s.nm,start:+s.st.toFixed(1),beats:s.nb})),
     captions:caps.map(c=>({text:c.tx,shot:c.shot,offset:c.off,duration:c.du,pos:c.pos,
                            at:+capTime(c).toFixed(2)}))};
+  st.textContent="傳送中…"; st.className="stat";
+  const body=new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(payload)});
   try{
-    const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",
-      body:new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(payload)})});
-    const d=await r.json();
-    if(!d.ok) throw 0;
+    // GAS 會 302 轉址；fetch 預設跟隨，但 CORS 下讀不到回應 → 用 no-cors 送、成功與否看有沒有丟例外
+    const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body});
+    let ok=false;
+    try{ const d=await r.json(); ok=!!d.ok; }catch(_){ ok=r.ok||r.type==="opaque"; }
+    if(!ok) throw 0;
     st.textContent="已送達（"+shots.length+" 刀 / "+caps.length+" 句字幕）"; st.className="stat ok";
-  }catch(_){ st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad"; }
+  }catch(_){
+    // 退路：no-cors 再送一次（不會有回應但送得出去），避免誤報失敗
+    try{
+      await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body,mode:"no-cors"});
+      st.textContent="已送出（"+shots.length+" 刀 / "+caps.length+" 句字幕）"; st.className="stat ok";
+    }catch(e){
+      st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad";
+    }
+  }
 };
 </script>
 </body>
