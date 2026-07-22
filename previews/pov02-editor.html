@@ -177,7 +177,11 @@ function paintCaps(){
           <option ${c.pos==="照片"?"selected":""}>照片</option>
         </select>
       </div>
-      <div class="captime">出現 <b>${st.toFixed(1)}s</b> → 消失 <b>${en.toFixed(1)}s</b>
+      <div class="captime">出現 <b>${st.toFixed(1)}s</b> → 消失 <b>${en.toFixed(1)}s</b>・清楚 <b>${
+        Math.max(0,c.du-2*Math.min(0.4,c.du/3)).toFixed(1)}s</b>${
+        (()=>{const solid=Math.max(0,c.du-2*Math.min(0.4,c.du/3));
+              const cn=c.tx.split("|")[0].replace(/[^\u4e00-\u9fa5]/g,"").length;
+              return solid>0 && cn/solid>7 ? `<span class="w">・${(cn/solid).toFixed(0)}字/秒 太快讀不完</span>` : "";})()}
         ${clash?'<span class="w">・和另一句在同位置重疊</span>':''}
         ${nearby?'<span style="color:#8a8275">・同時另一句在別的位置</span>':''}
         ${over?'<span class="w">・超出這一刀的長度</span>':''}</div>`;
@@ -256,13 +260,22 @@ function timelineNow(){
   if(inShot<-0.2||inShot>s.nb*BEAT+0.2) return -1;
   return shotStart(cur+1)+Math.max(0,inShot);
 }
+const CFADE=0.4;
+function capFade(c){ return Math.min(CFADE, c.du/3); }   // 與出片端同演算法
+function capAlpha(c,t){
+  const st=capTime(c), f=capFade(c), en=st+c.du;
+  if(t<st||t>en) return 0;
+  if(t<st+f) return (t-st)/f;
+  if(t>en-f) return (en-t)/f;
+  return 1;
+}
 function paintCapOverlay(){
   const ov=$("capov"); if(!ov) return;
   const t=timelineNow();
   if(t<0){ ov.innerHTML=""; return; }
   const hits=caps.filter(c=>c.shot!==0 && t>=capTime(c) && t<=capTime(c)+c.du);
-  ov.innerHTML=hits.map(h=>`<div class="cl" style="top:${POSY[h.pos]||71}%">${
-    h.tx.split("|")[0].replace(/</g,"&lt;")}</div>`).join("");
+  ov.innerHTML=hits.map(h=>`<div class="cl" style="top:${POSY[h.pos]||71}%;opacity:${
+    capAlpha(h,t).toFixed(2)}">${h.tx.split("|")[0].replace(/</g,"&lt;")}</div>`).join("");
 }
 vid.addEventListener("timeupdate",paintCapOverlay);
 vid.addEventListener("seeked",paintCapOverlay);
