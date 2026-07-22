@@ -255,6 +255,8 @@ function paintCapOverlay(){
 }
 vid.addEventListener("timeupdate",paintCapOverlay);
 vid.addEventListener("seeked",paintCapOverlay);
+// 持續刷新：暫停/逐格拖曳時也要跟著變（timeupdate 只在播放時觸發）
+(function loop(){ paintCapOverlay(); requestAnimationFrame(loop); })();
 
 function playRange(a,b){
   vid.currentTime=a; vid.play();
