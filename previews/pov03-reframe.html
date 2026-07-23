@@ -30,6 +30,7 @@ h1{font-size:17px}
 .seg small{display:block;font-family:ui-monospace,monospace;font-size:9px;opacity:.8}
 .posrow{display:flex;gap:6px;margin-bottom:10px}
 .posrow button{flex:1;padding:8px 2px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:12px;cursor:pointer}
+.toast{font-size:12px;color:var(--warn);min-height:16px;margin-bottom:6px;text-align:center;font-family:ui-monospace,monospace}
 .cur{background:#fff;border:1px solid var(--line);border-radius:2px;padding:8px 12px;font-size:12px;color:var(--muted);margin-bottom:10px}
 .cur b{color:var(--moss);font-family:ui-monospace,monospace}
 .send{width:100%;padding:14px;background:var(--moss);color:var(--paper);border:none;font-family:inherit;font-size:15px;letter-spacing:.1em;cursor:pointer;border-radius:2px}
@@ -42,9 +43,8 @@ h1{font-size:17px}
 <div class="sub">REFRAME · 橫轉直 · 自己分段各框主體</div>
 <div class="help">
 金色框＝直式會留下的範圍，變暗＝會被裁掉。<br>
-① 播放到主體換位置的地方 → 按「<b>在此切一段</b>」把它切開<br>
-② 點段落 → 左右拖金框把主體框進去<br>
-③ 每段都框好 → 送出
+想自己重分段：先按「<b>全部併一段</b>」清成一整段，再到你要的點按「<b>在此切一刀</b>」，切點之前就是前一段。<br>
+每段都拖金框框好主體 → 送出。
 </div>
 
 <div class="stage" id="stage">
@@ -59,10 +59,11 @@ h1{font-size:17px}
 </div>
 
 <div class="actrow">
-  <button class="gold" id="split">在此切一段</button>
+  <button class="gold" id="split">在此切一刀</button>
   <button class="warn" id="merge">刪這段切點</button>
-  <button id="reset">重設分段</button>
+  <button id="oneseg">全部併一段</button>
 </div>
+<div id="toast" class="toast"></div>
 
 <div class="seglist" id="seglist"></div>
 
@@ -107,19 +108,25 @@ function renderSegs(){
 }
 function segAt(t){for(let i=0;i<segs.length;i++)if(t>=segs[i].a&&t<segs[i].b)return i;return segs.length-1;}
 
+let toastT=null;
+function toast(msg){$("toast").textContent=msg; clearTimeout(toastT); toastT=setTimeout(()=>$("toast").textContent="",2600);}
 $("split").onclick=()=>{
   const t=+vid.currentTime.toFixed(1), i=segAt(t);
-  if(t<=segs[i].a+0.3||t>=segs[i].b-0.3){$("cur").textContent="太靠近切點了、換個位置再切";return;}
+  if(t<=segs[i].a+0.15){toast("已經在這段開頭了、不用切");return;}
+  if(t>=segs[i].b-0.15){toast("已經在這段結尾了（下一段的開頭）");return;}
   segs.splice(i+1,0,{a:t,b:segs[i].b,x:segs[i].x});
-  segs[i].b=t; cur=i+1; save();renderSegs();drawBox();
+  segs[i].b=t; cur=i; save();renderSegs();drawBox();
+  toast("已在 "+t.toFixed(1)+"s 切開，之前＝第"+(i+1)+"段");
 };
 $("merge").onclick=()=>{
-  if(segs.length<=1||cur===0){$("cur").textContent="第一段沒有前切點可刪";return;}
+  if(segs.length<=1||cur===0){toast("第一段沒有前切點可刪");return;}
   segs[cur-1].b=segs[cur].b; segs.splice(cur,1); cur=Math.max(0,cur-1); save();renderSegs();drawBox();
+  toast("已合併回上一段");
 };
-$("reset").onclick=()=>{
-  segs=[{a:0,b:17,x:0.533},{a:17,b:37,x:0.46},{a:37,b:73,x:0.50},{a:73,b:80.6,x:0.50}];
-  cur=0; save();renderSegs();drawBox();
+$("oneseg").onclick=()=>{
+  const x=segs[0].x;
+  segs=[{a:0,b:DUR,x:x}]; cur=0; save();renderSegs();drawBox();
+  toast("已併成一整段、從這裡開始自己切");
 };
 
 function boxW(){return vid.clientHeight*9/16;}
