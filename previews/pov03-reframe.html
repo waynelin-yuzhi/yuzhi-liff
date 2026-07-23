@@ -54,7 +54,9 @@ h1{font-size:17px}
 
 <div class="bar">
   <button class="play" id="play">播放</button>
-  <input type="range" id="seek" min="0" max="80.6" step="0.1" value="0">
+  <button class="play" id="pf" style="width:38px;background:#fff;color:var(--moss);border:1px solid var(--moss)">◀格</button>
+  <button class="play" id="nf" style="width:38px;background:#fff;color:var(--moss);border:1px solid var(--moss)">格▶</button>
+  <input type="range" id="seek" min="0" max="80.6" step="0.033" value="0">
   <span class="tval" id="tval">0.0s</span>
 </div>
 
@@ -157,6 +159,10 @@ window.addEventListener("touchend",()=>drag=false);
 
 document.querySelectorAll(".posrow button").forEach(b=>b.onclick=()=>{segs[cur].x=parseFloat(b.dataset.p);drawBox();save();});
 $("play").onclick=()=>{if(vid.paused){vid.play();$("play").textContent="暫停";}else{vid.pause();$("play").textContent="播放";}};
+const FR=1/30;
+function step(d){vid.pause();$("play").textContent="播放";vid.currentTime=Math.max(0,Math.min(DUR,vid.currentTime+d));cur=segAt(vid.currentTime);renderSegs();drawBox();}
+$("pf").onclick=()=>step(-FR);
+$("nf").onclick=()=>step(FR);
 $("seek").oninput=e=>{vid.currentTime=parseFloat(e.target.value);cur=segAt(vid.currentTime);renderSegs();drawBox();};
 function save(){try{localStorage.setItem("pov03_rf",JSON.stringify(segs));}catch(_){}}
 
