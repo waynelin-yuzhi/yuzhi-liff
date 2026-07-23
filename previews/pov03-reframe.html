@@ -10,45 +10,42 @@
 body{background:var(--paper);color:var(--ink);font-family:"Songti TC",serif;max-width:680px;margin:0 auto;padding:14px}
 h1{font-size:17px}
 .sub{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.12em;margin:2px 0 12px}
-.help{font-size:13px;line-height:1.8;background:#fff;border:1px solid var(--line);border-radius:2px;padding:10px 12px;margin-bottom:12px}
-.tabs{display:flex;gap:5px;margin-bottom:10px}
-.tab{flex:1;padding:9px 4px;text-align:center;border:1px solid var(--moss);color:var(--moss);background:#fff;
-     border-radius:2px;font-size:12px;cursor:pointer;line-height:1.4}
-.tab.on{background:var(--moss);color:var(--paper)}
-.tab small{display:block;font-family:ui-monospace,monospace;font-size:9px;opacity:.8}
+.help{font-size:13px;line-height:1.75;background:#fff;border:1px solid var(--line);border-radius:2px;padding:10px 12px;margin-bottom:12px}
 .stage{position:relative;width:100%;background:#000;border:1px solid var(--line);border-radius:2px;overflow:hidden;touch-action:none}
 .stage video{width:100%;display:block}
-/* 直式裁切框：全高、9:16 寬、可左右拖 */
 #cropbox{position:absolute;top:0;bottom:0;border:2px solid var(--gold);box-shadow:0 0 0 2000px rgba(0,0,0,.5);cursor:ew-resize}
 #cropbox::after{content:"直式範圍";position:absolute;top:4px;left:50%;transform:translateX(-50%);
   background:var(--gold);color:#1b1a17;font-size:10px;font-family:ui-monospace,monospace;padding:1px 6px;border-radius:2px;white-space:nowrap}
 .bar{display:flex;align-items:center;gap:10px;margin:10px 0}
-.play{width:56px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
+.play{width:52px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
 #seek{flex:1;accent-color:var(--moss)}
-.tval{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);min-width:70px;text-align:right}
+.tval{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);min-width:56px;text-align:right}
+.actrow{display:flex;gap:6px;margin-bottom:8px}
+.actrow button{flex:1;padding:10px 2px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
+.actrow button.gold{border-color:var(--gold);color:#8a6d1b;background:#fdf9ee}
+.actrow button.warn{border-color:var(--warn);color:var(--warn)}
+.seglist{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+.seg{flex:0 0 auto;padding:7px 10px;border:1px solid var(--line);background:#fff;border-radius:2px;font-size:12px;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4}
+.seg.on{border-color:var(--moss);background:var(--moss);color:var(--paper)}
+.seg small{display:block;font-family:ui-monospace,monospace;font-size:9px;opacity:.8}
 .posrow{display:flex;gap:6px;margin-bottom:10px}
-.posrow button{flex:1;padding:9px 2px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:12px;cursor:pointer}
+.posrow button{flex:1;padding:8px 2px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:12px;cursor:pointer}
 .cur{background:#fff;border:1px solid var(--line);border-radius:2px;padding:8px 12px;font-size:12px;color:var(--muted);margin-bottom:10px}
 .cur b{color:var(--moss);font-family:ui-monospace,monospace}
 .send{width:100%;padding:14px;background:var(--moss);color:var(--paper);border:none;font-family:inherit;font-size:15px;letter-spacing:.1em;cursor:pointer;border-radius:2px}
 .stat{font-size:13px;padding:8px 0;min-height:18px}
 .stat.ok{color:#2f5d2a}.stat.bad{color:var(--warn)}
-.mini{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-.mini .lab{font-size:11px;color:var(--muted);min-width:60px}
-.mini .prev{width:56px;aspect-ratio:9/16;background:#000 center/cover;border:1px solid var(--line);border-radius:2px;overflow:hidden;position:relative}
 </style>
 </head>
 <body>
 <h1>試作03 裁切台</h1>
-<div class="sub">REFRAME · 橫轉直 · 每段自己框主體</div>
+<div class="sub">REFRAME · 橫轉直 · 自己分段各框主體</div>
 <div class="help">
-橫式原片轉直式 Reels 只能取畫面的一直條。<b>金色框＝直式會留下的範圍</b>，其餘變暗＝會被裁掉。<br>
-① 點上面的段落頁籤 → 播放器跳到那段<br>
-② 左右拖金色框、把主體（手／植物）框進去<br>
-③ 每段都框好 → 最下面送出，我照你的位置重出
+金色框＝直式會留下的範圍，變暗＝會被裁掉。<br>
+① 播放到主體換位置的地方 → 按「<b>在此切一段</b>」把它切開<br>
+② 點段落 → 左右拖金框把主體框進去<br>
+③ 每段都框好 → 送出
 </div>
-
-<div class="tabs" id="tabs"></div>
 
 <div class="stage" id="stage">
   <video id="vid" src="https://ytlakkxrbookftluulbo.supabase.co/storage/v1/object/public/reels-publish/trial03-proxy-h.mp4" playsinline muted preload="metadata"></video>
@@ -60,6 +57,14 @@ h1{font-size:17px}
   <input type="range" id="seek" min="0" max="80.6" step="0.1" value="0">
   <span class="tval" id="tval">0.0s</span>
 </div>
+
+<div class="actrow">
+  <button class="gold" id="split">在此切一段</button>
+  <button class="warn" id="merge">刪這段切點</button>
+  <button id="reset">重設分段</button>
+</div>
+
+<div class="seglist" id="seglist"></div>
 
 <div class="posrow">
   <button data-p="0.0">最左</button>
@@ -74,54 +79,67 @@ h1{font-size:17px}
 <div class="stat" id="stat"></div>
 
 <script>
-const DUR=80.6, SRCW=3840, CROPW=1215; // 4K 寬、直式裁切寬
-const PAN=SRCW-CROPW;                    // 可平移範圍(px)
+const DUR=80.6, SRCW=3840, CROPW=1215, PAN=SRCW-CROPW;
 const $=id=>document.getElementById(id);
 const vid=$("vid"), stage=$("stage"), box=$("cropbox");
 
-// 段＝內容分段（跟出片變速段一致）；x=裁切中心比例 0~1
+// 起點＝Wayne 已送過的四段位置（AN-0163）；可再自行切細
 let segs=[
- {nm:"龜背芋修剪", a:0,  b:17, x:0.5},
- {nm:"換盆",       a:17, b:37, x:0.5},
- {nm:"海葡萄修剪", a:37, b:73, x:0.5},
- {nm:"收尾澆水",   a:73, b:80.6, x:0.5}
+ {a:0,  b:17,  x:0.533},
+ {a:17, b:37,  x:0.46},
+ {a:37, b:73,  x:0.50},
+ {a:73, b:80.6,x:0.50}
 ];
-try{const s=JSON.parse(localStorage.getItem("pov03_segs")||"null");if(s&&s.length)segs=s;}catch(_){}
+try{const s=JSON.parse(localStorage.getItem("pov03_rf")||"null");if(s&&s.length)segs=s;}catch(_){}
 let cur=0;
+const fmt=t=>t.toFixed(1);
 
-segs.forEach((s,i)=>{
-  const t=document.createElement("div");
-  t.className="tab"+(i===0?" on":"");
-  t.innerHTML=`${s.nm}<small>${s.a}-${s.b}s</small>`;
-  t.onclick=()=>{cur=i;seekMid();paintTabs();drawBox();};
-  $("tabs").appendChild(t);
-});
-function paintTabs(){[...$("tabs").children].forEach((t,i)=>t.classList.toggle("on",i===cur));}
-function seekMid(){vid.currentTime=(segs[cur].a+segs[cur].b)/2;}
+function renderSegs(){
+  const L=$("seglist"); L.innerHTML="";
+  segs.forEach((s,i)=>{
+    const d=document.createElement("div");
+    d.className="seg"+(i===cur?" on":"");
+    d.innerHTML=`第${i+1}段<small>${fmt(s.a)}-${fmt(s.b)}s · ${(s.x*100).toFixed(0)}%</small>`;
+    d.onclick=()=>{cur=i;vid.currentTime=(s.a+s.b)/2;renderSegs();drawBox();};
+    L.appendChild(d);
+  });
+  if($("seglist").children[cur]) $("seglist").children[cur].scrollIntoView({inline:"center",block:"nearest"});
+}
+function segAt(t){for(let i=0;i<segs.length;i++)if(t>=segs[i].a&&t<segs[i].b)return i;return segs.length-1;}
 
-// 直式框寬度 = 影片顯示高度 × 9/16
+$("split").onclick=()=>{
+  const t=+vid.currentTime.toFixed(1), i=segAt(t);
+  if(t<=segs[i].a+0.3||t>=segs[i].b-0.3){$("cur").textContent="太靠近切點了、換個位置再切";return;}
+  segs.splice(i+1,0,{a:t,b:segs[i].b,x:segs[i].x});
+  segs[i].b=t; cur=i+1; save();renderSegs();drawBox();
+};
+$("merge").onclick=()=>{
+  if(segs.length<=1||cur===0){$("cur").textContent="第一段沒有前切點可刪";return;}
+  segs[cur-1].b=segs[cur].b; segs.splice(cur,1); cur=Math.max(0,cur-1); save();renderSegs();drawBox();
+};
+$("reset").onclick=()=>{
+  segs=[{a:0,b:17,x:0.533},{a:17,b:37,x:0.46},{a:37,b:73,x:0.50},{a:73,b:80.6,x:0.50}];
+  cur=0; save();renderSegs();drawBox();
+};
+
 function boxW(){return vid.clientHeight*9/16;}
 function drawBox(){
   const w=boxW(), max=vid.clientWidth-w;
   box.style.width=w+"px";
   box.style.left=(segs[cur].x*max)+"px";
-  const px=Math.round(segs[cur].x*PAN);
-  $("cur").innerHTML=`<b>${segs[cur].nm}</b>　裁切中心 <b>${(segs[cur].x*100).toFixed(0)}%</b>（原檔 x=${px}px）`;
+  $("cur").innerHTML=`<b>第${cur+1}段</b> ${fmt(segs[cur].a)}-${fmt(segs[cur].b)}s　裁切中心 <b>${(segs[cur].x*100).toFixed(0)}%</b>（x=${Math.round(segs[cur].x*PAN)}px）`;
 }
 window.addEventListener("resize",drawBox);
-vid.addEventListener("loadedmetadata",()=>{$("seek").max=DUR.toFixed(1);seekMid();drawBox();});
+vid.addEventListener("loadedmetadata",()=>{$("seek").max=DUR.toFixed(1);vid.currentTime=(segs[0].a+segs[0].b)/2;drawBox();});
 vid.addEventListener("timeupdate",()=>{$("seek").value=vid.currentTime;$("tval").textContent=vid.currentTime.toFixed(1)+"s";});
 
-// 拖曳金框
 let drag=false;
-const px=e=>(e.touches?e.touches[0]:e).clientX;
+const gx=e=>(e.touches?e.touches[0]:e).clientX;
 function move(e){
   if(!drag)return;
   const r=stage.getBoundingClientRect(), w=boxW(), max=vid.clientWidth-w;
-  let left=px(e)-r.left-w/2;
-  left=Math.max(0,Math.min(max,left));
-  segs[cur].x=max>0?left/max:0.5;
-  drawBox(); save(); e.preventDefault();
+  let left=gx(e)-r.left-w/2; left=Math.max(0,Math.min(max,left));
+  segs[cur].x=max>0?left/max:0.5; drawBox(); save(); e.preventDefault();
 }
 box.addEventListener("mousedown",e=>{drag=true;e.preventDefault();});
 box.addEventListener("touchstart",e=>{drag=true;e.preventDefault();},{passive:false});
@@ -131,31 +149,30 @@ window.addEventListener("mouseup",()=>drag=false);
 window.addEventListener("touchend",()=>drag=false);
 
 document.querySelectorAll(".posrow button").forEach(b=>b.onclick=()=>{segs[cur].x=parseFloat(b.dataset.p);drawBox();save();});
-
 $("play").onclick=()=>{if(vid.paused){vid.play();$("play").textContent="暫停";}else{vid.pause();$("play").textContent="播放";}};
-$("seek").oninput=e=>{vid.currentTime=parseFloat(e.target.value);};
-function save(){try{localStorage.setItem("pov03_segs",JSON.stringify(segs));}catch(_){}}
+$("seek").oninput=e=>{vid.currentTime=parseFloat(e.target.value);cur=segAt(vid.currentTime);renderSegs();drawBox();};
+function save(){try{localStorage.setItem("pov03_rf",JSON.stringify(segs));}catch(_){}}
 
 const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
 const TK="7c7e94a5e2af4764a94cccf49c31aa0f";
 $("send").onclick=async()=>{
   const st=$("stat"); st.textContent="傳送中…"; st.className="stat";
   const payload={title:"試作03 裁切位置",
-    reframe:segs.map(s=>({seg:s.nm,start:s.a,end:s.b,
-      xPct:+(s.x*100).toFixed(1), x4k:Math.round(s.x*PAN)}))};
+    reframe:segs.map((s,i)=>({seg:i+1,start:+s.a.toFixed(1),end:+s.b.toFixed(1),
+      xPct:+(s.x*100).toFixed(1),x4k:Math.round(s.x*PAN)}))};
   const body=new URLSearchParams({token:TK,payload:JSON.stringify(payload)});
   try{
     const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body});
     let ok=false; try{ok=(await r.json()).ok;}catch(_){ok=r.ok||r.type==="opaque";}
     if(!ok)throw 0;
-    st.textContent="已送達 · 植影所會照這些位置重出"; st.className="stat ok";
+    st.textContent="已送達 "+segs.length+" 段 · 植影所會照這些位置重出"; st.className="stat ok";
   }catch(_){
     try{await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body,mode:"no-cors"});
-      st.textContent="已送出"; st.className="stat ok";}
+      st.textContent="已送出 "+segs.length+" 段"; st.className="stat ok";}
     catch(e){st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad";}
   }
 };
-paintTabs();
+renderSegs();
 </script>
 </body>
 </html>
