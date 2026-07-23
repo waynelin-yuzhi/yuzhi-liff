@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>試作03 裁切台</title>
+<style>
+:root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--line:#E5E0D3;--warn:#8a4a30;--gold:#E8B14E}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--paper);color:var(--ink);font-family:"Songti TC",serif;max-width:680px;margin:0 auto;padding:14px}
+h1{font-size:17px}
+.sub{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.12em;margin:2px 0 12px}
+.help{font-size:13px;line-height:1.8;background:#fff;border:1px solid var(--line);border-radius:2px;padding:10px 12px;margin-bottom:12px}
+.tabs{display:flex;gap:5px;margin-bottom:10px}
+.tab{flex:1;padding:9px 4px;text-align:center;border:1px solid var(--moss);color:var(--moss);background:#fff;
+     border-radius:2px;font-size:12px;cursor:pointer;line-height:1.4}
+.tab.on{background:var(--moss);color:var(--paper)}
+.tab small{display:block;font-family:ui-monospace,monospace;font-size:9px;opacity:.8}
+.stage{position:relative;width:100%;background:#000;border:1px solid var(--line);border-radius:2px;overflow:hidden;touch-action:none}
+.stage video{width:100%;display:block}
+/* 直式裁切框：全高、9:16 寬、可左右拖 */
+#cropbox{position:absolute;top:0;bottom:0;border:2px solid var(--gold);box-shadow:0 0 0 2000px rgba(0,0,0,.5);cursor:ew-resize}
+#cropbox::after{content:"直式範圍";position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  background:var(--gold);color:#1b1a17;font-size:10px;font-family:ui-monospace,monospace;padding:1px 6px;border-radius:2px;white-space:nowrap}
+.bar{display:flex;align-items:center;gap:10px;margin:10px 0}
+.play{width:56px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
+#seek{flex:1;accent-color:var(--moss)}
+.tval{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);min-width:70px;text-align:right}
+.posrow{display:flex;gap:6px;margin-bottom:10px}
+.posrow button{flex:1;padding:9px 2px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:12px;cursor:pointer}
+.cur{background:#fff;border:1px solid var(--line);border-radius:2px;padding:8px 12px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.cur b{color:var(--moss);font-family:ui-monospace,monospace}
+.send{width:100%;padding:14px;background:var(--moss);color:var(--paper);border:none;font-family:inherit;font-size:15px;letter-spacing:.1em;cursor:pointer;border-radius:2px}
+.stat{font-size:13px;padding:8px 0;min-height:18px}
+.stat.ok{color:#2f5d2a}.stat.bad{color:var(--warn)}
+.mini{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.mini .lab{font-size:11px;color:var(--muted);min-width:60px}
+.mini .prev{width:56px;aspect-ratio:9/16;background:#000 center/cover;border:1px solid var(--line);border-radius:2px;overflow:hidden;position:relative}
+</style>
+</head>
+<body>
+<h1>試作03 裁切台</h1>
+<div class="sub">REFRAME · 橫轉直 · 每段自己框主體</div>
+<div class="help">
+橫式原片轉直式 Reels 只能取畫面的一直條。<b>金色框＝直式會留下的範圍</b>，其餘變暗＝會被裁掉。<br>
+① 點上面的段落頁籤 → 播放器跳到那段<br>
+② 左右拖金色框、把主體（手／植物）框進去<br>
+③ 每段都框好 → 最下面送出，我照你的位置重出
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="stage" id="stage">
+  <video id="vid" src="https://ytlakkxrbookftluulbo.supabase.co/storage/v1/object/public/reels-publish/trial03-proxy-h.mp4" playsinline muted preload="metadata"></video>
+  <div id="cropbox"></div>
+</div>
+
+<div class="bar">
+  <button class="play" id="play">播放</button>
+  <input type="range" id="seek" min="0" max="80.6" step="0.1" value="0">
+  <span class="tval" id="tval">0.0s</span>
+</div>
+
+<div class="posrow">
+  <button data-p="0.0">最左</button>
+  <button data-p="0.25">偏左</button>
+  <button data-p="0.5">置中</button>
+  <button data-p="0.75">偏右</button>
+  <button data-p="1.0">最右</button>
+</div>
+
+<div class="cur" id="cur"></div>
+<button class="send" id="send">送出裁切</button>
+<div class="stat" id="stat"></div>
+
+<script>
+const DUR=80.6, SRCW=3840, CROPW=1215; // 4K 寬、直式裁切寬
+const PAN=SRCW-CROPW;                    // 可平移範圍(px)
+const $=id=>document.getElementById(id);
+const vid=$("vid"), stage=$("stage"), box=$("cropbox");
+
+// 段＝內容分段（跟出片變速段一致）；x=裁切中心比例 0~1
+let segs=[
+ {nm:"龜背芋修剪", a:0,  b:17, x:0.5},
+ {nm:"換盆",       a:17, b:37, x:0.5},
+ {nm:"海葡萄修剪", a:37, b:73, x:0.5},
+ {nm:"收尾澆水",   a:73, b:80.6, x:0.5}
+];
+try{const s=JSON.parse(localStorage.getItem("pov03_segs")||"null");if(s&&s.length)segs=s;}catch(_){}
+let cur=0;
+
+segs.forEach((s,i)=>{
+  const t=document.createElement("div");
+  t.className="tab"+(i===0?" on":"");
+  t.innerHTML=`${s.nm}<small>${s.a}-${s.b}s</small>`;
+  t.onclick=()=>{cur=i;seekMid();paintTabs();drawBox();};
+  $("tabs").appendChild(t);
+});
+function paintTabs(){[...$("tabs").children].forEach((t,i)=>t.classList.toggle("on",i===cur));}
+function seekMid(){vid.currentTime=(segs[cur].a+segs[cur].b)/2;}
+
+// 直式框寬度 = 影片顯示高度 × 9/16
+function boxW(){return vid.clientHeight*9/16;}
+function drawBox(){
+  const w=boxW(), max=vid.clientWidth-w;
+  box.style.width=w+"px";
+  box.style.left=(segs[cur].x*max)+"px";
+  const px=Math.round(segs[cur].x*PAN);
+  $("cur").innerHTML=`<b>${segs[cur].nm}</b>　裁切中心 <b>${(segs[cur].x*100).toFixed(0)}%</b>（原檔 x=${px}px）`;
+}
+window.addEventListener("resize",drawBox);
+vid.addEventListener("loadedmetadata",()=>{$("seek").max=DUR.toFixed(1);seekMid();drawBox();});
+vid.addEventListener("timeupdate",()=>{$("seek").value=vid.currentTime;$("tval").textContent=vid.currentTime.toFixed(1)+"s";});
+
+// 拖曳金框
+let drag=false;
+const px=e=>(e.touches?e.touches[0]:e).clientX;
+function move(e){
+  if(!drag)return;
+  const r=stage.getBoundingClientRect(), w=boxW(), max=vid.clientWidth-w;
+  let left=px(e)-r.left-w/2;
+  left=Math.max(0,Math.min(max,left));
+  segs[cur].x=max>0?left/max:0.5;
+  drawBox(); save(); e.preventDefault();
+}
+box.addEventListener("mousedown",e=>{drag=true;e.preventDefault();});
+box.addEventListener("touchstart",e=>{drag=true;e.preventDefault();},{passive:false});
+window.addEventListener("mousemove",move);
+window.addEventListener("touchmove",move,{passive:false});
+window.addEventListener("mouseup",()=>drag=false);
+window.addEventListener("touchend",()=>drag=false);
+
+document.querySelectorAll(".posrow button").forEach(b=>b.onclick=()=>{segs[cur].x=parseFloat(b.dataset.p);drawBox();save();});
+
+$("play").onclick=()=>{if(vid.paused){vid.play();$("play").textContent="暫停";}else{vid.pause();$("play").textContent="播放";}};
+$("seek").oninput=e=>{vid.currentTime=parseFloat(e.target.value);};
+function save(){try{localStorage.setItem("pov03_segs",JSON.stringify(segs));}catch(_){}}
+
+const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
+const TK="7c7e94a5e2af4764a94cccf49c31aa0f";
+$("send").onclick=async()=>{
+  const st=$("stat"); st.textContent="傳送中…"; st.className="stat";
+  const payload={title:"試作03 裁切位置",
+    reframe:segs.map(s=>({seg:s.nm,start:s.a,end:s.b,
+      xPct:+(s.x*100).toFixed(1), x4k:Math.round(s.x*PAN)}))};
+  const body=new URLSearchParams({token:TK,payload:JSON.stringify(payload)});
+  try{
+    const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body});
+    let ok=false; try{ok=(await r.json()).ok;}catch(_){ok=r.ok||r.type==="opaque";}
+    if(!ok)throw 0;
+    st.textContent="已送達 · 植影所會照這些位置重出"; st.className="stat ok";
+  }catch(_){
+    try{await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body,mode:"no-cors"});
+      st.textContent="已送出"; st.className="stat ok";}
+    catch(e){st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad";}
+  }
+};
+paintTabs();
+</script>
+</body>
+</html>
