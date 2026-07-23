@@ -95,7 +95,7 @@ let segs=[
 ];
 try{const s=JSON.parse(localStorage.getItem("pov03_rf")||"null");if(s&&s.length)segs=s;}catch(_){}
 let cur=0;
-const fmt=t=>t.toFixed(1);
+const fmt=t=>t.toFixed(2);
 
 function renderSegs(){
   const L=$("seglist"); L.innerHTML="";
@@ -103,7 +103,7 @@ function renderSegs(){
     const d=document.createElement("div");
     d.className="seg"+(i===cur?" on":"");
     d.innerHTML=`第${i+1}段<small>${fmt(s.a)}-${fmt(s.b)}s · ${(s.x*100).toFixed(0)}%</small>`;
-    d.onclick=()=>{cur=i;vid.currentTime=(s.a+s.b)/2;renderSegs();drawBox();};
+    d.onclick=()=>{cur=i;vid.currentTime=s.a;renderSegs();drawBox();};  // 跳到該段起點＝切點那一格，方便核對
     L.appendChild(d);
   });
   if($("seglist").children[cur]) $("seglist").children[cur].scrollIntoView({inline:"center",block:"nearest"});
@@ -113,12 +113,12 @@ function segAt(t){for(let i=0;i<segs.length;i++)if(t>=segs[i].a&&t<segs[i].b)ret
 let toastT=null;
 function toast(msg){$("toast").textContent=msg; clearTimeout(toastT); toastT=setTimeout(()=>$("toast").textContent="",2600);}
 $("split").onclick=()=>{
-  const t=+vid.currentTime.toFixed(1), i=segAt(t);
-  if(t<=segs[i].a+0.15){toast("已經在這段開頭了、不用切");return;}
-  if(t>=segs[i].b-0.15){toast("已經在這段結尾了（下一段的開頭）");return;}
+  const t=Math.round(vid.currentTime*30)/30, i=segAt(t);  // 對齊到當前格、不四捨五入到 0.1s
+  if(t<=segs[i].a+0.03){toast("已經在這段開頭了、不用切");return;}
+  if(t>=segs[i].b-0.03){toast("已經在這段結尾了（下一段的開頭）");return;}
   segs.splice(i+1,0,{a:t,b:segs[i].b,x:segs[i].x});
   segs[i].b=t; cur=i; save();renderSegs();drawBox();
-  toast("已在 "+t.toFixed(1)+"s 切開，之前＝第"+(i+1)+"段");
+  toast("已在 "+t.toFixed(2)+"s 切開，之前＝第"+(i+1)+"段");
 };
 $("merge").onclick=()=>{
   if(segs.length<=1||cur===0){toast("第一段沒有前切點可刪");return;}
