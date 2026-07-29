@@ -21,8 +21,8 @@ video{width:100%;background:#000;border:1px solid var(--line);border-radius:2px;
 .play{width:52px;padding:8px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
 #seek{flex:1;accent-color:var(--moss)}
 .tv{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);min-width:50px;text-align:right}
-/* 封面預覽：4:5 IG 實際顯示 */
-.prevwrap{position:relative;width:100%;max-width:320px;margin:0 auto}
+/* 封面預覽：完整 9:16 + 裁切遮罩 */
+.prevwrap{position:relative;width:100%;max-width:290px;margin:0 auto}
 #cv{width:100%;display:block;border:1px solid var(--line);border-radius:2px}
 .cropnote{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;text-align:center;margin-top:4px}
 .field{margin-bottom:10px}
@@ -41,7 +41,7 @@ input[type=range]{width:100%;accent-color:var(--moss)}
 <h1>封面工作台</h1>
 <div class="sub">COVER STUDIO · 雜誌內頁排版 · 拖時間軸選底圖</div>
 <div class="help">
-拖<b>時間軸</b>選底圖 → 右邊即時看到封面成品（已按 IG 4:5 裁切顯示）→ 改標題／配色／照片比例 → 送出，我照這些設定產正式封面。
+拖<b>時間軸</b>選底圖 → 右邊即時預覽。<b>上下暗色區＝IG 會裁掉的部分</b>，用「照片上下」選畫面裡要哪一塊、「版面上下」移動整體位置。調好送出，我照設定產正式封面。
 </div>
 
 <div class="wrap">
@@ -71,14 +71,29 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       <label>照片高度 <span class="tv" id="phv">42%</span></label>
       <input type="range" id="ph" min="30" max="55" step="1" value="42">
     </div>
+    <div class="field">
+      <label>照片上下（選畫面裡的哪一塊）<span class="tv" id="pyv">置中</span></label>
+      <input type="range" id="py" min="-50" max="50" step="1" value="0">
+    </div>
+    <div class="field">
+      <label>版面上下（整體位置）<span class="tv" id="lyv">0</span></label>
+      <input type="range" id="ly" min="-160" max="160" step="4" value="0">
+    </div>
+    <div class="field">
+      <label>裁切預覽</label>
+      <div class="seg" id="cropmode">
+        <button data-c="show" class="on">顯示裁切</button>
+        <button data-c="hide">看完整</button>
+      </div>
+    </div>
     <button class="send" id="send">送出封面設定</button>
     <div class="stat" id="stat"></div>
   </div>
 
   <div class="col">
     <div class="prevwrap">
-      <canvas id="cv" width="1080" height="1350"></canvas>
-      <div class="cropnote">IG 實際顯示（4:5 裁切後）</div>
+      <canvas id="cv" width="1080" height="1920"></canvas>
+      <div class="cropnote" id="cropnote">上下暗處＝IG 會裁掉（4:5）</div>
     </div>
   </div>
 </div>
@@ -87,9 +102,9 @@ input[type=range]{width:100%;accent-color:var(--moss)}
 const $=id=>document.getElementById(id);
 const vid=$("vid"), cv=$("cv"), ctx=cv.getContext("2d");
 // 畫布＝1080×1350（IG 4:5）；原稿 1080×1920 的 y 需減 285
-const OFF=285, W=1080, M=96;
+const OFF=0, W=1080, H=1920, M=96, CUT=285;
 const PAPER="#F2EDE3", MOSS="#5F6E58", INK="#1B1A17";
-let scheme="paper", phPct=0.42;
+let scheme="paper", phPct=0.42, phShift=0, layShift=0, showCrop=true;
 
 function tracked(txt,x,y,size,color,track,font){
   ctx.font=`${size}px ${font}`; ctx.fillStyle=color; ctx.textBaseline="top";
@@ -99,23 +114,30 @@ function draw(){
   const bg = scheme==="paper"?PAPER:MOSS;
   const fg = scheme==="paper"?INK:PAPER;
   const sub= scheme==="paper"?MOSS:PAPER;
-  ctx.fillStyle=bg; ctx.fillRect(0,0,W,1350);
-  // 頁眉 y=330 → 畫布 45
-  tracked("YUZHI  URBAN PLANT LAB", M, 330-OFF, 26, sub, 0.22, '"Playfair Display",serif');
-  // 照片 y=430 → 145
-  const phH=Math.round(1920*phPct), phY=430-OFF, pw=W-M*2;
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  const L=layShift;
+  tracked("YUZHI  URBAN PLANT LAB", M, 330+L, 26, sub, 0.22, '"Playfair Display",serif');
+  const phH=Math.round(H*phPct), phY=430+L, pw=W-M*2;
   if(vid.videoWidth){
     const sc=Math.max(pw/vid.videoWidth, phH/vid.videoHeight);
     const sw=pw/sc, sh=phH/sc;
-    ctx.drawImage(vid,(vid.videoWidth-sw)/2,(vid.videoHeight-sh)/2,sw,sh,M,phY,pw,phH);
+    let sy=(vid.videoHeight-sh)/2 + (vid.videoHeight-sh)/2*(phShift/50);
+    sy=Math.max(0,Math.min(vid.videoHeight-sh,sy));
+    ctx.drawImage(vid,(vid.videoWidth-sw)/2,sy,sw,sh,M,phY,pw,phH);
   }else{ ctx.fillStyle="#000"; ctx.fillRect(M,phY,pw,phH); }
-  // 標題
   const ty=phY+phH+92;
   tracked($("zh").value, M, ty, 82, fg, 0.06, '"Noto Sans TC",sans-serif');
-  const ly=ty+Math.round(82*1.7);
+  const ly2=ty+Math.round(82*1.7);
   ctx.strokeStyle=sub; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(M,ly); ctx.lineTo(W-M,ly); ctx.stroke();
-  tracked($("en").value.toUpperCase(), M, ly+40, 30, sub, 0.20, '"Playfair Display",serif');
+  ctx.beginPath(); ctx.moveTo(M,ly2); ctx.lineTo(W-M,ly2); ctx.stroke();
+  tracked($("en").value.toUpperCase(), M, ly2+40, 30, sub, 0.20, '"Playfair Display",serif');
+  if(showCrop){
+    ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillRect(0,0,W,CUT); ctx.fillRect(0,H-CUT,W,CUT);
+    ctx.strokeStyle="rgba(232,177,78,.9)"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(0,CUT); ctx.lineTo(W,CUT);
+    ctx.moveTo(0,H-CUT); ctx.lineTo(W,H-CUT); ctx.stroke();
+  }
 }
 vid.addEventListener("loadeddata",()=>{vid.currentTime=0.8;});
 vid.addEventListener("seeked",draw);
@@ -129,6 +151,12 @@ document.querySelectorAll("#scheme button").forEach(b=>b.onclick=()=>{
   draw();
 });
 $("ph").oninput=e=>{phPct=+e.target.value/100;$("phv").textContent=e.target.value+"%";draw();};
+$("py").oninput=e=>{phShift=+e.target.value;$("pyv").textContent=phShift===0?"置中":(phShift>0?"往下"+phShift:"往上"+(-phShift));draw();};
+$("ly").oninput=e=>{layShift=+e.target.value;$("lyv").textContent=layShift;draw();};
+document.querySelectorAll("#cropmode button").forEach(b=>b.onclick=()=>{
+  showCrop=b.dataset.c==="show";
+  document.querySelectorAll("#cropmode button").forEach(x=>x.classList.toggle("on",x===b));
+  draw();});
 document.fonts.ready.then(draw);
 
 const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
@@ -138,7 +166,7 @@ $("send").onclick=async()=>{
   const payload={title:"封面設定",
     frameSec:+vid.currentTime.toFixed(2), scheme:scheme,
     coverTitle:$("zh").value, coverEn:$("en").value.toUpperCase(),
-    photoPct:+phPct.toFixed(2)};
+    photoPct:+phPct.toFixed(2), photoShift:phShift, layoutShift:layShift};
   const body=new URLSearchParams({token:TK,payload:JSON.stringify(payload)});
   try{
     const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body});
