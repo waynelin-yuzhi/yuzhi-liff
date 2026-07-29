@@ -41,7 +41,7 @@ input[type=range]{width:100%;accent-color:var(--moss)}
 <h1>封面工作台</h1>
 <div class="sub">COVER STUDIO · 雜誌內頁排版 · 拖時間軸選底圖</div>
 <div class="help">
-拖<b>時間軸</b>選底圖 → 右邊即時預覽。<b>上下暗色區＝IG 會裁掉的部分</b>，用「照片上下」選畫面裡要哪一塊、「版面上下」移動整體位置。調好送出，我照設定產正式封面。
+拖<b>時間軸</b>選底圖 → 右邊即時預覽。<b>版面已做在安全區內，IG 怎麼裁都不會切到內容</b>（上下只是純色出血）。改標題／配色／照片比例／照片上下，調好送出。
 </div>
 
 <div class="wrap">
@@ -68,8 +68,8 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       </div>
     </div>
     <div class="field">
-      <label>照片高度 <span class="tv" id="phv">42%</span></label>
-      <input type="range" id="ph" min="30" max="55" step="1" value="42">
+      <label>照片高度 <span class="tv" id="phv">36%</span></label>
+      <input type="range" id="ph" min="30" max="55" step="1" value="36">
     </div>
     <div class="field">
       <label>照片上下（選畫面裡的哪一塊）<span class="tv" id="pyv">置中</span></label>
@@ -80,9 +80,9 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       <input type="range" id="ly" min="-160" max="160" step="4" value="0">
     </div>
     <div class="field">
-      <label>裁切預覽</label>
+      <label>檢視</label>
       <div class="seg" id="cropmode">
-        <button data-c="show" class="on">顯示裁切</button>
+        <button data-c="show" class="on">顯示裁切線</button>
         <button data-c="hide">看完整</button>
       </div>
     </div>
@@ -93,7 +93,7 @@ input[type=range]{width:100%;accent-color:var(--moss)}
   <div class="col">
     <div class="prevwrap">
       <canvas id="cv" width="1080" height="1920"></canvas>
-      <div class="cropnote" id="cropnote">上下暗處＝IG 會裁掉（4:5）</div>
+      <div class="cropnote" id="cropnote">上下淡色＝IG 裁切區（版面已避開、裁掉不影響）</div>
     </div>
   </div>
 </div>
@@ -104,7 +104,7 @@ const vid=$("vid"), cv=$("cv"), ctx=cv.getContext("2d");
 // 畫布＝1080×1350（IG 4:5）；原稿 1080×1920 的 y 需減 285
 const OFF=0, W=1080, H=1920, M=96, CUT=285;
 const PAPER="#F2EDE3", MOSS="#5F6E58", INK="#1B1A17";
-let scheme="paper", phPct=0.42, phShift=0, layShift=0, showCrop=true;
+let scheme="paper", phPct=0.36, phShift=0, layShift=0, showCrop=true;
 
 function tracked(txt,x,y,size,color,track,font){
   ctx.font=`${size}px ${font}`; ctx.fillStyle=color; ctx.textBaseline="top";
@@ -116,8 +116,8 @@ function draw(){
   const sub= scheme==="paper"?MOSS:PAPER;
   ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
   const L=layShift;
-  tracked("YUZHI  URBAN PLANT LAB", M, 330+L, 26, sub, 0.22, '"Playfair Display",serif');
-  const phH=Math.round(H*phPct), phY=430+L, pw=W-M*2;
+  tracked("YUZHI  URBAN PLANT LAB", M, 380+L, 26, sub, 0.22, '"Playfair Display",serif');
+  const phH=Math.round(H*phPct), phY=470+L, pw=W-M*2;
   if(vid.videoWidth){
     const sc=Math.max(pw/vid.videoWidth, phH/vid.videoHeight);
     const sw=pw/sc, sh=phH/sc;
@@ -125,14 +125,14 @@ function draw(){
     sy=Math.max(0,Math.min(vid.videoHeight-sh,sy));
     ctx.drawImage(vid,(vid.videoWidth-sw)/2,sy,sw,sh,M,phY,pw,phH);
   }else{ ctx.fillStyle="#000"; ctx.fillRect(M,phY,pw,phH); }
-  const ty=phY+phH+92;
+  const ty=phY+phH+100;
   tracked($("zh").value, M, ty, 82, fg, 0.06, '"Noto Sans TC",sans-serif');
   const ly2=ty+Math.round(82*1.7);
   ctx.strokeStyle=sub; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(M,ly2); ctx.lineTo(W-M,ly2); ctx.stroke();
   tracked($("en").value.toUpperCase(), M, ly2+40, 30, sub, 0.20, '"Playfair Display",serif');
   if(showCrop){
-    ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillStyle="rgba(0,0,0,.28)";
     ctx.fillRect(0,0,W,CUT); ctx.fillRect(0,H-CUT,W,CUT);
     ctx.strokeStyle="rgba(232,177,78,.9)"; ctx.lineWidth=3;
     ctx.beginPath(); ctx.moveTo(0,CUT); ctx.lineTo(W,CUT);
