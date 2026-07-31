@@ -121,11 +121,26 @@ function loadDoc(d) {
   var zb = document.getElementById('zoombtn');
   if (zb) zb.addEventListener('click', function (ev) { ev.stopPropagation(); openDocZoom(); });
   if (d.docHtml) {
-    fr.addEventListener('load', function () { measureDoc(fr); });
+    fr.style.width = '794px';
+    fr.style.transformOrigin = '0 0';
+    fr.setAttribute('scrolling', 'no');
+    fr.addEventListener('load', function () { scaleDoc(fr); measureDoc(fr); });
+    window.addEventListener('resize', function () { scaleDoc(fr); });
     fr.srcdoc = d.docHtml;
   } else if (d.shareUrl) {
     fr.src = d.shareUrl;
   }
+}
+function scaleDoc(fr) {
+  var wrap = document.getElementById('docwrap');
+  if (!wrap) return;
+  var sc = wrap.clientWidth / 794;
+  fr.style.transform = 'scale(' + sc + ')';
+  fr.__scale = sc;
+  try {
+    var h = fr.contentDocument.body.scrollHeight;
+    if (h > 200) { fr.style.height = h + 'px'; wrap.style.height = Math.ceil(h * sc) + 'px'; }
+  } catch (e) {}
 }
 function measureDoc(fr) {
   try {
@@ -133,7 +148,13 @@ function measureDoc(fr) {
     if (!doc || !doc.body) return;
     var apply = function () {
       var h = Math.ceil(doc.body.getBoundingClientRect().bottom) || doc.documentElement.scrollHeight;
-      if (h > 200 && Math.abs(h + 24 - (parseInt(fr.style.height) || 0)) > 6) { fr.style.height = (h + 24) + 'px'; DOC_LOCKED = true; }
+      if (h > 200) {
+        fr.style.height = (h + 24) + 'px';
+        var wrap = document.getElementById('docwrap');
+        var sc = fr.__scale || 1;
+        if (wrap) wrap.style.height = Math.ceil((h + 24) * sc) + 'px';
+        DOC_LOCKED = true;
+      }
     };
     apply();
     setTimeout(apply, 400); setTimeout(apply, 1200);
@@ -147,7 +168,7 @@ function measureDoc(fr) {
 var DOC_LOCKED = false;   /* 高度量定後上鎖——手機捲動收合網址列會觸發 resize、不准回頭改寫高度（邊界跳動病根） */
 function fitDoc() {
   var fr = document.getElementById('docfr');
-  if (fr && !DOC_LOCKED) { fr.style.width = '100%'; fr.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
+  if (fr && !DOC_LOCKED && !window.__docHtml) { fr.style.width = '100%'; fr.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
 }
 /* 高度只增不減＋小變動忽略——避免資源陸續載入時版面跳動、按鈕壓到文件 */
 var DOC_MAX_H = 0;
@@ -174,12 +195,53 @@ function openDocZoom() {
   document.body.appendChild(ov);
   document.body.style.overflow = 'hidden';
   document.getElementById('doczoom-x').addEventListener('click', closeDocZoom);
+  var body = document.getElementById('doczoom-body');
+  var stage = document.createElement('div');
+  stage.style.cssText = 'transform-origin:0 0;width:794px';
+  body.appendChild(stage);
   var f = document.createElement('iframe');
   f.setAttribute('sandbox', 'allow-same-origin');
-  f.style.cssText = 'width:794px;border:0;display:block;margin:0 auto;background:#fff';
-  document.getElementById('doczoom-body').appendChild(f);
+  f.setAttribute('scrolling', 'no');
+  f.style.cssText = 'width:794px;border:0;display:block;background:#fff;pointer-events:none';
+  stage.appendChild(f);
+  var docH = 1100;
+  var fitSc = Math.min(1, body.clientWidth / 794);
+  var sc = fitSc;
+  function applyZoom() {
+    stage.style.transform = 'scale(' + sc + ')';
+    stage.style.height = docH + 'px';
+    body.style.setProperty('--w', '');
+    stage.parentNode && (stage.style.marginBottom = '0');
+    body.scrollWidth;
+    stage.style.width = '794px';
+    var wpx = Math.ceil(794 * sc), hpx = Math.ceil(docH * sc);
+    stage.style.transform = 'scale(' + sc + ')';
+    if (!stage.__sizer) { stage.__sizer = document.createElement('div'); stage.__sizer.style.cssText = 'width:0;height:0'; body.appendChild(stage.__sizer); }
+    stage.__sizer.style.width = wpx + 'px'; stage.__sizer.style.height = '0px';
+    stage.style.marginBottom = (hpx - docH) + 'px';
+  }
   f.srcdoc = window.__docHtml;
-  f.addEventListener('load', function () { try { f.style.height = f.contentDocument.body.scrollHeight + 'px'; } catch (e) {} });
+  f.addEventListener('load', function () {
+    try { docH = f.contentDocument.body.scrollHeight + 24; } catch (e) {}
+    f.style.height = docH + 'px';
+    applyZoom();
+  });
+  var pinchD = 0, pinchSc = sc;
+  body.addEventListener('touchstart', function (ev) {
+    if (ev.touches.length === 2) {
+      pinchD = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX, ev.touches[0].clientY - ev.touches[1].clientY);
+      pinchSc = sc;
+    }
+  }, { passive: true });
+  body.addEventListener('touchmove', function (ev) {
+    if (ev.touches.length === 2 && pinchD) {
+      ev.preventDefault();
+      var d2 = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX, ev.touches[0].clientY - ev.touches[1].clientY);
+      sc = Math.min(2.5, Math.max(fitSc, pinchSc * (d2 / pinchD)));
+      applyZoom();
+    }
+  }, { passive: false });
+  body.addEventListener('dblclick', function () { sc = (sc > fitSc * 1.05) ? fitSc : Math.min(1, 2 * fitSc); applyZoom(); });
 }
 function closeDocZoom() {
   var ov = document.getElementById('doczoom');
