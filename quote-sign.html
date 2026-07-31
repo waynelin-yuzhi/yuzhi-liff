@@ -64,7 +64,7 @@ function doneCard(title, msg, err, extraHtml) {
 if (!HASH) {
   doneCard('連結無效', '找不到這張報價單；請與植間聯繫。', true);
 } else {
-  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(render)
     .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次卡片按鈕。', true); });
@@ -292,7 +292,7 @@ function doSign() {
     .catch(function () { pollCheck(btn, 0); });
 }
 function pollCheck(btn, n) {
-  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d && d.alreadySigned) { doneCard('已完成簽回', '報價單已簽署留存、植間已收到通知，感謝您！'); }
