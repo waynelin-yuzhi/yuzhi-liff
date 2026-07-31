@@ -3,7 +3,8 @@
 # 用法：bash ~/yuzhi-liff/bin/studio-push.sh "commit 訊息"
 # 白名單外的檔案有異動＝擋下（對客簽核頁等由總管管、植影所不碰）
 set -euo pipefail
-cd /Users/waynelin/yuzhi-liff
+# repo 相對定位（原本寫死筆電家目錄、桌電跑會直接 cd 失敗）
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 MSG="${1:-微調台更新}"
 ALLOW_RE='^(reels-tuner\.html|previews/|frames/|bin/studio-push\.sh)'
