@@ -41,12 +41,21 @@ input[type=range]{width:100%;accent-color:var(--moss)}
 <h1>封面工作台</h1>
 <div class="sub">COVER STUDIO · 雜誌內頁排版 · 拖時間軸選底圖</div>
 <div class="help">
-拖<b>時間軸</b>選底圖 → 右邊即時預覽。<b>版型三選一</b>：米紙雜誌／苔綠雜誌（<b>版面做在安全區內，IG 怎麼裁都不會切到內容</b>，上下只是純色出血）／純畫面（零文字、整格畫面）。調好送出，植影所照這組設定出圖。
+拖<b>時間軸</b>選底圖 → 右邊即時預覽。<b>版型三選一</b>：米紙雜誌／苔綠雜誌（<b>版面做在安全區內，IG 怎麼裁都不會切到內容</b>，上下只是純色出血）／純畫面（零文字、整格畫面）。調好送出，植影所照這組設定出圖。<br>每支片各自選、不用固定同一型。從送審卡點進來會自動帶好影片；直接開的話上面貼網址或選本機檔。
 </div>
 
 <div class="wrap">
   <div class="col">
-    <video id="vid" src="https://ytlakkxrbookftluulbo.supabase.co/storage/v1/object/public/reels-publish/imm-final-A.mp4" playsinline muted preload="metadata" crossorigin="anonymous"></video>
+    <div class="field" id="srcbox" style="display:none">
+      <label>影片（貼上這支片的網址，或從裝置選檔）</label>
+      <input type="text" id="srcurl" placeholder="https://…/xxx.mp4">
+      <div class="seg" style="margin-top:6px">
+        <button id="srcload">載入網址</button>
+        <button id="srcpick">選本機檔案</button>
+      </div>
+      <input type="file" id="srcfile" accept="video/*" style="display:none">
+    </div>
+    <video id="vid" playsinline muted preload="metadata" crossorigin="anonymous"></video>
     <div class="bar">
       <button class="play" id="play">播放</button>
       <input type="range" id="seek" min="0" max="17.7" step="0.05" value="0.8">
@@ -163,6 +172,26 @@ function draw(){
   tracked($("en").value.toUpperCase(), M, ly2+40, 30, sub, 0.20, '"Playfair Display",serif');
   drawCrop();
 }
+// 底圖來源：?v=<影片網址>（植影所送卡時填好）；沒帶就讓 Wayne 自己貼網址或選本機檔。
+// 不再寫死某一支片的檔名——reels-media 暫存在發佈後會被清掉，寫死＝隔天工具就變黑畫面。
+function loadSrc(u){
+  if(!u) return;
+  vid.crossOrigin = u.startsWith("blob:") ? null : "anonymous";
+  vid.src=u; vid.load();
+  $("srcbox").style.display = "none";
+}
+const qv=new URLSearchParams(location.search).get("v");
+if(qv){ loadSrc(qv); } else { $("srcbox").style.display=""; }
+$("srcload").onclick=()=>loadSrc($("srcurl").value.trim());
+$("srcpick").onclick=()=>$("srcfile").click();
+$("srcfile").onchange=e=>{ const f=e.target.files[0]; if(f) loadSrc(URL.createObjectURL(f)); };
+vid.addEventListener("error",()=>{
+  $("srcbox").style.display="";
+  $("stat").textContent="影片載不到（暫存可能已清），請貼新網址或選本機檔"; $("stat").className="stat bad";
+});
+vid.addEventListener("loadedmetadata",()=>{
+  if(isFinite(vid.duration)){ $("seek").max=vid.duration.toFixed(2); }
+});
 vid.addEventListener("loadeddata",()=>{vid.currentTime=0.8;});
 vid.addEventListener("seeked",draw);
 vid.addEventListener("timeupdate",()=>{$("seek").value=vid.currentTime;$("tv").textContent=vid.currentTime.toFixed(1)+"s";draw();});
@@ -187,8 +216,10 @@ const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJ
 const TK="7c7e94a5e2af4764a94cccf49c31aa0f";
 $("send").onclick=async()=>{
   const st=$("stat"); st.textContent="傳送中…"; st.className="stat";
+  const src=vid.currentSrc||"";
   const payload={title:"封面設定",
     frameSec:+vid.currentTime.toFixed(2),
+    videoUrl: src.startsWith("blob:") ? "(本機檔案)" : src,   // 哪支片的第幾秒，缺一不可
     coverStyle:style,
     scheme:(style==="mag-moss"?"moss":"paper"),   // 舊出片端相容、以 coverStyle 為準
     coverTitle:$("zh").value, coverEn:$("en").value.toUpperCase(),
