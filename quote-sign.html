@@ -70,11 +70,38 @@ if (!HASH) {
     .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次卡片按鈕。', true); });
 }
 
+// 簽完之後匯款帳號整個消失＝客戶要付款時找不到（Wayne 2026-07-31）：已完成畫面保留匯款區＋一鍵複製
+var BANK_ACCT = '128035009074';
+function bankBlock() {
+  return '<div class="card" style="margin-top:14px;text-align:left;padding:14px 16px">'
+    + '<div style="font-size:11px;letter-spacing:.12em;color:#8A8674;margin-bottom:8px">匯款資訊</div>'
+    + '<div style="font-size:13.5px;color:#3A3A33;line-height:1.9">國泰世華銀行（013）連城分行<br>戶名　植間設計股份有限公司</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-top:10px">'
+    + '<div style="font-size:19px;font-weight:700;letter-spacing:.06em;color:#3A3A33;flex:1">' + BANK_ACCT + '</div>'
+    + '<button id="copyacct" style="border:1px solid #5F6E58;background:#5F6E58;color:#FFFCF5;border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:600">複製</button>'
+    + '</div></div>';
+}
+document.addEventListener('click', function (ev) {
+  var b = ev.target.closest ? ev.target.closest('#copyacct') : null;
+  if (!b) return;
+  var done = function () { b.textContent = '已複製'; setTimeout(function () { b.textContent = '複製'; }, 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(BANK_ACCT).then(done, fallbackCopy);
+  } else { fallbackCopy(); }
+  function fallbackCopy() {
+    var ta = document.createElement('textarea');
+    ta.value = BANK_ACCT; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { b.textContent = '請長按複製'; }
+    document.body.removeChild(ta);
+  }
+});
+
 function render(d) {
   if (!d || d.status !== 'success') { doneCard('連結無效', (d && d.msg) || '找不到這張報價單；請與植間聯繫。', true); return; }
   if (d.alreadySigned) {
     doneCard('已完成簽回', (d.signer || '') + '　' + (d.signedAt || '') + ' 已簽署留存，感謝您！',
-      false, d.signedPdfUrl ? '<a class="ghost" href="' + esc(d.signedPdfUrl) + '" target="_blank">查看簽回確認書</a>' : '');
+      false, (d.signedPdfUrl ? '<a class="ghost" href="' + esc(d.signedPdfUrl) + '" target="_blank">查看簽回確認書</a>' : '') + bankBlock());
     return;
   }
   var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
