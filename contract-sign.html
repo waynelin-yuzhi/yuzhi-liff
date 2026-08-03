@@ -36,7 +36,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取合約</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55">contract-sign v1</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v2</span></div>
 </div>
 <script src="pad.js?v=1"></script>
 <script>
@@ -47,6 +47,12 @@ if (IN_LINE && !sessionStorage.getItem('yzCtExt')) {
 }
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
 var HASH = new URLSearchParams(location.search).get('h') || '';
+// 頁腳版字同步網址版號（CHECKS.md 規則 3：驗收先確認拿到的是新版）
+(function () {
+  var pv = new URLSearchParams(location.search).get('v');
+  var el = document.getElementById('pgv');
+  if (pv && el) el.textContent = 'contract-sign v' + pv;
+})();
 var NEED_BANK = false;
 var app = document.getElementById('app');
 
@@ -64,7 +70,7 @@ function doneCard(title, msg, err, extraHtml) {
 if (!HASH) {
   doneCard('連結無效', '找不到這份合約；請與植間聯繫。', true);
 } else {
-  fetch(API + '?page=contract-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
+  fetch(API + '?page=contract-sign&h=' + encodeURIComponent(HASH) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(render)
     .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次連結。', true); });
@@ -108,6 +114,22 @@ var PAD = null;
 function initPad() { PAD = initYzPad(document.getElementById('cv')); }
 function cvClear() { if (PAD) PAD.clear(); }
 
+// 簽名輸出前先縮到寬 ≤700px：高 DPR 手機 canvas 實際像素很大、
+// PNG base64 會撞伺服器 300000 字元上限（撞到＝「簽名圖過大請重簽」死循環）
+function padPng() {
+  var cv = document.getElementById('cv');
+  var maxW = 700;
+  if (cv.width <= maxW) return PAD.dataUrl().split(',')[1];
+  var t = document.createElement('canvas');
+  t.width = maxW; t.height = Math.round(cv.height * maxW / cv.width);
+  t.getContext('2d').drawImage(cv, 0, 0, t.width, t.height);
+  return t.toDataURL('image/png').split(',')[1];
+}
+
+// 送出＝傳統表單全頁 POST（鐵則：零登入頁互動不走 fetch/XHR）。
+// 2026-08-03 實案：外包簽約在 LINE 內建瀏覽器按「確認簽署」沒反應——
+// 跨網域 fetch POST 被 webview 擋、根本沒出手機；伺服器端實測管線全好。
+// 全頁表單提交＝零 cookie 零 XHR、任何瀏覽器都通，伺服器回品牌版簽署完成頁。
 function doSign() {
   var name = (document.getElementById('signer').value || '').trim();
   if (!name) { alert('請填寫簽署人姓名'); return; }
@@ -120,38 +142,23 @@ function doSign() {
   if (!PAD || !PAD.hasInk()) { alert('請先簽名'); return; }
   var btn = document.getElementById('go');
   btn.disabled = true; btn.textContent = '送出中…';
-  var png = PAD.dataUrl().split(',')[1];
-  var body = new URLSearchParams();
-  body.append('publicSign', 'contract'); body.append('hash', HASH);
-  body.append('signerName', name); body.append('png', png); body.append('respond', 'json');
+  var f = document.createElement('form');
+  f.method = 'POST';
+  f.action = API + '?publicSign=contract';
+  var add = function (n, v) {
+    var i = document.createElement('input');
+    i.type = 'hidden'; i.name = n; i.value = v;
+    f.appendChild(i);
+  };
+  add('publicSign', 'contract'); add('hash', HASH);
+  add('signerName', name); add('png', padPng());
   if (NEED_BANK) {
-    body.append('bankName', document.getElementById('bankName').value.trim());
-    body.append('bankAccount', document.getElementById('bankAccount').value.trim());
-    body.append('bankHolder', document.getElementById('bankHolder').value.trim());
+    add('bankName', document.getElementById('bankName').value.trim());
+    add('bankAccount', document.getElementById('bankAccount').value.trim());
+    add('bankHolder', document.getElementById('bankHolder').value.trim());
   }
-  fetch(API + '?publicSign=contract&respond=json', { method: 'POST', body: body, redirect: 'follow' })
-    .then(function (r) { return r.json(); })
-    .then(function (res) {
-      if (res && res.status === 'success') {
-        doneCard('已完成簽署', '合約已簽署留存、植間已收到通知，感謝您！',
-          false, res.signedPdfUrl ? '<a class="ghost" href="' + esc(res.signedPdfUrl) + '" target="_blank">查看已簽合約</a>' : '');
-      }
-      else { btn.disabled = false; btn.textContent = '確認簽署'; alert((res && res.msg) || '送出失敗、請再試一次'); }
-    })
-    .catch(function () { pollCheck(btn, 0); });
-}
-function pollCheck(btn, n) {
-  fetch(API + '?page=contract-sign&h=' + encodeURIComponent(HASH) + '&fmt=json')
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      if (d && d.state === '已簽') { doneCard('已完成簽署', '合約已簽署留存、植間已收到通知，感謝您！'); }
-      else if (n < 3) { setTimeout(function () { pollCheck(btn, n + 1); }, 2500); }
-      else { btn.disabled = false; btn.textContent = '確認簽署'; alert('送出可能沒有成功，請再按一次'); }
-    })
-    .catch(function () {
-      if (n < 3) setTimeout(function () { pollCheck(btn, n + 1); }, 2500);
-      else { btn.disabled = false; btn.textContent = '確認簽署'; alert('送出可能沒有成功，請再按一次'); }
-    });
+  document.body.appendChild(f);
+  f.submit();
 }
 </script>
 </body>
