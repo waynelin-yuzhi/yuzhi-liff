@@ -7,8 +7,8 @@
 <title>植間員工｜首頁</title>
 <link rel="stylesheet" href="staff.css?v=2">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="config.js?v=2"></script>
-<script src="staff.js?v=2"></script>
+<script src="config.js?v=3"></script>
+<script src="staff.js?v=3"></script>
 </head>
 <body>
 <div class="wrap">
@@ -68,7 +68,9 @@
     });
   }
 
-  T.init().then(render).catch(function () {});
+  var cached = T.cacheGet('home');
+  if (cached) { render(cached); var n = document.createElement('div'); n.className = 'note'; n.style.cssText = 'text-align:center;color:var(--amber);margin:-4px 0 10px'; n.textContent = '更新中…（先顯示上次資料）'; $('app').insertBefore(n, $('app').firstChild); }
+  T.init().then(function (me) { T.cacheSet('home', me); render(me); }).catch(function () {});
 })();
 </script>
 </body>

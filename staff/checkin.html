@@ -7,8 +7,8 @@
 <title>植間員工｜打卡</title>
 <link rel="stylesheet" href="staff.css?v=2">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="config.js?v=2"></script>
-<script src="staff.js?v=2"></script>
+<script src="config.js?v=3"></script>
+<script src="staff.js?v=3"></script>
 </head>
 <body>
 <div class="wrap">
@@ -43,6 +43,7 @@
     var me = ST.me, emp = me.emp || {};
     var h = '';
     if (testMode) h += '<div class="banner">測試模式：打卡只寫測試表、不進薪資。</div>';
+    if (ST.stale) h += '<div class="note" style="margin:-4px 0 8px;color:var(--amber)">更新中…（先顯示上次資料）</div>';
     h += '<div class="hd"><div><h1>打卡</h1><div class="sub">' + esc(emp.nick || emp.name || emp.empId) + '　' + esc(T.fmtDate(new Date())) + '</div></div></div>';
 
     // 案場
@@ -67,7 +68,7 @@
 
     // 動作
     if (ST.site) {
-      h += '<div class="card"><div class="two"><button class="btn" id="b-in"' + (ST.busy ? ' disabled' : '') + '>抵達</button><button class="btn secondary" id="b-out"' + (ST.busy ? ' disabled' : '') + '>離開</button></div>'
+      h += '<div class="card"><div class="two"><button class="btn" id="b-in"' + ((ST.busy || ST.stale) ? ' disabled' : '') + '>抵達</button><button class="btn secondary" id="b-out"' + ((ST.busy || ST.stale) ? ' disabled' : '') + '>離開</button></div>'
         + '<div class="note" style="margin-top:10px">抵達＝開始養護；離開＝結束（系統會算停留分鐘）。</div></div>';
     }
     if (ST.last) {
@@ -123,20 +124,26 @@
   // GPS 一開頁就先要（跟 LIFF 初始化／API 平行，等身分回來時定位多半已好）
   ST.gpsState = 'locating';
   T.locate(15000).then(function (g) { ST.gps = g; ST.gpsState = 'done'; if (ST.me) render(); });
-  $('app').innerHTML = '<div class="card"><div class="note">確認身分、載入案場…</div></div>';
-  T.init({ skipWhoami: true }).then(function () {
-    return T.api('checkinInit', preClient ? { clientId: preClient } : {});
-  }).then(function (r) {
-    if (!r || !r.ok) { T.showErr(T.errText(r)); return; }
-    ST.me = r; ST.last = r.last || null;
-    ST.sites = r.sites || [];
+  function applyInit(r, stale) {
+    ST.me = r; ST.last = r.last || null; ST.stale = !!stale;
+    ST.sites = (r.sites || []).slice();
     var todayIds = {}; (r.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
     ST.sites.forEach(function (s) { s.today = !!todayIds[s.id]; s._infoLoaded = true; });
     ST.sites.sort(function (a, b) { return (b.today - a.today) || (b.assigned - a.assigned) || String(a.name).localeCompare(String(b.name)); });
-    // NFC 貼紙帶 ?client=、或今天只有一家 → 直接選好
-    var pick = preClient || ((r.items || []).length === 1 ? r.items[0].siteCode : '');
+    // NFC 貼紙帶 ?client=、或今天只有一家 → 直接選好；已選過的保留
+    var pick = (ST.site && ST.site.id) || preClient || ((r.items || []).length === 1 ? r.items[0].siteCode : '');
     if (pick && siteById(pick)) pickSite(pick); else render();
-  }).catch(function () {});
+  }
+  var cached = T.cacheGet('checkin');
+  if (cached && (!preClient || cached.sites.some(function (s) { return s.id === preClient; }))) applyInit(cached, true);
+  else $('app').innerHTML = '<div class="card"><div class="note">確認身分、載入案場…</div></div>';
+  T.init({ skipWhoami: true }).then(function () {
+    return T.api('checkinInit', preClient ? { clientId: preClient } : {});
+  }).then(function (r) {
+    if (!r || !r.ok) { if (!cached) T.showErr(T.errText(r)); else { ST.stale = false; render(); } return; }
+    T.cacheSet('checkin', r);
+    applyInit(r, false);
+  }).catch(function () { if (cached) { ST.stale = false; render(); } });
 })();
 </script>
 </body>

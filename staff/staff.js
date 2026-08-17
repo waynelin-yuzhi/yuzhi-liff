@@ -96,6 +96,9 @@
     if (window.liff && S.inLine) liff.openWindow({ url: url, external: true });
     else window.open(url, '_blank');
   }
+  // 本機快取（同一支手機＝同一位員工）：上次載到的資料先畫、API 回來再換——GAS 每趟 4–8 秒，Wayne 2026-08-18 實測「有點慢」
+  function cacheGet(key) { try { var v = JSON.parse(localStorage.getItem('staff_c_' + key) || 'null'); return (v && Date.now() - v.t < 3 * 86400000) ? v.d : null; } catch (e) { return null; } }
+  function cacheSet(key, d) { try { localStorage.setItem('staff_c_' + key, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {} }
   // 頁內連結保留 dev／test 參數
   function href(page, params) {
     var u = new URLSearchParams(params || {});
@@ -105,5 +108,5 @@
     return page + (q ? '?' + q : '');
   }
 
-  window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
+  window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, cacheGet: cacheGet, cacheSet: cacheSet, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
 })();
