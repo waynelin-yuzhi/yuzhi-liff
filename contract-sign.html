@@ -45,7 +45,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取合約</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v3</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v4</span></div>
 </div>
 <script src="pad.js?v=1"></script>
 <script>
@@ -73,6 +73,7 @@ function docView(id) {
 }
 function flowHtml(flow) {
   if (!flow || !flow.steps || !flow.paper) return '';
+  if (flow.heroUrl) return '<div class="card" style="padding:12px 12px 14px"><img src="' + esc(flow.heroUrl) + '" alt="合約簽署流程" style="display:block;width:100%;border-radius:8px"><div class="flow-hint">' + esc(flow.hint || '') + '</div></div>';
   var cells = flow.steps.map(function (st) {
     return '<div class="fs' + (st.done ? ' d' : (st.current ? ' c' : '')) + '"><div class="fn">' + (st.done ? '✓' : st.n) + '</div><div class="fl">' + esc(st.label) + '</div></div>';
   }).join('');
