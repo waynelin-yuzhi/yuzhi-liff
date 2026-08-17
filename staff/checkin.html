@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間員工｜打卡</title>
+<link rel="stylesheet" href="staff.css?v=1">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="config.js?v=1"></script>
+<script src="staff.js?v=1"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN · 打卡</div>
+  <div id="app"><div class="card"><div class="note">載入中…</div></div></div>
+  <div class="ft"><a class="lnk" id="home-lnk" href="index.html">回員工首頁</a><br>植間設計股份有限公司<br><span id="pgv"></span></div>
+</div>
+<script>
+(function () {
+  var T = window.STAFF, esc = T.esc, $ = T.$;
+  $('pgv').textContent = T.CFG.version || '';
+  $('home-lnk').href = T.href('index.html');
+  var testMode = T.qs.get('test') === '1';
+  var preClient = (T.qs.get('client') || '').trim();
+  var ST = { me: null, sites: [], site: null, gps: null, gpsState: 'idle', busy: false };
+
+  function siteById(id) { for (var i = 0; i < ST.sites.length; i++) if (ST.sites[i].id === id) return ST.sites[i]; return null; }
+
+  function gpsHtml() {
+    var s = ST.site;
+    if (ST.gpsState === 'locating') return '<div class="gps"><span class="dot"></span>定位中…</div>';
+    if (!ST.gps) return '<div class="gps"><span class="dot no"></span>拿不到定位（仍可打卡、會記為無定位）　<a class="lnk" href="#" id="gps-retry">重試</a></div>';
+    if (s && s.lat && s.lng) {
+      var d = Math.round(T.distanceM(ST.gps.lat, ST.gps.lng, Number(s.lat), Number(s.lng)));
+      var ok = d <= 150;
+      return '<div class="gps"><span class="dot ' + (ok ? 'ok' : 'far') + '"></span>距案場約 ' + d + ' m' + (ok ? '' : '（超過 150 m 會記為遠距）') + '　<a class="lnk" href="#" id="gps-retry">重新定位</a></div>';
+    }
+    return '<div class="gps"><span class="dot ok"></span>已定位（案場座標待補、距離不計）</div>';
+  }
+
+  function render() {
+    var me = ST.me, emp = me.emp || {};
+    var h = '';
+    if (testMode) h += '<div class="banner">測試模式：打卡只寫測試表、不進薪資。</div>';
+    h += '<div class="hd"><div><h1>打卡</h1><div class="sub">' + esc(emp.nick || emp.name || emp.empId) + '　' + esc(T.fmtDate(new Date())) + '</div></div></div>';
+
+    // 案場
+    h += '<div class="card"><h2>案場</h2>';
+    if (ST.sites.length) {
+      h += '<select id="site-sel">' + (ST.site ? '' : '<option value="">選擇案場…</option>')
+        + ST.sites.map(function (s) { return '<option value="' + esc(s.id) + '"' + (ST.site && ST.site.id === s.id ? ' selected' : '') + '>' + esc(s.shortName || s.name) + (s.today ? '（今天）' : '') + '</option>'; }).join('')
+        + '</select>';
+    } else {
+      h += '<div class="note">找不到你的案場清單，請聯絡 Wayne。</div>';
+    }
+    if (ST.site) {
+      h += '<div class="note" style="margin-top:8px">' + esc(ST.site.address || '') + '</div>';
+      if (ST.site.careNote || ST.site.accessMethod) {
+        h += '<div class="note" style="margin-top:8px;white-space:pre-line;color:var(--body)">'
+          + (ST.site.accessMethod ? '進出：' + esc(ST.site.accessMethod) + '\n' : '')
+          + (ST.site.careNote ? '注意：' + esc(ST.site.careNote) : '') + '</div>';
+      }
+      h += '<div style="margin-top:10px">' + gpsHtml() + '</div>';
+    }
+    h += '</div>';
+
+    // 動作
+    if (ST.site) {
+      h += '<div class="card"><div class="two"><button class="btn" id="b-in"' + (ST.busy ? ' disabled' : '') + '>抵達</button><button class="btn secondary" id="b-out"' + (ST.busy ? ' disabled' : '') + '>離開</button></div>'
+        + '<div class="note" style="margin-top:10px">抵達＝開始養護；離開＝結束（系統會算停留分鐘）。</div></div>';
+    }
+    if (ST.last) {
+      h += '<div class="card"><h2>最近一次</h2><div class="row"><div><div class="n">' + esc(ST.last.action) + '　' + esc(ST.last.clientId) + '</div><div class="s">' + esc(ST.last.at) + '　' + esc(ST.last.status || '') + '</div></div></div></div>';
+    }
+    $('app').innerHTML = h;
+
+    var sel = $('site-sel');
+    if (sel) sel.addEventListener('change', function () { pickSite(sel.value); });
+    var rt = $('gps-retry'); if (rt) rt.addEventListener('click', function (e) { e.preventDefault(); doLocate(); });
+    var bi = $('b-in'); if (bi) bi.addEventListener('click', function () { punch('抵達'); });
+    var bo = $('b-out'); if (bo) bo.addEventListener('click', function () { punch('離開'); });
+  }
+
+  function pickSite(id) {
+    ST.site = siteById(id);
+    if (!ST.site) { render(); return; }
+    render();
+    if (!ST.site._infoLoaded) {
+      T.api('siteInfo', { clientId: id }).then(function (r) {
+        if (r && r.ok && r.site && ST.site && ST.site.id === id) {
+          ST.site.careNote = r.site.careNote; ST.site.accessMethod = r.site.accessMethod; ST.site.plantSummary = r.site.plantSummary;
+          ST.site.lat = r.site.lat; ST.site.lng = r.site.lng; ST.site._infoLoaded = true;
+          render();
+        }
+      });
+    }
+    if (!ST.gps) doLocate();
+  }
+  function doLocate() {
+    ST.gpsState = 'locating'; render();
+    T.locate(12000).then(function (g) { ST.gps = g; ST.gpsState = 'done'; render(); });
+  }
+
+  function punch(action, force) {
+    if (!ST.site || ST.busy) return;
+    if (!force && !confirm((testMode ? '【測試】' : '') + action + '　' + (ST.site.shortName || ST.site.name) + '？')) return;
+    ST.busy = true; render();
+    var params = { clientId: ST.site.id, action: action, test: testMode ? '1' : '0' };
+    if (ST.gps) { params.lat = ST.gps.lat; params.lng = ST.gps.lng; }
+    if (force) params.force = '1';
+    T.api('punch', params).then(function (r) {
+      ST.busy = false;
+      if (r && r.ok) {
+        ST.last = { action: r.action, clientId: r.clientId, at: r.at, status: r.status };
+        var reportUrl = T.CFG.legacyApp + '?client=' + encodeURIComponent(r.clientId);
+        $('app').innerHTML = '<div class="card"><div class="done"><div class="ck">✓</div><div class="big">' + esc(r.action) + '　' + esc(r.at) + '</div>'
+          + '<div class="note" style="margin-top:6px">' + esc(r.siteName) + '　' + esc(r.status) + (r.duration != null ? '　停留 ' + r.duration + ' 分' : '') + (r.test ? '　（測試、不進薪資）' : '') + '</div></div></div>'
+          + (r.action === '離開' ? '<a class="btn" id="go-report" href="#">寫養護報告</a><div class="note" style="text-align:center;margin:8px 0 14px">會開啟養護報告 App（第一階段報告仍在原 App）</div>' : '')
+          + '<a class="btn secondary" href="' + T.href('checkin.html', { client: r.clientId }) + '">再打一筆</a>'
+          + '<div style="height:10px"></div><a class="btn secondary" href="' + T.href('index.html') + '">回員工首頁</a>';
+        var gr = $('go-report'); if (gr) gr.addEventListener('click', function (e) { e.preventDefault(); T.openExternal(reportUrl); });
+        return;
+      }
+      if (r && r.error === 'duplicate') {
+        if (confirm(r.detail + '\n仍要再記一筆嗎？')) return punch(action, true);
+        render(); return;
+      }
+      alert('沒打成：' + ((r && (r.detail || r.error)) || '未知錯誤')); render();
+    }).catch(function (e) { ST.busy = false; alert('連線失敗，請再試一次'); render(); });
+  }
+
+  T.init().then(function (me) {
+    ST.me = me; ST.last = me.last || null;
+    return T.api('sites');
+  }).then(function (r) {
+    ST.sites = (r && r.ok && r.sites) || [];
+    var todayIds = {}; (ST.me.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
+    ST.sites.forEach(function (s) { s.today = !!todayIds[s.id]; });
+    ST.sites.sort(function (a, b) { return (b.today - a.today) || (b.assigned - a.assigned) || String(a.name).localeCompare(String(b.name)); });
+    // NFC 貼紙帶 ?client=、或今天只有一家 → 直接選好
+    var pick = preClient || ((ST.me.items || []).length === 1 ? ST.me.items[0].siteCode : '');
+    if (pick && siteById(pick)) pickSite(pick);
+    else if (pick && !siteById(pick)) {
+      // 貼紙案場不在我的清單（新案場／代班）：仍允許、補進清單
+      T.api('siteInfo', { clientId: pick }).then(function (r2) {
+        if (r2 && r2.ok && r2.site) { var s = r2.site; s._infoLoaded = true; ST.sites.unshift(s); pickSite(s.id); }
+        else render();
+      });
+    } else render();
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間員工｜我的班表</title>
+<link rel="stylesheet" href="staff.css?v=1">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="config.js?v=1"></script>
+<script src="staff.js?v=1"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN · 我的班表</div>
+  <div id="app"><div class="card"><div class="note">載入中…</div></div></div>
+  <div class="ft"><a class="lnk" id="home-lnk" href="index.html">回員工首頁</a><br>植間設計股份有限公司<br><span id="pgv"></span></div>
+</div>
+<script>
+(function () {
+  var T = window.STAFF, esc = T.esc, $ = T.$;
+  $('pgv').textContent = T.CFG.version || '';
+  $('home-lnk').href = T.href('index.html');
+  var from = T.qs.get('from') || '';
+
+  function shift(days) {
+    var d = from ? new Date(from + 'T00:00:00') : new Date();
+    d.setDate(d.getDate() + days);
+    var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    location.href = T.href('shifts.html', { from: iso });
+  }
+
+  function render(me, w) {
+    var emp = me.emp || {};
+    var h = '<div class="hd"><div><h1>我的班表</h1><div class="sub">' + esc(emp.nick || emp.name || emp.empId) + '　' + esc(w.from.slice(5).replace('-', '/')) + '–' + esc(w.to.slice(5).replace('-', '/')) + '</div></div></div>';
+    h += '<div class="two" style="margin-bottom:12px"><button class="btn secondary sm" id="prev">‹ 上週</button><button class="btn secondary sm" id="next" style="text-align:center">下週 ›</button></div>';
+    var total = 0;
+    h += w.days.map(function (d) {
+      var isToday = d.date === w.today;
+      var mm = d.date.slice(5).replace('-', '/');
+      total += d.items.length;
+      var inner = d.items.length
+        ? d.items.map(function (it) {
+            var chip = it.state === 'movedIn' ? ' <span class="chip amber">改期</span>' : (it.conflict ? ' <span class="chip terra">' + esc(it.conflict.kind || '衝突') + '</span>' : '');
+            return '<div class="row"><div><div class="n">' + esc(it.shortName || it.siteName) + chip + '</div><div class="s">' + esc(it.siteCode) + '</div></div>'
+              + (isToday ? '<a class="btn sm" href="' + T.href('checkin.html', { client: it.siteCode }) + '">打卡</a>' : '') + '</div>';
+          }).join('')
+        : '<div class="note">' + (d.holiday ? esc(d.holiday) : '—') + '</div>';
+      return '<div class="card"' + (isToday ? ' style="border:1.5px solid var(--moss)"' : '') + '><h2>' + esc(mm) + '（' + esc(d.wd) + '）' + (isToday ? '　今天' : '') + (d.holiday ? '　<span class="chip terra">' + esc(d.holiday) + '</span>' : '') + '</h2>' + inner + '</div>';
+    }).join('');
+    if (!total) h += '<div class="note" style="text-align:center">這週班表沒有排到你。班表由公司維護，有問題請聯絡 Wayne。</div>';
+    $('app').innerHTML = h;
+    $('prev').addEventListener('click', function () { shift(-7); });
+    $('next').addEventListener('click', function () { shift(7); });
+  }
+
+  var me0 = null;
+  T.init().then(function (me) { me0 = me; return T.api('week', from ? { from: from } : {}); })
+    .then(function (w) { if (w && w.ok) render(me0, w); else T.showErr('班表載入失敗：' + ((w && (w.detail || w.error)) || '')); })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>

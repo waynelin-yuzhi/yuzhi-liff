@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間員工｜首頁</title>
+<link rel="stylesheet" href="staff.css?v=1">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="config.js?v=1"></script>
+<script src="staff.js?v=1"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN · 員工</div>
+  <div id="app"><div class="card"><div class="note">載入中…</div></div></div>
+  <div class="ft">植間設計股份有限公司<br><span id="pgv"></span></div>
+</div>
+<script>
+(function () {
+  var T = window.STAFF, esc = T.esc, $ = T.$;
+  $('pgv').textContent = T.CFG.version || '';
+  var testMode = T.qs.get('test') === '1';
+
+  function render(me) {
+    var emp = me.emp || {};
+    var name = emp.nick || emp.name || emp.empId;
+    var today = new Date();
+    var items = me.items || [];
+    var last = me.last;
+    var h = '';
+    if (testMode) h += '<div class="banner">測試模式：這裡的打卡只寫測試表、不進薪資。</div>';
+    h += '<div class="hd"><div><h1>' + esc(name) + '，你好</h1><div class="sub">' + esc(T.fmtDate(today)) + (me.dev ? '　（測試身分 ' + esc(emp.empId) + '）' : '') + '</div></div></div>';
+
+    // 今天要跑
+    h += '<div class="card"><h2>今天要跑</h2>';
+    if (items.length) {
+      h += items.map(function (it) {
+        var chip = it.state === 'movedIn' ? '<span class="chip amber">改期</span>' : (it.conflict ? '<span class="chip terra">衝突</span>' : '');
+        return '<div class="row"><div><div class="n">' + esc(it.shortName || it.siteName) + ' ' + chip + '</div><div class="s">' + esc(it.siteCode) + '</div></div>'
+          + '<a class="btn sm" href="' + T.href('checkin.html', { client: it.siteCode }) + '">打卡</a></div>';
+      }).join('');
+    } else {
+      h += '<div class="note">今天班表沒有排到你。有跑案場的話直接到打卡頁選案場即可。</div>';
+    }
+    h += '</div>';
+
+    // 最近一次打卡
+    if (last) {
+      h += '<div class="card"><h2>最近一次打卡</h2><div class="row"><div><div class="n">' + esc(last.action) + '　' + esc(last.clientId) + '</div><div class="s">' + esc(last.at) + '　' + esc(last.status || '') + '</div></div></div></div>';
+    }
+
+    // 模組
+    h += '<div class="grid">'
+      + '<a class="mod" href="' + T.href('checkin.html') + '"><div class="ic">打</div><div class="t">打卡</div><div class="d">抵達／離開</div></a>'
+      + '<a class="mod" href="' + T.href('shifts.html') + '"><div class="ic">班</div><div class="t">我的班表</div><div class="d">本週安排</div></a>'
+      + '<a class="mod" href="#" id="m-report"><div class="ic">報</div><div class="t">養護報告</div><div class="d">開報告 App</div></a>'
+      + '<a class="mod" href="#" id="m-qa"><div class="ic">問</div><div class="t">問問題</div><div class="d">對話裡直接問</div></a>'
+      + '<a class="mod soon" href="#"><div class="ic">薪</div><div class="t">薪資單</div><div class="d">即將開放</div></a>'
+      + '<a class="mod soon" href="#"><div class="ic">假</div><div class="t">請假／回報</div><div class="d">即將開放</div></a>'
+      + '</div>';
+    $('app').innerHTML = h;
+
+    $('m-report').addEventListener('click', function (e) { e.preventDefault(); T.openExternal(T.CFG.legacyApp); });
+    $('m-qa').addEventListener('click', function (e) {
+      e.preventDefault();
+      if (window.liff && T.S.inLine) { liff.closeWindow(); } else { alert('回到「有植」的對話直接輸入問題即可。'); }
+    });
+  }
+
+  T.init().then(render).catch(function () {});
+})();
+</script>
+</body>
+</html>
