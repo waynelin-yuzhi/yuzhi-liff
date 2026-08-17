@@ -488,6 +488,8 @@
   $('pgv').textContent = T.CFG.version || ''; $('home-lnk').href = T.href('index.html');
   $('plants').innerHTML = PLANTS.map(function (p) { return '<option value="' + esc(p) + '">'; }).join('');
 
+  // 封閉測試掛鉤（?dev=1 才有）：從主控台塞照片／讀狀態
+  if (T.qs.get('dev') === '1') window.__staffReport = { A: A, addDataUri: function (zi, ba, dataUri) { var z = A.st.zones[zi], key = ba === 'before' ? 'pendingBefore' : 'pendingAfter'; var ph = { id: uid(), dataUri: dataUri, status: 'uploading', url: '' }; z[key].push(ph); photoPut(ph); renderThumbs(zi, ba); markDirty(); uploadOne(ph, zi, ba); return ph.id; }, render: render, queueAll: queueAll, photoAll: photoAll };
   // ── 啟動 ──
   A.st = initial();
   T.init({ skipWhoami: true }).then(function () { return T.api('careInit'); }).then(function (r) {
