@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>植間員工｜打卡</title>
-<link rel="stylesheet" href="staff.css?v=2">
+<link rel="stylesheet" href="staff.css?v=3">
+<style>.ovl{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}.ovl .box{background:var(--paper);border-radius:12px;padding:18px;max-width:420px;width:100%}</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="config.js?v=3"></script>
 <script src="staff.js?v=3"></script>
@@ -56,7 +57,7 @@
       h += '<div class="note">找不到你的案場清單，請聯絡 Wayne。</div>';
     }
     if (ST.site) {
-      h += '<div class="note" style="margin-top:8px">' + esc(ST.site.address || '') + '</div>';
+      h += '<div class="note" style="margin-top:8px">' + esc(ST.site.address || '') + (ST.site.address ? '　<a class="lnk" target="_blank" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ST.site.address) + '">導航</a>' : '') + '</div>';
       if (ST.site.careNote || ST.site.accessMethod) {
         h += '<div class="note" style="margin-top:8px;white-space:pre-line;color:var(--body)">'
           + (ST.site.accessMethod ? '進出：' + esc(ST.site.accessMethod) + '\n' : '')
@@ -68,8 +69,10 @@
 
     // 動作
     if (ST.site) {
-      h += '<div class="card"><div class="two"><button class="btn" id="b-in"' + ((ST.busy || ST.stale) ? ' disabled' : '') + '>抵達</button><button class="btn secondary" id="b-out"' + ((ST.busy || ST.stale) ? ' disabled' : '') + '>離開</button></div>'
-        + '<div class="note" style="margin-top:10px">抵達＝開始養護；離開＝結束（系統會算停留分鐘）。</div></div>';
+      h += '<div class="card"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--body);margin-bottom:10px"><input type="checkbox" id="nobreak"' + (ST.noBreak ? ' checked' : '') + ' style="width:18px;height:18px"> 今日因公未休法定休息（離開時提報補回）</label>'
+        + (ST.noBreak ? '<input type="text" id="nobreak-reason" placeholder="簡述原因（可空）" value="' + esc(ST.noBreakReason || '') + '" style="margin-bottom:10px">' : '')
+        + '<div class="two"><button class="btn" id="b-in"' + ((ST.busy || ST.stale) ? ' disabled' : '') + '>抵達</button><button class="btn secondary" id="b-out"' + ((ST.busy || ST.stale) ? ' disabled' : '') + '>離開</button></div>'
+        + '<div class="note" style="margin-top:10px">抵達＝開始養護；離開＝結束（系統會算停留分鐘）。距案場超過 150 m 或沒定位時，會請你選原因。</div></div>';
     }
     if (ST.last) {
       h += '<div class="card"><h2>最近一次</h2><div class="row"><div><div class="n">' + esc(ST.last.siteName || ST.last.clientId) + '　<span class="chip">' + esc(ST.last.action) + '</span></div><div class="s">' + esc(ST.last.at) + '　' + esc(ST.last.status || '') + '</div></div></div></div>';
@@ -79,8 +82,41 @@
     var sel = $('site-sel');
     if (sel) sel.addEventListener('change', function () { pickSite(sel.value); });
     var rt = $('gps-retry'); if (rt) rt.addEventListener('click', function (e) { e.preventDefault(); doLocate(); });
-    var bi = $('b-in'); if (bi) bi.addEventListener('click', function () { punch('抵達'); });
-    var bo = $('b-out'); if (bo) bo.addEventListener('click', function () { punch('離開'); });
+    var bi = $('b-in'); if (bi) bi.addEventListener('click', function () { attempt('抵達'); });
+    var bo = $('b-out'); if (bo) bo.addEventListener('click', function () { attempt('離開'); });
+    var nb = $('nobreak'); if (nb) nb.addEventListener('change', function () { ST.noBreak = nb.checked; render(); });
+    var nbr = $('nobreak-reason'); if (nbr) nbr.addEventListener('input', function () { ST.noBreakReason = nbr.value; });
+  }
+
+  // 遠距／無定位 → 選原因（同舊 App 六選項；補記／座標有誤／其他要填實際時間）
+  var REASONS = ['室內/地下室 GPS 訊號不良', '慢了腳步，於歸途補記這段時光', '在附近找車位 / 剛停好車', '系統座標可能有誤 / 客戶搬家', '點錯客戶 / 誤按', '其他'];
+  function needTime(r) { return r.indexOf('補記') >= 0 || r.indexOf('座標可能有誤') >= 0 || r === '其他'; }
+  function attempt(action) {
+    if (!ST.site || ST.busy) return;
+    var s = ST.site, dist = -1;
+    if (ST.gps && s.lat && s.lng) dist = Math.round(T.distanceM(ST.gps.lat, ST.gps.lng, Number(s.lat), Number(s.lng)));
+    if (dist === -1 || dist > 150) { openReason(action, dist); return; }
+    punch(action, false, '');
+  }
+  function openReason(action, dist) {
+    var ov = document.createElement('div');
+    ov.className = 'ovl';
+    ov.innerHTML = '<div class="box"><div style="font-weight:700;color:var(--terra);margin-bottom:6px">距離提醒</div><div class="note" style="color:var(--body)">目前距案場約 ' + (dist === -1 ? '未知（沒定位）' : dist + ' 公尺') + '，請選原因後才會記錄：</div>'
+      + '<select id="rs-sel" style="margin-top:10px"><option value="">— 請選原因 —</option>' + REASONS.map(function (r, i) { return '<option value="' + esc(r) + '">' + (i + 1) + '. ' + esc(r) + '</option>'; }).join('') + '</select>'
+      + '<div id="rs-time" style="display:none;margin-top:10px"><label class="note">實際' + action + '時間</label><input type="time" id="rs-time-in" style="width:100%"></div>'
+      + '<input type="text" id="rs-other" placeholder="請輸入說明" style="display:none;margin-top:10px">'
+      + '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn sm secondary" id="rs-cancel" style="flex:1">取消</button><button class="btn sm" id="rs-ok" style="flex:1">確認' + action + '</button></div></div>';
+    document.body.appendChild(ov);
+    var sel = ov.querySelector('#rs-sel');
+    sel.addEventListener('change', function () { ov.querySelector('#rs-time').style.display = needTime(sel.value) ? 'block' : 'none'; ov.querySelector('#rs-other').style.display = sel.value === '其他' ? 'block' : 'none'; });
+    ov.querySelector('#rs-cancel').addEventListener('click', function () { document.body.removeChild(ov); });
+    ov.querySelector('#rs-ok').addEventListener('click', function () {
+      var r = sel.value; if (!r) { alert('請選原因'); return; }
+      if (r === '其他') { var o = ov.querySelector('#rs-other').value.trim(); if (!o) { alert('請輸入說明'); return; } r = '其他：' + o; }
+      if (needTime(sel.value)) { var tm = ov.querySelector('#rs-time-in').value; if (!tm) { alert('請選實際時間'); return; } r = '[申請補登: ' + tm + '] ' + r; }
+      document.body.removeChild(ov);
+      punch(action, false, r);
+    });
   }
 
   function pickSite(id) {
@@ -93,24 +129,26 @@
     T.locate(12000).then(function (g) { ST.gps = g; ST.gpsState = 'done'; render(); });
   }
 
-  function punch(action, force) {
+  function punch(action, force, remark) {
     if (!ST.site || ST.busy) return;
-    if (!force && !confirm((testMode ? '【測試】' : '') + action + '　' + (ST.site.shortName || ST.site.name) + '？')) return;
+    if (!force && !remark && !confirm((testMode ? '【測試】' : '') + action + '　' + (ST.site.shortName || ST.site.name) + '？')) return;
+    var finalRemark = remark || '';
+    if (action === '離開' && ST.noBreak) { var tag = ST.noBreakReason ? '[申報未休: ' + ST.noBreakReason.trim() + ']' : '[申報未休]'; finalRemark = finalRemark ? tag + ' ' + finalRemark : tag; }
+    ST.lastRemark = finalRemark;
     ST.busy = true; render();
-    var params = { clientId: ST.site.id, action: action, test: testMode ? '1' : '0' };
+    var params = { clientId: ST.site.id, action: action, test: testMode ? '1' : '0', remark: finalRemark };
     if (ST.gps) { params.lat = ST.gps.lat; params.lng = ST.gps.lng; }
     if (force) params.force = '1';
     T.api('punch', params).then(function (r) {
       ST.busy = false;
       if (r && r.ok) {
         ST.last = { action: r.action, clientId: r.clientId, siteName: r.siteName, at: r.at, status: r.status };
-        var reportUrl = T.CFG.legacyApp + '?client=' + encodeURIComponent(r.clientId);
+        ST.noBreak = false; ST.noBreakReason = '';
         $('app').innerHTML = '<div class="card"><div class="done"><div class="ck">✓</div><div class="big">' + esc(r.action) + '　' + esc(r.at) + '</div>'
-          + '<div class="note" style="margin-top:6px">' + esc(r.siteName) + '　' + esc(r.status) + (r.duration != null ? '　停留 ' + r.duration + ' 分' : '') + (r.test ? '　（測試、不進薪資）' : '') + '</div></div></div>'
-          + (r.action === '離開' ? '<a class="btn" id="go-report" href="#">寫養護報告</a><div class="note" style="text-align:center;margin:8px 0 14px">會開啟養護報告 App（第一階段報告仍在原 App）</div>' : '')
+          + '<div class="note" style="margin-top:6px">' + esc(r.siteName) + '　' + esc(r.status) + (r.duration != null ? '　停留 ' + r.duration + ' 分' : '') + (ST.lastRemark ? '<br>備註：' + esc(ST.lastRemark) : '') + (r.test ? '　（測試、不進薪資）' : '') + '</div></div></div>'
+          + (r.action === '離開' ? '<a class="btn" href="' + T.href('report.html', { client: r.clientId }) + '">寫這一站的養護報告</a><div style="height:10px"></div>' : '')
           + '<a class="btn secondary" href="' + T.href('checkin.html', { client: r.clientId }) + '">再打一筆</a>'
           + '<div style="height:10px"></div><a class="btn secondary" href="' + T.href('index.html') + '">回員工首頁</a>';
-        var gr = $('go-report'); if (gr) gr.addEventListener('click', function (e) { e.preventDefault(); T.openExternal(reportUrl); });
         return;
       }
       if (r && r.error === 'duplicate') {

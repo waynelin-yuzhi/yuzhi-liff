@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間員工｜時光回顧</title>
+<link rel="stylesheet" href="staff.css?v=3">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="config.js?v=3"></script>
+<script src="staff.js?v=3"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN · 時光回顧</div>
+  <div id="app"><div class="card"><div class="note">載入中…</div></div></div>
+  <div class="ft"><a class="lnk" id="home-lnk" href="index.html">回員工首頁</a><br>植間設計股份有限公司<br><span id="pgv"></span></div>
+</div>
+<script>
+(function () {
+  var T = window.STAFF, esc = T.esc, $ = T.$;
+  $('pgv').textContent = T.CFG.version || ''; $('home-lnk').href = T.href('index.html');
+  var ym = T.qs.get('ym') || '';
+  function shiftYm(d) { var b = ym ? new Date(ym + '-01T00:00:00') : new Date(); b.setDate(1); b.setMonth(b.getMonth() + d); location.href = T.href('salary.html', { ym: b.getFullYear() + '-' + String(b.getMonth() + 1).padStart(2, '0') }); }
+  function money(n) { return 'NT$ ' + Math.round(Number(n) || 0).toLocaleString(); }
+  function render(me, r) {
+    var emp = me.emp || {};
+    var h = '<div class="hd"><div><h1>時光回顧</h1><div class="sub">' + esc(emp.nick || emp.name || emp.empId) + '　' + esc(r.ym.replace('-', ' 年 ')) + ' 月</div></div></div>';
+    h += '<div class="two" style="margin-bottom:12px"><button class="btn secondary sm" id="prev">‹ 上月</button><button class="btn secondary sm" id="next">下月 ›</button></div>';
+    h += '<div class="card"><h2>本月累積</h2><div class="big">' + esc(r.totalHours) + ' 小時</div><div class="note">打卡工時 ' + esc(r.punchHours) + ' 小時' + (Number(r.adjHours) ? '　＋加項 ' + esc(String(r.adjHours)) + ' 小時' : '') + '</div></div>';
+    if (Number(r.hourlyRate) > 0) {
+      h += '<div class="card"><h2>預估薪資（供參考）</h2><div class="big">' + money(r.estimatedSalary) + '</div><div class="note">時薪 ' + money(r.hourlyRate) + ' × ' + esc(r.totalHours) + ' 小時' + (Number(r.reimbursement) ? '　＋報銷 ' + money(r.reimbursement) : '') + (Number(r.withholding) ? '　－代扣 ' + money(r.withholding) : '') + '<br>正式金額以公司薪資單為準。</div></div>';
+    }
+    h += '<div class="card"><h2>每日紀錄</h2>' + (r.details.length ? r.details.map(function (d) { return '<div class="row"><div><div class="n">' + esc(d.date) + '</div><div class="s">' + esc(d.range) + '</div></div><div class="n">' + esc(d.hours) + ' hr</div></div>'; }).join('') : '<div class="note">這個月還沒有打卡紀錄。</div>') + '<div class="note" style="margin-top:8px">每日以最早抵達到最晚離開計算；連續 4.5 小時扣 0.5 小時、9 小時扣 1 小時法定休息（未休申報由公司補回）。</div></div>';
+    $('app').innerHTML = h;
+    $('prev').addEventListener('click', function () { shiftYm(-1); }); $('next').addEventListener('click', function () { shiftYm(1); });
+  }
+  var me0 = null;
+  T.init().then(function (me) { me0 = me; return T.api('salary', ym ? { ym: ym } : {}); }).then(function (r) { if (r && r.ok) render(me0, r); else T.showErr('載入失敗：' + ((r && (r.detail || r.error)) || '')); }).catch(function () {});
+})();
+</script>
+</body>
+</html>

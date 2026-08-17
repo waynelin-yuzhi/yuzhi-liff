@@ -1,0 +1,2347 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間員工｜使用手冊</title>
+<link rel="stylesheet" href="staff.css?v=3">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+:root {
+  --green:#8c9c86; --green-d:#6b7a65; --green-p:#e8f0ea; --green-xp:#f4f7f4;
+  --khaki:#c49a82; --khaki-d:#a37c66; --khaki-p:#fdf6ec;
+  --amber:#d4ac0d; --amber-p:#fef9e7;
+  --orange:#e67e22; --orange-p:#fdf2e9;
+  --alert:#b38a8a; --alert-p:#fdf0f0;
+  --bg:#f7f5f0; --border:#e6e2d8; --main:#4a453e; --light:#8e8a82; --white:#fff;
+  --sidebar:260px; --radius:10px;
+  --active: var(--green);
+}
+.manual-khaki { --active: var(--khaki); }
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Noto Serif TC',serif;background:var(--bg);color:var(--main);min-height:100vh;}
+
+/* ── Top bar ── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:white;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:0;height:56px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.06);
+}
+.topbar-logo{
+  padding:0 20px;font-family:'Noto Sans TC',sans-serif;font-size:15px;
+  font-weight:700;color:var(--green);letter-spacing:1px;white-space:nowrap;
+}
+.topbar-tabs{display:flex;height:100%;border-left:1px solid var(--border);}
+.tab-btn{
+  display:flex;align-items:center;gap:8px;padding:0 22px;
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;
+  cursor:pointer;border:none;background:none;color:var(--light);
+  border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;
+}
+.tab-btn.active-punch{color:var(--green);border-bottom-color:var(--green);}
+.tab-btn.active-care{color:var(--khaki);border-bottom-color:var(--khaki);}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot-green{background:var(--green);}
+.dot-khaki{background:var(--khaki);}
+.topbar-search{
+  margin-left:auto;margin-right:16px;
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);border:1px solid var(--border);border-radius:20px;
+  padding:6px 14px;font-size:12px;color:var(--light);cursor:pointer;
+}
+
+/* ── Layout ── */
+.layout{display:flex;padding-top:56px;min-height:100vh;}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  position:fixed;top:56px;bottom:0;left:0;
+  background:white;border-right:1px solid var(--border);
+  overflow-y:auto;padding:16px 0;
+  transition:transform .3s;
+}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);}
+
+.sidebar-section{padding:0 16px;margin-bottom:20px;}
+.sidebar-label{font-family:'Noto Sans TC',sans-serif;font-size:10px;font-weight:700;
+  color:var(--light);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;padding:0 4px;}
+.nav-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:7px;cursor:pointer;
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--main);
+  transition:all .15s;border:none;background:none;width:100%;text-align:left;
+}
+.nav-item:hover{background:var(--bg);}
+.nav-item.active{background:var(--green-xp);color:var(--green-d);font-weight:500;}
+.nav-item.active-k{background:var(--khaki-p);color:var(--khaki-d);font-weight:500;}
+.nav-num{font-size:10px;opacity:.5;width:16px;flex-shrink:0;}
+
+/* ── Main content ── */
+.main{margin-left:var(--sidebar);flex:1;padding:32px 40px 80px;}
+
+/* ── Manual sections ── */
+.manual{display:none;}
+.manual.visible{display:block;}
+
+/* ── Chapter ── */
+.chapter{margin-bottom:48px;}
+.chapter-head{
+  background:var(--green-d);color:white;
+  font-family:'Noto Sans TC',sans-serif;font-size:16px;font-weight:700;
+  padding:12px 18px;border-radius:var(--radius) var(--radius) 0 0;
+  letter-spacing:2px;margin-bottom:0;
+}
+.chapter-head.khaki{background:var(--khaki-d);}
+.chapter-body{
+  background:#faf9f6;border:1px solid var(--border);border-top:none;
+  border-radius:0 0 var(--radius) var(--radius);padding:24px;
+  box-shadow:0 1px 6px rgba(74,69,62,.04);
+}
+
+/* ── H2 / H3 ── */
+.h2{font-family:'Noto Sans TC',sans-serif;font-size:15px;font-weight:700;
+  color:var(--green-d);border-bottom:2px solid var(--green);padding-bottom:6px;
+  margin:24px 0 12px;}
+.h2.k{color:var(--khaki-d);border-bottom-color:var(--khaki);}
+.h3{font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;
+  color:var(--khaki);background:var(--khaki-p);border-left:3px solid var(--khaki);
+  padding:6px 12px;margin:16px 0 10px;border-radius:0 4px 4px 0;}
+
+/* ── Body text ── */
+p.body{font-size:14px;line-height:1.85;margin-bottom:10px;}
+ul.bl,ol.bl{padding-left:20px;margin-bottom:12px;}
+ul.bl li,ol.bl li{font-size:14px;line-height:1.85;margin-bottom:4px;}
+
+/* ── Two col ── */
+.two-col{display:flex;gap:24px;align-items:flex-start;}
+.two-col-text{flex:1;min-width:0;}
+.two-col-phone{flex-shrink:0;}
+
+/* ── Phone frame ── */
+.phone{
+  width:160px;border-radius:20px;overflow:hidden;
+  box-shadow:0 0 0 5px #1a1a1a,0 0 0 7px #333,0 8px 24px rgba(0,0,0,.25);
+}
+.phone.sm{width:130px;}
+.phone-notch{background:#1a1a1a;height:12px;display:flex;align-items:center;justify-content:center;}
+.phone-notch-pill{width:32px;height:5px;background:#111;border-radius:3px;}
+.phone-screen{width:100%;display:block;}
+
+/* ── Callout ── */
+.callout{
+  display:flex;border-radius:6px;overflow:hidden;margin:12px 0;
+  page-break-inside:avoid;
+}
+.callout-icon{
+  width:32px;flex-shrink:0;display:flex;align-items:flex-start;
+  justify-content:center;padding-top:11px;
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;
+}
+.callout-body{flex:1;padding:10px 14px;}
+.callout-title{font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;}
+.callout-text{font-size:12.5px;line-height:1.75;}
+.callout-text p{margin-bottom:2px;}
+.tip .callout-icon{background:var(--green);color:white;}
+.tip .callout-body{background:var(--green-xp);}
+.tip .callout-title{color:var(--green-d);}
+.tip{border:.8px solid var(--green);}
+.warn .callout-icon{background:var(--amber);color:white;}
+.warn .callout-body{background:var(--amber-p);}
+.warn .callout-title{color:#7a5a00;}
+.warn{border:.8px solid var(--amber);}
+.alrt .callout-icon{background:var(--alert);color:white;}
+.alrt .callout-body{background:var(--alert-p);}
+.alrt .callout-title{color:#7a3030;}
+.alrt{border:.8px solid var(--alert);}
+.info .callout-icon{background:var(--khaki);color:white;}
+.info .callout-body{background:var(--khaki-p);}
+.info .callout-title{color:var(--khaki-d);}
+.info{border:.8px solid var(--khaki);}
+
+/* ── Field table ── */
+.field-table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:13px;}
+.field-table th{padding:8px 12px;text-align:left;border:.5px solid;font-family:'Noto Sans TC',sans-serif;font-weight:700;}
+.field-table td{padding:8px 12px;border:.5px solid var(--border);vertical-align:top;line-height:1.7;}
+.field-table tr:nth-child(even) td{background:var(--bg);}
+.ft-green th{background:var(--green);color:white;border-color:var(--green-d);}
+.ft-khaki th{background:var(--khaki);color:white;border-color:var(--khaki-d);}
+.fn{font-family:'Noto Sans TC',sans-serif;font-weight:700;color:var(--green-d);}
+.fn-k{font-family:'Noto Sans TC',sans-serif;font-weight:700;color:var(--khaki-d);}
+.fh{color:var(--light);font-style:italic;font-size:12px;}
+
+/* ══════════════════════════════════════════════════════════
+   STEP WIZARD
+══════════════════════════════════════════════════════════ */
+.wizard{
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;margin:16px 0;
+  box-shadow:0 2px 12px rgba(74,69,62,.08);
+}
+.wizard-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;background:var(--green);color:white;
+}
+.wizard-header.k{background:var(--khaki);}
+.wizard-title{font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;}
+.wizard-progress{font-size:12px;opacity:.8;}
+
+.wizard-dots{display:flex;gap:6px;padding:0 18px;}
+.wdot{
+  width:8px;height:8px;border-radius:50%;background:var(--border);
+  cursor:pointer;transition:all .2s;flex-shrink:0;
+}
+.wdot.active{background:var(--green);transform:scale(1.3);}
+.wdot.active-k{background:var(--khaki);transform:scale(1.3);}
+.wdot.done{background:var(--green);opacity:.4;}
+.wdot.done-k{background:var(--khaki);opacity:.4;}
+
+.wizard-body{display:flex;gap:0;min-height:240px;}
+.wizard-left{flex:1;padding:20px 22px;border-right:1px solid var(--border);}
+.wizard-step-num{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'Noto Sans TC',sans-serif;font-size:11px;font-weight:700;
+  color:var(--green);background:var(--green-p);
+  padding:3px 10px;border-radius:12px;margin-bottom:10px;
+}
+.wizard-step-num.k{color:var(--khaki);background:var(--khaki-p);}
+.wizard-step-title{
+  font-family:'Noto Sans TC',sans-serif;font-size:15px;font-weight:700;
+  color:var(--main);margin-bottom:8px;
+}
+.wizard-step-desc{font-size:13px;line-height:1.8;color:var(--main);}
+.wizard-step-hint{
+  margin-top:12px;padding:8px 12px;background:var(--bg);
+  border-radius:6px;font-size:12px;color:var(--light);line-height:1.65;
+  border-left:2px solid var(--border);
+}
+.wizard-right{
+  width:190px;flex-shrink:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:16px;gap:10px;
+}
+.wizard-phone-label{font-family:'Noto Sans TC',sans-serif;font-size:11px;color:var(--light);text-align:center;}
+
+.wizard-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-top:1px solid var(--border);background:var(--bg);
+  flex-wrap:wrap;gap:8px;
+}
+.wiz-dots-row{display:flex;gap:6px;}
+.wizard-nav{display:flex;gap:8px;}
+.wiz-btn{
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;
+  padding:7px 18px;border-radius:20px;border:none;cursor:pointer;
+  transition:all .15s;
+}
+.wiz-prev{background:white;color:var(--main);border:1px solid var(--border);}
+.wiz-prev:hover{background:var(--bg);}
+.wiz-next{background:var(--green);color:white;}
+.wiz-next:hover{background:var(--green-d);}
+.wiz-next.k{background:var(--khaki);}
+.wiz-next.k:hover{background:var(--khaki-d);}
+.wiz-complete{background:var(--green-d);color:white;}
+.wiz-complete.k{background:var(--khaki-d);}
+
+/* Wizard phone mockup screens */
+.phone-screen-css{
+  width:100%;background:var(--bg);
+  font-family:'Noto Sans TC',sans-serif;font-size:10px;color:var(--main);
+  border-radius:0;
+}
+.psc-card{background:white;margin:6px;border-radius:8px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.psc-title{font-size:11px;font-weight:500;letter-spacing:2px;color:var(--green);text-align:center;margin-bottom:8px;}
+.psc-status{
+  padding:6px 8px;border-radius:6px;margin-bottom:6px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:9px;font-weight:500;color:white;
+}
+.psc-status.wait{background:linear-gradient(135deg,#a8a092,#8e8a82);}
+.psc-status.ready{background:linear-gradient(135deg,#8c9c86,#6b7a65);}
+.psc-select{border:1px solid var(--border);border-radius:4px;padding:5px 7px;
+  font-size:10px;margin-bottom:6px;background:#faf9f7;color:var(--main);}
+.psc-input{border:1px solid var(--border);border-radius:4px;padding:5px 7px;
+  font-size:10px;margin-bottom:6px;background:#faf9f7;color:var(--light);letter-spacing:3px;}
+.psc-input.focus{border-color:var(--green);box-shadow:0 0 0 2px var(--green-p);}
+.psc-btn-green{background:var(--green);color:white;border:none;border-radius:4px;
+  padding:7px;font-size:10px;font-weight:700;width:100%;margin-bottom:6px;text-align:center;}
+.psc-btn-khaki{background:var(--khaki);color:white;border:none;border-radius:4px;
+  padding:7px;font-size:10px;font-weight:700;width:100%;margin-bottom:6px;text-align:center;}
+.psc-action-row{display:flex;gap:4px;margin-bottom:6px;}
+.psc-arrive{flex:1;background:linear-gradient(135deg,#8c9c86,#6b7a65);color:white;
+  border:none;border-radius:8px;padding:10px 4px;font-size:9px;font-weight:700;text-align:center;}
+.psc-leave{flex:1;background:linear-gradient(135deg,#c49a82,#a37c66);color:white;
+  border:none;border-radius:8px;padding:10px 4px;font-size:9px;font-weight:700;text-align:center;}
+.psc-nobreak{background:#fffaf0;border:1px dashed var(--alert);border-radius:5px;
+  padding:6px 8px;margin-bottom:6px;font-size:9px;color:var(--alert);}
+.psc-check{display:flex;align-items:center;gap:5px;font-weight:700;}
+.psc-check-box{width:10px;height:10px;border:1.5px solid var(--alert);border-radius:2px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:var(--alert);}
+.psc-check-box.checked{background:var(--alert);color:white;}
+.psc-reason{border:1px solid var(--border);border-radius:3px;padding:4px 6px;
+  font-size:9px;margin-top:4px;background:#faf9f7;color:var(--light);}
+.psc-modal{background:rgba(0,0,0,.4);border-radius:6px;padding:8px;}
+.psc-modal-inner{background:white;border-radius:6px;padding:8px;}
+.psc-modal-title{font-size:10px;font-weight:700;color:var(--alert);margin-bottom:4px;}
+.psc-modal-text{font-size:9px;color:var(--light);margin-bottom:6px;line-height:1.5;}
+.psc-modal-select{border:1px solid var(--border);border-radius:3px;padding:4px;
+  font-size:9px;width:100%;margin-bottom:6px;background:#faf9f7;}
+.psc-modal-row{display:flex;gap:4px;}
+.psc-cancel{flex:1;background:var(--border);border:none;border-radius:3px;padding:5px;font-size:9px;text-align:center;}
+.psc-confirm{flex:1;background:var(--green);color:white;border:none;border-radius:3px;padding:5px;font-size:9px;font-weight:700;text-align:center;}
+.psc-chip-row{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;}
+.psc-chip{border:1px solid var(--border);border-radius:10px;padding:2px 7px;font-size:9px;background:#faf9f7;}
+.psc-chip.on{background:var(--green-p);border-color:var(--green);color:var(--green-d);font-weight:700;}
+.psc-zone{border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:5px;}
+.psc-zone-head{background:#faf9f7;padding:5px 7px;display:flex;align-items:center;gap:5px;font-size:9px;border-bottom:1px solid var(--border);}
+.psc-zone-num{width:14px;height:14px;background:var(--green);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;}
+.psc-zone-body{padding:6px 7px;font-size:9px;color:var(--light);}
+.psc-add-zone{border:1.5px dashed var(--green);border-radius:6px;padding:10px;
+  text-align:center;font-size:9px;color:var(--green);font-weight:700;}
+.psc-success{text-align:center;padding:20px 10px;}
+.psc-success-icon{font-size:32px;margin-bottom:6px;}
+.psc-success-text{font-size:10px;color:var(--green);letter-spacing:1px;font-weight:500;}
+.psc-success-sub{font-size:9px;color:var(--light);margin-top:4px;}
+
+/* Step transition animation */
+.wizard-step{display:none;animation:stepIn .25s ease;}
+.wizard-step.active{display:block;}
+@keyframes stepIn{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:none;}}
+.wizard-phone-anim{animation:phoneIn .3s ease;}
+@keyframes phoneIn{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:scale(1);}}
+
+/* ══════════════════════════════════════════════════════════
+   CALCULATOR
+══════════════════════════════════════════════════════════ */
+.calculator{
+  background:white;border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin:16px 0;
+}
+.calc-title{font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:700;
+  color:var(--khaki-d);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.calc-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.calc-label{font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--main);white-space:nowrap;}
+.calc-input{
+  width:120px;padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:16px;font-family:'Noto Sans TC',sans-serif;color:var(--main);
+  background:#faf9f7;outline:none;text-align:center;
+  transition:border-color .2s;
+}
+.calc-input:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-p);}
+.calc-unit{font-size:13px;color:var(--light);}
+.calc-result{
+  padding:14px 18px;border-radius:8px;background:var(--green-xp);
+  border:1px solid var(--green-p);display:none;margin-top:4px;
+}
+.calc-result.show{display:block;animation:fadeIn .3s ease;}
+.calc-result-row{display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;padding:4px 0;border-bottom:1px solid var(--green-p);}
+.calc-result-row:last-child{border-bottom:none;}
+.calc-result-label{color:var(--light);}
+.calc-result-val{font-family:'Noto Sans TC',sans-serif;font-weight:700;color:var(--green-d);}
+.calc-result-val.deduct{color:var(--alert);}
+.calc-result-val.final{color:var(--green);font-size:15px;}
+.calc-note{margin-top:10px;font-size:11.5px;color:var(--light);line-height:1.6;}
+
+/* ══════════════════════════════════════════════════════════
+   ACCORDION (Q&A)
+══════════════════════════════════════════════════════════ */
+.accordion{border:1px solid var(--green-p);border-radius:var(--radius);overflow:hidden;margin:12px 0;}
+.accordion.k{border-color:var(--khaki-p);}
+.acc-item{border-bottom:1px solid var(--green-p);}
+.acc-item.k{border-bottom-color:var(--khaki-p);}
+.acc-item:last-child{border-bottom:none;}
+.acc-q{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px;cursor:pointer;background:white;transition:background .15s;
+  font-family:'Noto Sans TC',sans-serif;font-size:13.5px;font-weight:500;
+}
+.acc-q:hover{background:var(--green-xp);}
+.acc-q.k:hover{background:var(--khaki-p);}
+.acc-q-text{display:flex;align-items:baseline;gap:10px;}
+.acc-qnum{font-size:11px;color:var(--green);font-weight:700;flex-shrink:0;}
+.acc-qnum.k{color:var(--khaki);}
+.acc-arrow{font-size:12px;color:var(--light);transition:transform .2s;flex-shrink:0;}
+.acc-item.open .acc-arrow{transform:rotate(90deg);}
+.acc-a{
+  display:none;padding:12px 16px 14px;background:var(--green-xp);
+  font-size:13px;line-height:1.8;border-top:1px solid var(--green-p);
+}
+.acc-a.k{background:var(--khaki-p);border-top-color:#ecd5c2;}
+.acc-item.open .acc-a{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+/* ══════════════════════════════════════════════════════════
+   GPS INTERACTIVE
+══════════════════════════════════════════════════════════ */
+.gps-demo{
+  background:white;border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin:16px 0;
+}
+.gps-title{font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:700;
+  color:var(--main);margin-bottom:14px;}
+.gps-states{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.gps-state-btn{
+  display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;
+  border:1.5px solid var(--border);cursor:pointer;font-family:'Noto Sans TC',sans-serif;
+  font-size:12px;font-weight:500;background:white;color:var(--main);transition:all .15s;
+}
+.gps-state-btn.sel-green{background:var(--green);border-color:var(--green);color:white;}
+.gps-state-btn.sel-gray{background:#a8a092;border-color:#a8a092;color:white;}
+.gps-state-btn.sel-orange{background:var(--khaki);border-color:var(--khaki);color:white;}
+.gps-indicator{width:10px;height:10px;border-radius:50%;}
+.ind-green{background:var(--green);}
+.ind-gray{background:#a8a092;}
+.ind-orange{background:var(--khaki);}
+.gps-display{
+  padding:12px 16px;border-radius:8px;font-family:'Noto Sans TC',sans-serif;
+  font-size:13px;font-weight:500;color:white;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;
+  transition:background .4s;
+}
+.gps-disp-green{background:linear-gradient(135deg,#8c9c86,#6b7a65);}
+.gps-disp-gray{background:linear-gradient(135deg,#a8a092,#8e8a82);}
+.gps-disp-orange{background:linear-gradient(135deg,#c49a82,#a37c66);}
+.gps-explanation{font-size:13px;line-height:1.8;padding:12px 14px;
+  background:var(--bg);border-radius:6px;color:var(--main);}
+.gps-action{margin-top:10px;font-size:12px;padding:8px 12px;border-radius:6px;font-weight:500;}
+.gps-action.ok{background:var(--green-p);color:var(--green-d);}
+.gps-action.wait{background:var(--amber-p);color:#7a5a00;}
+.gps-action.warn{background:var(--khaki-p);color:var(--khaki-d);}
+
+/* ══════════════════════════════════════════════════════════
+   BREAK TABLE
+══════════════════════════════════════════════════════════ */
+.break-table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:13px;}
+.break-table th{padding:9px 14px;text-align:center;background:var(--khaki);
+  color:white;border:.5px solid var(--khaki-d);font-family:'Noto Sans TC',sans-serif;font-weight:700;}
+.break-table td{padding:9px 14px;border:.5px solid var(--border);text-align:center;vertical-align:middle;}
+.break-table tr:nth-child(even) td{background:var(--khaki-p);}
+.hl{color:var(--alert);font-weight:700;font-family:'Noto Sans TC',sans-serif;}
+
+/* ══════════════════════════════════════════════════════════
+   REASON INTERACTIVE
+══════════════════════════════════════════════════════════ */
+.reason-selector{
+  background:white;border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin:16px 0;
+}
+.reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.reason-btn{
+  border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:12px;
+  background:white;color:var(--main);transition:all .15s;text-align:left;
+  display:flex;gap:8px;align-items:flex-start;
+}
+.reason-btn:hover{border-color:var(--green);background:var(--green-xp);}
+.reason-btn.selected{border-color:var(--green);background:var(--green-p);color:var(--green-d);}
+.reason-num{font-weight:700;color:var(--green);flex-shrink:0;}
+.reason-detail{
+  display:none;padding:12px 16px;background:var(--green-xp);border:1px solid var(--green-p);
+  border-radius:8px;font-size:13px;line-height:1.8;
+}
+.reason-detail.show{display:block;animation:fadeIn .2s ease;}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════ */
+.menu-toggle{display:none;}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%);z-index:50;}
+  .sidebar.open{transform:none;}
+  .main{margin-left:0;padding:20px 16px 60px;}
+  .menu-toggle{display:flex;align-items:center;padding:0 14px;cursor:pointer;
+    border:none;background:none;color:var(--main);font-size:20px;}
+  .two-col{flex-direction:column;}
+  .two-col-phone{align-self:center;}
+  .wizard-body{flex-direction:column;}
+  .wizard-right{width:100%;border-right:none;border-top:1px solid var(--border);}
+  .reason-grid{grid-template-columns:1fr;}
+  /* 手機版上方列：隱藏 logo 與搜尋，兩個分頁各佔一半才不會被擠出畫面 */
+  .topbar-logo{display:none;}
+  .topbar-search{display:none;}
+  .topbar-tabs{flex:1;border-left:none;}
+  .tab-btn{flex:1;justify-content:center;padding:0 6px;font-size:11px;gap:5px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="liff-guide">
+  <div class="brand">YUZHI PLANT DESIGN · 使用手冊</div>
+  <div class="hd"><div><h1>員工 LINE 版怎麼用</h1><div class="sub">打卡・班表・養護報告都在「有植」官方帳號裡</div></div></div>
+  <div class="card"><h2>1. 打卡</h2><div class="note" style="color:var(--body)">到現場點 NFC 貼紙（或選單「打卡」）→ 案場自動帶出、看距離 → 按「抵達」；離開前按「離開」，系統算停留分鐘。距案場超過 150 公尺或沒定位，會請你選原因（補記要填實際時間）。因公沒休法定休息，離開前勾「今日因公未休法定休息」。</div></div>
+  <div class="card"><h2>2. 我的班表</h2><div class="note" style="color:var(--body)">看本週／下週要跑哪幾家；今天的那家可以直接按「打卡」。班表由公司維護，有問題找 Wayne。</div></div>
+  <div class="card"><h2>3. 養護報告</h2><div class="note" style="color:var(--body)">離開打卡後按「寫這一站的養護報告」：客戶、時間會自動帶入。先看「上次未結案異常」點狀況（已處理／狀況一樣／需要換植）；每個區域拍「養護後」照片（重大問題另拍養護前）、寫一句說明；有異常就「新增異常追蹤」——選類型、填植物、選代表照。填一半離開沒關係，會自動存草稿；送出後照片在背景上傳，請保持頁面開一下。舊報告可在「我的報告」點開修改。</div></div>
+  <div class="card"><h2>4. 時光回顧</h2><div class="note" style="color:var(--body)">看本月工時與預估薪資（供參考，正式以薪資單為準）。</div></div>
+  <div class="card"><h2>5. 問問題</h2><div class="note" style="color:var(--body)">直接在「有植」對話打字問，系統認得你是員工。</div></div>
+  <div class="note" style="text-align:center;margin:8px 0 18px">以下為完整版手冊（含詳細規則與常見問題）</div>
+  <div class="ft"><a class="lnk" href="index.html">回員工首頁</a></div>
+</div>
+
+
+<!-- ── Top bar ── -->
+<div class="topbar">
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="topbar-logo">有植 Yuzhi Plant</div>
+  <div class="topbar-tabs">
+    <button class="tab-btn active-punch" id="tab-punch" onclick="switchManual('punch')">
+      <span class="dot dot-green"></span>伴行筆記 · 打卡系統
+    </button>
+    <button class="tab-btn" id="tab-care" onclick="switchManual('care')">
+      <span class="dot dot-khaki"></span>養護回報系統
+    </button>
+  </div>
+  <div class="topbar-search">
+    <span>🔍</span><span>搜尋章節</span>
+  </div>
+</div>
+
+<!-- ── Sidebar ── -->
+<div class="sidebar" id="sidebar">
+  <!-- Punch nav -->
+  <div id="nav-punch">
+    <div class="sidebar-section">
+      <div class="sidebar-label">打卡系統</div>
+      <button class="nav-item active" onclick="gotoSection('p-ch1')"><span class="nav-num">1</span>系統簡介</button>
+      <button class="nav-item" onclick="gotoSection('p-ch2')"><span class="nav-num">2</span>首次登入</button>
+      <button class="nav-item" onclick="gotoSection('p-ch3')"><span class="nav-num">3</span>日常打卡流程</button>
+      <button class="nav-item" onclick="gotoSection('p-ch4')"><span class="nav-num">4</span>GPS 定位與距離提醒</button>
+      <button class="nav-item" onclick="gotoSection('p-ch5')"><span class="nav-num">5</span>補記功能</button>
+      <button class="nav-item" onclick="gotoSection('p-ch6')"><span class="nav-num">6</span>法定休息與未休申報</button>
+      <button class="nav-item" onclick="gotoSection('p-ch7')"><span class="nav-num">7</span>時光回顧與薪資</button>
+      <button class="nav-item" onclick="gotoSection('p-ch8')"><span class="nav-num">Q</span>常見問題</button>
+      <button class="nav-item" onclick="gotoSection('p-app')"><span class="nav-num">→</span>快速流程</button>
+    </div>
+  </div>
+  <!-- Care nav -->
+  <div id="nav-care" style="display:none">
+    <div class="sidebar-section">
+      <div class="sidebar-label">養護回報</div>
+      <button class="nav-item active-k" onclick="gotoSection('c-ch1')"><span class="nav-num">1</span>系統概覽</button>
+      <button class="nav-item" onclick="gotoSection('c-ch2')"><span class="nav-num">2</span>如何開啟</button>
+      <button class="nav-item" onclick="gotoSection('c-ch3')"><span class="nav-num">3</span>欄位說明</button>
+      <button class="nav-item" onclick="gotoSection('c-ch4')"><span class="nav-num">4</span>上次未結案異常</button>
+      <button class="nav-item" onclick="gotoSection('c-ch5')"><span class="nav-num">5</span>區域記錄</button>
+      <button class="nav-item" onclick="gotoSection('c-ch6')"><span class="nav-num">6</span>異常追蹤</button>
+      <button class="nav-item" onclick="gotoSection('c-ch7')"><span class="nav-num">7</span>植物更換回報</button>
+      <button class="nav-item" onclick="gotoSection('c-ch8')"><span class="nav-num">8</span>送出與草稿</button>
+      <button class="nav-item" onclick="gotoSection('c-ch9')"><span class="nav-num">Q</span>常見問題</button>
+      <button class="nav-item" onclick="gotoSection('c-app')"><span class="nav-num">→</span>快速流程</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div class="layout">
+<div class="main">
+
+<!-- ════════════════════════════════════════════════════════
+  PUNCH MANUAL
+════════════════════════════════════════════════════════ -->
+<div class="manual visible" id="manual-punch">
+
+<!-- CH1 系統簡介 -->
+<div class="chapter" id="p-ch1">
+  <div class="chapter-head">第一章　系統簡介</div>
+  <div class="chapter-body">
+    <div class="two-col">
+      <div class="two-col-text">
+        <div class="h2">什麼是伴行筆記？</div>
+        <p class="body">伴行筆記是有植的員工出勤管理系統。每次前往客戶現場時，透過手機完成「抵達」與「離開」打卡，系統自動記錄工時，讓後台即時掌握各位同仁的出勤狀況。</p>
+        <div class="h2">主要功能</div>
+        <ul class="bl">
+          <li>GPS 定位打卡，確保在案場完成紀錄</li>
+          <li>自動計算當日工時，符合勞基法規範</li>
+          <li>忘記打卡時可使用補記功能</li>
+          <li>時光回顧：查詢當月累積工時</li>
+          <li>計時人員可查詢預估薪資（供參考）</li>
+          <li>養護人員另有「養護回報」功能</li>
+        </ul>
+        <div class="callout tip">
+          <div class="callout-icon">i</div>
+          <div class="callout-body">
+            <div class="callout-title">使用方式</div>
+            <div class="callout-text">
+              <p>伴行筆記是網頁應用程式，直接在手機瀏覽器開啟，無需安裝 App。</p>
+              <p>建議將連結加入手機主畫面，方便每次快速開啟。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="two-col-phone">
+        <div class="phone">
+          <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+          <div class="phone-screen-css">
+            <div class="psc-card">
+              <div class="psc-title">有植伴行筆記</div>
+              <div class="psc-status ready">
+                <span>📍 定位正常 · 範圍內</span><span>↺</span>
+              </div>
+              <div style="font-size:9px;color:var(--light);margin-bottom:5px;">掃描位置：<strong style="color:var(--main)">○○○ 客戶</strong></div>
+              <div class="psc-select">週養護｜○○○ 客戶（A002）</div>
+              <div class="psc-action-row">
+                <div class="psc-arrive">📍<br>抵達打卡</div>
+                <div class="psc-leave">→<br>結束離開</div>
+              </div>
+              <div class="psc-btn-green">🌿 養護回報</div>
+              <div class="psc-btn-khaki" style="background:#a8a092">⏰ 時光回顧與薪資</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH2 首次登入 WIZARD -->
+<div class="chapter" id="p-ch2">
+  <div class="chapter-head">第二章　首次登入</div>
+  <div class="chapter-body">
+    <p class="body">第一次使用伴行筆記，或在新手機上使用時，需要完成登入設定。登入後系統會記住您的身分，下次開啟直接進入主畫面。</p>
+
+    <div class="wizard" id="wiz-login">
+      <div class="wizard-header">
+        <div class="wizard-title">👆 首次登入 · 互動引導</div>
+        <div class="wizard-progress" id="wiz-login-prog">第 1 步，共 4 步</div>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-left" id="wiz-login-left">
+          <!-- Steps injected by JS -->
+        </div>
+        <div class="wizard-right">
+          <div class="wizard-phone-label" id="wiz-login-phone-label">畫面預覽</div>
+          <div class="phone sm" id="wiz-login-phone">
+            <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+            <div class="phone-screen-css" id="wiz-login-screen"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <div class="wiz-dots-row" id="wiz-login-dots"></div>
+        <div class="wizard-nav">
+          <button class="wiz-btn wiz-prev" onclick="wizPrev('login')">← 上一步</button>
+          <button class="wiz-btn wiz-next" id="wiz-login-next" onclick="wizNext('login')">下一步 →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">注意</div>
+        <div class="callout-text">
+          <p>通行碼由公司統一設定，請勿告知他人。若需更換，請聯絡後台管理人員。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">切換帳號</div>
+    <p class="body">點選主畫面最下方的「切換帳號」文字連結，系統會清除目前登入資料，返回登入畫面。</p>
+  </div>
+</div>
+
+<!-- CH3 打卡流程 WIZARD -->
+<div class="chapter" id="p-ch3">
+  <div class="chapter-head">第三章　日常打卡流程</div>
+  <div class="chapter-body">
+    <p class="body">每次前往客戶現場，需完成「抵達打卡」與「結束離開」兩個步驟。請務必到達現場後再打卡，離開前完成結束紀錄。</p>
+
+    <div class="h2">主畫面功能說明</div>
+    <table class="field-table ft-green">
+      <tr><th style="width:25%">區域</th><th>說明</th></tr>
+      <tr><td class="fn">GPS 狀態列</td><td>顯示目前定位狀態與距案場距離，是打卡按鈕是否啟用的依據。</td></tr>
+      <tr><td class="fn">客戶選單</td><td>選擇本次前往的客戶，選擇後顯示地址與 Google 地圖連結。</td></tr>
+      <tr><td class="fn">抵達打卡</td><td>到達客戶現場後按下，記錄抵達時間。</td></tr>
+      <tr><td class="fn">結束離開</td><td>完成服務、準備離開前按下，記錄離開時間。</td></tr>
+      <tr><td class="fn">養護回報</td><td>進入養護回報填寫頁面（養護人員使用）。</td></tr>
+      <tr><td class="fn">時光回顧</td><td>查詢當月工時紀錄與預估薪資。</td></tr>
+    </table>
+
+    <div class="wizard" id="wiz-punch">
+      <div class="wizard-header">
+        <div class="wizard-title">📍 標準打卡流程 · 互動引導</div>
+        <div class="wizard-progress" id="wiz-punch-prog">第 1 步，共 4 步</div>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-left" id="wiz-punch-left"></div>
+        <div class="wizard-right">
+          <div class="wizard-phone-label" id="wiz-punch-phone-label">畫面預覽</div>
+          <div class="phone sm" id="wiz-punch-phone">
+            <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+            <div class="phone-screen-css" id="wiz-punch-screen"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <div class="wiz-dots-row" id="wiz-punch-dots"></div>
+        <div class="wizard-nav">
+          <button class="wiz-btn wiz-prev" onclick="wizPrev('punch')">← 上一步</button>
+          <button class="wiz-btn wiz-next" id="wiz-punch-next" onclick="wizNext('punch')">下一步 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH4 GPS -->
+<div class="chapter" id="p-ch4">
+  <div class="chapter-head">第四章　GPS 定位與距離提醒</div>
+  <div class="chapter-body">
+    <p class="body">伴行筆記使用 GPS 確認您在客戶現場附近完成打卡。系統允許在案場 <strong>150 公尺</strong>範圍內正常打卡；超出範圍時，會出現距離提醒視窗。</p>
+
+    <!-- GPS Interactive -->
+    <div class="gps-demo">
+      <div class="gps-title">🔍 GPS 狀態模擬器 · 點選查看不同狀態說明</div>
+      <div class="gps-states">
+        <button class="gps-state-btn sel-green" onclick="setGPS('ready')" id="gps-btn-ready">
+          <span class="gps-indicator ind-green"></span>定位正常 · 範圍內
+        </button>
+        <button class="gps-state-btn" onclick="setGPS('wait')" id="gps-btn-wait">
+          <span class="gps-indicator ind-gray"></span>定位取得中...
+        </button>
+        <button class="gps-state-btn" onclick="setGPS('far')" id="gps-btn-far">
+          <span class="gps-indicator ind-orange"></span>距離較遠
+        </button>
+      </div>
+      <div class="gps-display gps-disp-green" id="gps-display">
+        <span id="gps-display-text">📍 定位正常 · 範圍內</span>
+        <span>↺</span>
+      </div>
+      <div class="gps-explanation" id="gps-explanation">
+        定位正常，且您目前在案場 150 公尺範圍內。打卡按鈕已啟用，可直接按下「抵達打卡」或「結束離開」。
+      </div>
+      <div class="gps-action ok" id="gps-action">✅ 打卡按鈕已啟用，可直接打卡</div>
+    </div>
+
+    <!-- Reason selector -->
+    <div class="reason-selector">
+      <div class="gps-title">⚠️ 距離提醒 · 選擇原因查看說明</div>
+      <p style="font-size:13px;color:var(--light);margin-bottom:14px;">當距離超過 150 公尺時，點選下方最符合情況的原因：</p>
+      <div class="reason-grid">
+        <button class="reason-btn" onclick="selectReason(1)"><span class="reason-num">1</span><span>室內/地下室 GPS 訊號不良</span></button>
+        <button class="reason-btn" onclick="selectReason(2)"><span class="reason-num">2</span><span>慢了腳步，於歸途補記</span></button>
+        <button class="reason-btn" onclick="selectReason(3)"><span class="reason-num">3</span><span>在附近找車位 / 剛停好車</span></button>
+        <button class="reason-btn" onclick="selectReason(4)"><span class="reason-num">4</span><span>系統座標可能有誤</span></button>
+        <button class="reason-btn" onclick="selectReason(5)"><span class="reason-num">5</span><span>點錯客戶 / 誤按</span></button>
+        <button class="reason-btn" onclick="selectReason(6)"><span class="reason-num">6</span><span>其他（自行輸入）</span></button>
+      </div>
+      <div class="reason-detail" id="reason-detail"></div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">GPS 刷新技巧</div>
+        <div class="callout-text"><p>若 GPS 顯示偏移，點選 GPS 狀態列右側的刷新圖示（↺）手動重新定位。定位後若仍顯示較遠，選擇最適合的原因後送出即可，不需擔心。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH5 補記 -->
+<div class="chapter" id="p-ch5">
+  <div class="chapter-head">第五章　補記功能</div>
+  <div class="chapter-body">
+    <p class="body">若在現場忙碌中忘記打卡，可在事後透過補記功能完成記錄。補記需要在距離提醒視窗中選擇「慢了腳步，於歸途補記」，並填入實際時間。</p>
+
+    <div class="wizard" id="wiz-makeup">
+      <div class="wizard-header">
+        <div class="wizard-title">🕐 補記操作 · 互動引導</div>
+        <div class="wizard-progress" id="wiz-makeup-prog">第 1 步，共 4 步</div>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-left" id="wiz-makeup-left"></div>
+        <div class="wizard-right">
+          <div class="wizard-phone-label" id="wiz-makeup-phone-label">畫面預覽</div>
+          <div class="phone sm" id="wiz-makeup-phone">
+            <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+            <div class="phone-screen-css" id="wiz-makeup-screen"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <div class="wiz-dots-row" id="wiz-makeup-dots"></div>
+        <div class="wizard-nav">
+          <button class="wiz-btn wiz-prev" onclick="wizPrev('makeup')">← 上一步</button>
+          <button class="wiz-btn wiz-next" id="wiz-makeup-next" onclick="wizNext('makeup')">下一步 →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">補記注意事項</div>
+        <div class="callout-text">
+          <p>補記時務必填寫「實際時間」，不填則以操作當下時間計算，會影響工時準確性。</p>
+          <p>若發現工時記錄有誤，請於三日內向後台提出校對，逾期可能無法修正。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH6 法定休息 -->
+<div class="chapter" id="p-ch6">
+  <div class="chapter-head">第六章　法定休息時間與未休申報</div>
+  <div class="chapter-body">
+    <p class="body">為符合勞基法規範，系統會依照當日總工時自動扣除法定休息時間。</p>
+
+    <div class="h2">自動扣除規則</div>
+    <div class="two-col" style="gap:20px;align-items:flex-start;">
+      <div class="two-col-text">
+        <table class="break-table">
+          <tr><th>當日總工時</th><th>自動扣除</th><th>計薪影響</th></tr>
+          <tr><td>未滿 4.5 小時</td><td>不扣除</td><td>無影響</td></tr>
+          <tr><td>滿 4.5 小時</td><td class="hl">扣 0.5 小時</td><td class="hl">-0.5 hr</td></tr>
+          <tr><td>滿 9.0 小時</td><td class="hl">扣 1.0 小時</td><td class="hl">-1.0 hr</td></tr>
+        </table>
+        <div class="callout info">
+          <div class="callout-icon">i</div>
+          <div class="callout-body">
+            <div class="callout-title">為什麼自動扣除？</div>
+            <div class="callout-text"><p>依勞基法規定，連續工作滿 4 小時，雇主必須給予至少 30 分鐘休息。系統預設視為已休息，若因公未休可使用「未休申報」補回。</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calculator -->
+      <div style="flex:1;min-width:220px;">
+        <div class="calculator">
+          <div class="calc-title">🧮 工時計算器</div>
+          <div class="calc-row">
+            <span class="calc-label">當日工時</span>
+            <input class="calc-input" type="number" id="calc-hours" min="0" max="24" step="0.5" placeholder="0" oninput="calcBreak()">
+            <span class="calc-unit">小時</span>
+          </div>
+          <div class="calc-result" id="calc-result">
+            <div class="calc-result-row">
+              <span class="calc-result-label">原始工時</span>
+              <span class="calc-result-val" id="cr-raw">—</span>
+            </div>
+            <div class="calc-result-row">
+              <span class="calc-result-label">自動扣除</span>
+              <span class="calc-result-val deduct" id="cr-deduct">—</span>
+            </div>
+            <div class="calc-result-row">
+              <span class="calc-result-label">計薪工時</span>
+              <span class="calc-result-val final" id="cr-final">—</span>
+            </div>
+          </div>
+          <div class="calc-note" id="calc-note"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">未休申報（因公未休）</div>
+    <div class="wizard" id="wiz-nobreak">
+      <div class="wizard-header">
+        <div class="wizard-title">📝 未休申報 · 互動引導</div>
+        <div class="wizard-progress" id="wiz-nobreak-prog">第 1 步，共 3 步</div>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-left" id="wiz-nobreak-left"></div>
+        <div class="wizard-right">
+          <div class="wizard-phone-label" id="wiz-nobreak-phone-label">畫面預覽</div>
+          <div class="phone sm" id="wiz-nobreak-phone">
+            <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+            <div class="phone-screen-css" id="wiz-nobreak-screen"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <div class="wiz-dots-row" id="wiz-nobreak-dots"></div>
+        <div class="wizard-nav">
+          <button class="wiz-btn wiz-prev" onclick="wizPrev('nobreak')">← 上一步</button>
+          <button class="wiz-btn wiz-next" id="wiz-nobreak-next" onclick="wizNext('nobreak')">下一步 →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout alrt">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">未申報視為已休息</div>
+        <div class="callout-text"><p>若未勾選申報，系統視為當日已完成法定休息，扣除的時間將不予補回。請確實依照實際狀況申報，保障工時與薪資權益。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH7 薪資 -->
+<div class="chapter" id="p-ch7">
+  <div class="chapter-head">第七章　時光回顧與薪資查詢</div>
+  <div class="chapter-body">
+    <div class="two-col">
+      <div class="two-col-text">
+        <div class="h2">如何查詢</div>
+        <p class="body">在主畫面點選「時光回顧與薪資」按鈕，系統顯示當月工時摘要頁面。</p>
+        <div class="h2">頁面說明</div>
+        <table class="field-table ft-green">
+          <tr><th style="width:30%">項目</th><th>說明</th></tr>
+          <tr><td class="fn">累積工時</td><td>當月至今的總計薪工時（已扣法定休息、加入未休補回）。</td></tr>
+          <tr><td class="fn">預估薪資</td><td>累積工時 × 時薪的估算金額（計時人員可見，正職不顯示）。</td></tr>
+          <tr><td class="fn">本月紀錄明細</td><td>逐筆列出每日的上下班時間與當日計薪工時。</td></tr>
+        </table>
+        <div class="callout alrt">
+          <div class="callout-icon">!</div>
+          <div class="callout-body">
+            <div class="callout-title">薪資僅供參考</div>
+            <div class="callout-text"><p>系統顯示的預估薪資為試算值，<strong>實際薪資以公司最終核定為準</strong>，可能因加項調整、未休補回或其他項目而有所不同。</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="two-col-phone">
+        <div class="phone">
+          <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+          <div class="phone-screen-css">
+            <div class="psc-card">
+              <div class="psc-title" style="font-size:12px;">時光摘要</div>
+              <div style="font-size:10px;font-weight:500;margin-bottom:8px;">5 月 時光摘要</div>
+              <div style="background:#faf9f7;border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px;">
+                <div style="font-size:9px;color:var(--light);">累積工時</div>
+                <div style="font-size:18px;font-weight:700;color:var(--green);">38.5 hr</div>
+                <div style="font-size:9px;color:var(--light);margin-top:4px;">預估薪資（時薪 $230）</div>
+                <div style="font-size:14px;font-weight:700;color:var(--khaki);">$8,855</div>
+              </div>
+              <div style="font-size:9px;color:var(--light);margin-bottom:4px;">本月紀錄明細</div>
+              <div style="font-size:9px;border-top:1px solid var(--border);padding-top:4px;">
+                <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+                  <span>05/19 09:00–17:30</span><b style="color:var(--green)">8.0 hr</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+                  <span>05/18 14:30–19:00</span><b style="color:var(--green)">4.0 hr</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                  <span>05/15 09:00–18:00</span><b style="color:var(--green)">8.5 hr</b>
+                </div>
+              </div>
+              <div style="font-size:8px;color:var(--light);margin-top:6px;line-height:1.5;">▶ 實際薪資以公司最終核定為準</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH8 Q&A -->
+<div class="chapter" id="p-ch8">
+  <div class="chapter-head">第八章　常見問題 Q &amp; A</div>
+  <div class="chapter-body">
+    <div class="accordion" id="acc-punch"></div>
+  </div>
+</div>
+
+<!-- Appendix -->
+<div class="chapter" id="p-app">
+  <div class="chapter-head">附錄　快速操作流程</div>
+  <div class="chapter-body">
+    <p class="body">每次前往客戶現場，依照以下 5 個步驟完成出勤紀錄：</p>
+    <div id="quick-steps-punch"></div>
+  </div>
+</div>
+
+</div><!-- /manual-punch -->
+
+<!-- ════════════════════════════════════════════════════════
+  CARE MANUAL
+════════════════════════════════════════════════════════ -->
+<div class="manual" id="manual-care">
+
+<!-- CH1 -->
+<div class="chapter" id="c-ch1">
+  <div class="chapter-head khaki">第一章　系統概覽</div>
+  <div class="chapter-body">
+    <div class="two-col">
+      <div class="two-col-text">
+        <div class="h2 k">什麼是養護回報？</div>
+        <p class="body">養護回報系統是伴行筆記的最新功能模組，專為外勤養護人員設計。完成一個客戶的養護作業後，可直接在手機填寫養護內容、拍照、記錄問題，讓後台即時掌握每個客戶的植栽狀況。</p>
+        <div class="h2 k">有什麼好處？</div>
+        <ul class="bl">
+          <li>取代紙本，資料集中管理不散落</li>
+          <li>照片直接上傳 Drive，不占手機空間</li>
+          <li>異常追蹤清單讓後台第一時間掌握現場狀況</li>
+          <li>植物更換時，後台可即時更新狀態並安排補貨</li>
+          <li>自動產生公開連結，可分享給客戶查看報告</li>
+          <li>草稿自動暫存，中途有事不怕遺失資料</li>
+          <li>照片選好就在背景上傳，送出時不用再等</li>
+          <li>異常記到「哪一株、多嚴重、多大盆」，後台才排得出處理順序</li>
+        </ul>
+        <div class="callout info">
+          <div class="callout-icon">i</div>
+          <div class="callout-body">
+            <div class="callout-title">提醒</div>
+            <div class="callout-text">
+              <p>養護回報是養護「結束後」才填的作業紀錄，不是打卡功能。</p>
+              <p>完成伴行筆記「抵達/離開」打卡後，系統可自動帶入開始/結束時間。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="two-col-phone">
+        <div class="phone">
+          <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+          <div class="phone-screen-css">
+            <div class="psc-card">
+              <div class="psc-title">有植伴行筆記</div>
+              <div class="psc-status ready"><span>📍 定位正常 · 範圍內</span><span>↺</span></div>
+              <div class="psc-action-row">
+                <div class="psc-arrive">📍<br>抵達打卡</div>
+                <div class="psc-leave">→<br>結束離開</div>
+              </div>
+              <div class="psc-btn-green">🌿 養護回報</div>
+              <div style="border:1px solid var(--border);border-radius:6px;margin-top:6px;overflow:hidden;">
+                <div style="background:#faf9f7;padding:5px 8px;font-size:9px;font-weight:500;border-bottom:1px solid var(--border);">公告</div>
+                <div style="padding:6px 8px;font-size:8.5px;line-height:1.6;color:var(--light);">✨ 新增「養護回報」功能，請所有養護人員進行測試。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH2 如何開啟 WIZARD -->
+<div class="chapter" id="c-ch2">
+  <div class="chapter-head khaki">第二章　如何開啟養護回報</div>
+  <div class="chapter-body">
+    <p class="body">養護回報整合在伴行筆記中，無需額外安裝 App。登入後在主畫面點選「養護回報」按鈕即可進入。</p>
+    <div class="wizard" id="wiz-care-enter">
+      <div class="wizard-header k">
+        <div class="wizard-title">🌿 進入養護回報 · 互動引導</div>
+        <div class="wizard-progress" id="wiz-care-enter-prog">第 1 步，共 3 步</div>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-left" id="wiz-care-enter-left"></div>
+        <div class="wizard-right">
+          <div class="wizard-phone-label" id="wiz-care-enter-phone-label">畫面預覽</div>
+          <div class="phone sm" id="wiz-care-enter-phone">
+            <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+            <div class="phone-screen-css" id="wiz-care-enter-screen"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <div class="wiz-dots-row" id="wiz-care-enter-dots"></div>
+        <div class="wizard-nav">
+          <button class="wiz-btn wiz-prev" onclick="wizPrev('care-enter')">← 上一步</button>
+          <button class="wiz-btn wiz-next k" id="wiz-care-enter-next" onclick="wizNext('care-enter')">下一步 →</button>
+        </div>
+      </div>
+    </div>
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">注意</div>
+        <div class="callout-text"><p>若外勤現場網路訊號不佳，建議先填文字資訊，系統自動暫存草稿，訊號恢復後再上傳照片並正式送出。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH3 欄位說明 -->
+<div class="chapter" id="c-ch3">
+  <div class="chapter-head khaki">第三章　養護回報欄位說明</div>
+  <div class="chapter-body">
+    <div class="h2 k">3.1　案場資訊（選好客戶就會跳出來）</div>
+    <p class="body">選好客戶後，表單上方會出現一張<strong>案場資訊</strong>卡片，是後台先幫您整理好的現場資料，出發前或到場先看一眼：</p>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:18%">欄位</th><th style="width:44%">內容</th><th>用途</th></tr>
+      <tr><td class="fn-k">地址</td><td>案場地址。</td><td class="fh">確認走對地方。</td></tr>
+      <tr><td class="fn-k">注意事項</td><td>這個客戶特別要注意的事，例如「貓會跑出來、開門要小心」。</td><td class="fh">避免踩雷。</td></tr>
+      <tr><td class="fn-k">進出方式</td><td>怎麼進去、跟誰拿鑰匙、要不要登記。</td><td class="fh">省下到現場才問的時間。</td></tr>
+      <tr><td class="fn-k">植栽位置</td><td>這個案場有哪些植物、放在哪裡。</td><td class="fh">巡場對照用，也會變成異常回報時的品種建議。</td></tr>
+    </table>
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">卡片沒出現、或內容是空的？</div>
+        <div class="callout-text"><p>表示後台還沒填這個客戶的資料，不影響您回報。發現內容有錯或該補的，請告訴 Wayne 或主管，後台改完您下次就看得到。</p></div>
+      </div>
+    </div>
+
+    <div class="h2 k">3.2　基本資訊欄位</div>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:18%">欄位名稱</th><th style="width:44%">說明</th><th>填寫提示</th></tr>
+      <tr><td class="fn-k">養護日期</td><td>本次實際養護的日期（年－月－日）。</td><td class="fh">系統自動帶入今日；補填請手動修改。</td></tr>
+      <tr><td class="fn-k">開始時間</td><td>養護師抵達現場並開始作業的時間。</td><td class="fh">已完成打卡者自動帶入；否則手動輸入。</td></tr>
+      <tr><td class="fn-k">結束時間</td><td>本次養護作業完成、準備離開的時間。</td><td class="fh">建議離開前填寫，確保時間準確。</td></tr>
+      <tr><td class="fn-k">客戶名稱</td><td>本次養護的客戶全名。</td><td class="fh">從下拉選單選擇，不可自行輸入。</td></tr>
+      <tr><td class="fn-k">員工編號</td><td>您個人的員工編號，例如 EMP001。</td><td class="fh">系統自動帶入，無需手動填寫。</td></tr>
+    </table>
+    <div class="h2 k">3.3　養護項目</div>
+    <p class="body">養護項目為本次實際執行的工作，可複選。請只勾選「實際執行」的項目。</p>
+    <div style="display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 14px;">
+      <span style="border:1px solid var(--khaki);background:var(--khaki-p);color:var(--khaki-d);border-radius:20px;padding:4px 13px;font-size:13px;font-family:'Noto Sans TC',sans-serif;font-weight:700;">澆水</span>
+      <span style="border:1px solid var(--khaki);background:var(--khaki-p);color:var(--khaki-d);border-radius:20px;padding:4px 13px;font-size:13px;font-family:'Noto Sans TC',sans-serif;font-weight:700;">修剪枯葉</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">清理水盤</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">施藥</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">施肥</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">換盆</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">植物更換</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">病蟲害處理</span>
+      <span style="border:1px solid var(--border);background:white;border-radius:20px;padding:4px 13px;font-size:13px;">自動澆水檢查</span>
+    </div>
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">重要</div>
+        <div class="callout-text"><p>有進行植物更換時，務必勾選「植物更換」，後台才能更新客戶狀態並安排補貨。詳見第七章說明。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH4 區域記錄 WIZARD -->
+<!-- CH4 上次未結案異常 follow-up（NEW） -->
+<div class="chapter" id="c-ch4">
+  <div class="chapter-head khaki">第四章　上次未結案異常 follow-up</div>
+  <div class="chapter-body">
+    <p class="body">當您選了客戶 + 養護日期之後，系統會自動把「該客戶上次回報、但<strong>還沒結案</strong>」的異常項目整理出來，讓您直接在現場回報處置狀況。</p>
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">看到琥珀色的「後台交辦」就是主管留話給您</div>
+        <div class="callout-text">
+          <p>某一筆異常底下如果出現<strong>琥珀色的框、標題寫「後台交辦」</strong>，那是主管針對這一株特別交代的事情（例如「這盆這次帶新土去換」）。請到現場一定要看一下、照著做。</p>
+          <p>交辦會跟著這株植物一路延續下去，直到主管改掉或清空為止，所以不會因為換了一次回報就不見。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">為什麼要做這個？</div>
+        <div class="callout-text">
+          <p>以前同一個爛根問題會被重覆回報好幾次，後台不知道現場到底處理掉了沒。現在現場直接告訴後台「這個異常我這次怎麼處置」，主管會在後台確認後正式結案，下次就不會再跳出來。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2 k">出現位置</div>
+    <p class="body">在養護回報表單裡，<strong>「基本資訊」下方、「本次養護項目」上方</strong>會自動出現一張<strong>米黃底淺橘左邊條</strong>的卡片，標題寫「上次未結案異常」，右上角顯示異常數量。</p>
+    <ul class="bl">
+      <li>該客戶上次沒留下任何未結案異常 → 卡片<strong>不會出現</strong>，直接進入養護項目。</li>
+      <li>系統會找<strong>該客戶最近一次的回報</strong>，把那次裡標「未處理 / 處理中 / 觀察中」的異常列出來。</li>
+    </ul>
+
+    <div class="h2 k">三個處置選項</div>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:20%">處置</th><th>意思</th><th style="width:34%">後台會做的事</th></tr>
+      <tr><td class="fn-k">已處理</td><td>這個異常這次已經處理好，狀況改善。</td><td class="fh">主管確認後將異常標為「已結案」。</td></tr>
+      <tr><td class="fn-k">狀況一樣</td><td>這次到場異常還在、跟上次差不多。</td><td class="fh">主管會評估要不要安排換植或追加處置。</td></tr>
+      <tr><td class="fn-k">需要換植</td><td>植物狀況已經救不回來、建議換掉。</td><td class="fh">後台會排補貨、通知客戶並安排換植時間。</td></tr>
+    </table>
+
+    <div class="h2 k">填寫流程</div>
+    <ol class="bl">
+      <li>選好客戶與日期 → 卡片自動展開（如果該客戶有未結案異常）。</li>
+      <li>逐一看每個異常項目，點選最符合現場狀況的<strong>處置 chip</strong>。</li>
+      <li>點選後下方會出現「<strong>備註（可空）</strong>」欄位，可選擇性補充細節（例：「澆水量調整後改善」、「整株已枯萎」）。</li>
+      <li>處置可<strong>再次點同一顆 chip 取消</strong>，恢復「跳過」狀態。</li>
+      <li>不確定的就<strong>留白跳過</strong>，下次到場再回報。</li>
+    </ol>
+
+    <div class="callout tip">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">為什麼可以「跳過不填」？</div>
+        <div class="callout-text">
+          <p>處置是<strong>選填</strong>。不選不會送出、後台不會收到、也不會擋住您的養護回報。如果您這次不確定植物狀況，留白即可，下次再回報。</p>
+          <p>但建議：<strong>有改善就標「已處理」、沒改善就標「狀況一樣」</strong>，後台才能即時推進。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">這只是「提議」、不是「結案」</div>
+        <div class="callout-text">
+          <p>您點的「已處理 / 狀況一樣 / 需要換植」會送進後台<strong>等主管確認</strong>，才會正式更新異常狀態。所以您回報後，下次再進場時這個項目可能還會跳出來——這代表後台還沒處理完，並非系統錯誤。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2 k">新發現的異常怎麼辦？</div>
+    <p class="body">這張卡片<strong>只列上次的舊異常</strong>。如果這次到場發現「全新」的問題，請照原本的方式，在「養護區域紀錄」內的對應區域，新增到「異常追蹤」清單裡（詳見第六章）。</p>
+  </div>
+</div>
+
+<!-- CH5 區域記錄 -->
+<div class="chapter" id="c-ch5">
+  <div class="chapter-head khaki">第五章　區域記錄</div>
+  <div class="chapter-body">
+    <p class="body">每個客戶現場可能有多個區域（入口、辦公室、陽台等），系統支援按區域逐一記錄。</p>
+    <div class="wizard" id="wiz-zone">
+      <div class="wizard-header k">
+        <div class="wizard-title">📷 區域記錄 · 互動引導</div>
+        <div class="wizard-progress" id="wiz-zone-prog">第 1 步，共 4 步</div>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-left" id="wiz-zone-left"></div>
+        <div class="wizard-right">
+          <div class="wizard-phone-label" id="wiz-zone-phone-label">畫面預覽</div>
+          <div class="phone sm" id="wiz-zone-phone">
+            <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+            <div class="phone-screen-css" id="wiz-zone-screen"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <div class="wiz-dots-row" id="wiz-zone-dots"></div>
+        <div class="wizard-nav">
+          <button class="wiz-btn wiz-prev" onclick="wizPrev('zone')">← 上一步</button>
+          <button class="wiz-btn wiz-next k" id="wiz-zone-next" onclick="wizNext('zone')">下一步 →</button>
+        </div>
+      </div>
+    </div>
+    <div class="h2 k">區域欄位說明</div>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:18%">欄位</th><th style="width:44%">說明</th><th>提示</th></tr>
+      <tr><td class="fn-k">區域名稱</td><td>該養護區域的名稱，如「陽台」。<strong>一個區域只填一個位置。</strong></td><td class="fh">有兩個地方就開兩個區域。</td></tr>
+      <tr><td class="fn-k">養護前照片</td><td>作業開始前拍攝的植物現狀照片。</td><td class="fh">每區至少 1 張，記錄改善對比。</td></tr>
+      <tr><td class="fn-k">養護後照片</td><td>完成後的整潔照片，呈現養護成果。</td><td class="fh">整理好後再拍，勿與前照片混淆。</td></tr>
+      <tr><td class="fn-k">異常追蹤</td><td>本區域發現的植栽異常，可多筆。</td><td class="fh">詳見第六章說明。</td></tr>
+    </table>
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">重要提醒</div>
+        <div class="callout-text"><p>養護前照片 → 開始作業前拍；養護後照片 → 整理完成後再拍，請勿混淆上傳順序。</p></div>
+      </div>
+    </div>
+
+    <div class="h2 k">一個區域只填一個位置</div>
+    <p class="body">區域名稱請寫<strong>單一位置</strong>，不要把好幾個地方寫在同一格。送出時系統會檢查，寫成「室內、室外」「一樓/二樓」這種會被擋下來，要求您分開新增區域。</p>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:32%">這樣寫</th><th>結果</th></tr>
+      <tr><td class="fn-k" style="color:var(--alert)">室內、室外</td><td>送不出去。系統不知道異常是在哪一區發現的。</td></tr>
+      <tr><td class="fn-k" style="color:var(--alert)">一樓/二樓</td><td>送不出去。同上。</td></tr>
+      <tr><td class="fn-k" style="color:var(--green-d)">大廳</td><td>可以。</td></tr>
+      <tr><td class="fn-k" style="color:var(--green-d)">二樓茶水間</td><td>可以，越具體越好。</td></tr>
+    </table>
+    <div class="callout tip">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">為什麼要分開？</div>
+        <div class="callout-text"><p>異常是掛在「區域」底下的。如果一區塞了三個位置，事後看紀錄只會知道「這三個地方裡的某一處有蟲害」，找不到是哪一株、也沒辦法追蹤有沒有改善。分開建區域多花不到十秒，但紀錄才有用。</p></div>
+      </div>
+    </div>
+
+    <div class="h2 k">照片「選好就開始傳」</div>
+    <p class="body">照片<strong>不是等送出才上傳</strong>，是您選好照片的當下就在背景傳到雲端。每張縮圖右下角會顯示目前狀態：</p>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:22%">縮圖標示</th><th style="width:42%">意思</th><th>您要做的事</th></tr>
+      <tr><td class="fn-k">上傳中</td><td>正在傳，還沒傳完。</td><td class="fh">保持畫面開著，不要切走或鎖螢幕。</td></tr>
+      <tr><td class="fn-k">已備份</td><td>已經在雲端了，安全。</td><td class="fh">不用做什麼。送出時不會重傳，秒送。</td></tr>
+      <tr><td class="fn-k">傳失敗·點重傳</td><td>這張沒傳成功（通常是網路斷了）。</td><td class="fh">直接點那張縮圖就會重傳。</td></tr>
+      <tr><td class="fn-k">已傳</td><td>之前傳好的照片（灰色格子、看不到縮圖是正常的）。</td><td class="fh">不用做什麼。照片是私密的，只有公司看得到。</td></tr>
+    </table>
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">上傳中請不要離開畫面</div>
+        <div class="callout-text"><p>畫面上方有照片還在傳時會出現琥珀色提示條「請保持此畫面開啟」。手機切到別的 App 或鎖螢幕，系統會把上傳暫停（這是手機的限制、不是當機）；回到畫面就會繼續。全部變「已備份」再離開最保險。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH6 異常追蹤 -->
+<div class="chapter" id="c-ch6">
+  <div class="chapter-head khaki">第六章　異常追蹤</div>
+  <div class="chapter-body">
+    <p class="body">在每個區域的「<strong>異常追蹤</strong>」清單中記錄發現的植栽問題。這些紀錄會進到後台的異常追蹤中心排處理順序，也會在下次到場時變成「上次未結案異常」卡片（見第四章）。</p>
+
+    <div class="callout alrt">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">2026 年 7 月改版：一筆異常＝一株植物</div>
+        <div class="callout-text">
+          <p>異常回報不再是「打一句話」。現在每一筆異常都要講清楚<strong>是哪一種植物、多嚴重、盆器多大，還要有那一株的照片</strong>。</p>
+          <p>為什麼改：以前的紀錄常常是「室內室外都有問題」這種，事後回頭看，我們認不出是哪一株、也判斷不出有沒有改善，等於白記。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2 k">6.1　怎麼新增一筆異常</div>
+    <ol class="bl">
+      <li>在該區域下方點「<strong>新增異常</strong>」。</li>
+      <li>跳出類型清單，<strong>點一下您要的類型</strong>（不用打字）。清單裡沒有的就點「自訂」，自己描述。</li>
+      <li>卡片建立後，依序填：是哪一種植物 → 嚴重度 → 盆器尺寸 → 備註 → 選這株的照片。</li>
+      <li>同一區有好幾筆異常就重複新增，一株一筆。</li>
+    </ol>
+
+    <div class="h2 k">6.2　異常類型（點選，不用打字）</div>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:16%">類型</th><th style="width:44%">什麼情況選這個</th><th>現場建議</th></tr>
+      <tr><td class="fn-k">蟲害</td><td>看到蚜蟲、介殼蟲、葉蟎等害蟲。</td><td class="fh">現場能施藥就施，備註寫用了什麼。</td></tr>
+      <tr><td class="fn-k">爛根</td><td>根部腐爛、發黑軟化，多半是長期過濕或排水不良。</td><td class="fh">拍根部照片，嚴重度通常至少「需處理」。</td></tr>
+      <tr><td class="fn-k">自然代謝</td><td>老葉正常黃化脫落，植株整體是健康的。</td><td class="fh">通常標「觀察」即可，不用緊張。</td></tr>
+      <tr><td class="fn-k">光線不足</td><td>徒長、葉片變小變薄、往光源方向歪。</td><td class="fh">備註寫位置光線狀況，供後台評估要不要換位或換種。</td></tr>
+      <tr><td class="fn-k">大量落葉</td><td>短期內大量掉葉，不是正常代謝的量。</td><td class="fh">備註寫環境有沒有變（冷氣直吹、搬過位置）。</td></tr>
+      <tr><td class="fn-k">乾濕不均勻</td><td>同一盆土乾濕差很多，水沒澆透或只澆到表面。</td><td class="fh">澆透，備註寫調整方式。</td></tr>
+      <tr><td class="fn-k">土壤過乾</td><td>土已經乾到結塊、脫盆或葉片萎軟。</td><td class="fh">澆透並記錄。連續發生要提高嚴重度。</td></tr>
+      <tr><td class="fn-k">積水</td><td>水盤積水、排水孔堵住。</td><td class="fh">清水盤，這是爛根的前兆、別忽略。</td></tr>
+      <tr><td class="fn-k">自訂</td><td>清單裡沒有的狀況（例：白粉病、機械傷害）。</td><td class="fh">選了會多一格讓您自己描述。</td></tr>
+    </table>
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">常用的自訂詞會被加進清單</div>
+        <div class="callout-text"><p>您用「自訂」寫的描述，後台看到大家常用的會把它升級成正式類型，之後就變成可以直接點的按鈕。所以自訂的時候請寫得像個「病名／狀況名」（例：白粉病），不要寫成一整句話。</p></div>
+      </div>
+    </div>
+
+    <div class="h2 k">6.3　每一筆異常要填的東西</div>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:20%">欄位</th><th style="width:14%">必填？</th><th>怎麼填</th></tr>
+      <tr><td class="fn-k">是哪一種植物</td><td><strong style="color:var(--alert)">必填</strong></td><td class="fh">點一下會跳建議清單，<strong>最上面是這個案場的植物</strong>（後台登記的），下面是常見品種。清單沒有就自己打。真的不知道正式名稱，就寫看得懂的特徵，例如「大盆闊葉」「門口那棵高的」——總比空白好認。</td></tr>
+      <tr><td class="fn-k">嚴重度</td><td>預設「需處理」</td><td class="fh">三選一：<strong>觀察</strong>（還好、下次再看）／<strong>需處理</strong>（要安排）／<strong>急</strong>（快撐不住了、可能要換）。這是後台排先後順序用的，跟右邊的「處理狀態」不是同一件事。</td></tr>
+      <tr><td class="fn-k">處理狀態</td><td>預設「待追蹤」</td><td class="fh">您現場做完的程度：<strong>已處理</strong>／<strong>待追蹤</strong>／<strong>需換植物</strong>。</td></tr>
+      <tr><td class="fn-k">盆器 (cm)</td><td>建議填</td><td class="fh">兩格：<strong>盆徑 × 盆器高度</strong>，單位公分，量個大概就好。有這個數字，後台要換盆或報價時才不用再回頭問您。</td></tr>
+      <tr><td class="fn-k">備註</td><td>選填</td><td class="fh">現場做了什麼、環境有什麼特別的。例：「已現場施藥」「冷氣出風口正對」。</td></tr>
+      <tr><td class="fn-k">這株的照片</td><td><strong style="color:var(--alert)">必填</strong></td><td class="fh">從您這次拍的照片裡挑一張<strong>看得到這株問題</strong>的。沒選會擋住送出。</td></tr>
+    </table>
+
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">「嚴重度」跟「處理狀態」差在哪？</div>
+        <div class="callout-text">
+          <p><strong>嚴重度</strong>＝這株植物<strong>有多糟</strong>（後台用來排誰先處理）。</p>
+          <p><strong>處理狀態</strong>＝<strong>您現場做到哪</strong>（後台用來知道還要不要跟進）。</p>
+          <p>兩個是分開的。例如「急 ＋ 已處理」＝很嚴重但我現場已經先急救了；「觀察 ＋ 待追蹤」＝還好，下次再看。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2 k">6.4　這株的照片怎麼選</div>
+    <ol class="bl">
+      <li>先在區域上方把照片拍好、傳好（養護前或養護後都可以）。</li>
+      <li>在異常卡片點「<strong>+ 這株的照片（必填）</strong>」。</li>
+      <li>會展開您這次拍的所有照片，點一張就選好了。</li>
+      <li>選錯可以按「更換」重選，或「移除」清掉再選。</li>
+    </ol>
+    <div class="callout tip">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">請挑「看得到問題」的那張</div>
+        <div class="callout-text">
+          <p>可以拿區域全景照充數，但那樣後台一樣看不出問題在哪，等於這道規定白做。</p>
+          <p><strong>最好的做法</strong>：發現問題時就多拍一張特寫（拍葉背的蟲、爛掉的根、枯掉的枝），那張就是這筆異常最有用的證據。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2 k">6.5　延續自上次的異常</div>
+    <p class="body">在第四章的卡片點了「狀況一樣」，系統會自動在對應區域補一筆異常，上面有「<strong>延續自上次</strong>」標籤，品種和盆器也會自動帶進來，您不用重打。</p>
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">延續的異常，照片還是要拍這次的</div>
+        <div class="callout-text"><p>品種盆器可以沿用，但<strong>照片一定要是這次現場的</strong>。同一株連續幾次的照片擺在一起，才看得出來到底有沒有改善、還是一直在惡化。沒選照片一樣會被擋住送不出去。</p></div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">與第四章的關係</div>
+        <div class="callout-text"><p>這裡新增的異常 → 下次到場會出現在「上次未結案異常」卡片裡（第四章）等您回報處置狀況。沒處置完的會一直跟，直到您回報「已處理」且主管確認結案。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH7 植物更換 -->
+<div class="chapter" id="c-ch7">
+  <div class="chapter-head khaki">第七章　植物更換回報</div>
+  <div class="chapter-body">
+    <div class="callout alrt">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">重要：植物更換必須在系統上回報！</div>
+        <div class="callout-text"><p>有植物更換（現場更換或需安排更換）時，一定要在系統上記錄。後台依此更新植物狀態、安排補貨、通知客戶；未填寫將無從得知異動。</p></div>
+      </div>
+    </div>
+    <div class="h2 k">植物更換填寫步驟</div>
+    <ol class="bl">
+      <li>在養護項目中勾選「植物更換」。</li>
+      <li>在區域「異常追蹤」清單新增「植物枯死，已現場更換」或「需更換－待補貨」。</li>
+      <li>拍攝更換前（養護前照片）及更換後（養護後照片）。</li>
+      <li>在養護師備註說明品種與數量，如：「陽台白鶴芋更換為黃金葛，1 盆」。</li>
+    </ol>
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">提醒</div>
+        <div class="callout-text"><p>現場無備品時，請先填「需更換－待補貨」，讓後台安排，下次到訪再執行更換。</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CH8 送出草稿 -->
+<div class="chapter" id="c-ch8">
+  <div class="chapter-head khaki">第八章　送出與草稿</div>
+  <div class="chapter-body">
+    <div class="h2 k">送出養護回報</div>
+    <p class="body">填寫完畢後點選「送出回報」，系統會：</p>
+    <ul class="bl">
+      <li>自動產生回報 ID（格式：CR-員工編號-日期時間）</li>
+      <li>所有資料寫入後台資料庫</li>
+      <li>照片同步至 Google Drive「養護回報照片」資料夾</li>
+      <li>後台收到通知確認</li>
+    </ul>
+    <div class="callout warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <div class="callout-title">送出前請確認</div>
+        <div class="callout-text">
+          <p>1. 養護日期、時間正確？</p>
+          <p>2. 各區域前後照片已上傳，縮圖都變「已備份」？</p>
+          <p>3. 每筆異常都填了<strong>植物品種</strong>、選了<strong>這株的照片</strong>？（沒填會被擋）</p>
+          <p>4. 區域名稱有沒有一格塞了好幾個位置？（會被擋）</p>
+          <p>5. 植物更換已勾選並備註？</p>
+        </div>
+      </div>
+    </div>
+    <div class="h2 k">送不出去？系統擋您的三種情況</div>
+    <p class="body">按了「送出回報」卻跳出提示、送不出去，多半是下面三種。這是刻意設計的檢查，不是當機：</p>
+    <table class="field-table ft-khaki">
+      <tr><th style="width:34%">跳出的訊息</th><th>怎麼解</th></tr>
+      <tr><td class="fn-k">「區域○○看起來寫了不只一個位置」</td><td>區域名稱一格只能填一個位置。把它改成單一位置，其他位置另外新增區域。（見第五章）</td></tr>
+      <tr><td class="fn-k">「還沒填是哪一種植物」</td><td>那筆異常的品種欄是空的。不確定正式名稱就寫特徵，例如「大盆闊葉」。（見第六章）</td></tr>
+      <tr><td class="fn-k">「還沒選這株的照片」</td><td>那筆異常沒挑代表照。點「+ 這株的照片」從這次拍的照片裡選一張。（見第六章）</td></tr>
+    </table>
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">訊息會直接告訴您是哪一區、哪一筆</div>
+        <div class="callout-text"><p>提示會寫出區域名稱和異常名稱，照著回去補那一筆就好，不用整份重找。</p></div>
+      </div>
+    </div>
+
+    <div class="h2 k">草稿自動暫存</div>
+    <p class="body">填寫過程中系統自動暫存草稿。斷線或關掉瀏覽器後，重新開啟選同一客戶，草稿自動恢復，不需重頭填寫。</p>
+    <div class="h2 k">同一案場當天已有回報？</div>
+    <p class="body">按「送出回報」時，若系統發現<strong>同一客戶、同一天</strong>已經有一筆回報，會跳出提醒視窗，請依實際情況選擇：</p>
+    <ul class="bl">
+      <li><strong>載入那筆來編輯</strong>：其實是同一趟養護（剛才漏填、想補照片）→ 載入既有那筆修改後重新送出。</li>
+      <li><strong>這是另一次出場，仍要新增</strong>：當天確實去了第二趟 → 才另開一筆新回報。</li>
+      <li><strong>取消</strong>：先回表單不送出。</li>
+    </ul>
+    <div class="callout info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <div class="callout-title">為什麼會跳這個視窗</div>
+        <div class="callout-text"><p>這是避免「以為沒送出、又送一次」造成重複回報。看到提醒先別急著關，確認是不是同一趟即可。</p></div>
+      </div>
+    </div>
+    <div class="h2 k">已送出的回報要修改怎麼辦？</div>
+    <p class="body">可以修改。切換到「我的回報」頁籤，點選要修改的那一筆（卡片上有「✏️ 點此編輯」標示），系統會把整份回報載入表單，上方顯示「編輯模式」。修改後重新送出，會直接<strong>覆蓋原本那筆</strong>，不會產生新的一筆。</p>
+    <ul class="bl">
+      <li>照片、養護項目、備註、異常追蹤清單都可以修改。</li>
+      <li>若找不到該筆、或屬重大錯誤，請聯絡 Wayne 或公司主管協助。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- CH9 Q&A -->
+<div class="chapter" id="c-ch9">
+  <div class="chapter-head khaki">第九章　常見問題 Q &amp; A</div>
+  <div class="chapter-body">
+    <div class="accordion k" id="acc-care"></div>
+  </div>
+</div>
+
+<!-- Appendix -->
+<div class="chapter" id="c-app">
+  <div class="chapter-head khaki">附錄　快速操作流程</div>
+  <div class="chapter-body">
+    <p class="body">每次到達客戶現場，依照以下 10 個步驟操作：</p>
+    <div id="quick-steps-care"></div>
+  </div>
+</div>
+
+</div><!-- /manual-care -->
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════
+
+const GPS_STATES = {
+  ready: {
+    cls: 'gps-disp-green', btnCls: 'sel-green', btnId: 'gps-btn-ready',
+    text: '📍 定位正常 · 範圍內',
+    explanation: '定位正常，且您目前在案場 150 公尺範圍內。打卡按鈕已啟用，可直接按下「抵達打卡」或「結束離開」。',
+    action: '✅ 打卡按鈕已啟用，可直接打卡', actionCls: 'ok'
+  },
+  wait: {
+    cls: 'gps-disp-gray', btnCls: 'sel-gray', btnId: 'gps-btn-wait',
+    text: '⏳ 定位取得中...',
+    explanation: 'GPS 正在取得您的位置，通常需要 10–30 秒。請稍候，等狀態列變為綠色後再操作。若超過 30 秒仍未定位，可點右側刷新圖示（↺）手動更新。',
+    action: '⏳ 請等待 GPS 定位完成，按鈕暫時無法使用', actionCls: 'wait'
+  },
+  far: {
+    cls: 'gps-disp-orange', btnCls: 'sel-orange', btnId: 'gps-btn-far',
+    text: '⚠️ 距離較遠（約 320 公尺）',
+    explanation: '您目前距離案場超過 150 公尺。按下打卡按鈕後，系統會彈出「距離提醒視窗」，請選擇最符合實際情況的原因後送出，記錄仍然有效。',
+    action: '⚠️ 可以打卡，但需要選擇距離較遠的原因', actionCls: 'warn'
+  }
+};
+
+const REASONS = {
+  1: { title: '室內/地下室 GPS 訊號不良', desc: '在室內、地下停車場、電梯等 GPS 訊號受到遮蔽的環境，定位可能大幅偏移。<strong>這是最常見的情況</strong>，選擇此原因後直接送出即可，後台了解這個狀況不會有影響。' },
+  2: { title: '慢了腳步，於歸途補記', desc: '已離開現場但忘記打卡，在途中補完成記錄。<strong>選擇後請填寫實際時間</strong>，系統會用您填入的時間計算工時，而非補記的當下時間。' },
+  3: { title: '在附近找車位 / 剛停好車', desc: '尚未走進案場，在附近停車時先行打卡記錄。這種情況很常見，後台了解實際情況，不影響出勤紀錄的有效性。' },
+  4: { title: '系統座標可能有誤', desc: '客戶地址有誤或已搬遷，導致系統定位點與實際位置不符。<strong>請同時通知後台更新客戶座標</strong>，以免下次繼續觸發此提醒。' },
+  5: { title: '點錯客戶 / 誤按', desc: '不小心選錯客戶或誤觸按鈕，選擇此原因後系統會記錄為無效操作，<strong>不計入工時</strong>。請取消後重新選擇正確的客戶再打卡。' },
+  6: { title: '其他（自行輸入）', desc: '其他不在上述選項的特殊情況，請在文字欄位簡短說明原因（如「客戶施工中，臨時更換作業地點」）。後台會看到您的說明進行確認。' }
+};
+
+// ── Wizard screens ──
+const WIZ_SCREENS = {
+  login: [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 系統初始化...</div><div class="psc-select" style="color:var(--light)">-- 請選擇您的姓名 --</div><div class="psc-input" style="color:var(--border);letter-spacing:1px">輸入通行碼（數字）</div><div class="psc-btn-green" style="opacity:.4;background:#d5d1c8">開始伴行</div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 系統初始化...</div><div class="psc-select">林○○ ▾</div><div class="psc-input" style="color:var(--border)">輸入通行碼（數字）</div><div class="psc-btn-green" style="opacity:.4;background:#d5d1c8">開始伴行</div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 系統初始化...</div><div class="psc-select">林○○ ▾</div><div class="psc-input focus">●●●●</div><div class="psc-btn-green">開始伴行</div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div style="font-size:10px;margin-bottom:8px;">您好，<strong>林○○</strong>。</div><div class="psc-select">○○○ 客戶（A002）▾</div><div class="psc-action-row"><div class="psc-arrive">📍<br>抵達打卡</div><div class="psc-leave">→<br>結束離開</div></div></div>`
+  ],
+  punch: [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait" style="animation:none">⏳ 定位取得中...</div><div class="psc-select">-- 請選擇客戶 --</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達打卡</div><div class="psc-leave" style="opacity:.4;background:#d5d1c8">→ 離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-select">週養護｜○○○ 客戶 ▾</div><div style="font-size:9px;color:var(--light);margin-bottom:6px;">📍 台北市○○路○○號</div><div class="psc-action-row"><div class="psc-arrive">📍 抵達打卡</div><div class="psc-leave">→ 離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-success"><div class="psc-success-icon">🌱</div><div class="psc-success-text">已記下這段伴行時光</div><div class="psc-success-sub">抵達打卡 · 10:32<br>○○○ 客戶<br>正在同步資料...</div></div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div style="font-size:9px;color:var(--khaki);margin-bottom:6px;">上次紀錄：抵達 10:32</div><div class="psc-select">週養護｜○○○ 客戶 ▾</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達</div><div class="psc-leave" style="box-shadow:0 0 10px rgba(196,154,130,.5)">→ 結束離開</div></div></div>`
+  ],
+  makeup: [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 定位取得中...</div><div class="psc-select">週養護｜○○○ 客戶 ▾</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.6">📍 抵達打卡</div><div class="psc-leave" style="opacity:.6">→ 離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-modal"><div class="psc-modal-inner"><div class="psc-modal-title">⚠️ 距離提醒</div><div class="psc-modal-text">您目前距離案場約 850 公尺</div><div class="psc-modal-select">-- 請選擇異常原因 --</div><div class="psc-modal-row"><div class="psc-cancel">取消</div><div class="psc-confirm">確認送出</div></div></div></div></div>`,
+    `<div class="psc-card"><div class="psc-modal"><div class="psc-modal-inner"><div class="psc-modal-title">⚠️ 距離提醒</div><div class="psc-modal-select" style="font-weight:700;color:var(--green-d)">2. 慢了腳步，於歸途補記 ✓</div><div style="background:var(--bg);border-radius:4px;padding:5px;margin-bottom:6px;"><div style="font-size:9px;color:var(--light);">實際抵達時間</div><div style="font-size:11px;font-weight:700;color:var(--main);border:1px solid var(--green);border-radius:3px;padding:3px 6px;margin-top:3px;">09:15 ✓</div></div><div class="psc-modal-row"><div class="psc-cancel">取消</div><div class="psc-confirm">確認送出</div></div></div></div></div>`,
+    `<div class="psc-card"><div class="psc-success"><div class="psc-success-icon">🌱</div><div class="psc-success-text">已記下這段伴行時光</div><div class="psc-success-sub">補記抵達 · 實際時間 09:15<br>○○○ 客戶</div></div></div>`
+  ],
+  nobreak: [
+    `<div class="psc-card"><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-select">○○○ 客戶 ▾</div><div style="font-size:9px;color:var(--khaki);margin-bottom:6px;">上次紀錄：抵達 09:00</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達</div><div class="psc-leave">→ 結束離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-nobreak"><div class="psc-check"><div class="psc-check-box"></div>今日因公未休法定休息（提報補回）</div></div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達</div><div class="psc-leave">→ 結束離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-nobreak"><div class="psc-check"><div class="psc-check-box checked">✓</div>今日因公未休法定休息（提報補回）</div><div class="psc-reason">案場作業繁忙無法中斷</div></div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍</div><div class="psc-leave" style="box-shadow:0 0 10px rgba(196,154,130,.5)">→ 結束離開</div></div></div>`
+  ],
+  'care-enter': [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-action-row"><div class="psc-arrive">📍 抵達</div><div class="psc-leave">→ 離開</div></div><div class="psc-btn-green" style="box-shadow:0 0 10px rgba(140,156,134,.4)">🌿 養護回報</div><div class="psc-btn-khaki" style="background:#a8a092">⏰ 時光回顧</div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div style="display:flex;gap:4px;margin-bottom:8px;"><div style="flex:1;background:var(--green);color:white;border-radius:4px;padding:6px;text-align:center;font-size:9px;font-weight:700;">✏️ 填寫</div><div style="flex:1;border:1px solid var(--border);border-radius:4px;padding:6px;text-align:center;font-size:9px;color:var(--light);">📋 我的回報</div></div><div style="font-size:9px;font-weight:700;color:var(--light);margin-bottom:6px;">基本資訊</div><div class="psc-select" style="font-size:9px;margin-bottom:4px;">週養護｜○○○ 客戶（A002）</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;"><input style="border:1px solid var(--border);border-radius:3px;padding:4px;background:#faf9f7;" value="2026-05-19" /><input style="border:1px solid var(--border);border-radius:3px;padding:4px;background:#faf9f7;color:var(--green);border-color:var(--green);" value="14:30 ✓" /></div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div style="font-size:9px;font-weight:700;color:var(--light);margin-bottom:5px;">本次養護項目</div><div class="psc-chip-row"><div class="psc-chip on">澆水</div><div class="psc-chip on">修剪</div><div class="psc-chip">清水盤</div><div class="psc-chip on">植物更換</div><div class="psc-chip">施藥</div></div><div style="font-size:9px;font-weight:700;color:var(--light);margin:5px 0 4px;">養護師備註</div><div style="border:1px solid var(--border);border-radius:3px;padding:5px;font-size:9px;background:#faf9f7;color:var(--light);">特殊情況說明...</div><div class="psc-btn-green" style="margin-top:8px;">送出回報</div></div>`
+  ],
+  zone: [
+    `<div class="psc-card" style="padding:8px;"><div style="font-size:9px;font-weight:700;color:var(--light);margin-bottom:5px;">養護區域紀錄</div><div class="psc-add-zone">＋ 新增養護區域</div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">1</div><span>陽台</span></div><div class="psc-zone-body">養護前照片：點此上傳...</div></div><div class="psc-add-zone">＋ 新增區域</div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">1</div><span>陽台</span></div><div class="psc-zone-body"><div style="display:flex;gap:3px;margin-bottom:5px;"><div style="flex:1;background:var(--green-p);border-radius:3px;padding:4px;font-size:8px;text-align:center;color:var(--green-d);">前 ✓×2</div><div style="flex:1;border:1px dashed var(--border);border-radius:3px;padding:4px;font-size:8px;text-align:center;color:var(--light);">後 + 上傳</div></div><div style="font-size:8px;color:var(--light);">異常追蹤</div><div style="font-size:8px;background:var(--amber-p);border-radius:3px;padding:3px 6px;margin-top:3px;">爛根 · 待追蹤</div></div></div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">1</div><span>陽台</span><span style="margin-left:auto;font-size:8px;color:var(--green-d);">✓ 完成</span></div><div class="psc-zone-body" style="font-size:8.5px;color:var(--light);">前 2 張 · 後 1 張 · 問題 1 筆</div></div><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">2</div><span>辦公室</span></div><div class="psc-zone-body" style="font-size:8.5px;color:var(--light);">填寫中...</div></div><div class="psc-btn-khaki" style="margin-top:8px;">送出回報</div></div>`
+  ]
+};
+
+// Wizard step data
+const WIZARDS = {
+  login: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/4', title: '開啟伴行筆記連結', desc: '在手機瀏覽器輸入網址，或掃描公司提供的 QR Code，進入系統頁面。', hint: '建議開啟後點「加入主畫面」，下次就可以像 App 一樣快速開啟。' },
+      { num: 'STEP 2/4', title: '從下拉選單選擇您的姓名', desc: '點選名稱選單，從清單中找到並選擇您的名字。', hint: '若找不到您的名字，請聯絡後台管理人員確認帳號是否已建立。' },
+      { num: 'STEP 3/4', title: '輸入您的個人通行碼', desc: '在密碼欄位輸入公司提供的數字通行碼，輸入完成後按「開始伴行」。', hint: '通行碼由公司統一設定，請妥善保管，勿告知他人。' },
+      { num: 'STEP 4/4', title: '登入成功！進入主畫面', desc: '系統驗證成功後，自動記住您的身分並進入打卡主畫面。下次開啟時直接進入，不需重新登入。', hint: '若需切換帳號，點選主畫面最下方的「切換帳號」文字連結。' }
+    ]
+  },
+  punch: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/4', title: '開啟伴行筆記，等待 GPS 定位', desc: '抵達現場後開啟系統，等待 GPS 狀態列變為綠色（通常需 10–30 秒）。若等待過久，點右側刷新圖示（↺）手動更新。', hint: '在室內或地下室時，GPS 可能需要稍長時間取得位置，請稍候。' },
+      { num: 'STEP 2/4', title: '選擇客戶，確認地址', desc: '從下拉選單選擇本次前往的客戶名稱，確認下方顯示的地址正確。', hint: '可點選地址旁的「打開 Google 導航」連結，直接導航前往案場。' },
+      { num: 'STEP 3/4', title: '按下「抵達打卡」', desc: '系統記錄目前時間為抵達時間，畫面顯示「已記下這段伴行時光」🌱 表示打卡成功。', hint: '若出現距離提醒視窗，請選擇最符合情況的原因後送出，記錄仍然有效。' },
+      { num: 'STEP 4/4', title: '完成工作後按「結束離開」', desc: '離開前再次確認客戶選項，按下結束離開，完成本次出勤紀錄。若工時超過 4 小時，確認是否需要勾選未休申報。', hint: '' }
+    ]
+  },
+  makeup: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/4', title: '開啟伴行筆記，選擇客戶', desc: '選擇剛才服務的客戶，即使已不在現場也可以操作。GPS 位置不在案場範圍內是正常的。', hint: '' },
+      { num: 'STEP 2/4', title: '按打卡按鈕，出現距離提醒視窗', desc: '由於已不在案場 150 公尺內，系統自動彈出距離提醒視窗，這是正常的——補記就是從這裡操作。', hint: '不用擔心，這個視窗出現是補記操作的一部分。' },
+      { num: 'STEP 3/4', title: '選擇「慢了腳步，於歸途補記」並填入實際時間', desc: '選擇後出現「實際時間」欄位，請填入您實際抵達或離開的時間，再按「確認送出」。', hint: '務必填寫實際時間！不填則以補記當下時間計算，會影響工時準確性。' },
+      { num: 'STEP 4/4', title: '補記完成', desc: '系統以您填入的實際時間計算工時，補記記錄標示為「補登」，後台可查閱原因備註。', hint: '' }
+    ]
+  },
+  nobreak: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/3', title: '確認今日工時超過 4 小時', desc: '法定休息申報框僅在按下「結束離開」時出現。若工時不足 4.5 小時，此功能不會觸發。', hint: '可先用上方的工時計算器確認是否達到扣除門檻。' },
+      { num: 'STEP 2/3', title: '勾選「今日因公未休法定休息」', desc: '勾選後出現原因輸入欄位，簡短說明無法休息的原因，例如「案場作業繁忙無法中斷」。', hint: '若當日確實有休息，請勿勾選。未申報視為已休息，扣除時間不予補回。' },
+      { num: 'STEP 3/3', title: '按下「結束離開」完成送出', desc: '後台收到申報後，將以加項方式補回被扣除的休息時間，反映在下次的時光回顧中。', hint: '' }
+    ]
+  },
+  'care-enter': {
+    color: 'khaki',
+    steps: [
+      { num: 'STEP 1/3', title: '在主畫面點選「養護回報」', desc: '登入伴行筆記後，在主畫面找到綠色的「養護回報」按鈕（位於抵達/離開打卡按鈕正下方），點擊進入。', hint: '若已完成打卡，系統可自動帶入開始/結束時間，不用手動輸入。' },
+      { num: 'STEP 2/3', title: '選擇客戶，確認基本資訊', desc: '從下拉選單選擇本次養護的客戶，確認養護日期與開始時間正確，填入結束時間。', hint: '若打卡時已記錄抵達時間，「開始時間」欄位會自動帶入，旁邊會顯示「✓ 已從伴行打卡自動帶入」。' },
+      { num: 'STEP 3/3', title: '勾選養護項目，填寫備註', desc: '勾選本次實際執行的養護工作，在備註欄填入特殊情況，接著進入區域記錄填寫各區域的照片與異常追蹤。', hint: '有進行植物更換時，務必勾選「植物更換」，後台才能更新客戶狀態！' }
+    ]
+  },
+  zone: {
+    color: 'khaki',
+    steps: [
+      { num: 'STEP 1/4', title: '點選「新增養護區域」', desc: '在回報頁面找到「新增養護區域」虛線按鈕，點選後出現新區域表單。輸入區域名稱，例如「陽台」、「二樓茶水間」。一個區域只填一個位置。', hint: '寫「室內、室外」這種一格塞好幾個地方的，送出時會被擋下來——有兩個地方就開兩個區域。' },
+      { num: 'STEP 2/4', title: '上傳養護前照片', desc: '作業開始前，先拍攝植物現狀照片，點選「養護前照片」上傳區域。每個區域至少 1 張，讓客戶看到改善前後的對比。照片選好就會在背景開始傳，縮圖會顯示「上傳中／已備份」。', hint: '看到「傳失敗·點重傳」就點那張縮圖重傳。等全部變「已備份」再離開畫面最保險。' },
+      { num: 'STEP 3/4', title: '上傳養護後照片，填寫異常追蹤', desc: '完成養護作業後，上傳整理後的照片。發現植栽異常就點「新增異常」，先點選類型（蟲害、爛根…），再填是哪一種植物、嚴重度、盆器尺寸，最後挑一張這株的照片。', hint: '品種和這株的照片都是必填，沒填會擋住送出。發現問題時順手多拍一張特寫，那張最有用。' },
+      { num: 'STEP 4/4', title: '多區域可重複新增', desc: '完成一個區域後，點選「新增養護區域」繼續填寫下一個區域。所有區域完成後，在頁面最下方點「送出回報」。', hint: '草稿會自動儲存，中途有急事可以先關閉，稍後再回來繼續填。' }
+    ]
+  }
+};
+
+const PUNCH_QA = [
+  ['打卡按鈕是灰色的，無法點選？', 'GPS 尚未取得定位。請等待狀態列變為綠色（通常 10–30 秒）。若等待過久，點狀態列右側的刷新圖示（↺）手動更新。'],
+  ['出現距離提醒視窗，但我確實在現場？', '在室內或地下室時，GPS 訊號容易受到遮蔽造成偏移。請選擇「室內/地下室 GPS 訊號不良」並送出，後台會看到此備註，不影響出勤記錄。'],
+  ['忘記打抵達卡，現在已離開現場了？', '使用補記功能：按下抵達打卡按鈕 → 出現距離提醒 → 選擇「慢了腳步，於歸途補記」→ 填入實際抵達時間 → 送出。系統會以您填入的時間計算工時。'],
+  ['同一天去了兩個客戶，要打幾次卡？', '每個客戶都需要分別完成「抵達」與「離開」打卡，共 4 次。系統會自動計算各客戶的服務時數。'],
+  ['預估薪資和我預期的不一樣？', '預估薪資是累積工時乘以時薪的試算值，可能尚未包含未休補回、加項調整等項目。實際薪資以公司最終核定為準，如有疑問請聯絡後台。'],
+  ['連續工作超過 4.5 小時，工時被扣了 0.5 小時？', '這是依勞基法的法定休息時間自動扣除。若當日確實因公無法休息，請在「結束離開」時勾選「今日因公未休法定休息」並填寫原因，後台會補回扣除的時間。'],
+  ['手機換新了，要怎麼重新登入？', '在新手機重新開啟連結，選擇姓名並輸入通行碼，點選「開始伴行」即可完成設定。'],
+  ['發現打卡時間有誤，可以請後台修改嗎？', '可以，請於三日內向後台（Wayne 或公司主管）說明，並提供正確的出勤時間，由後台協助手動校正。超過三日可能無法修正，請儘早處理。']
+];
+
+const CARE_QA = [
+  ['送出時跳「還沒填是哪一種植物」，可是我不知道那叫什麼？', '寫看得懂的特徵就好，例如「大盆闊葉」「門口那棵高的」「葉子有洞的那盆」。系統不會比對正確名稱，重點是<strong>下次有人看紀錄認得出是哪一株</strong>。空白才是最沒用的。品種欄點下去也會跳建議清單，最上面就是這個案場後台登記的植物，可以先在裡面找。'],
+  ['送出時跳「還沒選這株的照片」，一定要拍嗎？', '要。每一筆異常都必須有一張照片。做法：先在區域上方把照片拍好傳好，再回到異常卡片點「+ 這株的照片」，從跳出來的照片裡挑一張。建議發現問題當下就多拍一張特寫，那張最有用。'],
+  ['送出時說我的區域「寫了不只一個位置」？', '因為區域名稱裡有「、」「，」「/」或「以及」「還有」這種字，表示您把好幾個地方寫在同一格（例如「室內、室外」）。請改成單一位置，其他位置另外新增區域。異常是掛在區域底下的，一格塞三個地方，事後就找不到是哪一株出問題。'],
+  ['「嚴重度」跟「處理狀態」有什麼不一樣？', '<strong>嚴重度</strong>＝這株有多糟（觀察／需處理／急），後台拿來排先後順序。<strong>處理狀態</strong>＝您現場做到哪（已處理／待追蹤／需換植物）。兩個分開選，例如「急＋已處理」就是很嚴重但我現場先急救過了。'],
+  ['盆器尺寸一定要量嗎？沒帶尺。', '目測大概就好，不用精準。填的是<strong>盆徑 × 盆器高度</strong>，單位公分。有這個數字，後台要換盆或報價時才不用再回頭問您，等於幫自己省一趟溝通。'],
+  ['延續自上次的異常，照片可以沿用上次的嗎？', '不行。品種和盆器會自動帶下來不用重填，但<strong>照片一定要是這次現場拍的</strong>。同一株連續幾次的照片擺在一起，才看得出到底有沒有改善。'],
+  ['照片縮圖上寫「傳失敗·點重傳」怎麼辦？', '直接點那張縮圖就會重傳，通常是當下網路斷了。全部變成「已備份」再送出最保險。'],
+  ['照片還在「上傳中」，我可以先去做別的嗎？', '不建議。畫面上方有琥珀色提示「請保持此畫面開啟」時，代表還在傳；切到別的 App 或鎖螢幕，手機會把上傳暫停（這是手機限制、不是當機），回到畫面才會繼續。等全部變「已備份」再離開。'],
+  ['異常清單裡沒有我要的類型？', '點最後那顆「自訂」，會多一格讓您自己描述。請寫得像個病名或狀況名（例：白粉病），不要寫成一整句話——後台看到大家常用的詞會把它升級成正式類型，之後就變成可以直接點的按鈕。'],
+  ['異常底下出現琥珀色的「後台交辦」是什麼？', '那是主管針對這一株特別交代的事情（例如「這盆這次帶新土去換」）。到現場請一定要看、照著做。交辦會一路跟著這株延續下去，直到主管改掉或清空。'],
+  ['「上次未結案異常」這張卡為什麼沒出現？', '兩種情況：(1) 該客戶上次回報沒留下任何未結案異常，系統就不顯示這張卡，直接進養護項目。(2) 您剛選好客戶或剛改日期，系統還在背景載入，稍等一兩秒會出現。'],
+  ['我點了「已處理」，下次到場為什麼還會跳出來？', '您點的處置只是「提議」，要等後台主管在「異常追蹤」確認後才會正式結案。後台還沒處理之前，這個項目會繼續出現，這是正常的，不是 bug。'],
+  ['不確定要選哪個處置怎麼辦？', '可以留白跳過、不選。系統<strong>不會強制您填</strong>，跳過也不影響送出養護回報。下次到場時再回報即可。但建議：能確定的就盡量標，後台才有資訊推進。'],
+  ['「狀況一樣」跟「需要換植」差別在哪？', '「狀況一樣」= 異常還在但植物還活著、可繼續觀察或下次再處理。「需要換植」= 植物已經救不回來、建議直接換掉。如果不確定，先標「狀況一樣」，後台會評估。'],
+  ['點錯處置怎麼取消？', '再點一次<strong>同一顆 chip</strong> 就會取消選擇、恢復跳過狀態。或者直接點另一顆，會自動切換。'],
+  ['養護回報一定要在現場填嗎？', '不一定。雖然建議在現場完成（照片需在現場才準確），但若有急事，可先在系統做文字記錄（勾選項目、填備註），系統自動暫存草稿，有空再補照片送出。'],
+  ['我忘記拍養護前照片怎麼辦？', '在備註說明情況，後台會協助記錄。日後請養成「到場先拍、做完再拍」的習慣。'],
+  ['客戶現場網路很差，照片傳不了？', '先填文字，等有網路再補傳照片。草稿功能會保留所有輸入，不會遺失。'],
+  ['同一客戶一天去了兩次，需要填幾份回報？', '每次養護各填一份，一天兩次就填兩份。送出第二份時系統會跳出「重複提醒」視窗，選「這是另一次出場，仍要新增」即可正常建立第二筆。'],
+  ['上傳照片時跳出「已略過重複的照片」？', '系統偵測到您選了內容完全相同的照片，自動略過重複那幾張，避免報告出現重複照片。這是正常的，繼續操作即可。'],
+  ['植物換了但忘記拍養護前照片，怎麼記錄？', '在養護後照片欄位上傳新植物照片，並在備註說明「原植物因 [原因] 已更換，養護前照片未能留存」。'],
+  ['現場發現嚴重問題，除了填回報還要做什麼？', '嚴重問題（大量蟲害、植物快枯死）請同時用 LINE 或電話通知後台，不要只依賴系統，避免延誤處理時機。'],
+  ['已送出的回報可以修改嗎？', '可以。切換到「我的回報」頁籤，點選該筆（卡片上有「✏️ 點此編輯」），系統會載入整份回報進入「編輯模式」，修改後重新送出即覆蓋原本那筆，不會產生新的一筆。重大錯誤或找不到該筆再聯絡後台協助。'],
+  ['我可以查看自己之前的養護回報嗎？', '可以，切換到「我的回報」頁籤即可查看個人歷史記錄。']
+];
+
+const PUNCH_STEPS = [
+  ['抵達現場，開啟伴行筆記', '在手機瀏覽器開啟系統，等待 GPS 狀態列變為綠色。'],
+  ['選擇客戶', '從下拉選單選擇本次前往的客戶，確認地址正確。'],
+  ['按下「抵達打卡」', '若 GPS 範圍正常 → 直接打卡完成。若出現距離提醒 → 選擇原因後送出。'],
+  ['完成工作', '進行服務作業（養護人員另需完成「養護回報」）。'],
+  ['按下「結束離開」', '若當日工時超過 4 小時 → 確認是否需勾選「未休申報」。完成後按下結束離開送出。']
+];
+
+const CARE_STEPS = [
+  ['抵達現場打卡', '用伴行筆記完成「抵達」打卡，系統記錄抵達時間。'],
+  ['先看案場資訊', '選好客戶後上方會跳出地址／注意事項／進出方式／植栽位置，看一眼再開始。'],
+  ['拍攝養護前照片', '每個區域作業前，先拍下植栽現狀照片。發現問題就順手多拍一張特寫。'],
+  ['進行養護作業', '澆水、修剪、施藥、更換植物等實際養護工作。'],
+  ['拍攝養護後照片', '每個區域完成後，拍下整理後的照片。等縮圖變「已備份」再離開畫面。'],
+  ['開啟養護回報、選客戶', '在伴行筆記點選「養護回報」，選擇本次客戶與日期。'],
+  ['查看「上次未結案異常」卡片', '若該客戶有未結案異常會自動列出。逐項點選「已處理 / 狀況一樣 / 需要換植」，不確定就跳過。有琥珀色「後台交辦」務必照著做。'],
+  ['一個區域一個位置', '區域名稱只填單一位置，有兩個地方就開兩個區域。'],
+  ['每筆異常填滿五樣', '類型（點選）→ 是哪一種植物（必填）→ 嚴重度 → 盆器 cm → 這株的照片（必填）。'],
+  ['送出並完成打卡', '確認資料無誤後送出，最後完成「離開」打卡。']
+];
+
+// ════════════════════════════════════════════════════════
+// WIZARD ENGINE
+// ════════════════════════════════════════════════════════
+const wizState = {};
+
+function initWiz(id) {
+  const data = WIZARDS[id];
+  if (!data) return;
+  wizState[id] = 0;
+  renderWiz(id);
+}
+
+function renderWiz(id) {
+  const data = WIZARDS[id];
+  const step = wizState[id];
+  const total = data.steps.length;
+  const s = data.steps[step];
+  const isKhaki = data.color === 'khaki';
+
+  // Progress
+  document.getElementById(`wiz-${id}-prog`).textContent = `第 ${step+1} 步，共 ${total} 步`;
+
+  // Left content
+  document.getElementById(`wiz-${id}-left`).innerHTML = `
+    <div class="wizard-step active">
+      <div class="wizard-step-num${isKhaki?' k':''}">${s.num}</div>
+      <div class="wizard-step-title">${s.title}</div>
+      <div class="wizard-step-desc">${s.desc}</div>
+      ${s.hint ? `<div class="wizard-step-hint">💡 ${s.hint}</div>` : ''}
+    </div>
+  `;
+
+  // Phone screen
+  const screens = WIZ_SCREENS[id];
+  if (screens && screens[step]) {
+    document.getElementById(`wiz-${id}-screen`).innerHTML = `<div class="psc-card" style="padding:0;overflow:hidden;border-radius:0;">${screens[step]}</div>`;
+    document.getElementById(`wiz-${id}-screen`).innerHTML = screens[step];
+  }
+
+  // Dots
+  const dotsEl = document.getElementById(`wiz-${id}-dots`);
+  dotsEl.innerHTML = Array.from({length:total}, (_,i) => {
+    let cls = 'wdot';
+    if (i === step) cls += isKhaki ? ' active-k' : ' active';
+    else if (i < step) cls += isKhaki ? ' done-k' : ' done';
+    return `<div class="${cls}" onclick="wizGo('${id}',${i})"></div>`;
+  }).join('');
+
+  // Next button
+  const nextBtn = document.getElementById(`wiz-${id}-next`);
+  if (step === total - 1) {
+    nextBtn.textContent = '✓ 完成';
+    nextBtn.className = `wiz-btn wiz-complete${isKhaki?' k':''}`;
+  } else {
+    nextBtn.textContent = '下一步 →';
+    nextBtn.className = `wiz-btn wiz-next${isKhaki?' k':''}`;
+  }
+}
+
+function wizNext(id) {
+  const total = WIZARDS[id].steps.length;
+  if (wizState[id] < total - 1) {
+    wizState[id]++;
+    renderWiz(id);
+  }
+}
+
+function wizPrev(id) {
+  if (wizState[id] > 0) {
+    wizState[id]--;
+    renderWiz(id);
+  }
+}
+
+function wizGo(id, step) {
+  wizState[id] = step;
+  renderWiz(id);
+}
+
+// ════════════════════════════════════════════════════════
+// ACCORDION
+// ════════════════════════════════════════════════════════
+function buildAccordion(containerId, qa, isKhaki=false) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = qa.map(([q,a], i) => `
+    <div class="acc-item${isKhaki?' k':''}">
+      <div class="acc-q${isKhaki?' k':''}" onclick="toggleAcc(this)">
+        <div class="acc-q-text">
+          <span class="acc-qnum${isKhaki?' k':''}">Q${i+1}</span>
+          <span>${q}</span>
+        </div>
+        <span class="acc-arrow">›</span>
+      </div>
+      <div class="acc-a${isKhaki?' k':''}">${a}</div>
+    </div>
+  `).join('');
+}
+
+function toggleAcc(el) {
+  const item = el.closest('.acc-item');
+  const wasOpen = item.classList.contains('open');
+  item.closest('.accordion').querySelectorAll('.acc-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// ════════════════════════════════════════════════════════
+// GPS DEMO
+// ════════════════════════════════════════════════════════
+function setGPS(state) {
+  const s = GPS_STATES[state];
+  const disp = document.getElementById('gps-display');
+  const exp = document.getElementById('gps-explanation');
+  const act = document.getElementById('gps-action');
+  disp.className = `gps-display ${s.cls}`;
+  document.getElementById('gps-display-text').textContent = s.text;
+  exp.textContent = s.explanation;
+  act.textContent = s.action;
+  act.className = `gps-action ${s.actionCls}`;
+  document.querySelectorAll('.gps-state-btn').forEach(b => {
+    b.className = 'gps-state-btn';
+  });
+  document.getElementById(s.btnId).className = `gps-state-btn ${s.btnCls}`;
+}
+
+// ════════════════════════════════════════════════════════
+// REASON SELECTOR
+// ════════════════════════════════════════════════════════
+function selectReason(n) {
+  document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  const r = REASONS[n];
+  const det = document.getElementById('reason-detail');
+  det.innerHTML = `<strong>${r.title}</strong><br><br>${r.desc}`;
+  det.className = 'reason-detail show';
+}
+
+// ════════════════════════════════════════════════════════
+// CALCULATOR
+// ════════════════════════════════════════════════════════
+function calcBreak() {
+  const h = parseFloat(document.getElementById('calc-hours').value);
+  const res = document.getElementById('calc-result');
+  const note = document.getElementById('calc-note');
+  if (isNaN(h) || h <= 0) { res.className='calc-result'; note.textContent=''; return; }
+  let deduct = 0, msg = '';
+  if (h >= 9) { deduct = 1; msg = '工時滿 9 小時，自動扣除 1 小時法定休息。'; }
+  else if (h >= 4.5) { deduct = 0.5; msg = '工時滿 4.5 小時，自動扣除 0.5 小時法定休息。'; }
+  else { msg = '工時未滿 4.5 小時，無需扣除休息時間。'; }
+  const final = h - deduct;
+  document.getElementById('cr-raw').textContent = h + ' 小時';
+  document.getElementById('cr-deduct').textContent = deduct > 0 ? `-${deduct} 小時` : '不扣除';
+  document.getElementById('cr-final').textContent = final + ' 小時';
+  res.className = 'calc-result show';
+  note.textContent = msg + (deduct > 0 ? '若因公無法休息，可在離開時勾選「未休申報」補回。' : '');
+}
+
+// ════════════════════════════════════════════════════════
+// QUICK STEPS
+// ════════════════════════════════════════════════════════
+function buildSteps(containerId, steps, color='green') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const bg = color === 'khaki' ? 'var(--khaki)' : 'var(--green)';
+  const lightBg = color === 'khaki' ? 'var(--khaki-p)' : 'var(--green-xp)';
+  el.innerHTML = steps.map(([t,d], i) => `
+    <div style="display:flex;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid ${lightBg};">
+      <div style="background:${bg};color:white;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;font-family:'Noto Sans TC',sans-serif;">
+        <span style="font-size:9px;opacity:.8;">STEP</span>
+        <span style="font-size:22px;font-weight:700;line-height:1;">${i+1}</span>
+      </div>
+      <div style="flex:1;padding:10px 14px;background:${lightBg};">
+        <div style="font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:700;color:var(--main);margin-bottom:3px;">${t}</div>
+        <div style="font-size:12.5px;color:var(--light);">${d}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
+let currentManual = 'punch';
+
+function switchManual(m) {
+  currentManual = m;
+  document.getElementById('manual-punch').classList.toggle('visible', m==='punch');
+  document.getElementById('manual-care').classList.toggle('visible', m==='care');
+  document.getElementById('tab-punch').className = 'tab-btn' + (m==='punch' ? ' active-punch' : '');
+  document.getElementById('tab-care').className = 'tab-btn' + (m==='care' ? ' active-care' : '');
+  document.getElementById('nav-punch').style.display = m==='punch' ? '' : 'none';
+  document.getElementById('nav-care').style.display = m==='care' ? '' : 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function gotoSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 72;
+  window.scrollTo({top:y,behavior:'smooth'});
+  // update active nav
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.className = 'nav-item' + (currentManual==='care' ? ' ' : '');
+  });
+  if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// Highlight active nav on scroll
+function updateNav() {
+  const prefix = currentManual === 'punch' ? 'p-' : 'c-';
+  const ids = currentManual === 'punch'
+    ? ['p-ch1','p-ch2','p-ch3','p-ch4','p-ch5','p-ch6','p-ch7','p-ch8','p-app']
+    : ['c-ch1','c-ch2','c-ch3','c-ch4','c-ch5','c-ch6','c-ch7','c-ch8','c-ch9','c-app'];
+  let active = ids[0];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < 120) active = id;
+  }
+  const navItems = document.querySelectorAll('#nav-' + currentManual + ' .nav-item');
+  navItems.forEach((n, i) => {
+    const isActive = ids[i] === active;
+    n.className = 'nav-item' + (isActive ? (currentManual==='care' ? ' active-k' : ' active') : '');
+  });
+}
+window.addEventListener('scroll', updateNav, {passive:true});
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Init wizards
+  ['login','punch','makeup','nobreak','care-enter','zone'].forEach(initWiz);
+  // Build accordions
+  buildAccordion('acc-punch', PUNCH_QA, false);
+  buildAccordion('acc-care', CARE_QA, true);
+  // Build quick steps
+  buildSteps('quick-steps-punch', PUNCH_STEPS, 'green');
+  buildSteps('quick-steps-care', CARE_STEPS, 'khaki');
+});
+</script>
+<script>
+// ════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════
+
+const GPS_STATES = {
+  ready: {
+    cls: 'gps-disp-green', btnCls: 'sel-green', btnId: 'gps-btn-ready',
+    text: '📍 定位正常 · 範圍內',
+    explanation: '定位正常，且您目前在案場 150 公尺範圍內。打卡按鈕已啟用，可直接按下「抵達打卡」或「結束離開」。',
+    action: '✅ 打卡按鈕已啟用，可直接打卡', actionCls: 'ok'
+  },
+  wait: {
+    cls: 'gps-disp-gray', btnCls: 'sel-gray', btnId: 'gps-btn-wait',
+    text: '⏳ 定位取得中...',
+    explanation: 'GPS 正在取得您的位置，通常需要 10–30 秒。請稍候，等狀態列變為綠色後再操作。若超過 30 秒仍未定位，可點右側刷新圖示（↺）手動更新。',
+    action: '⏳ 請等待 GPS 定位完成，按鈕暫時無法使用', actionCls: 'wait'
+  },
+  far: {
+    cls: 'gps-disp-orange', btnCls: 'sel-orange', btnId: 'gps-btn-far',
+    text: '⚠️ 距離較遠（約 320 公尺）',
+    explanation: '您目前距離案場超過 150 公尺。按下打卡按鈕後，系統會彈出「距離提醒視窗」，請選擇最符合實際情況的原因後送出，記錄仍然有效。',
+    action: '⚠️ 可以打卡，但需要選擇距離較遠的原因', actionCls: 'warn'
+  }
+};
+
+const REASONS = {
+  1: { title: '室內/地下室 GPS 訊號不良', desc: '在室內、地下停車場、電梯等 GPS 訊號受到遮蔽的環境，定位可能大幅偏移。<strong>這是最常見的情況</strong>，選擇此原因後直接送出即可，後台了解這個狀況不會有影響。' },
+  2: { title: '慢了腳步，於歸途補記', desc: '已離開現場但忘記打卡，在途中補完成記錄。<strong>選擇後請填寫實際時間</strong>，系統會用您填入的時間計算工時，而非補記的當下時間。' },
+  3: { title: '在附近找車位 / 剛停好車', desc: '尚未走進案場，在附近停車時先行打卡記錄。這種情況很常見，後台了解實際情況，不影響出勤紀錄的有效性。' },
+  4: { title: '系統座標可能有誤', desc: '客戶地址有誤或已搬遷，導致系統定位點與實際位置不符。<strong>請同時通知後台更新客戶座標</strong>，以免下次繼續觸發此提醒。' },
+  5: { title: '點錯客戶 / 誤按', desc: '不小心選錯客戶或誤觸按鈕，選擇此原因後系統會記錄為無效操作，<strong>不計入工時</strong>。請取消後重新選擇正確的客戶再打卡。' },
+  6: { title: '其他（自行輸入）', desc: '其他不在上述選項的特殊情況，請在文字欄位簡短說明原因（如「客戶施工中，臨時更換作業地點」）。後台會看到您的說明進行確認。' }
+};
+
+// ── Wizard screens ──
+const WIZ_SCREENS = {
+  login: [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 系統初始化...</div><div class="psc-select" style="color:var(--light)">-- 請選擇您的姓名 --</div><div class="psc-input" style="color:var(--border);letter-spacing:1px">輸入通行碼（數字）</div><div class="psc-btn-green" style="opacity:.4;background:#d5d1c8">開始伴行</div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 系統初始化...</div><div class="psc-select">林○○ ▾</div><div class="psc-input" style="color:var(--border)">輸入通行碼（數字）</div><div class="psc-btn-green" style="opacity:.4;background:#d5d1c8">開始伴行</div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 系統初始化...</div><div class="psc-select">林○○ ▾</div><div class="psc-input focus">●●●●</div><div class="psc-btn-green">開始伴行</div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div style="font-size:10px;margin-bottom:8px;">您好，<strong>林○○</strong>。</div><div class="psc-select">○○○ 客戶（A002）▾</div><div class="psc-action-row"><div class="psc-arrive">📍<br>抵達打卡</div><div class="psc-leave">→<br>結束離開</div></div></div>`
+  ],
+  punch: [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait" style="animation:none">⏳ 定位取得中...</div><div class="psc-select">-- 請選擇客戶 --</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達打卡</div><div class="psc-leave" style="opacity:.4;background:#d5d1c8">→ 離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-select">週養護｜○○○ 客戶 ▾</div><div style="font-size:9px;color:var(--light);margin-bottom:6px;">📍 台北市○○路○○號</div><div class="psc-action-row"><div class="psc-arrive">📍 抵達打卡</div><div class="psc-leave">→ 離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-success"><div class="psc-success-icon">🌱</div><div class="psc-success-text">已記下這段伴行時光</div><div class="psc-success-sub">抵達打卡 · 10:32<br>○○○ 客戶<br>正在同步資料...</div></div></div>`,
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div style="font-size:9px;color:var(--khaki);margin-bottom:6px;">上次紀錄：抵達 10:32</div><div class="psc-select">週養護｜○○○ 客戶 ▾</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達</div><div class="psc-leave" style="box-shadow:0 0 10px rgba(196,154,130,.5)">→ 結束離開</div></div></div>`
+  ],
+  makeup: [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status wait">⏳ 定位取得中...</div><div class="psc-select">週養護｜○○○ 客戶 ▾</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.6">📍 抵達打卡</div><div class="psc-leave" style="opacity:.6">→ 離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-modal"><div class="psc-modal-inner"><div class="psc-modal-title">⚠️ 距離提醒</div><div class="psc-modal-text">您目前距離案場約 850 公尺</div><div class="psc-modal-select">-- 請選擇異常原因 --</div><div class="psc-modal-row"><div class="psc-cancel">取消</div><div class="psc-confirm">確認送出</div></div></div></div></div>`,
+    `<div class="psc-card"><div class="psc-modal"><div class="psc-modal-inner"><div class="psc-modal-title">⚠️ 距離提醒</div><div class="psc-modal-select" style="font-weight:700;color:var(--green-d)">2. 慢了腳步，於歸途補記 ✓</div><div style="background:var(--bg);border-radius:4px;padding:5px;margin-bottom:6px;"><div style="font-size:9px;color:var(--light);">實際抵達時間</div><div style="font-size:11px;font-weight:700;color:var(--main);border:1px solid var(--green);border-radius:3px;padding:3px 6px;margin-top:3px;">09:15 ✓</div></div><div class="psc-modal-row"><div class="psc-cancel">取消</div><div class="psc-confirm">確認送出</div></div></div></div></div>`,
+    `<div class="psc-card"><div class="psc-success"><div class="psc-success-icon">🌱</div><div class="psc-success-text">已記下這段伴行時光</div><div class="psc-success-sub">補記抵達 · 實際時間 09:15<br>○○○ 客戶</div></div></div>`
+  ],
+  nobreak: [
+    `<div class="psc-card"><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-select">○○○ 客戶 ▾</div><div style="font-size:9px;color:var(--khaki);margin-bottom:6px;">上次紀錄：抵達 09:00</div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達</div><div class="psc-leave">→ 結束離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-nobreak"><div class="psc-check"><div class="psc-check-box"></div>今日因公未休法定休息（提報補回）</div></div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍 抵達</div><div class="psc-leave">→ 結束離開</div></div></div>`,
+    `<div class="psc-card"><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-nobreak"><div class="psc-check"><div class="psc-check-box checked">✓</div>今日因公未休法定休息（提報補回）</div><div class="psc-reason">案場作業繁忙無法中斷</div></div><div class="psc-action-row"><div class="psc-arrive" style="opacity:.4;background:#d5d1c8">📍</div><div class="psc-leave" style="box-shadow:0 0 10px rgba(196,154,130,.5)">→ 結束離開</div></div></div>`
+  ],
+  'care-enter': [
+    `<div class="psc-card"><div class="psc-title">有植伴行筆記</div><div class="psc-status ready">📍 定位正常 · 範圍內</div><div class="psc-action-row"><div class="psc-arrive">📍 抵達</div><div class="psc-leave">→ 離開</div></div><div class="psc-btn-green" style="box-shadow:0 0 10px rgba(140,156,134,.4)">🌿 養護回報</div><div class="psc-btn-khaki" style="background:#a8a092">⏰ 時光回顧</div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div style="display:flex;gap:4px;margin-bottom:8px;"><div style="flex:1;background:var(--green);color:white;border-radius:4px;padding:6px;text-align:center;font-size:9px;font-weight:700;">✏️ 填寫</div><div style="flex:1;border:1px solid var(--border);border-radius:4px;padding:6px;text-align:center;font-size:9px;color:var(--light);">📋 我的回報</div></div><div style="font-size:9px;font-weight:700;color:var(--light);margin-bottom:6px;">基本資訊</div><div class="psc-select" style="font-size:9px;margin-bottom:4px;">週養護｜○○○ 客戶（A002）</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;"><input style="border:1px solid var(--border);border-radius:3px;padding:4px;background:#faf9f7;" value="2026-05-19" /><input style="border:1px solid var(--border);border-radius:3px;padding:4px;background:#faf9f7;color:var(--green);border-color:var(--green);" value="14:30 ✓" /></div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div style="font-size:9px;font-weight:700;color:var(--light);margin-bottom:5px;">本次養護項目</div><div class="psc-chip-row"><div class="psc-chip on">澆水</div><div class="psc-chip on">修剪</div><div class="psc-chip">清水盤</div><div class="psc-chip on">植物更換</div><div class="psc-chip">施藥</div></div><div style="font-size:9px;font-weight:700;color:var(--light);margin:5px 0 4px;">養護師備註</div><div style="border:1px solid var(--border);border-radius:3px;padding:5px;font-size:9px;background:#faf9f7;color:var(--light);">特殊情況說明...</div><div class="psc-btn-green" style="margin-top:8px;">送出回報</div></div>`
+  ],
+  zone: [
+    `<div class="psc-card" style="padding:8px;"><div style="font-size:9px;font-weight:700;color:var(--light);margin-bottom:5px;">養護區域紀錄</div><div class="psc-add-zone">＋ 新增養護區域</div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">1</div><span>陽台</span></div><div class="psc-zone-body">養護前照片：點此上傳...</div></div><div class="psc-add-zone">＋ 新增區域</div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">1</div><span>陽台</span></div><div class="psc-zone-body"><div style="display:flex;gap:3px;margin-bottom:5px;"><div style="flex:1;background:var(--green-p);border-radius:3px;padding:4px;font-size:8px;text-align:center;color:var(--green-d);">前 ✓×2</div><div style="flex:1;border:1px dashed var(--border);border-radius:3px;padding:4px;font-size:8px;text-align:center;color:var(--light);">後 + 上傳</div></div><div style="font-size:8px;color:var(--light);">異常追蹤</div><div style="font-size:8px;background:var(--amber-p);border-radius:3px;padding:3px 6px;margin-top:3px;">爛根 · 待追蹤</div></div></div></div>`,
+    `<div class="psc-card" style="padding:8px;"><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">1</div><span>陽台</span><span style="margin-left:auto;font-size:8px;color:var(--green-d);">✓ 完成</span></div><div class="psc-zone-body" style="font-size:8.5px;color:var(--light);">前 2 張 · 後 1 張 · 問題 1 筆</div></div><div class="psc-zone"><div class="psc-zone-head"><div class="psc-zone-num">2</div><span>辦公室</span></div><div class="psc-zone-body" style="font-size:8.5px;color:var(--light);">填寫中...</div></div><div class="psc-btn-khaki" style="margin-top:8px;">送出回報</div></div>`
+  ]
+};
+
+// Wizard step data
+const WIZARDS = {
+  login: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/4', title: '開啟伴行筆記連結', desc: '在手機瀏覽器輸入網址，或掃描公司提供的 QR Code，進入系統頁面。', hint: '建議開啟後點「加入主畫面」，下次就可以像 App 一樣快速開啟。' },
+      { num: 'STEP 2/4', title: '從下拉選單選擇您的姓名', desc: '點選名稱選單，從清單中找到並選擇您的名字。', hint: '若找不到您的名字，請聯絡後台管理人員確認帳號是否已建立。' },
+      { num: 'STEP 3/4', title: '輸入您的個人通行碼', desc: '在密碼欄位輸入公司提供的數字通行碼，輸入完成後按「開始伴行」。', hint: '通行碼由公司統一設定，請妥善保管，勿告知他人。' },
+      { num: 'STEP 4/4', title: '登入成功！進入主畫面', desc: '系統驗證成功後，自動記住您的身分並進入打卡主畫面。下次開啟時直接進入，不需重新登入。', hint: '若需切換帳號，點選主畫面最下方的「切換帳號」文字連結。' }
+    ]
+  },
+  punch: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/4', title: '開啟伴行筆記，等待 GPS 定位', desc: '抵達現場後開啟系統，等待 GPS 狀態列變為綠色（通常需 10–30 秒）。若等待過久，點右側刷新圖示（↺）手動更新。', hint: '在室內或地下室時，GPS 可能需要稍長時間取得位置，請稍候。' },
+      { num: 'STEP 2/4', title: '選擇客戶，確認地址', desc: '從下拉選單選擇本次前往的客戶名稱，確認下方顯示的地址正確。', hint: '可點選地址旁的「打開 Google 導航」連結，直接導航前往案場。' },
+      { num: 'STEP 3/4', title: '按下「抵達打卡」', desc: '系統記錄目前時間為抵達時間，畫面顯示「已記下這段伴行時光」🌱 表示打卡成功。', hint: '若出現距離提醒視窗，請選擇最符合情況的原因後送出，記錄仍然有效。' },
+      { num: 'STEP 4/4', title: '完成工作後按「結束離開」', desc: '離開前再次確認客戶選項，按下結束離開，完成本次出勤紀錄。若工時超過 4 小時，確認是否需要勾選未休申報。', hint: '' }
+    ]
+  },
+  makeup: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/4', title: '開啟伴行筆記，選擇客戶', desc: '選擇剛才服務的客戶，即使已不在現場也可以操作。GPS 位置不在案場範圍內是正常的。', hint: '' },
+      { num: 'STEP 2/4', title: '按打卡按鈕，出現距離提醒視窗', desc: '由於已不在案場 150 公尺內，系統自動彈出距離提醒視窗，這是正常的——補記就是從這裡操作。', hint: '不用擔心，這個視窗出現是補記操作的一部分。' },
+      { num: 'STEP 3/4', title: '選擇「慢了腳步，於歸途補記」並填入實際時間', desc: '選擇後出現「實際時間」欄位，請填入您實際抵達或離開的時間，再按「確認送出」。', hint: '務必填寫實際時間！不填則以補記當下時間計算，會影響工時準確性。' },
+      { num: 'STEP 4/4', title: '補記完成', desc: '系統以您填入的實際時間計算工時，補記記錄標示為「補登」，後台可查閱原因備註。', hint: '' }
+    ]
+  },
+  nobreak: {
+    color: 'green',
+    steps: [
+      { num: 'STEP 1/3', title: '確認今日工時超過 4 小時', desc: '法定休息申報框僅在按下「結束離開」時出現。若工時不足 4.5 小時，此功能不會觸發。', hint: '可先用上方的工時計算器確認是否達到扣除門檻。' },
+      { num: 'STEP 2/3', title: '勾選「今日因公未休法定休息」', desc: '勾選後出現原因輸入欄位，簡短說明無法休息的原因，例如「案場作業繁忙無法中斷」。', hint: '若當日確實有休息，請勿勾選。未申報視為已休息，扣除時間不予補回。' },
+      { num: 'STEP 3/3', title: '按下「結束離開」完成送出', desc: '後台收到申報後，將以加項方式補回被扣除的休息時間，反映在下次的時光回顧中。', hint: '' }
+    ]
+  },
+  'care-enter': {
+    color: 'khaki',
+    steps: [
+      { num: 'STEP 1/3', title: '在主畫面點選「養護回報」', desc: '登入伴行筆記後，在主畫面找到綠色的「養護回報」按鈕（位於抵達/離開打卡按鈕正下方），點擊進入。', hint: '若已完成打卡，系統可自動帶入開始/結束時間，不用手動輸入。' },
+      { num: 'STEP 2/3', title: '選擇客戶，確認基本資訊', desc: '從下拉選單選擇本次養護的客戶，確認養護日期與開始時間正確，填入結束時間。', hint: '若打卡時已記錄抵達時間，「開始時間」欄位會自動帶入，旁邊會顯示「✓ 已從伴行打卡自動帶入」。' },
+      { num: 'STEP 3/3', title: '勾選養護項目，填寫備註', desc: '勾選本次實際執行的養護工作，在備註欄填入特殊情況，接著進入區域記錄填寫各區域的照片與異常追蹤。', hint: '有進行植物更換時，務必勾選「植物更換」，後台才能更新客戶狀態！' }
+    ]
+  },
+  zone: {
+    color: 'khaki',
+    steps: [
+      { num: 'STEP 1/4', title: '點選「新增養護區域」', desc: '在回報頁面找到「新增養護區域」虛線按鈕，點選後出現新區域表單。輸入區域名稱，例如「陽台」、「二樓茶水間」。一個區域只填一個位置。', hint: '寫「室內、室外」這種一格塞好幾個地方的，送出時會被擋下來——有兩個地方就開兩個區域。' },
+      { num: 'STEP 2/4', title: '上傳養護前照片', desc: '作業開始前，先拍攝植物現狀照片，點選「養護前照片」上傳區域。每個區域至少 1 張，讓客戶看到改善前後的對比。照片選好就會在背景開始傳，縮圖會顯示「上傳中／已備份」。', hint: '看到「傳失敗·點重傳」就點那張縮圖重傳。等全部變「已備份」再離開畫面最保險。' },
+      { num: 'STEP 3/4', title: '上傳養護後照片，填寫異常追蹤', desc: '完成養護作業後，上傳整理後的照片。發現植栽異常就點「新增異常」，先點選類型（蟲害、爛根…），再填是哪一種植物、嚴重度、盆器尺寸，最後挑一張這株的照片。', hint: '品種和這株的照片都是必填，沒填會擋住送出。發現問題時順手多拍一張特寫，那張最有用。' },
+      { num: 'STEP 4/4', title: '多區域可重複新增', desc: '完成一個區域後，點選「新增養護區域」繼續填寫下一個區域。所有區域完成後，在頁面最下方點「送出回報」。', hint: '草稿會自動儲存，中途有急事可以先關閉，稍後再回來繼續填。' }
+    ]
+  }
+};
+
+const PUNCH_QA = [
+  ['打卡按鈕是灰色的，無法點選？', 'GPS 尚未取得定位。請等待狀態列變為綠色（通常 10–30 秒）。若等待過久，點狀態列右側的刷新圖示（↺）手動更新。'],
+  ['出現距離提醒視窗，但我確實在現場？', '在室內或地下室時，GPS 訊號容易受到遮蔽造成偏移。請選擇「室內/地下室 GPS 訊號不良」並送出，後台會看到此備註，不影響出勤記錄。'],
+  ['忘記打抵達卡，現在已離開現場了？', '使用補記功能：按下抵達打卡按鈕 → 出現距離提醒 → 選擇「慢了腳步，於歸途補記」→ 填入實際抵達時間 → 送出。系統會以您填入的時間計算工時。'],
+  ['同一天去了兩個客戶，要打幾次卡？', '每個客戶都需要分別完成「抵達」與「離開」打卡，共 4 次。系統會自動計算各客戶的服務時數。'],
+  ['預估薪資和我預期的不一樣？', '預估薪資是累積工時乘以時薪的試算值，可能尚未包含未休補回、加項調整等項目。實際薪資以公司最終核定為準，如有疑問請聯絡後台。'],
+  ['連續工作超過 4.5 小時，工時被扣了 0.5 小時？', '這是依勞基法的法定休息時間自動扣除。若當日確實因公無法休息，請在「結束離開」時勾選「今日因公未休法定休息」並填寫原因，後台會補回扣除的時間。'],
+  ['手機換新了，要怎麼重新登入？', '在新手機重新開啟連結，選擇姓名並輸入通行碼，點選「開始伴行」即可完成設定。'],
+  ['發現打卡時間有誤，可以請後台修改嗎？', '可以，請於三日內向後台（Wayne 或公司主管）說明，並提供正確的出勤時間，由後台協助手動校正。超過三日可能無法修正，請儘早處理。']
+];
+
+const CARE_QA = [
+  ['送出時跳「還沒填是哪一種植物」，可是我不知道那叫什麼？', '寫看得懂的特徵就好，例如「大盆闊葉」「門口那棵高的」「葉子有洞的那盆」。系統不會比對正確名稱，重點是<strong>下次有人看紀錄認得出是哪一株</strong>。空白才是最沒用的。品種欄點下去也會跳建議清單，最上面就是這個案場後台登記的植物，可以先在裡面找。'],
+  ['送出時跳「還沒選這株的照片」，一定要拍嗎？', '要。每一筆異常都必須有一張照片。做法：先在區域上方把照片拍好傳好，再回到異常卡片點「+ 這株的照片」，從跳出來的照片裡挑一張。建議發現問題當下就多拍一張特寫，那張最有用。'],
+  ['送出時說我的區域「寫了不只一個位置」？', '因為區域名稱裡有「、」「，」「/」或「以及」「還有」這種字，表示您把好幾個地方寫在同一格（例如「室內、室外」）。請改成單一位置，其他位置另外新增區域。異常是掛在區域底下的，一格塞三個地方，事後就找不到是哪一株出問題。'],
+  ['「嚴重度」跟「處理狀態」有什麼不一樣？', '<strong>嚴重度</strong>＝這株有多糟（觀察／需處理／急），後台拿來排先後順序。<strong>處理狀態</strong>＝您現場做到哪（已處理／待追蹤／需換植物）。兩個分開選，例如「急＋已處理」就是很嚴重但我現場先急救過了。'],
+  ['盆器尺寸一定要量嗎？沒帶尺。', '目測大概就好，不用精準。填的是<strong>盆徑 × 盆器高度</strong>，單位公分。有這個數字，後台要換盆或報價時才不用再回頭問您，等於幫自己省一趟溝通。'],
+  ['延續自上次的異常，照片可以沿用上次的嗎？', '不行。品種和盆器會自動帶下來不用重填，但<strong>照片一定要是這次現場拍的</strong>。同一株連續幾次的照片擺在一起，才看得出到底有沒有改善。'],
+  ['照片縮圖上寫「傳失敗·點重傳」怎麼辦？', '直接點那張縮圖就會重傳，通常是當下網路斷了。全部變成「已備份」再送出最保險。'],
+  ['照片還在「上傳中」，我可以先去做別的嗎？', '不建議。畫面上方有琥珀色提示「請保持此畫面開啟」時，代表還在傳；切到別的 App 或鎖螢幕，手機會把上傳暫停（這是手機限制、不是當機），回到畫面才會繼續。等全部變「已備份」再離開。'],
+  ['異常清單裡沒有我要的類型？', '點最後那顆「自訂」，會多一格讓您自己描述。請寫得像個病名或狀況名（例：白粉病），不要寫成一整句話——後台看到大家常用的詞會把它升級成正式類型，之後就變成可以直接點的按鈕。'],
+  ['異常底下出現琥珀色的「後台交辦」是什麼？', '那是主管針對這一株特別交代的事情（例如「這盆這次帶新土去換」）。到現場請一定要看、照著做。交辦會一路跟著這株延續下去，直到主管改掉或清空。'],
+  ['「上次未結案異常」這張卡為什麼沒出現？', '兩種情況：(1) 該客戶上次回報沒留下任何未結案異常，系統就不顯示這張卡，直接進養護項目。(2) 您剛選好客戶或剛改日期，系統還在背景載入，稍等一兩秒會出現。'],
+  ['我點了「已處理」，下次到場為什麼還會跳出來？', '您點的處置只是「提議」，要等後台主管在「異常追蹤」確認後才會正式結案。後台還沒處理之前，這個項目會繼續出現，這是正常的，不是 bug。'],
+  ['不確定要選哪個處置怎麼辦？', '可以留白跳過、不選。系統<strong>不會強制您填</strong>，跳過也不影響送出養護回報。下次到場時再回報即可。但建議：能確定的就盡量標，後台才有資訊推進。'],
+  ['「狀況一樣」跟「需要換植」差別在哪？', '「狀況一樣」= 異常還在但植物還活著、可繼續觀察或下次再處理。「需要換植」= 植物已經救不回來、建議直接換掉。如果不確定，先標「狀況一樣」，後台會評估。'],
+  ['點錯處置怎麼取消？', '再點一次<strong>同一顆 chip</strong> 就會取消選擇、恢復跳過狀態。或者直接點另一顆，會自動切換。'],
+  ['養護回報一定要在現場填嗎？', '不一定。雖然建議在現場完成（照片需在現場才準確），但若有急事，可先在系統做文字記錄（勾選項目、填備註），系統自動暫存草稿，有空再補照片送出。'],
+  ['我忘記拍養護前照片怎麼辦？', '在備註說明情況，後台會協助記錄。日後請養成「到場先拍、做完再拍」的習慣。'],
+  ['客戶現場網路很差，照片傳不了？', '先填文字，等有網路再補傳照片。草稿功能會保留所有輸入，不會遺失。'],
+  ['同一客戶一天去了兩次，需要填幾份回報？', '每次養護各填一份，一天兩次就填兩份。送出第二份時系統會跳出「重複提醒」視窗，選「這是另一次出場，仍要新增」即可正常建立第二筆。'],
+  ['上傳照片時跳出「已略過重複的照片」？', '系統偵測到您選了內容完全相同的照片，自動略過重複那幾張，避免報告出現重複照片。這是正常的，繼續操作即可。'],
+  ['植物換了但忘記拍養護前照片，怎麼記錄？', '在養護後照片欄位上傳新植物照片，並在備註說明「原植物因 [原因] 已更換，養護前照片未能留存」。'],
+  ['現場發現嚴重問題，除了填回報還要做什麼？', '嚴重問題（大量蟲害、植物快枯死）請同時用 LINE 或電話通知後台，不要只依賴系統，避免延誤處理時機。'],
+  ['已送出的回報可以修改嗎？', '可以。切換到「我的回報」頁籤，點選該筆（卡片上有「✏️ 點此編輯」），系統會載入整份回報進入「編輯模式」，修改後重新送出即覆蓋原本那筆，不會產生新的一筆。重大錯誤或找不到該筆再聯絡後台協助。'],
+  ['我可以查看自己之前的養護回報嗎？', '可以，切換到「我的回報」頁籤即可查看個人歷史記錄。']
+];
+
+const PUNCH_STEPS = [
+  ['抵達現場，開啟伴行筆記', '在手機瀏覽器開啟系統，等待 GPS 狀態列變為綠色。'],
+  ['選擇客戶', '從下拉選單選擇本次前往的客戶，確認地址正確。'],
+  ['按下「抵達打卡」', '若 GPS 範圍正常 → 直接打卡完成。若出現距離提醒 → 選擇原因後送出。'],
+  ['完成工作', '進行服務作業（養護人員另需完成「養護回報」）。'],
+  ['按下「結束離開」', '若當日工時超過 4 小時 → 確認是否需勾選「未休申報」。完成後按下結束離開送出。']
+];
+
+const CARE_STEPS = [
+  ['抵達現場打卡', '用伴行筆記完成「抵達」打卡，系統記錄抵達時間。'],
+  ['先看案場資訊', '選好客戶後上方會跳出地址／注意事項／進出方式／植栽位置，看一眼再開始。'],
+  ['拍攝養護前照片', '每個區域作業前，先拍下植栽現狀照片。發現問題就順手多拍一張特寫。'],
+  ['進行養護作業', '澆水、修剪、施藥、更換植物等實際養護工作。'],
+  ['拍攝養護後照片', '每個區域完成後，拍下整理後的照片。等縮圖變「已備份」再離開畫面。'],
+  ['開啟養護回報、選客戶', '在伴行筆記點選「養護回報」，選擇本次客戶與日期。'],
+  ['查看「上次未結案異常」卡片', '若該客戶有未結案異常會自動列出。逐項點選「已處理 / 狀況一樣 / 需要換植」，不確定就跳過。有琥珀色「後台交辦」務必照著做。'],
+  ['一個區域一個位置', '區域名稱只填單一位置，有兩個地方就開兩個區域。'],
+  ['每筆異常填滿五樣', '類型（點選）→ 是哪一種植物（必填）→ 嚴重度 → 盆器 cm → 這株的照片（必填）。'],
+  ['送出並完成打卡', '確認資料無誤後送出，最後完成「離開」打卡。']
+];
+
+// ════════════════════════════════════════════════════════
+// WIZARD ENGINE
+// ════════════════════════════════════════════════════════
+const wizState = {};
+
+function initWiz(id) {
+  const data = WIZARDS[id];
+  if (!data) return;
+  wizState[id] = 0;
+  renderWiz(id);
+}
+
+function renderWiz(id) {
+  const data = WIZARDS[id];
+  const step = wizState[id];
+  const total = data.steps.length;
+  const s = data.steps[step];
+  const isKhaki = data.color === 'khaki';
+
+  // Progress
+  document.getElementById(`wiz-${id}-prog`).textContent = `第 ${step+1} 步，共 ${total} 步`;
+
+  // Left content
+  document.getElementById(`wiz-${id}-left`).innerHTML = `
+    <div class="wizard-step active">
+      <div class="wizard-step-num${isKhaki?' k':''}">${s.num}</div>
+      <div class="wizard-step-title">${s.title}</div>
+      <div class="wizard-step-desc">${s.desc}</div>
+      ${s.hint ? `<div class="wizard-step-hint">💡 ${s.hint}</div>` : ''}
+    </div>
+  `;
+
+  // Phone screen
+  const screens = WIZ_SCREENS[id];
+  if (screens && screens[step]) {
+    document.getElementById(`wiz-${id}-screen`).innerHTML = `<div class="psc-card" style="padding:0;overflow:hidden;border-radius:0;">${screens[step]}</div>`;
+    document.getElementById(`wiz-${id}-screen`).innerHTML = screens[step];
+  }
+
+  // Dots
+  const dotsEl = document.getElementById(`wiz-${id}-dots`);
+  dotsEl.innerHTML = Array.from({length:total}, (_,i) => {
+    let cls = 'wdot';
+    if (i === step) cls += isKhaki ? ' active-k' : ' active';
+    else if (i < step) cls += isKhaki ? ' done-k' : ' done';
+    return `<div class="${cls}" onclick="wizGo('${id}',${i})"></div>`;
+  }).join('');
+
+  // Next button
+  const nextBtn = document.getElementById(`wiz-${id}-next`);
+  if (step === total - 1) {
+    nextBtn.textContent = '✓ 完成';
+    nextBtn.className = `wiz-btn wiz-complete${isKhaki?' k':''}`;
+  } else {
+    nextBtn.textContent = '下一步 →';
+    nextBtn.className = `wiz-btn wiz-next${isKhaki?' k':''}`;
+  }
+}
+
+function wizNext(id) {
+  const total = WIZARDS[id].steps.length;
+  if (wizState[id] < total - 1) {
+    wizState[id]++;
+    renderWiz(id);
+  }
+}
+
+function wizPrev(id) {
+  if (wizState[id] > 0) {
+    wizState[id]--;
+    renderWiz(id);
+  }
+}
+
+function wizGo(id, step) {
+  wizState[id] = step;
+  renderWiz(id);
+}
+
+// ════════════════════════════════════════════════════════
+// ACCORDION
+// ════════════════════════════════════════════════════════
+function buildAccordion(containerId, qa, isKhaki=false) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = qa.map(([q,a], i) => `
+    <div class="acc-item${isKhaki?' k':''}">
+      <div class="acc-q${isKhaki?' k':''}" onclick="toggleAcc(this)">
+        <div class="acc-q-text">
+          <span class="acc-qnum${isKhaki?' k':''}">Q${i+1}</span>
+          <span>${q}</span>
+        </div>
+        <span class="acc-arrow">›</span>
+      </div>
+      <div class="acc-a${isKhaki?' k':''}">${a}</div>
+    </div>
+  `).join('');
+}
+
+function toggleAcc(el) {
+  const item = el.closest('.acc-item');
+  const wasOpen = item.classList.contains('open');
+  item.closest('.accordion').querySelectorAll('.acc-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// ════════════════════════════════════════════════════════
+// GPS DEMO
+// ════════════════════════════════════════════════════════
+function setGPS(state) {
+  const s = GPS_STATES[state];
+  const disp = document.getElementById('gps-display');
+  const exp = document.getElementById('gps-explanation');
+  const act = document.getElementById('gps-action');
+  disp.className = `gps-display ${s.cls}`;
+  document.getElementById('gps-display-text').textContent = s.text;
+  exp.textContent = s.explanation;
+  act.textContent = s.action;
+  act.className = `gps-action ${s.actionCls}`;
+  document.querySelectorAll('.gps-state-btn').forEach(b => {
+    b.className = 'gps-state-btn';
+  });
+  document.getElementById(s.btnId).className = `gps-state-btn ${s.btnCls}`;
+}
+
+// ════════════════════════════════════════════════════════
+// REASON SELECTOR
+// ════════════════════════════════════════════════════════
+function selectReason(n) {
+  document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  const r = REASONS[n];
+  const det = document.getElementById('reason-detail');
+  det.innerHTML = `<strong>${r.title}</strong><br><br>${r.desc}`;
+  det.className = 'reason-detail show';
+}
+
+// ════════════════════════════════════════════════════════
+// CALCULATOR
+// ════════════════════════════════════════════════════════
+function calcBreak() {
+  const h = parseFloat(document.getElementById('calc-hours').value);
+  const res = document.getElementById('calc-result');
+  const note = document.getElementById('calc-note');
+  if (isNaN(h) || h <= 0) { res.className='calc-result'; note.textContent=''; return; }
+  let deduct = 0, msg = '';
+  if (h >= 9) { deduct = 1; msg = '工時滿 9 小時，自動扣除 1 小時法定休息。'; }
+  else if (h >= 4.5) { deduct = 0.5; msg = '工時滿 4.5 小時，自動扣除 0.5 小時法定休息。'; }
+  else { msg = '工時未滿 4.5 小時，無需扣除休息時間。'; }
+  const final = h - deduct;
+  document.getElementById('cr-raw').textContent = h + ' 小時';
+  document.getElementById('cr-deduct').textContent = deduct > 0 ? `-${deduct} 小時` : '不扣除';
+  document.getElementById('cr-final').textContent = final + ' 小時';
+  res.className = 'calc-result show';
+  note.textContent = msg + (deduct > 0 ? '若因公無法休息，可在離開時勾選「未休申報」補回。' : '');
+}
+
+// ════════════════════════════════════════════════════════
+// QUICK STEPS
+// ════════════════════════════════════════════════════════
+function buildSteps(containerId, steps, color='green') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const bg = color === 'khaki' ? 'var(--khaki)' : 'var(--green)';
+  const lightBg = color === 'khaki' ? 'var(--khaki-p)' : 'var(--green-xp)';
+  el.innerHTML = steps.map(([t,d], i) => `
+    <div style="display:flex;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid ${lightBg};">
+      <div style="background:${bg};color:white;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;font-family:'Noto Sans TC',sans-serif;">
+        <span style="font-size:9px;opacity:.8;">STEP</span>
+        <span style="font-size:22px;font-weight:700;line-height:1;">${i+1}</span>
+      </div>
+      <div style="flex:1;padding:10px 14px;background:${lightBg};">
+        <div style="font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:700;color:var(--main);margin-bottom:3px;">${t}</div>
+        <div style="font-size:12.5px;color:var(--light);">${d}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
+let currentManual = 'punch';
+
+function switchManual(m) {
+  currentManual = m;
+  document.getElementById('manual-punch').classList.toggle('visible', m==='punch');
+  document.getElementById('manual-care').classList.toggle('visible', m==='care');
+  document.getElementById('tab-punch').className = 'tab-btn' + (m==='punch' ? ' active-punch' : '');
+  document.getElementById('tab-care').className = 'tab-btn' + (m==='care' ? ' active-care' : '');
+  document.getElementById('nav-punch').style.display = m==='punch' ? '' : 'none';
+  document.getElementById('nav-care').style.display = m==='care' ? '' : 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function gotoSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 72;
+  window.scrollTo({top:y,behavior:'smooth'});
+  // update active nav
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.className = 'nav-item' + (currentManual==='care' ? ' ' : '');
+  });
+  if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// Highlight active nav on scroll
+function updateNav() {
+  const prefix = currentManual === 'punch' ? 'p-' : 'c-';
+  const ids = currentManual === 'punch'
+    ? ['p-ch1','p-ch2','p-ch3','p-ch4','p-ch5','p-ch6','p-ch7','p-ch8','p-app']
+    : ['c-ch1','c-ch2','c-ch3','c-ch4','c-ch5','c-ch6','c-ch7','c-ch8','c-ch9','c-app'];
+  let active = ids[0];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < 120) active = id;
+  }
+  const navItems = document.querySelectorAll('#nav-' + currentManual + ' .nav-item');
+  navItems.forEach((n, i) => {
+    const isActive = ids[i] === active;
+    n.className = 'nav-item' + (isActive ? (currentManual==='care' ? ' active-k' : ' active') : '');
+  });
+}
+window.addEventListener('scroll', updateNav, {passive:true});
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Init wizards
+  ['login','punch','makeup','nobreak','care-enter','zone'].forEach(initWiz);
+  // Build accordions
+  buildAccordion('acc-punch', PUNCH_QA, false);
+  buildAccordion('acc-care', CARE_QA, true);
+  // Build quick steps
+  buildSteps('quick-steps-punch', PUNCH_STEPS, 'green');
+  buildSteps('quick-steps-care', CARE_STEPS, 'khaki');
+});
+</script>
+</body>
+</html>

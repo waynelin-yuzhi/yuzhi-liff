@@ -54,14 +54,19 @@
     h += '<div class="grid">'
       + '<a class="mod" href="' + T.href('checkin.html') + '"><div class="ic">打</div><div class="t">打卡</div><div class="d">抵達／離開</div></a>'
       + '<a class="mod" href="' + T.href('shifts.html') + '"><div class="ic">班</div><div class="t">我的班表</div><div class="d">本週安排</div></a>'
-      + '<a class="mod" href="#" id="m-report"><div class="ic">報</div><div class="t">養護報告</div><div class="d">開報告 App</div></a>'
+      + '<a class="mod" href="' + T.href('report.html') + '"><div class="ic">報</div><div class="t">養護報告</div><div class="d">填寫／我的報告</div></a>'
+      + '<a class="mod" href="' + T.href('salary.html') + '"><div class="ic">薪</div><div class="t">時光回顧</div><div class="d">本月工時／預估薪資</div></a>'
+      + '<a class="mod" href="' + T.href('manual.html') + '"><div class="ic">手</div><div class="t">使用手冊</div><div class="d">打卡／報告說明</div></a>'
       + '<a class="mod" href="#" id="m-qa"><div class="ic">問</div><div class="t">問問題</div><div class="d">對話裡直接問</div></a>'
-      + '<a class="mod soon" href="#"><div class="ic">薪</div><div class="t">薪資單</div><div class="d">即將開放</div></a>'
-      + '<a class="mod soon" href="#"><div class="ic">假</div><div class="t">請假／回報</div><div class="d">即將開放</div></a>'
       + '</div>';
+    // 公告
+    h += '<div class="card" id="notices" style="margin-top:12px"><h2>公告</h2><div class="note">載入中…</div></div>';
     $('app').innerHTML = h;
-
-    $('m-report').addEventListener('click', function (e) { e.preventDefault(); T.openExternal(T.CFG.legacyApp); });
+    T.api('announcements').then(function (r) {
+      var el = $('notices'); if (!el) return;
+      var list = (r && r.ok && r.list) || [];
+      el.innerHTML = '<h2>公告</h2>' + (list.length ? list.slice(0, 5).map(function (n) { return '<div class="row"><div><div class="n">' + esc(n.title) + '</div><div class="s" style="white-space:pre-line">' + esc(n.content) + '</div></div><div class="s">' + esc(n.date) + '</div></div>'; }).join('') : '<div class="note">目前沒有公告。</div>');
+    }).catch(function () {});
     $('m-qa').addEventListener('click', function (e) {
       e.preventDefault();
       if (window.liff && T.S.inLine) { liff.closeWindow(); } else { alert('回到「有植」的對話直接輸入問題即可。'); }
