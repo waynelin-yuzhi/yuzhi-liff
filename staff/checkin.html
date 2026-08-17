@@ -71,7 +71,7 @@
         + '<div class="note" style="margin-top:10px">抵達＝開始養護；離開＝結束（系統會算停留分鐘）。</div></div>';
     }
     if (ST.last) {
-      h += '<div class="card"><h2>最近一次</h2><div class="row"><div><div class="n">' + esc(ST.last.action) + '　' + esc(ST.last.clientId) + '</div><div class="s">' + esc(ST.last.at) + '　' + esc(ST.last.status || '') + '</div></div></div></div>';
+      h += '<div class="card"><h2>最近一次</h2><div class="row"><div><div class="n">' + esc(ST.last.siteName || ST.last.clientId) + '　<span class="chip">' + esc(ST.last.action) + '</span></div><div class="s">' + esc(ST.last.at) + '　' + esc(ST.last.status || '') + '</div></div></div></div>';
     }
     $('app').innerHTML = h;
 
@@ -102,7 +102,7 @@
     T.api('punch', params).then(function (r) {
       ST.busy = false;
       if (r && r.ok) {
-        ST.last = { action: r.action, clientId: r.clientId, at: r.at, status: r.status };
+        ST.last = { action: r.action, clientId: r.clientId, siteName: r.siteName, at: r.at, status: r.status };
         var reportUrl = T.CFG.legacyApp + '?client=' + encodeURIComponent(r.clientId);
         $('app').innerHTML = '<div class="card"><div class="done"><div class="ck">✓</div><div class="big">' + esc(r.action) + '　' + esc(r.at) + '</div>'
           + '<div class="note" style="margin-top:6px">' + esc(r.siteName) + '　' + esc(r.status) + (r.duration != null ? '　停留 ' + r.duration + ' 分' : '') + (r.test ? '　（測試、不進薪資）' : '') + '</div></div></div>'

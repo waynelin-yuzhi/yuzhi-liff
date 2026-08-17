@@ -47,7 +47,7 @@
 
     // 最近一次打卡
     if (last) {
-      h += '<div class="card"><h2>最近一次打卡</h2><div class="row"><div><div class="n">' + esc(last.action) + '　' + esc(last.clientId) + '</div><div class="s">' + esc(last.at) + '　' + esc(last.status || '') + '</div></div></div></div>';
+      h += '<div class="card"><h2>最近一次打卡</h2><div class="row"><div><div class="n">' + esc(last.siteName || last.clientId) + '　<span class="chip">' + esc(last.action) + '</span></div><div class="s">' + esc(last.at) + '　' + esc(last.status || '') + '</div></div></div></div>';
     }
 
     // 模組
