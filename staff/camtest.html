@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間員工｜相機實測</title>
+<link rel="stylesheet" href="staff.css?v=2">
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN · 相機實測</div>
+  <div class="card"><h2>1. 直接開相機（capture）</h2>
+    <input type="file" accept="image/*" capture="environment" id="f1">
+    <div class="note" style="margin-top:8px">點上面：有跳出「相機」直接拍＝通過。</div>
+    <div class="note" id="r1"></div></div>
+  <div class="card"><h2>2. 一般選擇（相簿／拍照擇一）</h2>
+    <input type="file" accept="image/*" multiple id="f2">
+    <div class="note" style="margin-top:8px">點上面：選單裡有「拍照」選項＝通過；只有「相簿／檔案」＝沒過。</div>
+    <div class="note" id="r2"></div></div>
+  <div class="card"><h2>3. 定位</h2><button class="btn secondary sm" id="g">測定位</button><div class="note" id="r3"></div></div>
+  <div class="card"><h2>環境</h2><div class="note" id="env"></div></div>
+  <div class="ft">看完把「1／2 有沒有拍照」跟環境那段截圖給總管</div>
+</div>
+<script>
+(function(){
+  var ua=navigator.userAgent; document.getElementById('env').textContent=ua+(/Line\//i.test(ua)?'　（LINE 內建瀏覽器）':'　（外部瀏覽器）');
+  function bind(id,out){ document.getElementById(id).addEventListener('change',function(e){ var fs=e.target.files||[]; document.getElementById(out).textContent=fs.length?('已取得 '+fs.length+' 張：'+Array.prototype.map.call(fs,function(f){return f.name+' '+Math.round(f.size/1024)+'KB';}).join('、')):'沒有選到檔案'; }); }
+  bind('f1','r1'); bind('f2','r2');
+  document.getElementById('g').addEventListener('click',function(){ var r=document.getElementById('r3'); r.textContent='定位中…'; if(!navigator.geolocation){r.textContent='不支援定位';return;} navigator.geolocation.getCurrentPosition(function(p){ r.textContent='OK：'+p.coords.latitude.toFixed(5)+', '+p.coords.longitude.toFixed(5)+'（±'+Math.round(p.coords.accuracy)+'m）'; },function(err){ r.textContent='定位失敗：'+err.message; },{enableHighAccuracy:true,timeout:15000}); });
+})();
+</script>
+</body>
+</html>
