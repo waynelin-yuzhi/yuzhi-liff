@@ -41,12 +41,14 @@
     return saved;
   }
 
-  // 初始化：回 Promise<me>；頁面自己決定拿到身分後畫什麼
-  function init() {
+  // 初始化：回 Promise<me>；頁面自己決定拿到身分後畫什麼。opts.skipWhoami＝只拿身分 token、頁面自己打合併 API（打卡頁一趟到位）
+  function init(opts) {
+    opts = opts || {};
+    var after = opts.skipWhoami ? function () { return Promise.resolve(null); } : whoami;
     if (qs.get('dev') === '1') {
       S.dev = devSetup();
       if (!S.dev) { showErr('沒有測試身分、無法載入。'); return Promise.reject(new Error('no dev')); }
-      return whoami();
+      return after();
     }
     if (!window.liff) { showErr('LIFF SDK 載入失敗，請關閉後重新從 LINE 開啟。'); return Promise.reject(new Error('no liff')); }
     if (!CFG.liffId) { showErr('員工 App 尚未設定完成（LIFF ID 未填）。'); return Promise.reject(new Error('no liffId')); }
@@ -55,19 +57,17 @@
       if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return new Promise(function () {}); }
       S.idToken = liff.getIDToken() || '';
       if (!S.idToken) { showErr('拿不到 LINE 身分，請關閉後重新從 LINE 開啟。'); return Promise.reject(new Error('no token')); }
-      return whoami();
+      return after();
     }).catch(function (e) {
       showErr('LIFF 初始化失敗：' + (e && e.message ? e.message : e));
       throw e;
     });
   }
+  var ERR_MSG = { not_staff: '這個 LINE 帳號還沒綁定員工，請聯絡 Wayne 綁定後再試。', not_configured: '員工 App 尚未設定完成（後端未設 channel）。', token_invalid: 'LINE 身分驗證失敗，請關閉後重新從 LINE 開啟。', no_token: '沒有 LINE 身分。', dev_token_invalid: '測試身分過期，請重新取得。' };
+  function errText(r) { return ERR_MSG[r && r.error] || ('載入失敗：' + ((r && (r.detail || r.error)) || '')); }
   function whoami() {
     return api('whoami').then(function (r) {
-      if (!r || !r.ok) {
-        var m = { not_staff: '這個 LINE 帳號還沒綁定員工，請聯絡 Wayne 綁定後再試。', not_configured: '員工 App 尚未設定完成（後端未設 channel）。', token_invalid: 'LINE 身分驗證失敗，請關閉後重新從 LINE 開啟。', no_token: '沒有 LINE 身分。' };
-        showErr(m[r && r.error] || ('載入失敗：' + ((r && (r.detail || r.error)) || '')));
-        throw new Error(r && r.error);
-      }
+      if (!r || !r.ok) { showErr(errText(r)); throw new Error(r && r.error); }
       S.me = r; S.ready = true;
       return r;
     });
@@ -105,5 +105,5 @@
     return page + (q ? '?' + q : '');
   }
 
-  window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, api: api, init: init, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
+  window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
 })();

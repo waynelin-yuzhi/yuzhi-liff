@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>植間員工｜打卡</title>
-<link rel="stylesheet" href="staff.css?v=1">
+<link rel="stylesheet" href="staff.css?v=2">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="config.js?v=1"></script>
-<script src="staff.js?v=1"></script>
+<script src="config.js?v=2"></script>
+<script src="staff.js?v=2"></script>
 </head>
 <body>
 <div class="wrap">
@@ -84,18 +84,8 @@
 
   function pickSite(id) {
     ST.site = siteById(id);
-    if (!ST.site) { render(); return; }
     render();
-    if (!ST.site._infoLoaded) {
-      T.api('siteInfo', { clientId: id }).then(function (r) {
-        if (r && r.ok && r.site && ST.site && ST.site.id === id) {
-          ST.site.careNote = r.site.careNote; ST.site.accessMethod = r.site.accessMethod; ST.site.plantSummary = r.site.plantSummary;
-          ST.site.lat = r.site.lat; ST.site.lng = r.site.lng; ST.site._infoLoaded = true;
-          render();
-        }
-      });
-    }
-    if (!ST.gps) doLocate();
+    if (!ST.gps && ST.gpsState !== 'locating') doLocate();
   }
   function doLocate() {
     ST.gpsState = 'locating'; render();
@@ -130,24 +120,22 @@
     }).catch(function (e) { ST.busy = false; alert('連線失敗，請再試一次'); render(); });
   }
 
-  T.init().then(function (me) {
-    ST.me = me; ST.last = me.last || null;
-    return T.api('sites');
+  // GPS 一開頁就先要（跟 LIFF 初始化／API 平行，等身分回來時定位多半已好）
+  ST.gpsState = 'locating';
+  T.locate(15000).then(function (g) { ST.gps = g; ST.gpsState = 'done'; if (ST.me) render(); });
+  $('app').innerHTML = '<div class="card"><div class="note">確認身分、載入案場…</div></div>';
+  T.init({ skipWhoami: true }).then(function () {
+    return T.api('checkinInit', preClient ? { clientId: preClient } : {});
   }).then(function (r) {
-    ST.sites = (r && r.ok && r.sites) || [];
-    var todayIds = {}; (ST.me.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
-    ST.sites.forEach(function (s) { s.today = !!todayIds[s.id]; });
+    if (!r || !r.ok) { T.showErr(T.errText(r)); return; }
+    ST.me = r; ST.last = r.last || null;
+    ST.sites = r.sites || [];
+    var todayIds = {}; (r.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
+    ST.sites.forEach(function (s) { s.today = !!todayIds[s.id]; s._infoLoaded = true; });
     ST.sites.sort(function (a, b) { return (b.today - a.today) || (b.assigned - a.assigned) || String(a.name).localeCompare(String(b.name)); });
     // NFC 貼紙帶 ?client=、或今天只有一家 → 直接選好
-    var pick = preClient || ((ST.me.items || []).length === 1 ? ST.me.items[0].siteCode : '');
-    if (pick && siteById(pick)) pickSite(pick);
-    else if (pick && !siteById(pick)) {
-      // 貼紙案場不在我的清單（新案場／代班）：仍允許、補進清單
-      T.api('siteInfo', { clientId: pick }).then(function (r2) {
-        if (r2 && r2.ok && r2.site) { var s = r2.site; s._infoLoaded = true; ST.sites.unshift(s); pickSite(s.id); }
-        else render();
-      });
-    } else render();
+    var pick = preClient || ((r.items || []).length === 1 ? r.items[0].siteCode : '');
+    if (pick && siteById(pick)) pickSite(pick); else render();
   }).catch(function () {});
 })();
 </script>
