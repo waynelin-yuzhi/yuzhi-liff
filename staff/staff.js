@@ -108,5 +108,19 @@
     return page + (q ? '?' + q : '');
   }
 
+  // 版本鮮度：LINE webview／GitHub Pages 會快取舊 HTML（Wayne 2026-08-18 點養護報告開到舊 App）。
+  // 每次開頁抓 version.json（帶時間戳＝不走快取），跟載入中的 config 版本比，不同就用新查詢字串重載一次（只重載一次、防迴圈）。
+  (function freshness() {
+    try {
+      var guard = sessionStorage.getItem('staff_fresh_' + (CFG.version || ''));
+      fetch('version.json?ts=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (v) {
+        if (!v || !v.version || v.version === CFG.version || guard) return;
+        try { sessionStorage.setItem('staff_fresh_' + (CFG.version || ''), '1'); } catch (e) {}
+        var u = new URL(location.href); u.searchParams.set('_', String(Date.now()));
+        location.replace(u.toString());
+      }).catch(function () {});
+    } catch (e) {}
+  })();
+
   window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, cacheGet: cacheGet, cacheSet: cacheSet, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
 })();
