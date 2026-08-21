@@ -105,10 +105,11 @@ function render(d) {
     return;
   }
   var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
-  var lineWarn = IN_LINE
+  var isStmt = (String(d.typeName || '') + String(d.subtitle || '')).indexOf('請款單') >= 0;
+  var lineWarn = (IN_LINE && !isStmt)
     ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
     : '';
-  app.innerHTML = '<h1>報價單簽回</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>' + lineWarn
+  app.innerHTML = '<h1>' + (isStmt ? '請款單' : '報價單簽回') + '</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>' + lineWarn
     + ((d.docHtml || d.shareUrl)
         ? '<div id="docwrap" style="overflow:hidden;margin:10px -6px 0;position:relative;cursor:zoom-in">'
           + '<iframe id="docfr" style="border:0;display:block;width:100%" scrolling="no"></iframe>'
@@ -122,15 +123,23 @@ function render(d) {
     + '<div style="font-size:13.5px;color:#4A4A45;line-height:2">國泰世華銀行（013）連城分行<br>戶名　植間設計股份有限公司</div>'
     + '<div class="amt" style="margin-top:8px"><b id="bkacct" style="letter-spacing:.12em;font-size:17px">128035009074</b>'
     + '<button class="ghost" id="bkcopy" style="margin:0;width:auto;padding:8px 16px;font-size:13px">複製帳號</button></div></div>'
-    + '<div class="card"><div class="decl" style="margin:0">本人已詳閱並同意本報價單內容，確認簽回。</div></div>'
+    + (isStmt
+        ? '<div class="card" style="text-align:center;font-size:13px;color:#5A5750;line-height:1.9">核對明細無誤後，於期限內匯款即可，無需簽回。<br>金額或內容有疑問，回 LINE 對話告訴我們就好。</div>'
+          + '<div style="text-align:center;margin:4px 0 26px"><a href="#" id="showsign" style="font-size:12px;color:#A09A8C">公司內部需要簽收確認？點此簽名</a></div>'
+        : '')
+    + '<div id="signwrap"' + (isStmt ? ' style="display:none"' : '') + '>'
+    + '<div class="card"><div class="decl" style="margin:0">' + (isStmt ? '本人已收到並確認本請款單內容。' : '本人已詳閱並同意本報價單內容，確認簽回。') + '</div></div>'
     + '<div class="card"><div class="field"><label>簽署人姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
     + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
-    + '<button class="btn" id="go">確認簽回</button></div>';
+    + '<button class="btn" id="go">' + (isStmt ? '確認簽收' : '確認簽回') + '</button></div>'
+    + '</div>';
   initPad();
   fitDoc();
   loadDoc(d);
   window.addEventListener('resize', fitDoc);
+  var ss = document.getElementById('showsign');
+  if (ss) ss.addEventListener('click', function (ev) { ev.preventDefault(); document.getElementById('signwrap').style.display = ''; ss.parentNode.style.display = 'none'; initPad(); });
   document.getElementById('clr').addEventListener('click', cvClear);
   document.getElementById('go').addEventListener('click', doSign);
   var bk = document.getElementById('bkcopy');
