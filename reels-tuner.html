@@ -353,19 +353,25 @@ const curSty=()=>CAPS[cur].style||STYLE;
 const $=id=>document.getElementById(id);
 const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
 
-CAPS.forEach((c,i)=>{
-  const b=document.createElement("div");
-  b.className="tab"+(i===0?" on":""); b.textContent=i+1;
-  b.onclick=()=>{ save(); cur=i; seekTo(CAPS[i].st+0.25); load(); };
-  tabs.appendChild(b);
+function buildCapUI(){
+  tabs.innerHTML="";
+  boxes.forEach(b=>b.remove());
+  boxes.length=0; cur=0;
+  CAPS.forEach((c,i)=>{
+    const b=document.createElement("div");
+    b.className="tab"+(i===0?" on":""); b.textContent=i+1;
+    b.onclick=()=>{ save(); cur=i; seekTo(CAPS[i].st+0.25); load(); };
+    tabs.appendChild(b);
 
-  const box=document.createElement("div");
-  box.className="capbox";
-  box.innerHTML='<div class="zh"></div><div class="en"></div>';
-  stage.appendChild(box); boxes.push(box);
-  box.addEventListener("mousedown",e=>startDrag(e,i));
-  box.addEventListener("touchstart",e=>startDrag(e,i),{passive:false});
-});
+    const box=document.createElement("div");
+    box.className="capbox";
+    box.innerHTML='<div class="zh"></div><div class="en"></div>';
+    stage.appendChild(box); boxes.push(box);
+    box.addEventListener("mousedown",e=>startDrag(e,i));
+    box.addEventListener("touchstart",e=>startDrag(e,i),{passive:false});
+  });
+}
+buildCapUI();
 
 function paint(){
   const t=vid.duration?vid.currentTime:parseFloat($("seek").value);
@@ -752,6 +758,28 @@ snap();
 const QV=Q.get("v")||"";
 vid.src=QV||"previews/trial01_360p.mp4";
 if(AP.id||QV){const st=document.getElementById("subttl");if(st)st.textContent="TUNING PANEL / "+(AP.id||"外部影片");}
+/* P1 參數包：以 ap+id 向 GAS 拉包渲染（PLAN-REELS-2 §1）；拉不到＝維持現狀不擋 */
+if(AP.h&&AP.id){
+  fetch(EXEC+"?page=tuner-pack&ap="+encodeURIComponent(AP.h)+"&id="+encodeURIComponent(AP.id)+"&fmt=json",{redirect:"follow"})
+    .then(r=>r.json()).then(pk=>{
+      if(!pk||!pk.ok)return;
+      if(!QV&&pk.video&&pk.video.url){vid.src=pk.video.url+(pk.video.url.indexOf("?")>=0?"&":"?")+"t="+Date.now();}
+      const st2=document.getElementById("subttl");
+      if(st2)st2.textContent="TUNING PANEL / "+(pk.reelName||AP.id);
+      const pp=pk.params;
+      if(pp){
+        if(Array.isArray(pp.captions)&&pp.captions.length){
+          CAPS.length=0;
+          pp.captions.forEach(c=>CAPS.push({zh:String(c.zh||""),en:String(c.en||""),st:Number(c.st)||0,du:Number(c.du)||2,x:(c.x!=null?Number(c.x):0.5),y:(c.y!=null?Number(c.y):0.71),style:c.style||undefined}));
+        }
+        if(pp.style)Object.assign(STYLE,pp.style);
+        if(pp.lut)Object.assign(LUT,pp.lut);
+        buildCapUI();
+        if(typeof load==="function")try{load()}catch(_){}
+        if(typeof paint==="function")try{paint()}catch(_){}
+      }
+    }).catch(_=>{});
+}
 vid.onloadedmetadata=()=>{
   $("empty").style.display="none";
   $("seek").max=vid.duration.toFixed(2);
