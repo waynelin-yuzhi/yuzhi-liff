@@ -122,25 +122,37 @@ function copyLink() {
   try { document.execCommand('copy'); } catch (e) {}
   show('連結已複製', '貼到任何聊天室就能分享', [{ label: '再複製一次', fn: copyLink, ghost: true }]);
 }
-/* v5：資料直接從網址解（零抓取）；沒帶 d 的舊卡退回 fetch 路徑 */
+/* v6：加 kind/key 通用卡（品種/分類/品牌）；v5 packed 與 case 路徑不動 */
+function getKindKey() {
+  var q = location.search;
+  var st = q.match(/liff\.state=([^&]+)/);
+  if (st) q = decodeURIComponent(st[1]);
+  var mk = q.match(/[?&]kind=([^&]+)/), my = q.match(/[?&]key=([^&]+)/);
+  return (mk && my) ? { kind: decodeURIComponent(mk[1]), key: decodeURIComponent(my[1]) } : null;
+}
 var packed0 = getPackedData();
 var cid0 = getCaseId();
+var kk0 = getKindKey();
 var packP = packed0
   ? Promise.resolve(buildBubble(packed0.p, packed0.raw))
-  : (cid0
-      ? fetch(API + '?page=case-share&case=' + cid0 + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
-      : Promise.resolve(null));
+  : (kk0
+      ? fetch(API + '?page=card-share&kind=' + encodeURIComponent(kk0.kind) + '&key=' + encodeURIComponent(kk0.key) + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
+      : (cid0
+          ? fetch(API + '?page=case-share&case=' + cid0 + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
+          : Promise.resolve(null)));
 function boot() {
   packP.then(function (d) {
     if (!d) {
       var packed = getPackedData();
       if (packed) { packP = Promise.resolve(buildBubble(packed.p, packed.raw)); boot(); return; }
+      var kk = getKindKey();
+      if (kk) { packP = fetch(API + '?page=card-share&kind=' + encodeURIComponent(kk.kind) + '&key=' + encodeURIComponent(kk.key) + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); }); boot(); return; }
       var cid = getCaseId();
       if (!cid) { show('缺少案例參數', '請重新點卡片上的分享按鈕'); return; }
       packP = fetch(API + '?page=case-share&case=' + cid + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); });
       boot(); return;
     }
-    if (!d.ok) { show('案例載入失敗', '請稍後再試'); return; }
+    if (!d.ok) { show('卡片載入失敗', '請稍後再試'); return; }
     PACK = d;
     if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
       openPicker();
