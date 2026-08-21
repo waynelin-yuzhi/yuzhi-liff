@@ -98,7 +98,7 @@
        border-radius:2px;padding:6px 12px;font-size:13px;white-space:nowrap">← 返回</a>
     <div>
       <h1>植間 Reels 微調台</h1>
-      <div class="sub">TUNING PANEL / 試作01</div>
+      <div class="sub" id="subttl">TUNING PANEL / 試作01</div>
     </div>
   </div>
 </header>
@@ -712,7 +712,7 @@ async function deliver(jsonText){
 $("send").onclick=()=>{
   save();
   $("json").value=JSON.stringify({
-    reel:"試作01", canvas:{w:1080,h:1920},
+    reel:(AP.id||"試作01"), canvas:{w:1080,h:1920},
     enPolicy:"留空者由 Claude 依中文自動翻譯",
     fonts:{ zh:$("fzh").selectedOptions[0].textContent, en:$("fen").selectedOptions[0].textContent,
             zhCss:FONT.zh, enCss:FONT.en },
@@ -748,8 +748,10 @@ $("copy").onclick=async()=>{
 load();
 snap();
 
-// 自動載入預覽片（總管 AN-0076 准：360p + 浮水印 + previews/ 子夾）
-vid.src="previews/trial01_360p.mp4";
+// 影片來源：?v=<當前這支的網址>（核可頁帶入、含快取戳）優先；沒帶才退 360p 預覽片（AN-0229 P0：原本寫死＝永遠開到試作01 舊片）
+const QV=Q.get("v")||"";
+vid.src=QV||"previews/trial01_360p.mp4";
+if(AP.id||QV){const st=document.getElementById("subttl");if(st)st.textContent="TUNING PANEL / "+(AP.id||"外部影片");}
 vid.onloadedmetadata=()=>{
   $("empty").style.display="none";
   $("seek").max=vid.duration.toFixed(2);
