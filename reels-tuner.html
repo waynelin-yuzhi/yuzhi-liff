@@ -772,7 +772,15 @@ if(AP.h&&AP.id){
       if(!QV&&pk.video&&pk.video.url){vid.src=pk.video.url+(pk.video.url.indexOf("?")>=0?"&":"?")+"t="+Date.now();}
       const st2=document.getElementById("subttl");
       if(st2)st2.textContent="TUNING PANEL / "+(pk.reelName||AP.id);
-      const pp=pk.params;
+      let pp=pk.params;
+      if(pp && !pp.captions && pp.caps && Array.isArray((pp.caps||{}).items)){
+        pp.captions=pp.caps.items.map(i=>({zh:i.zh||"",en:i.en||"",st:Number(i.inSec)||0,du:Number(i.durSec)||2}));
+        const cs=pp.caps.style||{};
+        pp.style={box:cs.box||"plain",sizePx:Number(cs.size)||52,gapPx:Number(cs.gap)||82,trackPx:Number(cs.track)||4,shadowPct:Number(cs.shadow)||63};
+        const g=(pp.grade&&pp.grade["default"])||{};
+        const ln=String(g.lut||"").replace(/^YUZHI-/,"");
+        if(ln)pp.lut={name:ln,strengthPct:100};
+      }
       if(!pp){
         CAPS.length=0; buildCapUI();
         const nb=document.createElement("div");
