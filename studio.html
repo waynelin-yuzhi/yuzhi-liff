@@ -98,7 +98,10 @@
   .approx{font-size:10px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em}
 
   .segrow{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);background:#fff;
-          border-radius:2px;margin-bottom:8px;font-size:13px}
+          border-radius:2px;margin-bottom:8px;font-size:13px;user-select:none;-webkit-user-select:none}
+  .segrow.sel{border-color:var(--moss);box-shadow:inset 3px 0 0 var(--moss)}
+  .segrow.hid{opacity:.42}
+  .segrow.hid .segno::after{content:"（隱藏）";font-size:10px;color:#8a4a30;margin-left:2px}
   .segno{font-family:ui-monospace,Menlo,monospace;color:var(--moss);min-width:26px}
   .segt{font-family:ui-monospace,Menlo,monospace;color:var(--muted);margin-left:auto}
 
@@ -165,8 +168,25 @@
 <section id="sec-seg">
   <div class="gatehint">G1 分鏡：選段、順序、每段長度、總長（15–30s）</div>
   <div id="seglist"></div>
+  <div id="segpanel" style="display:none">
+    <div class="bar">
+      <button class="pos" id="segup">上移</button>
+      <button class="pos" id="segdn">下移</button>
+      <button class="pos zone" id="seghide">隱藏此段</button>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>起點微調 <span class="val" id="siv"></span></label>
+        <input type="range" id="si" min="-3" max="3" step="0.1" value="0" />
+      </div>
+      <div class="field">
+        <label>終點微調 <span class="val" id="sov"></span></label>
+        <input type="range" id="so" min="-3" max="3" step="0.1" value="0" />
+      </div>
+    </div>
+  </div>
   <div id="segempty" class="greybox" style="display:none">此片未附分鏡表。<br>植影所契約 v2 投稿後，這裡可以排序、修剪、取捨每個分鏡。</div>
-  <div class="hint" id="seghint" style="display:none">點列可跳到該段預覽・排序與修剪第二波開放<br><span class="approx">分鏡預覽為 seek 原片近似・重剪後為準</span></div>
+  <div class="hint" id="seghint" style="display:none">點段選取＝可排序/修剪/取捨・改完「送出重剪」生效<br><span class="approx">預覽為原成片近似・重剪後為準</span></div>
 </section>
 
 <!-- ─────────── Step 字幕 ─────────── -->
@@ -700,7 +720,7 @@ function saveDraft(){
   draftTimer=setTimeout(()=>{
     saveFields();
     try{ localStorage.setItem(DKEY,JSON.stringify({ts:Date.now(),recutDirty:recutDirty,
-      caps:CAPS,style:STYLE,lut:LUT,font:FONT,bgmSel:BGM.selected,bgmVol:BGM.volume,cover:cover,
+      caps:CAPS,segs:SEGS,style:STYLE,lut:LUT,font:FONT,bgmSel:BGM.selected,bgmVol:BGM.volume,cover:cover,
       pub:{caption:$("caption").value,fc:$("fc").value,covttl:$("covttl").value,
            collab:$("collab").value,pubat:$("pubat").value,note:$("note").value}})); }catch(_){}
   },400);
@@ -710,6 +730,7 @@ function tryRestoreDraft(){
   let d=null; try{ d=JSON.parse(localStorage.getItem(DKEY)||"null"); }catch(_){}
   if(!d||!Array.isArray(d.caps)||!d.caps.length) return false;
   CAPS.length=0; d.caps.forEach(c=>CAPS.push(c));
+  if(Array.isArray(d.segs)&&d.segs.length){ SEGS=d.segs; }
   Object.assign(STYLE,d.style||{}); Object.assign(LUT,d.lut||{}); Object.assign(FONT,d.font||{});
   if(d.bgmSel)BGM.selected=d.bgmSel; if(d.bgmVol)BGM.volume=d.bgmVol;
   if(d.cover)cover=d.cover;
@@ -762,7 +783,7 @@ $("recutbtn").onclick=()=>{
       pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
       px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)},
       style:c.style||null})),
-    segments:SEGS.length?SEGS:null,
+    segments:SEGS.length?SEGS.map(x=>({id:x.id,src:x.src,'in':+(+x.in).toFixed(2),out:+(+x.out).toFixed(2),hidden:!!x.hidden,note:x.note||''})):null,
     bgm:(BGM.selected||BGM.candidates.length)?{selected:BGM.selected,volumePct:BGM.volume,offset:BGM.offset}:null,
     cover:cover,
     firstComment:$("fc").value.trim()||null,
@@ -824,10 +845,12 @@ $("copy").onclick=async()=>{
     b.onclick=e=>{e.preventDefault();history.back();}; }
 })();
 
-// ── 分鏡（P2a 唯讀列表；排序/修剪第二波） ──
+// ── 分鏡排刀（P2b：排序/修剪/取捨；改動＝重剪型） ──
+let selSeg=-1;
+function segTotal(){ return SEGS.reduce((a,s)=>a+(s.hidden?0:Math.max(0,(+s.out||0)-(+s.in||0))),0); }
 function segRender(){
   const list=$("seglist"); list.innerHTML="";
-  if(!SEGS.length){ $("segempty").style.display="block"; $("seghint").style.display="none";
+  if(!SEGS.length){ $("segempty").style.display="block"; $("seghint").style.display="none"; $("segpanel").style.display="none";
     document.querySelector('.step[data-s="seg"]').classList.add("grey"); return; }
   $("segempty").style.display="none"; $("seghint").style.display="block";
   document.querySelector('.step[data-s="seg"]').classList.remove("grey");
@@ -835,18 +858,49 @@ function segRender(){
   SEGS.forEach((s,i)=>{
     const dur=Math.max(0,(+s.out||0)-(+s.in||0));
     const row=document.createElement("div");
-    row.className="segrow";
+    row.className="segrow"+(i===selSeg?" sel":"")+(s.hidden?" hid":"");
     row.innerHTML='<span class="segno">'+(i+1)+'</span><span>'+(s.note||s.id||("段落 "+(i+1)))+'</span>'
       +'<span class="segt">'+dur.toFixed(1)+'s</span>';
-    const at=acc; row.onclick=()=>{ seekTo(at+0.1); };
-    acc+=dur;
+    const at=acc;
+    row.onclick=()=>{ selSeg=i; segPanelSync(); segRender(); seekTo(at+0.1); };
+    if(!s.hidden)acc+=dur;
     list.appendChild(row);
   });
   const tot=document.createElement("div");
-  tot.className="hint"; tot.textContent="總時長 "+acc.toFixed(1)+"s（安全帶 15–30s）";
-  tot.style.color=(acc>=15&&acc<=30)?"#2f5d2a":"#8a4a30";
+  tot.className="hint"; tot.textContent="總時長 "+segTotal().toFixed(1)+"s（安全帶 15–30s）"
+    +(SEGS.some(x=>x.hidden)?("・隱藏 "+SEGS.filter(x=>x.hidden).length+" 段"):"");
+  tot.style.color=(segTotal()>=15&&segTotal()<=30)?"#2f5d2a":"#8a4a30";
   list.appendChild(tot);
 }
+function segPanelSync(){
+  const p=$("segpanel");
+  if(selSeg<0||!SEGS[selSeg]){ p.style.display="none"; return; }
+  const s=SEGS[selSeg];
+  if(s._oin==null){ s._oin=+s.in; s._oout=+s.out; }
+  p.style.display="block";
+  $("si").value=(+s.in-s._oin).toFixed(1); $("so").value=(+s.out-s._oout).toFixed(1);
+  $("siv").textContent=(+$("si").value>=0?"+":"")+(+$("si").value).toFixed(1)+"s";
+  $("sov").textContent=(+$("so").value>=0?"+":"")+(+$("so").value).toFixed(1)+"s";
+  $("seghide").textContent=s.hidden?"還原此段":"隱藏此段";
+}
+$("si").addEventListener("input",e=>{
+  const s=SEGS[selSeg]; if(!s)return;
+  s.in=Math.min(s._oin+ +e.target.value, +s.out-0.5);
+  segPanelSync(); segRender();
+});
+$("so").addEventListener("input",e=>{
+  const s=SEGS[selSeg]; if(!s)return;
+  s.out=Math.max(s._oout+ +e.target.value, +s.in+0.5);
+  segPanelSync(); segRender();
+});
+$("si").addEventListener("change",()=>{markRecut();});
+$("so").addEventListener("change",()=>{markRecut();});
+$("segup").onclick=()=>{ if(selSeg<1)return;
+  [SEGS[selSeg-1],SEGS[selSeg]]=[SEGS[selSeg],SEGS[selSeg-1]]; selSeg--; segRender(); markRecut(); };
+$("segdn").onclick=()=>{ if(selSeg<0||selSeg>=SEGS.length-1)return;
+  [SEGS[selSeg+1],SEGS[selSeg]]=[SEGS[selSeg],SEGS[selSeg+1]]; selSeg++; segRender(); markRecut(); };
+$("seghide").onclick=()=>{ const s=SEGS[selSeg]; if(!s)return;
+  s.hidden=!s.hidden; segPanelSync(); segRender(); markRecut(); };
 
 // ── 載入：影片 + 參數包 ──
 const QV=Q.get("v")||"";
