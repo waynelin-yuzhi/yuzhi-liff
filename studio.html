@@ -60,11 +60,15 @@
         font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
 
   /* Step 分頁列（貼在預覽下方、跟著 sticky） */
-  .steps{display:flex;gap:0;background:#111;padding:0 8px 8px}
-  .step{flex:1;padding:10px 2px;text-align:center;cursor:pointer;font-size:14px;letter-spacing:.1em;
-        color:#9a948a;border-bottom:2px solid #333;user-select:none;-webkit-user-select:none}
-  .step.on{color:#F2EDE3;border-bottom-color:var(--moss);font-weight:700}
-  .step.grey{color:#555}
+  .steps{display:flex;gap:6px;background:#111;padding:2px 8px 10px}
+  .step{flex:1;padding:7px 2px;text-align:center;cursor:pointer;font-size:14px;letter-spacing:.08em;
+        color:#b7b1a5;border:1px solid #3a3a3a;border-radius:4px;background:#1d1d1b;
+        user-select:none;-webkit-user-select:none}
+  .step small{display:block;font-size:9px;letter-spacing:.2em;opacity:.65;font-family:ui-monospace,Menlo,monospace}
+  .step.on{color:#F2EDE3;background:var(--moss);border-color:var(--moss);font-weight:700}
+  .step.grey{color:#5c5c58}
+  .gatehint{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em;
+            border-left:3px solid var(--moss);padding:6px 10px;background:#fff;margin:2px 0 12px;line-height:1.7}
   section{display:none;padding-top:12px}
   section.on{display:block}
   .greybox{margin:14px 0;padding:16px;border:1px dashed #a33;color:#a33;background:#fff6f4;
@@ -148,10 +152,10 @@
     <span class="time" id="tval">0.00s</span>
   </div>
   <div class="steps" id="steps">
-    <div class="step" data-s="seg">分鏡</div>
-    <div class="step on" data-s="cap">字幕</div>
-    <div class="step" data-s="style">風格</div>
-    <div class="step" data-s="pub">發佈</div>
+    <div class="step" data-s="seg"><small>G1</small>分鏡</div>
+    <div class="step on" data-s="cap"><small>G2</small>字幕</div>
+    <div class="step" data-s="style"><small>G3</small>風格</div>
+    <div class="step" data-s="pub"><small>G4</small>發佈</div>
   </div>
 </div>
 
@@ -159,6 +163,7 @@
 
 <!-- ─────────── Step 分鏡 ─────────── -->
 <section id="sec-seg">
+  <div class="gatehint">G1 分鏡：選段、順序、每段長度、總長（15–30s）</div>
   <div id="seglist"></div>
   <div id="segempty" class="greybox" style="display:none">此片未附分鏡表。<br>植影所契約 v2 投稿後，這裡可以排序、修剪、取捨每個分鏡。</div>
   <div class="hint" id="seghint" style="display:none">點列可跳到該段預覽・排序與修剪第二波開放<br><span class="approx">分鏡預覽為 seek 原片近似・重剪後為準</span></div>
@@ -166,6 +171,7 @@
 
 <!-- ─────────── Step 字幕 ─────────── -->
 <section id="sec-cap" class="on">
+  <div class="gatehint">G2 字幕：逐句中英雙語、出現時間、位置</div>
   <div class="tabs" id="tabs"></div>
   <div class="bar">
     <button class="play undo" id="undo" disabled>上一步</button>
@@ -204,6 +210,7 @@
 
 <!-- ─────────── Step 風格 ─────────── -->
 <section id="sec-style">
+  <div class="gatehint">G3 風格：調色 LUT、字卡樣式、配樂選軌</div>
   <div class="row">
     <div class="field">
       <label>中文字型</label>
@@ -315,6 +322,7 @@
 
 <!-- ─────────── Step 發佈 ─────────── -->
 <section id="sec-pub">
+  <div class="gatehint">G4 發佈：封面、文案、首則留言、發佈時間——就在最下方核可</div>
   <div class="bar" style="align-items:flex-start">
     <img id="coverimg" class="coverimg" alt="" style="display:none" />
     <canvas id="covc" class="coverimg" style="display:none"></canvas>
@@ -877,6 +885,13 @@ function applyPack(pk){
   // 草稿優先（還原鈕可退回投稿版）
   tryRestoreDraft();
   buildCapUI(); loadFields(); snap(); segRender(); bgmRender(); exitsSync(); paint();
+  // 這支片目前在哪一關＝自動落在那個 step（四關與四 step 同一套：G1 分鏡/G2 字幕/G3 風格/G4 發佈）
+  const gmap={G1:"seg",G2:"cap",G3:"style",G4:"pub"};
+  if(pk.stage&&gmap[pk.stage]){
+    const el=document.querySelector('.step[data-s="'+gmap[pk.stage]+'"]');
+    if(el){ el.click(); }
+    $("subttl").textContent+=" / 第"+pk.stage.slice(1)+"關";
+  }
 }
 if(MOCK){
   // 示範模式（開發/親走驗證用；不連 GAS、出口鈕鎖住）
