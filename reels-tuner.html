@@ -26,7 +26,8 @@
        background:#fff;font-size:13px;color:var(--body);border-radius:2px}
   .tab.on{background:var(--moss);color:var(--paper);border-color:var(--moss)}
 
-  .stage{position:relative;width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line);
+  .pin{position:sticky;top:0;z-index:40;background:#111;padding-bottom:4px}
+.stage{position:relative;width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--line);
          overflow:hidden;border-radius:2px;touch-action:none;user-select:none}
   .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -89,6 +90,7 @@
   .copy{width:100%;padding:12px;background:#fff;color:var(--moss);border:1px solid var(--moss);
         font-family:inherit;font-size:14px;letter-spacing:.1em;cursor:pointer;margin-top:8px;border-radius:2px}
   .note{font-size:11px;color:var(--muted);line-height:1.7;margin-top:12px}
+.stage video,.stage{max-height:40vh}
 </style>
 </head>
 <body>
@@ -110,6 +112,7 @@
 
 <div class="tabs" id="tabs"></div>
 
+<div class="pin" id="pin">
 <div class="stage" id="stage">
   <video id="vid" playsinline muted preload="metadata"></video>
   <div class="empty" id="empty">載入影片後<br>就能一邊播放一邊調字幕</div>
@@ -121,8 +124,10 @@
 
 <div class="bar">
   <button class="play" id="play">播放</button>
+  <button class="play" id="mute">聲音</button>
   <input type="range" id="seek" min="0" max="20.90" step="0.05" value="0" />
   <span class="time" id="tval">0.00s</span>
+</div>
 </div>
 <div class="bar">
   <button class="play undo" id="undo" disabled>上一步</button>
@@ -442,6 +447,7 @@ $("pick").addEventListener("change",e=>{
   };
 });
 
+$("mute").onclick=()=>{vid.muted=!vid.muted;$("mute").textContent=vid.muted?"聲音":"靜音";};
 $("play").onclick=()=>{
   if(!vid.src) return;
   if(vid.paused){ vid.play(); $("play").textContent="暫停"; }
@@ -756,7 +762,7 @@ snap();
 
 // 影片來源：?v=<當前這支的網址>（核可頁帶入、含快取戳）優先；沒帶才退 360p 預覽片（AN-0229 P0：原本寫死＝永遠開到試作01 舊片）
 const QV=Q.get("v")||"";
-vid.src=QV||"previews/trial01_360p.mp4";
+vid.src=QV?(QV+(QV.indexOf("?")>=0?"&":"?")+"t="+Date.now()):"previews/trial01_360p.mp4";
 if(AP.id||QV){const st=document.getElementById("subttl");if(st)st.textContent="TUNING PANEL / "+(AP.id||"外部影片");}
 /* P1 參數包：以 ap+id 向 GAS 拉包渲染（PLAN-REELS-2 §1）；拉不到＝維持現狀不擋 */
 if(AP.h&&AP.id){

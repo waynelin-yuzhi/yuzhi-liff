@@ -181,7 +181,7 @@ function loadSrc(u){
   $("srcbox").style.display = "none";
 }
 const qv=new URLSearchParams(location.search).get("v");
-if(qv){ loadSrc(qv); } else { $("srcbox").style.display=""; }
+if(qv){ loadSrc(qv+(qv.indexOf("?")>=0?"&":"?")+"t="+Date.now()); } else { $("srcbox").style.display=""; }
 $("srcload").onclick=()=>loadSrc($("srcurl").value.trim());
 $("srcpick").onclick=()=>$("srcfile").click();
 $("srcfile").onchange=e=>{ const f=e.target.files[0]; if(f) loadSrc(URL.createObjectURL(f)); };
