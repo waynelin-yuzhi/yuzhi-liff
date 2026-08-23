@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600&family=Shippori+Mincho:wght@500&family=Playfair+Display:wght@500;600&family=Josefin+Sans:wght@400;600&family=Montserrat:wght@400;600&family=Cormorant+Garamond:wght@500;600&display=swap">
+<title>植間 Reels 工作台</title>
+<style>
+  :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--paper);color:var(--ink);font-family:"shippori-mincho","Songti TC",serif;
+       padding:16px;padding-bottom:96px;max-width:640px;margin:0 auto}
+  header{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px}
+  h1{font-size:20px;letter-spacing:.06em;font-weight:700}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.14em;margin-top:6px}
+
+  .pin{position:sticky;top:0;z-index:40;background:#111;padding-bottom:2px}
+  .stage{position:relative;width:100%;aspect-ratio:9/16;background:#000;overflow:hidden;border-radius:2px;
+         touch-action:none;user-select:none}
+  .stage video,.stage{max-height:38vh}
+  .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+         color:#6b6b66;font-size:13px;text-align:center;padding:24px;line-height:1.8}
+  .capbox{position:absolute;left:50%;transform:translate(-50%,-50%);max-width:92%;text-align:center;padding:8px 0;display:none}
+  .capbox.show{display:block}
+  .capbox.editing{cursor:grab;outline:1px dashed rgba(255,255,255,.45);outline-offset:6px}
+  .capbox .zh{color:#fff;line-height:1.35}
+  .capbox .en{color:#fff}
+  .capbox.sty-paper{background:rgba(242,237,227,.86);padding:10px 20px;border-radius:2px}
+  .capbox.sty-paper .zh,.capbox.sty-paper .en{color:#1B1A17}
+  .capbox.sty-moss{background:rgba(95,110,88,.92);padding:10px 20px;border-radius:2px}
+  .capbox.sty-moss .zh,.capbox.sty-moss .en{color:#F2EDE3}
+  .ig{position:absolute;background:rgba(184,90,61,.30);display:none;pointer-events:none;
+      font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#fff;padding:3px 5px;letter-spacing:.05em}
+  .ig.show{display:block}
+  #igTop{top:0;left:0;right:0;height:10.4%}
+  #igBot{bottom:0;left:0;right:0;height:16.7%}
+  #igRight{top:10.4%;bottom:16.7%;right:0;width:11.1%}
+  #igLeft{top:10.4%;bottom:16.7%;left:0;width:5.6%}
+
+  .bar{display:flex;align-items:center;gap:10px;margin:8px 0 4px}
+  .pin .bar{margin:6px 8px 4px}
+  .play{width:52px;padding:9px 0;background:var(--moss);color:var(--paper);border:none;border-radius:2px;
+        font-family:inherit;font-size:13px;cursor:pointer}
+  .undo{width:auto;padding:9px 14px;background:#fff;color:var(--moss);border:1px solid var(--moss)}
+  .undo:disabled{color:var(--muted);border-color:var(--line);cursor:default}
+  .plab{font-size:12px;color:var(--muted);letter-spacing:.08em}
+  .pos{flex:1;padding:9px 4px;background:#fff;color:var(--moss);border:1px solid var(--moss);
+       border-radius:2px;font-family:inherit;font-size:12px;cursor:pointer}
+  .pos.on{background:var(--moss);color:var(--paper)}
+  .zone{border-color:var(--muted);color:var(--muted)}
+  .zone.on{background:var(--muted);color:#fff;border-color:var(--muted)}
+  #seek{flex:1;accent-color:var(--moss)}
+  .time{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);min-width:60px;text-align:right}
+  .pin .time{color:#cfc9bd}
+  .hint{font-size:11px;color:var(--muted);text-align:center;margin:6px 0 14px;
+        font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
+
+  /* Step 分頁列（貼在預覽下方、跟著 sticky） */
+  .steps{display:flex;gap:0;background:#111;padding:0 8px 8px}
+  .step{flex:1;padding:10px 2px;text-align:center;cursor:pointer;font-size:14px;letter-spacing:.1em;
+        color:#9a948a;border-bottom:2px solid #333;user-select:none;-webkit-user-select:none}
+  .step.on{color:#F2EDE3;border-bottom-color:var(--moss);font-weight:700}
+  .step.grey{color:#555}
+  section{display:none;padding-top:12px}
+  section.on{display:block}
+  .greybox{margin:14px 0;padding:16px;border:1px dashed #a33;color:#a33;background:#fff6f4;
+           border-radius:8px;font-size:14px;line-height:1.7;text-align:center}
+  .infobox{margin:10px 0;padding:12px;border:1px solid var(--line);background:#fff;border-radius:2px;
+           font-size:13px;color:var(--body);line-height:1.7}
+
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{flex:1;min-width:44px;padding:9px 4px;text-align:center;cursor:pointer;border:1px solid var(--line);
+       background:#fff;font-size:13px;color:var(--body);border-radius:2px}
+  .tab.on{background:var(--moss);color:var(--paper);border-color:var(--moss)}
+
+  .field{margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em}
+  input[type=text],textarea,input[type=datetime-local]{width:100%;padding:10px 12px;border:1px solid var(--line);
+       background:#fff;font-family:inherit;font-size:15px;color:var(--ink);border-radius:2px}
+  textarea{resize:vertical}
+  input[type=range]{width:100%;accent-color:var(--moss)}
+  select{width:100%;padding:10px 12px;border:1px solid var(--line);background:#fff;
+         font-family:inherit;font-size:14px;color:var(--ink);border-radius:2px}
+  .row{display:flex;gap:12px}.row .field{flex:1}
+  .val{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--moss);float:right}
+  .stat{padding:10px 12px;margin:10px 0;border-radius:2px;font-size:14px;display:none}
+  .stat.go{display:block;background:#f3f0e8;color:#6b6455}
+  .stat.ok{display:block;background:#e8f0e4;color:#2f5d2a}
+  .stat.bad{display:block;background:#f6e9e4;color:#8a4a30}
+  .approx{font-size:10px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em}
+
+  .segrow{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);background:#fff;
+          border-radius:2px;margin-bottom:8px;font-size:13px}
+  .segno{font-family:ui-monospace,Menlo,monospace;color:var(--moss);min-width:26px}
+  .segt{font-family:ui-monospace,Menlo,monospace;color:var(--muted);margin-left:auto}
+
+  .coverimg{width:96px;aspect-ratio:9/16;object-fit:cover;border:1px solid var(--line);border-radius:2px;background:#000}
+
+  /* 底部固定出口列（三出口每 step 可見） */
+  .exits{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(242,237,227,.97);
+         border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+  .exits .inner{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .btn-approve{flex:1.2;padding:13px 6px;background:var(--moss);color:var(--paper);border:none;border-radius:2px;
+               font-family:inherit;font-size:15px;letter-spacing:.1em;cursor:pointer}
+  .btn-approve:disabled{background:#b9b2a4;cursor:default}
+  .btn-recut{flex:1;padding:13px 6px;background:#fff;color:var(--moss);border:1px solid var(--moss);border-radius:2px;
+             font-family:inherit;font-size:15px;letter-spacing:.1em;cursor:pointer}
+  .exithint{max-width:640px;margin:4px auto 0;font-size:10px;color:var(--muted);text-align:center;
+            font-family:ui-monospace,Menlo,monospace;display:none}
+  .exithint.show{display:block}
+  details.rej{margin:18px 0 8px}
+  details.rej summary{font-size:13px;color:var(--muted);cursor:pointer;padding:6px 0}
+  .btn-reject{width:100%;padding:12px;background:#fff;color:#8a4a30;border:1px solid #c9a08e;border-radius:2px;
+              font-family:inherit;font-size:14px;cursor:pointer;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a id="backbtn" href="#" style="display:none;text-decoration:none;color:var(--moss);border:1px solid var(--moss);
+       border-radius:2px;padding:6px 12px;font-size:13px;white-space:nowrap">← 返回</a>
+    <div>
+      <h1>植間 Reels 工作台</h1>
+      <div class="sub" id="subttl">STUDIO</div>
+    </div>
+  </div>
+  <div id="draftbar" class="stat" style="margin-top:10px">已還原上次未送出的草稿
+    <a href="#" id="draftdrop" style="margin-left:10px;color:inherit;text-decoration:underline">捨棄草稿、回到投稿版</a></div>
+</header>
+
+<div class="pin" id="pin">
+  <div class="stage" id="stage">
+    <video id="vid" playsinline muted preload="metadata"></video>
+    <div class="empty" id="empty">影片載入中…</div>
+    <div class="ig" id="igTop">帳號名・追蹤鍵</div>
+    <div class="ig" id="igBot">貼文文案・音訊・按鈕</div>
+    <div class="ig" id="igRight">互動鍵</div>
+    <div class="ig" id="igLeft"></div>
+  </div>
+  <div class="bar">
+    <button class="play" id="play">播放</button>
+    <button class="play" id="mute">聲音</button>
+    <input type="range" id="seek" min="0" max="30" step="0.05" value="0" />
+    <span class="time" id="tval">0.00s</span>
+  </div>
+  <div class="steps" id="steps">
+    <div class="step" data-s="seg">分鏡</div>
+    <div class="step on" data-s="cap">字幕</div>
+    <div class="step" data-s="style">風格</div>
+    <div class="step" data-s="pub">發佈</div>
+  </div>
+</div>
+
+<div id="nopack" class="greybox" style="display:none">此片投稿未附參數包：字幕與樣式為空、不可調（畫面與聲音為實片）。<br>請植影所改用參數包投稿後重試。</div>
+
+<!-- ─────────── Step 分鏡 ─────────── -->
+<section id="sec-seg">
+  <div id="seglist"></div>
+  <div id="segempty" class="greybox" style="display:none">此片未附分鏡表。<br>植影所契約 v2 投稿後，這裡可以排序、修剪、取捨每個分鏡。</div>
+  <div class="hint" id="seghint" style="display:none">點列可跳到該段預覽・排序與修剪第二波開放<br><span class="approx">分鏡預覽為 seek 原片近似・重剪後為準</span></div>
+</section>
+
+<!-- ─────────── Step 字幕 ─────────── -->
+<section id="sec-cap" class="on">
+  <div class="tabs" id="tabs"></div>
+  <div class="bar">
+    <button class="play undo" id="undo" disabled>上一步</button>
+    <button class="play undo" id="redo" disabled>下一步</button>
+    <button class="play undo" id="addcap">＋加句</button>
+    <button class="play undo" id="delcap">刪這句</button>
+    <span class="time" id="hist"></span>
+  </div>
+  <div class="bar">
+    <span class="plab">位置</span>
+    <button class="pos" data-y="0.21">上方</button>
+    <button class="pos" data-y="0.50">中央</button>
+    <button class="pos" data-y="0.71">中下・推薦</button>
+    <button class="pos zone" id="zone">遮擋區</button>
+  </div>
+  <div class="hint">切到某句會自動跳到它出現的時間・字卡可直接拖曳</div>
+  <div class="field">
+    <label>中文字幕（主行・鐵則必填）</label>
+    <input type="text" id="zh" />
+  </div>
+  <div class="field">
+    <label>英文字幕（留空＝植影所自動翻譯）</label>
+    <input type="text" id="en" placeholder="留空即可" />
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>出現時間 <span class="val" id="stv"></span></label>
+      <input type="range" id="st" min="0" max="30" step="0.1" />
+    </div>
+    <div class="field">
+      <label>停留長度 <span class="val" id="dur"></span></label>
+      <input type="range" id="du" min="0.8" max="6" step="0.1" />
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── Step 風格 ─────────── -->
+<section id="sec-style">
+  <div class="row">
+    <div class="field">
+      <label>中文字型</label>
+      <select id="fzh">
+        <option value='"Noto Serif TC",serif'>思源宋體 · 襯線</option>
+        <option value='"Shippori Mincho","Noto Serif TC",serif'>Shippori Mincho · 品牌指定</option>
+        <option value='"Noto Sans TC",sans-serif' selected>思源黑體 · 定版</option>
+        <option value='"Songti TC",serif'>系統宋體</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>英文字型</label>
+      <select id="fen">
+        <option value='"Playfair Display",serif' selected>Playfair · 定版</option>
+        <option value='"Cormorant Garamond",serif'>Cormorant · 優雅襯線</option>
+        <option value='"Montserrat",sans-serif'>Montserrat · 現代</option>
+        <option value='"Josefin Sans",sans-serif'>Josefin Sans · 幾何細緻</option>
+        <option value='ui-sans-serif,system-ui,sans-serif'>系統無襯線</option>
+      </select>
+    </div>
+  </div>
+  <div class="hint" style="margin:12px 0 8px">─ 字卡樣式（全域套用）─</div>
+  <div class="bar">
+    <span class="plab">底色</span>
+    <button class="pos sty on" data-sty="plain">白字黑影</button>
+    <button class="pos sty" data-sty="paper">米紙色塊</button>
+    <button class="pos sty" data-sty="moss">苔綠色塊</button>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>字級 <span class="val" id="fsv"></span></label>
+      <input type="range" id="fs" min="38" max="72" step="1" value="52" />
+    </div>
+    <div class="field">
+      <label>中英行距 <span class="val" id="lhv"></span></label>
+      <input type="range" id="lh" min="58" max="120" step="2" value="82" />
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>字距 <span class="val" id="trv"></span></label>
+      <input type="range" id="tr" min="0" max="12" step="1" value="4" />
+    </div>
+    <div class="field">
+      <label>陰影強度 <span class="val" id="shv"></span></label>
+      <input type="range" id="sh" min="0" max="100" step="5" value="63" />
+    </div>
+  </div>
+  <div class="bar">
+    <label style="margin:0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--body)">
+      <input type="checkbox" id="ovr" style="width:16px;height:16px;accent-color:var(--moss)" />
+      目前這句字幕用自己的樣式（不勾＝跟全域）
+    </label>
+  </div>
+
+  <div class="hint" style="margin:16px 0 8px">─ 調色 LUT <span class="approx">預覽為 CSS 近似・重剪後為準</span> ─</div>
+  <div class="row">
+    <div class="field">
+      <label>LUT（A~E 日光植栽・H 室內光）</label>
+      <select id="lut">
+        <option value="A" selected>YUZHI-A 自然加強 · 預設</option>
+        <option value="B">YUZHI-B 柔霧晨光</option>
+        <option value="C">YUZHI-C 暖陽</option>
+        <option value="D">YUZHI-D 黃昏暖調</option>
+        <option value="E">YUZHI-E 低飽和霧感</option>
+        <option value="H">YUZHI-H 室內通透冷調</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>套用強度 <span class="val" id="luv"></span></label>
+      <input type="range" id="lu" min="0" max="100" step="5" value="100" />
+    </div>
+  </div>
+
+  <div class="hint" style="margin:16px 0 8px">─ 背景音樂 BGM ─</div>
+  <div id="bgmwrap">
+    <div id="bgmcands" style="display:none">
+      <div class="bar" id="bgmbtns"><span class="plab">選軌</span></div>
+      <div class="field">
+        <label>BGM 音量 <span class="val" id="bgvv"></span></label>
+        <input type="range" id="bgv" min="0" max="100" step="5" value="85" />
+      </div>
+      <div class="hint">點軌名＝用這支片的畫面試聽該軌<span class="approx">・混音後為準</span></div>
+    </div>
+    <div id="bgmfixed" class="infobox" style="display:none">
+      目前配樂：<b id="bgmname">—</b><span id="bgmoff"></span><br>
+      <span style="color:var(--muted)">此片投稿未附候選軌。想換配樂＝按「退回」寫想要的方向，植影所會出候選軌版重投。</span>
+    </div>
+  </div>
+
+  <div class="hint" style="margin:16px 0 8px">─ 配方（樣式＋LUT 打包沿用）─</div>
+  <div class="row">
+    <div class="field">
+      <label>套用既有配方</label>
+      <select id="psel"><option value="">（不套用）</option></select>
+    </div>
+    <div class="field">
+      <label>配方名稱（存新的／覆蓋同名）</label>
+      <input type="text" id="pname" placeholder="例：POV 室內換花" />
+    </div>
+  </div>
+  <div class="bar">
+    <button class="pos" id="psave">存成配方</button>
+    <button class="pos" id="pload">套用</button>
+    <button class="pos zone" id="pdel">刪除</button>
+  </div>
+  <div class="hint" id="pmsg">配方暫存這台手機；送出重剪時一併帶給植影所沉澱進 repo。</div>
+</section>
+
+<!-- ─────────── Step 發佈 ─────────── -->
+<section id="sec-pub">
+  <div class="bar" style="align-items:flex-start">
+    <img id="coverimg" class="coverimg" alt="" style="display:none" />
+    <canvas id="covc" class="coverimg" style="display:none"></canvas>
+    <div style="flex:1">
+      <div class="field">
+        <label>封面標題（改了＝植影所自動重燒封面）</label>
+        <input type="text" id="covttl" maxlength="80" />
+      </div>
+      <button class="pos" id="setcov" style="width:100%">把目前畫面設為新封面影格</button>
+      <div class="hint" id="covt" style="margin:6px 0 0"></div>
+    </div>
+  </div>
+  <div class="field">
+    <label>貼文文案（以此版本發佈）</label>
+    <textarea id="caption" rows="6"></textarea>
+  </div>
+  <div class="field">
+    <label>首則留言（hashtag 放這裡・發佈後自動留言；留空＝不留言）</label>
+    <textarea id="fc" rows="3"></textarea>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>IG 共同作者（選填・最多 3 個・逗號分隔）</label>
+      <input type="text" id="collab" placeholder="例：帳號1, 帳號2" />
+    </div>
+    <div class="field">
+      <label>排程發佈時間（留空＝核可即發）</label>
+      <input type="datetime-local" id="pubat" />
+    </div>
+  </div>
+  <div class="field">
+    <label>給植影所的備註（送出重剪／退回時一起帶到）</label>
+    <textarea id="note" rows="3" placeholder="例：第三句再晚半秒、封面想要亮一點的畫面"></textarea>
+  </div>
+  <details class="rej">
+    <summary>方向不對？退回給植影所</summary>
+    <textarea id="rejreason" rows="3" placeholder="退回原因（會上協作板通知植影所）"></textarea>
+    <button class="btn-reject" id="rejbtn">退 回</button>
+  </details>
+  <div id="out" style="display:none">
+    <div id="stat" class="stat"></div>
+    <textarea id="json" readonly rows="8" style="font-family:ui-monospace,Menlo,monospace;font-size:11px"></textarea>
+    <button class="pos" id="copy" style="width:100%;margin-top:8px">複製參數（自動傳送失敗時才需要）</button>
+  </div>
+</section>
+
+<div class="exits">
+  <div class="inner">
+    <button class="btn-recut" id="recutbtn">送出重剪</button>
+    <button class="btn-approve" id="approvebtn">核可發佈</button>
+  </div>
+  <div class="exithint" id="exithint">有未重剪的修改——先「送出重剪」，新版回來再核可</div>
+</div>
+<form id="decform" method="post" style="display:none">
+  <input type="hidden" name="approvalDecide" value="1">
+  <input type="hidden" name="h" id="f_h">
+  <input type="hidden" name="decision" id="f_decision" value="approve">
+  <input type="hidden" name="caption" id="f_caption">
+  <input type="hidden" name="firstComment" id="f_fc">
+  <input type="hidden" name="coverTitle" id="f_covttl">
+  <input type="hidden" name="publishAt" id="f_pubat">
+  <input type="hidden" name="reason" id="f_reason">
+</form>
+
+<script>
+const $=id=>document.getElementById(id);
+const Q=new URLSearchParams(location.search);
+const AP={h:Q.get("ap")||"", id:Q.get("id")||""};
+const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
+const INBOX=EXEC+"?action=reelsTunerSubmit";
+const SUBMIT_TOKEN="7c7e94a5e2af4764a94cccf49c31aa0f";
+const BACK=(u=>{try{const x=new URL(u);return /(^|\.)script\.google\.com$|(^|\.)googleusercontent\.com$/.test(x.hostname)?u:""}catch(_){return ""}})(Q.get("back")||"");
+
+// ── 狀態 ──
+const CAPS=[];                    // {zh,en,st,du,x,y,style?}
+const FONT={zh:'"Noto Sans TC",sans-serif', en:'"Playfair Display",serif'};
+const STYLE={box:"plain", sizePx:52, gapPx:82, trackPx:4, shadowPct:63};
+const LUT={name:"A", strengthPct:100};
+let SEGS=[];                      // 分鏡表（v2 segments、P2a 唯讀）
+let BGM={selected:"",offset:0,volume:85,candidates:[]};
+let cover=null, cur=0, boxes=[], recutDirty=false, pkData=null, draftTimer=null;
+const styOf=i=>CAPS[i].style||STYLE;
+const curSty=()=>CAPS[cur]?CAPS[cur].style||STYLE:STYLE;
+const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
+
+// ── 出口鈕狀態（兩類參數制：動過重剪型＝核可鎖住） ──
+function markRecut(){ recutDirty=true; exitsSync(); saveDraft(); }
+function exitsSync(){
+  const ab=$("approvebtn");
+  ab.disabled=recutDirty;
+  $("exithint").classList.toggle("show",recutDirty);
+  if(!AP.h){ ab.disabled=true; $("recutbtn").disabled=true; }
+}
+
+// ── 預覽渲染（同微調台） ──
+function buildCapUI(){
+  tabs.innerHTML=""; boxes.forEach(b=>b.remove()); boxes.length=0;
+  if(cur>=CAPS.length)cur=Math.max(0,CAPS.length-1);
+  CAPS.forEach((c,i)=>{
+    const b=document.createElement("div");
+    b.className="tab"+(i===cur?" on":""); b.textContent=i+1;
+    b.onclick=()=>{ saveFields(); cur=i; seekTo(CAPS[i].st+0.25); loadFields(); };
+    tabs.appendChild(b);
+    const box=document.createElement("div");
+    box.className="capbox";
+    box.innerHTML='<div class="zh"></div><div class="en"></div>';
+    stage.appendChild(box); boxes.push(box);
+    box.addEventListener("mousedown",e=>startDrag(e,i));
+    box.addEventListener("touchstart",e=>startDrag(e,i),{passive:false});
+  });
+}
+function paint(){
+  const t=vid.duration?vid.currentTime:parseFloat($("seek").value);
+  CAPS.forEach((c,i)=>{
+    const box=boxes[i]; if(!box)return;
+    const zhEl=box.querySelector(".zh"), enEl=box.querySelector(".en");
+    zhEl.textContent=(i===cur?$("zh").value:c.zh);
+    enEl.textContent=(i===cur?$("en").value:c.en);
+    zhEl.style.fontFamily=FONT.zh; enEl.style.fontFamily=FONT.en;
+    const s=styOf(i), k=(stage.clientWidth||360)/1080, a=s.shadowPct/100;
+    zhEl.style.fontSize=(s.sizePx*k).toFixed(1)+"px";
+    zhEl.style.letterSpacing=(s.trackPx*k).toFixed(2)+"px";
+    enEl.style.fontSize=(s.sizePx*0.577*k).toFixed(1)+"px";
+    enEl.style.letterSpacing=(s.trackPx*0.75*k).toFixed(2)+"px";
+    enEl.style.marginTop=Math.max(0,(s.gapPx-s.sizePx*1.35)*k).toFixed(1)+"px";
+    box.classList.remove("sty-plain","sty-paper","sty-moss");
+    box.classList.add("sty-"+s.box);
+    box.style.textShadow = s.box==="plain"
+      ? "0 "+(2*k).toFixed(1)+"px "+(6*k).toFixed(1)+"px rgba(0,0,0,"+(0.9*a).toFixed(2)+"), 0 "
+        +(4*k).toFixed(1)+"px "+(18*k).toFixed(1)+"px rgba(0,0,0,"+(0.75*a).toFixed(2)+")"
+      : "none";
+    box.style.left=(c.x*100)+"%"; box.style.top=(c.y*100)+"%";
+    const live=t>=c.st && t<=c.st+c.du;
+    box.classList.toggle("show", live || (i===cur && vid.paused && secOn==="cap"));
+    box.classList.toggle("editing", i===cur && vid.paused && secOn==="cap");
+  });
+  $("tval").textContent=t.toFixed(2)+"s";
+  const c0=CAPS[cur];
+  if(c0)document.querySelectorAll(".pos[data-y]").forEach(b=>{
+    b.classList.toggle("on", Math.abs(c0.x-0.5)<0.005 && Math.abs(c0.y-parseFloat(b.dataset.y))<0.005);
+  });
+  // LUT CSS 近似（風格 step 即時感；成品才真套）
+  const f=LUT.strengthPct/100;
+  const css={A:"saturate("+(1+0.18*f)+") contrast("+(1+0.06*f)+")",
+             B:"saturate("+(1-0.12*f)+") brightness("+(1+0.08*f)+") blur(0px)",
+             C:"sepia("+(0.22*f)+") saturate("+(1+0.1*f)+")",
+             D:"sepia("+(0.3*f)+") hue-rotate(-8deg) saturate("+(1+0.05*f)+")",
+             E:"saturate("+(1-0.35*f)+") contrast("+(1-0.05*f)+")",
+             H:"saturate("+(1-0.08*f)+") brightness("+(1+0.05*f)+") hue-rotate(6deg)"}[LUT.name]||"none";
+  vid.style.filter=css;
+}
+function loadFields(){
+  const c=CAPS[cur]; if(!c)return;
+  [...tabs.children].forEach((t,i)=>t.classList.toggle("on",i===cur));
+  $("zh").value=c.zh; $("en").value=c.en;
+  $("st").value=c.st; $("du").value=c.du;
+  $("stv").textContent=c.st.toFixed(1)+"s"; $("dur").textContent=c.du.toFixed(1)+"s";
+  syncSty(); paint();
+}
+function syncSty(){
+  const s=curSty();
+  $("fs").value=s.sizePx; $("lh").value=s.gapPx; $("tr").value=s.trackPx; $("sh").value=s.shadowPct;
+  $("fsv").textContent=s.sizePx+"px"; $("lhv").textContent=s.gapPx+"px";
+  $("trv").textContent=s.trackPx+"px"; $("shv").textContent=s.shadowPct+"%";
+  document.querySelectorAll(".pos.sty").forEach(b=>b.classList.toggle("on",b.dataset.sty===s.box));
+  if(CAPS[cur])$("ovr").checked=!!CAPS[cur].style;
+}
+function saveFields(){
+  const c=CAPS[cur]; if(!c)return;
+  c.zh=$("zh").value; c.en=$("en").value;
+  c.st=parseFloat($("st").value); c.du=parseFloat($("du").value);
+}
+function seekTo(t){ if(vid.duration){ vid.currentTime=Math.min(vid.duration,Math.max(0,t)); } $("seek").value=t; paint(); }
+
+// ── 播放列 ──
+$("mute").onclick=()=>{ vid.muted=!vid.muted; $("mute").textContent=vid.muted?"聲音":"靜音"; bgmSync(); };
+$("play").onclick=()=>{ if(!vid.src)return;
+  if(vid.paused){ vid.play(); $("play").textContent="暫停"; } else { vid.pause(); $("play").textContent="播放"; } paint(); };
+vid.addEventListener("timeupdate",()=>{ $("seek").value=vid.currentTime; paint(); });
+vid.addEventListener("pause",()=>{ $("play").textContent="播放"; paint(); });
+$("seek").addEventListener("input",e=>{ if(!vid.paused) vid.pause(); seekTo(parseFloat(e.target.value)); });
+
+// ── 字幕編輯 ──
+["zh","en"].forEach(id=>$(id).addEventListener("input",()=>{paint();}));
+["zh","en"].forEach(id=>$(id).addEventListener("change",()=>{saveFields();snap();markRecut();}));
+$("st").addEventListener("input",e=>{ if(CAPS[cur]){CAPS[cur].st=parseFloat(e.target.value);
+  $("stv").textContent=(+e.target.value).toFixed(1)+"s"; seekTo(CAPS[cur].st+0.25);} });
+$("du").addEventListener("input",e=>{ if(CAPS[cur]){CAPS[cur].du=parseFloat(e.target.value);
+  $("dur").textContent=(+e.target.value).toFixed(1)+"s"; paint();} });
+$("st").addEventListener("change",()=>{snap();markRecut();});
+$("du").addEventListener("change",()=>{snap();markRecut();});
+$("addcap").onclick=()=>{
+  saveFields();
+  const t=vid.duration?vid.currentTime:0;
+  CAPS.push({zh:"新字幕",en:"",st:+t.toFixed(1),du:2.5,x:0.5,y:0.71});
+  cur=CAPS.length-1; buildCapUI(); loadFields(); snap(); markRecut();
+};
+$("delcap").onclick=()=>{
+  if(CAPS.length<=1){ return; }
+  CAPS.splice(cur,1); if(cur>0)cur--;
+  buildCapUI(); loadFields(); snap(); markRecut();
+};
+
+let dragging=false;
+const pt=e=>e.touches?e.touches[0]:e;
+function startDrag(e,i){ if(i!==cur||!vid.paused||secOn!=="cap") return; dragging=true; e.preventDefault(); }
+const SAFE={top:0.15, bottom:0.79, left:0.30, right:0.70};
+function moveDrag(e){
+  if(!dragging) return;
+  const r=stage.getBoundingClientRect(), p=pt(e);
+  CAPS[cur].x=Math.min(SAFE.right,Math.max(SAFE.left,(p.clientX-r.left)/r.width));
+  CAPS[cur].y=Math.min(SAFE.bottom,Math.max(SAFE.top,(p.clientY-r.top)/r.height));
+  paint(); e.preventDefault();
+}
+window.addEventListener("mousemove",moveDrag);
+window.addEventListener("touchmove",moveDrag,{passive:false});
+function endDrag(){ if(dragging){ dragging=false; snap(); markRecut(); } }
+window.addEventListener("mouseup",endDrag);
+window.addEventListener("touchend",endDrag);
+
+// ── 歷史 ──
+let hist=[], hp=-1;
+function snap(){
+  saveFields();
+  hist=hist.slice(0,hp+1);
+  hist.push(JSON.parse(JSON.stringify(CAPS)));
+  if(hist.length>60) hist.shift();
+  hp=hist.length-1; hbtn();
+}
+function hbtn(){
+  $("undo").disabled=hp<=0; $("redo").disabled=hp>=hist.length-1;
+  $("hist").textContent=hist.length>1?(hp+1)+" / "+hist.length:"";
+}
+function restore(i){
+  hp=i;
+  CAPS.length=0; hist[hp].forEach(s=>CAPS.push(JSON.parse(JSON.stringify(s))));
+  buildCapUI(); loadFields(); hbtn(); markRecut();
+}
+$("undo").onclick=()=>{ if(hp>0) restore(hp-1); };
+$("redo").onclick=()=>{ if(hp<hist.length-1) restore(hp+1); };
+document.querySelectorAll(".pos[data-y]").forEach(b=>{
+  b.onclick=()=>{ if(!CAPS[cur])return; CAPS[cur].x=0.5; CAPS[cur].y=parseFloat(b.dataset.y); paint(); snap(); markRecut(); };
+});
+$("zone").onclick=()=>{
+  const on=$("zone").classList.toggle("on");
+  ["igTop","igBot","igRight","igLeft"].forEach(id=>$(id).classList.toggle("show",on));
+};
+
+// ── 風格 ──
+$("fzh").onchange=e=>{ FONT.zh=e.target.value; paint(); markRecut(); };
+$("fen").onchange=e=>{ FONT.en=e.target.value; paint(); markRecut(); };
+document.querySelectorAll(".pos.sty").forEach(b=>{
+  b.onclick=()=>{ curSty().box=b.dataset.sty; syncSty(); paint(); snap(); markRecut(); };
+});
+[["fs","sizePx"],["lh","gapPx"],["tr","trackPx"],["sh","shadowPct"]].forEach(([id,key])=>{
+  $(id).addEventListener("input",e=>{ curSty()[key]=+e.target.value; syncSty(); paint(); });
+  $(id).addEventListener("change",()=>{snap();markRecut();});
+});
+$("ovr").onchange=e=>{
+  if(!CAPS[cur])return;
+  CAPS[cur].style=e.target.checked?JSON.parse(JSON.stringify(STYLE)):null;
+  syncSty(); paint(); snap(); markRecut();
+};
+$("lut").onchange=e=>{ LUT.name=e.target.value; paint(); markRecut(); };
+$("lu").addEventListener("input",e=>{ LUT.strengthPct=+e.target.value; $("luv").textContent=e.target.value+"%"; paint(); });
+$("lu").addEventListener("change",markRecut);
+$("luv").textContent=LUT.strengthPct+"%";
+
+// ── BGM 候選軌 ──
+const bgmAudio=new Audio(); bgmAudio.preload="none";
+let bgmActive="";   // 正在試聽的候選 id
+function bgmRender(){
+  if(BGM.candidates.length){
+    $("bgmcands").style.display="block"; $("bgmfixed").style.display="none";
+    const bar=$("bgmbtns");
+    [...bar.querySelectorAll("button")].forEach(b=>b.remove());
+    BGM.candidates.forEach(t=>{
+      const b=document.createElement("button");
+      b.className="pos"+(BGM.selected===t.id?" on":"");
+      b.textContent=t.label||t.id;
+      b.onclick=()=>{ BGM.selected=t.id; bgmActive=t.id; bgmRender(); bgmStart(t); markRecut(); };
+      bar.appendChild(b);
+    });
+    $("bgv").value=BGM.volume; $("bgvv").textContent=BGM.volume+"%";
+  }else{
+    $("bgmcands").style.display="none";
+    $("bgmfixed").style.display=BGM.selected||BGM.offset?"block":"none";
+    $("bgmname").textContent=BGM.selected||"（投稿未註記）";
+    $("bgmoff").textContent=BGM.offset?("・起點 "+BGM.offset+"s"):"";
+  }
+}
+function bgmStart(t){
+  vid.muted=true; $("mute").textContent="聲音";
+  bgmAudio.src=t.url; bgmAudio.volume=BGM.volume/100;
+  bgmAudio.currentTime=(t.offset||0)+ (vid.currentTime||0);
+  if(!vid.paused) bgmAudio.play().catch(()=>{});
+}
+function bgmSync(){
+  if(!bgmActive)return;
+  const t=BGM.candidates.find(x=>x.id===bgmActive); if(!t)return;
+  if(vid.muted&&!vid.paused){ bgmAudio.currentTime=(t.offset||0)+vid.currentTime; bgmAudio.play().catch(()=>{}); }
+  else bgmAudio.pause();
+}
+vid.addEventListener("play",()=>{ if(bgmActive&&vid.muted){const t=BGM.candidates.find(x=>x.id===bgmActive);if(t)bgmStart(t);} });
+vid.addEventListener("pause",()=>bgmAudio.pause());
+vid.addEventListener("seeking",()=>{ if(bgmActive&&!vid.paused)bgmSync(); });
+$("bgv").addEventListener("input",e=>{ BGM.volume=+e.target.value; $("bgvv").textContent=e.target.value+"%"; bgmAudio.volume=BGM.volume/100; });
+$("bgv").addEventListener("change",markRecut);
+
+// ── 配方（localStorage、沿微調台） ──
+const PKEY="yuzhiReelsPresets";
+const readP=()=>{ try{ return JSON.parse(localStorage.getItem(PKEY)||"{}"); }catch(_){ return {}; } };
+const writeP=o=>{ try{ localStorage.setItem(PKEY,JSON.stringify(o)); }catch(_){} };
+let usedPreset="";
+function fillP(sel){
+  const all=readP();
+  $("psel").innerHTML='<option value="">（不套用）</option>'+
+    Object.keys(all).map(n=>'<option value="'+n.replace(/"/g,"&quot;")+'">'+n+'</option>').join("");
+  if(sel)$("psel").value=sel;
+}
+function pmsg(t){ $("pmsg").textContent=t; }
+$("psave").onclick=()=>{
+  const n=$("pname").value.trim(); if(!n){ pmsg("請先填配方名稱再存"); return; }
+  const o=readP();
+  o[n]={style:JSON.parse(JSON.stringify(STYLE)),lut:JSON.parse(JSON.stringify(LUT)),fonts:{zh:FONT.zh,en:FONT.en}};
+  writeP(o); usedPreset=n; fillP(n); pmsg("已存配方「"+n+"」，送出重剪時一併帶給植影所");
+};
+$("pload").onclick=()=>{
+  const n=$("psel").value; if(!n){ pmsg("請先在左邊選一個配方"); return; }
+  const p=readP()[n]; if(!p) return;
+  Object.assign(STYLE,p.style||{}); Object.assign(LUT,p.lut||{});
+  CAPS.forEach(c=>c.style=null);
+  if(p.fonts){ FONT.zh=p.fonts.zh; FONT.en=p.fonts.en;
+    [["fzh","zh"],["fen","en"]].forEach(([id,k])=>{ const s=$(id);
+      [...s.options].forEach(o=>{ if(o.value===p.fonts[k]) s.value=o.value; }); }); }
+  $("lut").value=LUT.name; $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%";
+  usedPreset=n; $("pname").value=n;
+  loadFields(); snap(); markRecut(); pmsg("已套用配方「"+n+"」");
+};
+$("pdel").onclick=()=>{
+  const n=$("psel").value; if(!n) return;
+  const o=readP(); delete o[n]; writeP(o); if(usedPreset===n)usedPreset="";
+  fillP(""); pmsg("已刪除配方「"+n+"」");
+};
+fillP("");
+
+// ── 封面 ──
+$("setcov").onclick=()=>{
+  if(!vid.duration) return;
+  if(!vid.paused) vid.pause();
+  const c=$("covc"); c.width=90; c.height=160;
+  try{ c.getContext("2d").drawImage(vid,0,0,90,160); c.style.display="block"; $("coverimg").style.display="none"; }catch(_){}
+  cover={frameSec:+vid.currentTime.toFixed(2)};
+  $("covt").textContent="新封面 @ "+vid.currentTime.toFixed(2)+"s（送出重剪後生效）";
+  markRecut();
+};
+$("covttl").addEventListener("change",saveDraft);
+["caption","fc","collab","pubat","note"].forEach(id=>$(id).addEventListener("change",saveDraft));
+
+// ── Step 切換 ──
+let secOn="cap";
+document.querySelectorAll(".step").forEach(s=>{
+  s.onclick=()=>{
+    secOn=s.dataset.s;
+    document.querySelectorAll(".step").forEach(x=>x.classList.toggle("on",x===s));
+    ["seg","cap","style","pub"].forEach(k=>$("sec-"+k).classList.toggle("on",k===secOn));
+    paint();
+  };
+});
+
+// ── 草稿（per AP 自動暫存） ──
+const DKEY="yuzhiStudioDraft:"+(AP.id||"demo");
+function saveDraft(){
+  clearTimeout(draftTimer);
+  draftTimer=setTimeout(()=>{
+    saveFields();
+    try{ localStorage.setItem(DKEY,JSON.stringify({ts:Date.now(),recutDirty:recutDirty,
+      caps:CAPS,style:STYLE,lut:LUT,font:FONT,bgmSel:BGM.selected,bgmVol:BGM.volume,cover:cover,
+      pub:{caption:$("caption").value,fc:$("fc").value,covttl:$("covttl").value,
+           collab:$("collab").value,pubat:$("pubat").value,note:$("note").value}})); }catch(_){}
+  },400);
+}
+function dropDraft(){ try{ localStorage.removeItem(DKEY); }catch(_){} }
+function tryRestoreDraft(){
+  let d=null; try{ d=JSON.parse(localStorage.getItem(DKEY)||"null"); }catch(_){}
+  if(!d||!Array.isArray(d.caps)||!d.caps.length) return false;
+  CAPS.length=0; d.caps.forEach(c=>CAPS.push(c));
+  Object.assign(STYLE,d.style||{}); Object.assign(LUT,d.lut||{}); Object.assign(FONT,d.font||{});
+  if(d.bgmSel)BGM.selected=d.bgmSel; if(d.bgmVol)BGM.volume=d.bgmVol;
+  if(d.cover)cover=d.cover;
+  if(d.pub){ $("caption").value=d.pub.caption||""; $("fc").value=d.pub.fc||""; $("covttl").value=d.pub.covttl||"";
+    $("collab").value=d.pub.collab||""; $("pubat").value=d.pub.pubat||""; $("note").value=d.pub.note||""; }
+  recutDirty=!!d.recutDirty;
+  const bar=$("draftbar"); bar.className="stat go"; bar.style.display="block";
+  return true;
+}
+$("draftdrop").onclick=e=>{ e.preventDefault(); dropDraft(); location.reload(); };
+
+// ── 三出口 ──
+function fillDecForm(){
+  $("f_h").value=AP.h;
+  $("f_caption").value=$("caption").value;
+  $("f_fc").value=$("fc").value;
+  $("f_covttl").value=$("covttl").value;
+  $("f_pubat").value=$("pubat").value;
+}
+$("approvebtn").onclick=()=>{
+  if(recutDirty||!AP.h) return;
+  if(!confirm("確定核可發佈？發佈型修改（文案／封面標題／排程時間）會以此版本為準。")) return;
+  fillDecForm(); $("f_decision").value="approve"; $("f_reason").value="";
+  dropDraft();
+  const f=$("decform"); f.action=(pkData&&pkData.postUrl)||EXEC; f.submit();
+};
+$("rejbtn").onclick=()=>{
+  if(!AP.h) return;
+  const r=$("rejreason").value.trim();
+  if(!r){ alert("請寫一句退回原因（給植影所方向）"); return; }
+  if(!confirm("確定退回？植影所會依原因調整後重投。")) return;
+  fillDecForm(); $("f_decision").value="reject";
+  $("f_reason").value=r+($("note").value.trim()?("。備註："+$("note").value.trim()):"");
+  dropDraft();
+  const f=$("decform"); f.action=(pkData&&pkData.postUrl)||EXEC; f.submit();
+};
+$("recutbtn").onclick=()=>{
+  if(!AP.h){ return; }
+  saveFields();
+  const obj={
+    reel:AP.id, apId:AP.id, schemaVersion:2, canvas:{w:1080,h:1920},
+    enPolicy:"留空者由植影所依中文自動翻譯",
+    fonts:{ zh:$("fzh").selectedOptions[0].textContent, en:$("fen").selectedOptions[0].textContent, zhCss:FONT.zh, enCss:FONT.en },
+    style:Object.assign({scope:"global",note:"數值以 1080×1920 畫布為基準"},STYLE),
+    lut:{name:"YUZHI-"+LUT.name, file:"grade/yuzhi_"+LUT.name.toLowerCase()+".png", strengthPct:LUT.strengthPct},
+    presetName:usedPreset||null,
+    preset:usedPreset?readP()[usedPreset]||null:null,
+    captions:CAPS.map((c,i)=>({n:i+1,zh:c.zh,en:c.en||"(auto)",
+      start:+(+c.st).toFixed(2),duration:+(+c.du).toFixed(2),
+      pos:{xPct:+(c.x*100).toFixed(1),yPct:+(c.y*100).toFixed(1)},
+      px:{x:Math.round(c.x*1080),y:Math.round(c.y*1920)},
+      style:c.style||null})),
+    segments:SEGS.length?SEGS:null,
+    bgm:(BGM.selected||BGM.candidates.length)?{selected:BGM.selected,volumePct:BGM.volume,offset:BGM.offset}:null,
+    cover:cover,
+    firstComment:$("fc").value.trim()||null,
+    collaborators:$("collab").value.split(/[,，]/).map(s=>s.trim().replace(/^@/,"")).filter(Boolean).slice(0,3),
+    publishAt:$("pubat").value?$("pubat").value.replace("T"," "):null,
+    caption:$("caption").value.trim()||null,
+    coverTitle:$("covttl").value.trim()||null,
+    note:$("note").value.trim()||null
+  };
+  $("json").value=JSON.stringify(obj,null,1);
+  $("out").style.display="block";
+  document.querySelector('.step[data-s="pub"]').click();
+  $("out").scrollIntoView({behavior:"smooth"});
+  deliver(obj);
+};
+async function deliver(obj){
+  const st=$("stat");
+  st.textContent="傳送中…"; st.className="stat go";
+  if(!obj.title) obj.title=obj.reel||"工作台參數";
+  const body=new URLSearchParams({token:SUBMIT_TOKEN,payload:JSON.stringify(obj)});
+  try{
+    const r=await fetch(INBOX,{method:"POST",body:body});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||"unknown");
+    let msg="已送達協作板（"+d.at+"）、植影所會照參數重剪";
+    if(AP.h&&AP.id){
+      const fd=new URLSearchParams({approvalDecide:"1", h:AP.h, decision:"reject",
+        reason:"工作台已送新參數重剪。Wayne 備註："+(($("note").value||"（無）").slice(0,120))});
+      try{ await fetch(EXEC,{method:"POST",body:fd,mode:"no-cors"}); }catch(_){}
+      msg+="・原件 "+AP.id+" 已自動退回、新版卡回來再核可";
+    }
+    st.textContent=msg; st.className="stat ok";
+    dropDraft();
+    if(BACK){
+      const a=document.createElement("a");
+      a.href=BACK; a.textContent="← 回核可中心"; a.style.cssText="display:inline-block;margin-left:10px;color:#2f5d2a;text-decoration:underline";
+      st.appendChild(a);
+    }
+  }catch(err){
+    st.textContent="自動傳送沒成功（可能部署滾動中）——按重試、或按「複製參數」貼給總管";
+    st.className="stat bad";
+    const rb=document.createElement("button");
+    rb.textContent="重試"; rb.className="pos"; rb.style.cssText="margin-left:10px;width:auto;padding:6px 14px";
+    rb.onclick=()=>deliver(obj);
+    st.appendChild(rb);
+  }
+}
+$("copy").onclick=async()=>{
+  try{ await navigator.clipboard.writeText($("json").value); }
+  catch(_){ $("json").select(); document.execCommand("copy"); }
+  $("copy").textContent="已複製"; setTimeout(()=>$("copy").textContent="複製參數（自動傳送失敗時才需要）",1600);
+};
+
+// ── 返回鍵 ──
+(function(){
+  const b=$("backbtn");
+  if(BACK){ b.href=BACK; b.style.display="inline-block"; }
+  else if(history.length>1){ b.href="#"; b.style.display="inline-block";
+    b.onclick=e=>{e.preventDefault();history.back();}; }
+})();
+
+// ── 分鏡（P2a 唯讀列表；排序/修剪第二波） ──
+function segRender(){
+  const list=$("seglist"); list.innerHTML="";
+  if(!SEGS.length){ $("segempty").style.display="block"; $("seghint").style.display="none";
+    document.querySelector('.step[data-s="seg"]').classList.add("grey"); return; }
+  $("segempty").style.display="none"; $("seghint").style.display="block";
+  document.querySelector('.step[data-s="seg"]').classList.remove("grey");
+  let acc=0;
+  SEGS.forEach((s,i)=>{
+    const dur=Math.max(0,(+s.out||0)-(+s.in||0));
+    const row=document.createElement("div");
+    row.className="segrow";
+    row.innerHTML='<span class="segno">'+(i+1)+'</span><span>'+(s.note||s.id||("段落 "+(i+1)))+'</span>'
+      +'<span class="segt">'+dur.toFixed(1)+'s</span>';
+    const at=acc; row.onclick=()=>{ seekTo(at+0.1); };
+    acc+=dur;
+    list.appendChild(row);
+  });
+  const tot=document.createElement("div");
+  tot.className="hint"; tot.textContent="總時長 "+acc.toFixed(1)+"s（安全帶 15–30s）";
+  tot.style.color=(acc>=15&&acc<=30)?"#2f5d2a":"#8a4a30";
+  list.appendChild(tot);
+}
+
+// ── 載入：影片 + 參數包 ──
+const QV=Q.get("v")||"";
+const MOCK=Q.get("mock")==="1";
+if(QV) vid.src=QV+(QV.indexOf("?")>=0?"&":"?")+"t="+Date.now();
+if(AP.id){ $("subttl").textContent="STUDIO / "+AP.id; }
+function applyPack(pk){
+  pkData=pk;
+  if(!QV&&pk.video&&pk.video.url){ vid.src=pk.video.url+(pk.video.url.indexOf("?")>=0?"&":"?")+"t="+Date.now(); }
+  $("subttl").textContent="STUDIO / "+(pk.reelName||AP.id||"示範")
+    +(pk.video&&pk.video.mediaName?(" / "+pk.video.mediaName):"")
+    +(pk.status?(" / "+pk.status):"");
+  $("caption").value=pk.caption||"";
+  $("fc").value=pk.firstComment||"";
+  $("covttl").value=(pk.cover&&pk.cover.title)||"";
+  if(pk.publishAt)$("pubat").value=String(pk.publishAt).replace(" ","T");
+  if(pk.cover&&pk.cover.url){ const im=$("coverimg"); im.src=pk.cover.url+(pk.cover.url.indexOf("?")>=0?"&":"?")+"t="+Date.now(); im.style.display="block"; }
+  const pp=pk.paramsNorm;
+  if(!pp){
+    $("nopack").style.display="block";
+    CAPS.length=0; buildCapUI(); segRender(); bgmRender(); exitsSync();
+    return;
+  }
+  if(Array.isArray(pp.captions)&&pp.captions.length){
+    CAPS.length=0;
+    pp.captions.forEach(c=>CAPS.push({zh:String(c.zh||""),en:String(c.en||""),st:Number(c.st)||0,du:Number(c.du)||2,
+      x:(c.x!=null?Number(c.x):0.5),y:(c.y!=null?Number(c.y):0.71),style:c.style||undefined}));
+  }
+  if(pp.style)Object.assign(STYLE,pp.style);
+  if(pp.lut){ Object.assign(LUT,pp.lut); if(!LUT.strengthPct)LUT.strengthPct=100;
+    $("lut").value=LUT.name; $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%"; }
+  SEGS=Array.isArray(pp.segments)?pp.segments:[];
+  if(pp.bgm){ BGM.selected=pp.bgm.selected||""; BGM.offset=pp.bgm.offset||0;
+    if(pp.bgm.volume!=null)BGM.volume=Math.round(pp.bgm.volume*(pp.bgm.volume<=1?100:1));
+    BGM.candidates=pp.bgm.candidates||[]; }
+  // 草稿優先（還原鈕可退回投稿版）
+  tryRestoreDraft();
+  buildCapUI(); loadFields(); snap(); segRender(); bgmRender(); exitsSync(); paint();
+}
+if(MOCK){
+  // 示範模式（開發/親走驗證用；不連 GAS、出口鈕鎖住）
+  applyPack({ok:true,reelName:"示範片",status:"示範",caption:"示範文案——工作台四 step 巡一輪",firstComment:"#示範",
+    video:{url:"previews/trial01_360p.mp4",mediaName:"demo.mp4"},cover:{url:"",title:"示範封面標題"},
+    paramsNorm:{schemaVersion:2,
+      captions:[{zh:"每到夏天",en:"Every summer",st:0.6,du:2.3},{zh:"這是我澆水的方式",en:"This is how I water",st:3.2,du:3},{zh:"看到植物們點頭如搗蒜",en:"When every leaf nods back",st:6.6,du:3.4}],
+      style:{box:"plain",sizePx:52,gapPx:82,trackPx:4,shadowPct:63},lut:{name:"A",strengthPct:100},
+      segments:[{id:"s1",in:0,out:5.2,note:"窗台全景"},{id:"s2",in:5.2,out:12.8,note:"換植手部特寫"},{id:"s3",in:12.8,out:19.5,note:"收尾擦拭"}],
+      bgm:{selected:"trk-a",offset:0,volume:85,candidates:[{id:"trk-a",label:"輕快原軌",url:"previews/stem_music.m4a",offset:0},{id:"trk-b",label:"沉穩替代",url:"previews/stem_water.m4a",offset:0}]}}});
+}else if(!AP.h||!AP.id){
+  $("nopack").style.display="block";
+  $("nopack").textContent="工作台要從核可卡進入（連結帶這支片的通行證）。此頁目前無片可調。";
+  exitsSync();
+}else{
+  fetch(EXEC+"?page=tuner-pack&ap="+encodeURIComponent(AP.h)+"&id="+encodeURIComponent(AP.id)+"&fmt=json",{redirect:"follow"})
+    .then(r=>r.json()).then(pk=>{
+      if(!pk||!pk.ok){ throw new Error((pk&&pk.error)||"pack"); }
+      applyPack(pk);
+    }).catch(_=>{
+      const st=$("draftbar"); st.className="stat bad"; st.style.display="block";
+      st.innerHTML="參數載入失敗（可能部署滾動中）<button class='pos' style='width:auto;padding:6px 14px;margin-left:10px' onclick='location.reload()'>重試</button>";
+      exitsSync();
+    });
+}
+vid.onloadedmetadata=()=>{
+  $("empty").style.display="none";
+  $("seek").max=vid.duration.toFixed(2);
+  $("st").max=Math.max(4,vid.duration-0.5).toFixed(1);
+  if(CAPS[cur]) seekTo(CAPS[cur].st+0.25);
+};
+vid.onerror=()=>{ $("empty").innerHTML="影片載入失敗<br>重新整理一次看看"; };
+exitsSync();
+</script>
+</body>
+</html>
