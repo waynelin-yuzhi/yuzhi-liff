@@ -773,6 +773,11 @@ if(AP.h&&AP.id){
       const st2=document.getElementById("subttl");
       if(st2)st2.textContent="TUNING PANEL / "+(pk.reelName||AP.id);
       const pp=pk.params;
+      if(!pp){
+        CAPS.length=0; buildCapUI();
+        const em=document.getElementById("empty");
+        if(em){em.style.display="";em.innerHTML="此片投稿未附參數包<br>字幕與樣式調整不可用（畫面與聲音為實片）<br>請植影所改用參數包投稿後重試";}
+      }
       if(pp){
         if(Array.isArray(pp.captions)&&pp.captions.length){
           CAPS.length=0;
