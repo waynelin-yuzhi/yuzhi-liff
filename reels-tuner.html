@@ -775,8 +775,11 @@ if(AP.h&&AP.id){
       const pp=pk.params;
       if(!pp){
         CAPS.length=0; buildCapUI();
-        const em=document.getElementById("empty");
-        if(em){em.style.display="";em.innerHTML="此片投稿未附參數包<br>字幕與樣式調整不可用（畫面與聲音為實片）<br>請植影所改用參數包投稿後重試";}
+        const nb=document.createElement("div");
+        nb.style.cssText="margin:10px 12px;padding:12px;border:1px dashed #a33;color:#a33;background:#fff6f4;border-radius:8px;font-size:14px;line-height:1.6";
+        nb.textContent="此片投稿未附參數包：字幕與樣式為空、不可調（畫面與聲音為實片）。請植影所改用參數包投稿後重試。";
+        const pin=document.querySelector(".pin");
+        if(pin&&pin.parentNode) pin.parentNode.insertBefore(nb,pin.nextSibling); else document.body.prepend(nb);
       }
       if(pp){
         if(Array.isArray(pp.captions)&&pp.captions.length){
