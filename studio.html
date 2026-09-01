@@ -18,7 +18,7 @@
   .sub{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.14em;margin-top:6px}
 
   .pin{position:sticky;top:0;z-index:40;background:#111;padding-bottom:2px}
-  .stage{position:relative;width:min(100%,calc(52vh*9/16));aspect-ratio:9/16;margin:0 auto;
+  .stage{position:relative;width:min(100%,calc(46vh*9/16));aspect-ratio:9/16;margin:0 auto;
          background:#000;overflow:hidden;border-radius:2px;touch-action:none;user-select:none}
   .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -124,6 +124,23 @@
   details.rej summary{font-size:13px;color:var(--muted);cursor:pointer;padding:6px 0}
   .btn-reject{width:100%;padding:12px;background:#fff;color:#8a4a30;border:1px solid #c9a08e;border-radius:2px;
               font-family:inherit;font-size:14px;cursor:pointer;margin-top:8px}
+
+  /* 桌面雙欄（Wayne 2026-09-01：影片黑邊太大、控制區被擠——左影片右功能） */
+  @media(min-width:980px){
+    :root{--stw:calc(76vh*9/16)}
+    body{max-width:1200px;display:grid;grid-template-columns:auto minmax(400px,620px);
+         gap:0 36px;align-items:start;justify-content:center}
+    header{grid-column:1/-1}
+    .pin{grid-column:1;top:12px;background:transparent;padding:0;width:var(--stw)}
+    .stage{width:var(--stw)}
+    .pin .bar{background:#111;margin:0;padding:8px;border-radius:0 0 2px 2px}
+    .steps{background:transparent;padding:10px 0 0;gap:8px}
+    .step{background:#fff;color:var(--body);border:1px solid var(--line)}
+    .step.on{color:#F2EDE3;background:var(--moss);border-color:var(--moss)}
+    #rcol{grid-column:2;min-width:0}
+    section{background:#fff;border:1px solid var(--line);border-radius:4px;padding:16px 18px;margin-bottom:14px}
+    #nopack{margin-top:0}
+  }
 </style>
 </head>
 <body>
@@ -163,6 +180,7 @@
   </div>
 </div>
 
+<div id="rcol">
 <div id="nopack" class="greybox" style="display:none">此片投稿未附參數包：字幕與樣式為空、不可調（畫面與聲音為實片）。<br>請植影所改用參數包投稿後重試。</div>
 
 <!-- ─────────── Step 分鏡 ─────────── -->
@@ -390,6 +408,8 @@
   </div>
 </section>
 
+</div>
+
 <div class="exits">
   <div class="inner">
     <button class="btn-recut" id="recutbtn">送出重剪</button>
@@ -480,7 +500,8 @@ function paint(){
       : "none";
     box.style.left=(c.x*100)+"%"; box.style.top=(c.y*100)+"%";
     const live=t>=c.st && t<=c.st+c.du;
-    box.classList.toggle("show", live || (i===cur && vid.paused && secOn==="cap"));
+    const editMode=vid.paused && secOn==="cap";
+    box.classList.toggle("show", editMode ? i===cur : live);
     box.classList.toggle("editing", i===cur && vid.paused && secOn==="cap");
   });
   $("tval").textContent=t.toFixed(2)+"s";
