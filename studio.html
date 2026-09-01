@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600&family=Shippori+Mincho:wght@500&family=Playfair+Display:wght@500;600&family=Josefin+Sans:wght@400;600&family=Montserrat:wght@400;600&family=Cormorant+Garamond:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600&family=Shippori+Mincho:wght@500&family=Playfair+Display:wght@400;500;600&family=Josefin+Sans:wght@400;600&family=Montserrat:wght@400;600&family=Cormorant+Garamond:wght@500;600&display=swap">
 <title>植間 Reels 工作台</title>
 <style>
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3}
@@ -23,15 +23,17 @@
   .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
          color:#6b6b66;font-size:13px;text-align:center;padding:24px;line-height:1.8}
-  .capbox{position:absolute;left:50%;transform:translate(-50%,-50%);max-width:92%;text-align:center;padding:8px 0;display:none}
+  .capbox{position:absolute;left:50%;transform:translateX(-50%);text-align:center;padding:0;display:none;white-space:nowrap}
   .capbox.show{display:block}
   .capbox.editing{cursor:grab;outline:1px dashed rgba(255,255,255,.45);outline-offset:6px}
-  .capbox .zh{color:#fff;line-height:1.35}
-  .capbox .en{color:#fff}
-  .capbox.sty-paper{background:rgba(242,237,227,.86);padding:10px 20px;border-radius:2px}
-  .capbox.sty-paper .zh,.capbox.sty-paper .en{color:#1B1A17}
-  .capbox.sty-moss{background:rgba(95,110,88,.92);padding:10px 20px;border-radius:2px}
-  .capbox.sty-moss .zh,.capbox.sty-moss .en{color:#F2EDE3}
+  .capbox .zh{color:#fff;line-height:1.35;font-weight:500}
+  .capbox .en{color:rgba(255,255,255,.9);font-weight:400}
+  .capbox.sty-paper{background:rgba(242,237,227,.86)}
+  .capbox.sty-paper .zh{color:#1B1A17}
+  .capbox.sty-paper .en{color:rgba(27,26,23,.88)}
+  .capbox.sty-moss{background:rgba(95,110,88,.92)}
+  .capbox.sty-moss .zh{color:#F2EDE3}
+  .capbox.sty-moss .en{color:rgba(242,237,227,.9)}
   .ig{position:absolute;background:rgba(184,90,61,.30);display:none;pointer-events:none;
       font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#fff;padding:3px 5px;letter-spacing:.05em}
   .ig.show{display:block}
@@ -470,6 +472,8 @@ function paint(){
     enEl.style.marginTop=Math.max(0,(s.gapPx-s.sizePx*1.35)*k).toFixed(1)+"px";
     box.classList.remove("sty-plain","sty-paper","sty-moss");
     box.classList.add("sty-"+s.box);
+    if(s.box==="plain"){ box.style.padding="0"; box.style.marginTop="0"; }
+    else { box.style.padding=(26*k).toFixed(1)+"px "+(34*k).toFixed(1)+"px"; box.style.marginTop=(-26*k).toFixed(1)+"px"; }
     box.style.textShadow = s.box==="plain"
       ? "0 "+(2*k).toFixed(1)+"px "+(6*k).toFixed(1)+"px rgba(0,0,0,"+(0.9*a).toFixed(2)+"), 0 "
         +(4*k).toFixed(1)+"px "+(18*k).toFixed(1)+"px rgba(0,0,0,"+(0.75*a).toFixed(2)+")"
