@@ -332,7 +332,7 @@
         <label>BGM 音量 <span class="val" id="bgvv"></span></label>
         <input type="range" id="bgv" min="0" max="100" step="5" value="85" />
       </div>
-      <div class="hint">點軌名＝用這支片的畫面試聽該軌<span class="approx">・混音後為準</span></div>
+      <div class="hint" id="bgmhint">點軌名＝用這支片的畫面試聽該軌<span class="approx">・混音後為準</span></div>
     </div>
     <div id="bgmfixed" class="infobox" style="display:none">
       目前配樂：<b id="bgmname">—</b><span id="bgmoff"></span><br>
@@ -415,7 +415,7 @@
     <button class="btn-recut" id="recutbtn">送出重剪</button>
     <button class="btn-approve" id="approvebtn">核可發佈</button>
   </div>
-  <div class="exithint" id="exithint">有未重剪的修改——先「送出重剪」，新版回來再核可</div>
+  <div class="exithint" id="exithint">有未重剪的修改——先「送出重剪」，新版回來再核可（改回投稿版原樣就解鎖）</div>
 </div>
 <form id="decform" method="post" style="display:none">
   <input type="hidden" name="approvalDecide" value="1">
@@ -443,6 +443,8 @@ const FONT={zh:'"Noto Sans TC",sans-serif', en:'"Playfair Display",serif'};
 const STYLE={box:"plain", sizePx:52, gapPx:82, trackPx:4, shadowPct:63};
 const LUT={name:"A", strengthPct:100};
 const BASELUT={name:"A", strengthPct:100};   // 底片已燒進去的調色＝預覽濾鏡的零點（見 paint 的 lutDelta）
+const BASEBGM={selected:"", volume:85};      // 底片已混進去的就是投稿當下那一軌＝試聽的零點（見 bgmPreview）
+let BASESIG=null;                            // 投稿版的重剪型參數簽章＝出口鈕的零點（見 recutSig）
 let SEGS=[];                      // 分鏡表（v2 segments、P2a 唯讀）
 let BGM={selected:"",offset:0,volume:85,candidates:[]};
 let cover=null, cur=0, boxes=[], recutDirty=false, pkData=null, draftTimer=null;
@@ -451,7 +453,20 @@ const curSty=()=>CAPS[cur]?CAPS[cur].style||STYLE:STYLE;
 const stage=$("stage"), vid=$("vid"), tabs=$("tabs");
 
 // ── 出口鈕狀態（兩類參數制：動過重剪型＝核可鎖住） ──
-function markRecut(){ recutDirty=true; exitsSync(); saveDraft(); }
+// 重剪型參數的簽章。出口鈕的「髒」＝現在與投稿版有差異，不是「碰過就鎖」——
+// 改了又改回來、undo 回原狀、點回原本那顆 LUT／那一軌，核可鈕都要能再按。
+// 不在這裡呼叫 saveFields()：applyPack 取基準時欄位還沒載入，寫回去會把 CAPS 洗掉。
+function recutSig(){
+  const n=v=>+(+v||0).toFixed(3);
+  return JSON.stringify({
+    caps:CAPS.map(c=>({zh:c.zh||"",en:c.en||"",st:n(c.st),du:n(c.du),x:n(c.x),y:n(c.y),style:c.style||null})),
+    style:STYLE, font:{zh:FONT.zh,en:FONT.en}, lut:{name:LUT.name,strength:LUT.strengthPct},
+    segs:SEGS.map(g=>({id:g.id||"",src:g.src||"",in:n(g["in"]),out:n(g.out),hidden:!!g.hidden})),
+    bgm:{sel:BGM.selected||"",vol:n(BGM.volume),off:n(BGM.offset)},
+    cover:cover||null});
+}
+function recutRecheck(){ recutDirty = (BASESIG===null) ? true : (recutSig()!==BASESIG); exitsSync(); }
+function markRecut(){ recutRecheck(); saveDraft(); }
 function exitsSync(){
   const ab=$("approvebtn");
   ab.disabled=recutDirty;
@@ -665,10 +680,13 @@ function bgmRender(){
       const b=document.createElement("button");
       b.className="pos"+(BGM.selected===t.id?" on":"");
       b.textContent=t.label||t.id;
-      b.onclick=()=>{ BGM.selected=t.id; bgmActive=t.id; bgmRender(); bgmStart(t); markRecut(); };
+      b.onclick=()=>{ BGM.selected=t.id; bgmRender(); bgmPreview(t); markRecut(); };
       bar.appendChild(b);
     });
     $("bgv").value=BGM.volume; $("bgvv").textContent=BGM.volume+"%";
+    $("bgmhint").innerHTML = bgmIsBase()
+      ? '目前這一軌＝投稿版原樣<span class="approx">・聲音即成品</span>'
+      : '點軌名＝用這支片的畫面試聽該軌<span class="approx">・單軌試聽、混音後為準</span>';
   }else{
     $("bgmcands").style.display="none";
     $("bgmfixed").style.display=BGM.selected||BGM.offset?"block":"none";
@@ -676,7 +694,13 @@ function bgmRender(){
     $("bgmoff").textContent=BGM.offset?("・起點 "+BGM.offset+"s"):"";
   }
 }
+// 選回投稿當下那一軌（且音量沒動）＝底片已經混好的就是它 → 不替換、直接播底片自己的聲音。
+// 與 LUT「選同一顆＝零濾鏡」同一條契約：所見所聞即成品；換一軌才用單軌試聽近似。
+function bgmIsBase(){ return BGM.selected===BASEBGM.selected && BGM.volume===BASEBGM.volume; }
+function bgmPreview(t){ if(bgmIsBase()) bgmStop(); else bgmStart(t); }
+function bgmStop(){ bgmAudio.pause(); bgmActive=""; vid.muted=false; $("mute").textContent="靜音"; }
 function bgmStart(t){
+  bgmActive=t.id;
   vid.muted=true; $("mute").textContent="聲音";
   bgmAudio.src=t.url; bgmAudio.volume=BGM.volume/100;
   bgmAudio.currentTime=(t.offset||0)+ (vid.currentTime||0);
@@ -692,7 +716,9 @@ vid.addEventListener("play",()=>{ if(bgmActive&&vid.muted){const t=BGM.candidate
 vid.addEventListener("pause",()=>bgmAudio.pause());
 vid.addEventListener("seeking",()=>{ if(bgmActive&&!vid.paused)bgmSync(); });
 $("bgv").addEventListener("input",e=>{ BGM.volume=+e.target.value; $("bgvv").textContent=e.target.value+"%"; bgmAudio.volume=BGM.volume/100; });
-$("bgv").addEventListener("change",markRecut);
+$("bgv").addEventListener("change",()=>{
+  const t=BGM.candidates.find(x=>x.id===BGM.selected);
+  if(t) bgmPreview(t); bgmRender(); markRecut(); });
 
 // ── 配方（localStorage、沿微調台） ──
 const PKEY="yuzhiReelsPresets";
@@ -986,9 +1012,11 @@ function applyPack(pk){
   if(pp.bgm){ BGM.selected=pp.bgm.selected||""; BGM.offset=pp.bgm.offset||0;
     if(pp.bgm.volume!=null)BGM.volume=Math.round(pp.bgm.volume*(pp.bgm.volume<=1?100:1));
     BGM.candidates=pp.bgm.candidates||[]; }
+  BASEBGM.selected=BGM.selected; BASEBGM.volume=BGM.volume;   // 底片混進去的就是這一軌
+  BASESIG=recutSig();                                          // 投稿版＝出口鈕的零點
   // 草稿優先（還原鈕可退回投稿版）
   tryRestoreDraft();
-  buildCapUI(); loadFields(); snap(); segRender(); bgmRender(); exitsSync(); paint();
+  buildCapUI(); loadFields(); snap(); segRender(); bgmRender(); recutRecheck(); paint();
   // 這支片目前在哪一關＝自動落在那個 step（四關與四 step 同一套：G1 分鏡/G2 字幕/G3 風格/G4 發佈）
   const gmap={G1:"seg",G2:"cap",G3:"style",G4:"pub"};
   if(pk.stage&&gmap[pk.stage]){
