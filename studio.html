@@ -934,9 +934,15 @@ if(QV) vid.src=QV+(QV.indexOf("?")>=0?"&":"?")+"t="+Date.now();
 if(AP.id){ $("subttl").textContent="STUDIO / "+AP.id; }
 function applyPack(pk){
   pkData=pk;
-  if(!QV&&pk.video&&pk.video.url){ vid.src=pk.video.url+(pk.video.url.indexOf("?")>=0?"&":"?")+"t="+Date.now(); }
+  // 底片＝無字幕乾淨版（WYSIWYG 契約）。GAS 的 tuner-pack 把 pk.video.url 填成「要發佈的成片」
+  // （字幕已燒）、normalize 只留 silentUrl 不留乾淨版網址，所以乾淨版只在參數包原件 pk.params.video 裡。
+  // 讀不到就退回 pk.video.url（舊卡與沒帶參數包的卡照舊，行為不變）。
+  const RAWV=(pk.params&&pk.params.video)||null;
+  const BASEV=(RAWV&&RAWV.url)||(pk.video&&pk.video.url)||"";
+  const BASEN=(RAWV&&RAWV.url&&RAWV.mediaName)||(pk.video&&pk.video.mediaName)||"";
+  if(!QV&&BASEV){ vid.src=BASEV+(BASEV.indexOf("?")>=0?"&":"?")+"t="+Date.now(); }
   $("subttl").textContent="STUDIO / "+(pk.reelName||AP.id||"示範")
-    +(pk.video&&pk.video.mediaName?(" / "+pk.video.mediaName):"")
+    +(BASEN?(" / "+BASEN):"")
     +(pk.status?(" / "+pk.status):"");
   $("caption").value=pk.caption||"";
   $("fc").value=pk.firstComment||"";
