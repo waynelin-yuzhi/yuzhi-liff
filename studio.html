@@ -867,6 +867,32 @@ $("recutbtn").onclick=()=>{
   $("out").scrollIntoView({behavior:"smooth"});
   deliver(obj);
 };
+// 原件的自動退回：查證、不是宣告。
+// 這一發只能用 mode:"no-cors"（GAS 對 POST 不給 CORS 標頭），回應 opaque＝讀不到成敗，
+// 而舊碼是送完就無條件寫「已自動退回」——與 cover-studio.html 當年謊報成功同一個形狀
+// （WORKFLOW「工作台送出的四個事實」2026-08-09）。差別在這一腳沒踏到的代價更大：
+// 參數包已經上板（植影所照表重剪），原卡卻還掛在待核可 → 重剪好的新卡投不進來
+// （投稿端守衛：板上已有本站待核可卡就不投）＝停在無人值守那一班，而且同一支片會有兩張卡。
+// 查法用同一支 GET：?page=tuner-pack 會回 status（public-reels-archive.gs:124），
+// 頁面載入本來就走它＝跨網域讀得到，且卡決定後 token 仍解得開（已發佈件在工作台唯讀）。
+async function apStatus(){
+  const u=EXEC+"?page=tuner-pack&ap="+encodeURIComponent(AP.h)+"&id="+encodeURIComponent(AP.id)+"&fmt=json&t="+Date.now();
+  const d=await (await fetch(u,{redirect:"follow"})).json();
+  if(!d||!d.ok) throw new Error((d&&d.error)||"pack");
+  return String(d.status||"");
+}
+async function rejectOrigin(reason){
+  let before="";
+  try{ before=await apStatus(); }catch(_){}
+  if(before&&before!=="待核可") return {ok:true,status:before,already:true};   // 他編輯時卡已過期/已決＝本來就不必退
+  const fd=new URLSearchParams({approvalDecide:"1", h:AP.h, decision:"reject", reason:reason});
+  try{ await fetch(EXEC,{method:"POST",body:fd,mode:"no-cors"}); }catch(_){}
+  for(let i=0;i<3;i++){
+    await new Promise(r=>setTimeout(r,i?1500:600));
+    try{ const s=await apStatus(); if(s&&s!=="待核可") return {ok:true,status:s}; }catch(_){}
+  }
+  return {ok:false};
+}
 async function deliver(obj){
   const st=$("stat");
   st.textContent="傳送中…"; st.className="stat go";
@@ -877,13 +903,17 @@ async function deliver(obj){
     const d=await r.json();
     if(!d.ok) throw new Error(d.error||"unknown");
     let msg="已送達協作板（"+d.at+"）、植影所會照參數重剪";
+    let rejOk=true;
     if(AP.h&&AP.id){
-      const fd=new URLSearchParams({approvalDecide:"1", h:AP.h, decision:"reject",
-        reason:"工作台已送新參數重剪。Wayne 備註："+(($("note").value||"（無）").slice(0,120))});
-      try{ await fetch(EXEC,{method:"POST",body:fd,mode:"no-cors"}); }catch(_){}
-      msg+="・原件 "+AP.id+" 已自動退回、新版卡回來再核可";
+      st.textContent="已送達協作板、正在退回原件…";
+      const rj=await rejectOrigin("工作台已送新參數重剪。Wayne 備註："+(($("note").value||"（無）").slice(0,120)));
+      rejOk=rj.ok;
+      msg+= rj.ok
+        ? ("・原件 "+AP.id+(rj.already?(" 已是「"+rj.status+"」"):" 已退回（狀態已查證）")+"、新版卡回來再核可")
+        : ("・⚠ 原件 "+AP.id+" 還掛在待核可——自動退回沒查證到，請回核可中心按一次退回，"
+           +"否則同一支片會有兩張卡、重剪好的新版也投不進來");
     }
-    st.textContent=msg; st.className="stat ok";
+    st.textContent=msg; st.className=rejOk?"stat ok":"stat bad";
     dropDraft();
     if(BACK){
       const a=document.createElement("a");
