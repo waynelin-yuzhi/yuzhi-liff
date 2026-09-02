@@ -305,7 +305,7 @@
     </label>
   </div>
 
-  <div class="hint" style="margin:16px 0 8px">─ 調色 LUT <span class="approx">預覽為 CSS 近似・重剪後為準</span> ─</div>
+  <div class="hint" style="margin:16px 0 8px">─ 調色 LUT <span class="approx" id="lutapprox">預覽為 CSS 近似・重剪後為準</span> ─</div>
   <div class="row">
     <div class="field">
       <label>LUT（A~E 日光植栽・H 室內光）</label>
@@ -442,6 +442,7 @@ const CAPS=[];                    // {zh,en,st,du,x,y,style?}
 const FONT={zh:'"Noto Sans TC",sans-serif', en:'"Playfair Display",serif'};
 const STYLE={box:"plain", sizePx:52, gapPx:82, trackPx:4, shadowPct:63};
 const LUT={name:"A", strengthPct:100};
+const BASELUT={name:"A", strengthPct:100};   // 底片已燒進去的調色＝預覽濾鏡的零點（見 paint 的 lutDelta）
 let SEGS=[];                      // 分鏡表（v2 segments、P2a 唯讀）
 let BGM={selected:"",offset:0,volume:85,candidates:[]};
 let cover=null, cur=0, boxes=[], recutDirty=false, pkData=null, draftTimer=null;
@@ -509,15 +510,31 @@ function paint(){
   if(c0)document.querySelectorAll(".pos[data-y]").forEach(b=>{
     b.classList.toggle("on", Math.abs(c0.x-0.5)<0.005 && Math.abs(c0.y-parseFloat(b.dataset.y))<0.005);
   });
-  // LUT CSS 近似（風格 step 即時感；成品才真套）
-  const f=LUT.strengthPct/100;
-  const css={A:"saturate("+(1+0.18*f)+") contrast("+(1+0.06*f)+")",
-             B:"saturate("+(1-0.12*f)+") brightness("+(1+0.08*f)+") blur(0px)",
-             C:"sepia("+(0.22*f)+") saturate("+(1+0.1*f)+")",
-             D:"sepia("+(0.3*f)+") hue-rotate(-8deg) saturate("+(1+0.05*f)+")",
-             E:"saturate("+(1-0.35*f)+") contrast("+(1-0.05*f)+")",
-             H:"saturate("+(1-0.08*f)+") brightness("+(1+0.05*f)+") hue-rotate(6deg)"}[LUT.name]||"none";
-  vid.style.filter=css;
+  // LUT CSS 近似＝「相對底片的差異」，不是再疊一層調色（WYSIWYG 契約）。
+  // 底片（成片與乾淨版都一樣）已經把投稿當下那顆 LUT 燒進去了，所以選同一顆＝零濾鏡＝畫面就是成品；
+  // 換一顆才用差值近似（先除掉基準、再套新的）。sepia 不可逆，基準有暖調、換成沒暖調的那一顆會減不掉。
+  vid.style.filter=lutDelta(LUT,BASELUT);
+  $("lutapprox").textContent=
+    (LUT.name===BASELUT.name && LUT.strengthPct===BASELUT.strengthPct)
+      ? "＝投稿版原樣・畫面即成品" : "預覽為 CSS 近似・重剪後為準";
+}
+// 各 LUT 的近似向量（原本寫成 CSS 字串、拆成數值才減得掉基準）
+const LUTV={A:{sat:0.18,con:0.06}, B:{sat:-0.12,bri:0.08}, C:{sep:0.22,sat:0.10},
+            D:{sep:0.30,hue:-8,sat:0.05}, E:{sat:-0.35,con:-0.05}, H:{sat:-0.08,bri:0.05,hue:6}};
+function lutVec(l){
+  const v=LUTV[l&&l.name]||{}, f=((l&&l.strengthPct)||0)/100;
+  return {sat:(v.sat||0)*f, con:(v.con||0)*f, bri:(v.bri||0)*f, hue:(v.hue||0)*f, sep:(v.sep||0)*f};
+}
+function lutDelta(cur,base){
+  const a=lutVec(cur), b=lutVec(base), p=[];
+  const sep=Math.max(0,a.sep-b.sep), hue=a.hue-b.hue;
+  const sat=(1+a.sat)/(1+b.sat), con=(1+a.con)/(1+b.con), bri=(1+a.bri)/(1+b.bri);
+  if(sep>0.001)p.push("sepia("+sep.toFixed(3)+")");
+  if(Math.abs(sat-1)>0.001)p.push("saturate("+sat.toFixed(3)+")");
+  if(Math.abs(con-1)>0.001)p.push("contrast("+con.toFixed(3)+")");
+  if(Math.abs(bri-1)>0.001)p.push("brightness("+bri.toFixed(3)+")");
+  if(Math.abs(hue)>0.01)p.push("hue-rotate("+hue.toFixed(2)+"deg)");
+  return p.length?p.join(" "):"none";
 }
 function loadFields(){
   const c=CAPS[cur]; if(!c)return;
@@ -962,6 +979,8 @@ function applyPack(pk){
   }
   if(pp.style)Object.assign(STYLE,pp.style);
   if(pp.lut){ Object.assign(LUT,pp.lut); if(!LUT.strengthPct)LUT.strengthPct=100;
+    // 底片是照這顆 LUT 燒出來的 → 設成預覽濾鏡的零點
+    BASELUT.name=LUT.name; BASELUT.strengthPct=LUT.strengthPct;
     $("lut").value=LUT.name; $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%"; }
   SEGS=Array.isArray(pp.segments)?pp.segments:[];
   if(pp.bgm){ BGM.selected=pp.bgm.selected||""; BGM.offset=pp.bgm.offset||0;
