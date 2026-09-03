@@ -559,6 +559,17 @@ function loadFields(){
   $("stv").textContent=c.st.toFixed(1)+"s"; $("dur").textContent=c.du.toFixed(1)+"s";
   syncSty(); paint();
 }
+// 調色與字型的控制項同步。為什麼要獨立成一支：這兩組的值只住在 LUT／FONT 物件裡，
+// 沒有任何 render 會把它們寫回控制項（syncSty 只管字卡樣式、bgmRender 只管配樂）。
+// 還原草稿時若不叫這支，下拉選單顯示的是投稿版、畫面卻按草稿在調色——
+// 而選單既然已經顯示著投稿版那一顆，他再點一次不會觸發 change＝回不去、核可鈕解不開。
+function syncLutFontUI(){
+  const setSel=(id,val)=>{ const el=$(id); if(!el)return;
+    if([...el.options].some(o=>o.value===val)) el.value=val; };
+  setSel("lut",LUT.name);
+  setSel("fzh",FONT.zh); setSel("fen",FONT.en);
+  $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%";
+}
 function syncSty(){
   const s=curSty();
   $("fs").value=s.sizePx; $("lh").value=s.gapPx; $("tr").value=s.trackPx; $("sh").value=s.shadowPct;
@@ -743,10 +754,8 @@ $("pload").onclick=()=>{
   const p=readP()[n]; if(!p) return;
   Object.assign(STYLE,p.style||{}); Object.assign(LUT,p.lut||{});
   CAPS.forEach(c=>c.style=null);
-  if(p.fonts){ FONT.zh=p.fonts.zh; FONT.en=p.fonts.en;
-    [["fzh","zh"],["fen","en"]].forEach(([id,k])=>{ const s=$(id);
-      [...s.options].forEach(o=>{ if(o.value===p.fonts[k]) s.value=o.value; }); }); }
-  $("lut").value=LUT.name; $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%";
+  if(p.fonts){ FONT.zh=p.fonts.zh; FONT.en=p.fonts.en; }
+  syncLutFontUI();
   usedPreset=n; $("pname").value=n;
   loadFields(); snap(); markRecut(); pmsg("已套用配方「"+n+"」");
 };
@@ -801,7 +810,8 @@ function tryRestoreDraft(){
   if(Array.isArray(d.segs)&&d.segs.length){ SEGS=d.segs; }
   Object.assign(STYLE,d.style||{}); Object.assign(LUT,d.lut||{}); Object.assign(FONT,d.font||{});
   if(d.bgmSel)BGM.selected=d.bgmSel; if(d.bgmVol)BGM.volume=d.bgmVol;
-  if(d.cover)cover=d.cover;
+  if(d.cover){ cover=d.cover;
+    if(cover.frameSec!=null) $("covt").textContent="新封面 @ "+(+cover.frameSec).toFixed(2)+"s（送出重剪後生效・縮圖仍是投稿版那張）"; }
   if(d.pub){ $("caption").value=d.pub.caption||""; $("fc").value=d.pub.fc||""; $("covttl").value=d.pub.covttl||"";
     $("collab").value=d.pub.collab||""; $("pubat").value=d.pub.pubat||""; $("note").value=d.pub.note||""; }
   recutDirty=!!d.recutDirty;
@@ -1070,8 +1080,7 @@ function applyPack(pk){
   if(pp.style)Object.assign(STYLE,pp.style);
   if(pp.lut){ Object.assign(LUT,pp.lut); if(!LUT.strengthPct)LUT.strengthPct=100;
     // 底片是照這顆 LUT 燒出來的 → 設成預覽濾鏡的零點
-    BASELUT.name=LUT.name; BASELUT.strengthPct=LUT.strengthPct;
-    $("lut").value=LUT.name; $("lu").value=LUT.strengthPct; $("luv").textContent=LUT.strengthPct+"%"; }
+    BASELUT.name=LUT.name; BASELUT.strengthPct=LUT.strengthPct; }
   SEGS=Array.isArray(pp.segments)?pp.segments:[];
   // 底片＝投稿版那一支，所以每一段在片子裡的起點以投稿版為準（草稿改過順序/長度也不影響這張對照表）
   buildFilmPos(SEGS,(pk.params&&pk.params.extra&&pk.params.extra.cuts&&pk.params.extra.cuts.shots)||null);
@@ -1083,7 +1092,7 @@ function applyPack(pk){
   BASESIG=recutSig();                                          // 投稿版＝出口鈕的零點
   // 草稿優先（還原鈕可退回投稿版）
   tryRestoreDraft();
-  buildCapUI(); loadFields(); snap(); segRender(); bgmRender(); recutRecheck(); paint();
+  buildCapUI(); loadFields(); syncLutFontUI(); snap(); segRender(); bgmRender(); recutRecheck(); paint();
   // 這支片目前在哪一關＝自動落在那個 step（四關與四 step 同一套：G1 分鏡/G2 字幕/G3 風格/G4 發佈）
   const gmap={G1:"seg",G2:"cap",G3:"style",G4:"pub"};
   if(pk.stage&&gmap[pk.stage]){
