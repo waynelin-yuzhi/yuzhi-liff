@@ -446,7 +446,7 @@ const BASELUT={name:"A", strengthPct:100};   // 底片已燒進去的調色＝�
 // 燒錄端（scripts/render_caps.py）畫英文副行與淡入淡出用的參數。頂層 style 只帶工作台看得懂的子集，
 // 這幾顆住在參數包的 extra.capStyle（PIL 端讀的那份）——不讀它，預覽的英文行就是另一套字。
 // 這裡的預設＝render_caps.py 的 env 預設，只給沒帶 capStyle 的舊包用。
-const BURN={enRatio:0.577, enWeight:400, enAlpha:null, fadeSec:0};
+const BURN={enRatio:0.577, enWeight:400, enAlpha:null, fadeSec:0, halo:0, haloR:24};
 const BASEBGM={selected:"", volume:85};      // 底片已混進去的就是投稿當下那一軌＝試聽的零點（見 bgmPreview）
 let BASESIG=null;                            // 投稿版的重剪型參數簽章＝出口鈕的零點（見 recutSig）
 let SEGS=[];                      // 分鏡表（v2 segments、P2a 唯讀）
@@ -516,6 +516,33 @@ function fadeAt(t,c){
   if(t>c.st+c.du-f) return Math.max(0,(c.st+c.du-t)/f);
   return 1;
 }
+// 字影與暗暈：照燒錄端的公式算，不再用手調的兩顆 CSS 陰影。
+// render_caps.py 的 with_shadow 有兩層：drop＝墨跡 GaussianBlur(6)、offset y=3、alpha 160/255×(shadow/63)；
+// halo＝墨跡先 MaxFilter(9) 撐開再 GaussianBlur(haloR)、alpha ×0.72×halo（貼著字的柔性暗暈，
+// 亮而雜的實拍才吃不掉字）。舊碼只畫了兩顆手調 drop shadow、halo 整層沒畫——
+// 於是他在工作台看到的字是「沒有暗暈保護」的版本，比成片難讀（實測見下）。
+// CSS 的 blur 半徑 r ＝ 高斯 σ=r/2，而且沒有「先撐開」那一步，所以同一顆疊 4 次補回撐開與截頂。
+// 實測（zw01 成片減乾淨版、依距墨跡距離分環，單位＝灰階）：
+//   環      成片    舊CSS    本式
+//   3-6   -17.45   -8.03  -17.74
+//  6-10   -13.42   -3.18  -13.48
+// 10-16   -11.45   -1.23  -11.17
+// 16-24    -8.68   -0.37   -8.36
+// 24-34    -4.12   -0.02   -3.95
+// 34-50    -2.35    0.00   -2.31
+// 50-70    -0.94    0.00   -1.00
+// 色塊版型（paper/moss）燒錄端走 with_plate、本來就沒有字影，維持 none。
+function burnShadow(s,k){
+  const parts=[];
+  const ha=Math.min(0.95, 0.636*(BURN.halo||0));
+  if(ha>0.01){
+    const r=(2*(BURN.haloR||24)*k).toFixed(1)+"px";
+    for(let i=0;i<4;i++) parts.push("0 0 "+r+" rgba(0,0,0,"+ha.toFixed(3)+")");
+  }
+  const da=Math.min(1, 0.627*((s.shadowPct||0)/63));
+  if(da>0.01) parts.push("0 "+(3*k).toFixed(1)+"px "+(12*k).toFixed(1)+"px rgba(0,0,0,"+da.toFixed(3)+")");
+  return parts.length?parts.join(", "):"none";
+}
 function paint(){
   const t=vid.duration?vid.currentTime:parseFloat($("seek").value);
   CAPS.forEach((c,i)=>{
@@ -524,7 +551,7 @@ function paint(){
     zhEl.textContent=(i===cur?$("zh").value:c.zh);
     enEl.textContent=(i===cur?$("en").value:c.en);
     zhEl.style.fontFamily=FONT.zh; enEl.style.fontFamily=FONT.en;
-    const s=styOf(i), k=(stage.clientWidth||360)/1080, a=s.shadowPct/100;
+    const s=styOf(i), k=(stage.clientWidth||360)/1080;
     zhEl.style.fontSize=(s.sizePx*k).toFixed(1)+"px";
     zhEl.style.letterSpacing=(s.trackPx*k).toFixed(2)+"px";
     enEl.style.fontSize=(Math.max(12,pyRound(s.sizePx*BURN.enRatio))*k).toFixed(2)+"px";  // PIL 端字級是整數
@@ -536,10 +563,7 @@ function paint(){
     box.classList.add("sty-"+s.box);
     if(s.box==="plain"){ box.style.padding="0"; box.style.marginTop="0"; }
     else { box.style.padding=(26*k).toFixed(1)+"px "+(34*k).toFixed(1)+"px"; box.style.marginTop=(-26*k).toFixed(1)+"px"; }
-    box.style.textShadow = s.box==="plain"
-      ? "0 "+(2*k).toFixed(1)+"px "+(6*k).toFixed(1)+"px rgba(0,0,0,"+(0.9*a).toFixed(2)+"), 0 "
-        +(4*k).toFixed(1)+"px "+(18*k).toFixed(1)+"px rgba(0,0,0,"+(0.75*a).toFixed(2)+")"
-      : "none";
+    box.style.textShadow = s.box==="plain" ? burnShadow(s,k) : "none";
     box.style.left=(c.x*100)+"%"; box.style.top=(c.y*100)+"%";
     const live=t>=c.st && t<=c.st+c.du;
     const editMode=vid.paused && secOn==="cap";
@@ -1114,6 +1138,8 @@ function applyPack(pk){
     if(CS.enWeight) BURN.enWeight=(String(CS.enWeight).toLowerCase()==="medium"?500:400);
     if(Number(CS.enAlpha)>0) BURN.enAlpha=Number(CS.enAlpha);
     if(Number(CS.fadeSec)>0) BURN.fadeSec=Number(CS.fadeSec);
+    if(Number(CS.halo)>0) BURN.halo=Number(CS.halo)/100;      // 燒錄端是 0–110+ 的百分比
+    if(Number(CS.haloR)>0) BURN.haloR=Number(CS.haloR);
   }
   if(pp.lut){ Object.assign(LUT,pp.lut); if(!LUT.strengthPct)LUT.strengthPct=100;
     // 底片是照這顆 LUT 燒出來的 → 設成預覽濾鏡的零點
