@@ -443,6 +443,10 @@ const FONT={zh:'"Noto Sans TC",sans-serif', en:'"Playfair Display",serif'};
 const STYLE={box:"plain", sizePx:52, gapPx:82, trackPx:4, shadowPct:63};
 const LUT={name:"A", strengthPct:100};
 const BASELUT={name:"A", strengthPct:100};   // 底片已燒進去的調色＝預覽濾鏡的零點（見 paint 的 lutDelta）
+// 燒錄端（scripts/render_caps.py）畫英文副行與淡入淡出用的參數。頂層 style 只帶工作台看得懂的子集，
+// 這幾顆住在參數包的 extra.capStyle（PIL 端讀的那份）——不讀它，預覽的英文行就是另一套字。
+// 這裡的預設＝render_caps.py 的 env 預設，只給沒帶 capStyle 的舊包用。
+const BURN={enRatio:0.577, enWeight:400, enAlpha:null, fadeSec:0};
 const BASEBGM={selected:"", volume:85};      // 底片已混進去的就是投稿當下那一軌＝試聽的零點（見 bgmPreview）
 let BASESIG=null;                            // 投稿版的重剪型參數簽章＝出口鈕的零點（見 recutSig）
 let SEGS=[];                      // 分鏡表（v2 segments、P2a 唯讀）
@@ -492,6 +496,26 @@ function buildCapUI(){
   });
 }
 window.addEventListener("resize",function(){try{paint();}catch(e){}});
+// 英文副行的顏色：底色 RGB 照字卡樣式走（render_caps.py 的 BOX 表），只有不透明度改吃燒錄端的 enAlpha
+function enColor(box, a){
+  const rgb={plain:"255,255,255", paper:"27,26,23", moss:"242,237,227"}[box]||"255,255,255";
+  return "rgba("+rgb+","+Math.max(0,Math.min(1,a)).toFixed(3)+")";
+}
+// Python 的 round()＝四捨六入五成雙（round(4.5)=4、Math.round(4.5)=5）。英文行的字級與字距在
+// render_caps.py 都經過 round()，用 JS 的版本會在 .5 那些值上差 1px——一行 44 個字就差 44px。
+function pyRound(x){
+  const f=Math.floor(x), d=x-f;
+  if(Math.abs(d-0.5)>1e-9) return Math.round(x);
+  return (f%2===0)?f:f+1;
+}
+// 燒錄端的淡入淡出：fade d=min(fadeSec, du/3)，線性；fadeSec=0（舊包沒帶）＝維持硬切
+function fadeAt(t,c){
+  const f=Math.min(BURN.fadeSec||0, (c.du||0)/3);
+  if(f<=0) return 1;
+  if(t<c.st+f) return Math.max(0,(t-c.st)/f);
+  if(t>c.st+c.du-f) return Math.max(0,(c.st+c.du-t)/f);
+  return 1;
+}
 function paint(){
   const t=vid.duration?vid.currentTime:parseFloat($("seek").value);
   CAPS.forEach((c,i)=>{
@@ -503,8 +527,10 @@ function paint(){
     const s=styOf(i), k=(stage.clientWidth||360)/1080, a=s.shadowPct/100;
     zhEl.style.fontSize=(s.sizePx*k).toFixed(1)+"px";
     zhEl.style.letterSpacing=(s.trackPx*k).toFixed(2)+"px";
-    enEl.style.fontSize=(s.sizePx*0.577*k).toFixed(1)+"px";
-    enEl.style.letterSpacing=(s.trackPx*0.75*k).toFixed(2)+"px";
+    enEl.style.fontSize=(Math.max(12,pyRound(s.sizePx*BURN.enRatio))*k).toFixed(2)+"px";  // PIL 端字級是整數
+    enEl.style.letterSpacing=(Math.max(0,pyRound(s.trackPx*0.75))*k).toFixed(2)+"px";
+    enEl.style.fontWeight=BURN.enWeight;
+    enEl.style.color=BURN.enAlpha==null ? "" : enColor(s.box, BURN.enAlpha/255);
     enEl.style.marginTop=Math.max(0,(s.gapPx-s.sizePx*1.35)*k).toFixed(1)+"px";
     box.classList.remove("sty-plain","sty-paper","sty-moss");
     box.classList.add("sty-"+s.box);
@@ -518,6 +544,9 @@ function paint(){
     const live=t>=c.st && t<=c.st+c.du;
     const editMode=vid.paused && secOn==="cap";
     box.classList.toggle("show", editMode ? i===cur : live);
+    // 成片的字幕是淡入淡出（ffmpeg fade、d=min(fadeSec, du/3)），預覽以前是硬切——
+    // 於是他在工作台看到字「準時出現」，成片要再等 0.4 秒才看得見。編輯中那張維持全亮才好定位。
+    box.style.opacity=(editMode||!live)?"" : fadeAt(t,c).toFixed(3);
     box.classList.toggle("editing", i===cur && vid.paused && secOn==="cap");
   });
   $("tval").textContent=t.toFixed(2)+"s";
@@ -1078,6 +1107,14 @@ function applyPack(pk){
       x:(c.x!=null?Number(c.x):0.5),y:(c.y!=null?Number(c.y):0.71),style:c.style||undefined}));
   }
   if(pp.style)Object.assign(STYLE,pp.style);
+  // 燒錄端的英文行與淡入淡出參數：只有參數包原件的 extra.capStyle 有（normalize 不帶）
+  const CS=(pk.params&&pk.params.extra&&pk.params.extra.capStyle)||null;
+  if(CS){
+    if(Number(CS.enRatio)>0) BURN.enRatio=Number(CS.enRatio);
+    if(CS.enWeight) BURN.enWeight=(String(CS.enWeight).toLowerCase()==="medium"?500:400);
+    if(Number(CS.enAlpha)>0) BURN.enAlpha=Number(CS.enAlpha);
+    if(Number(CS.fadeSec)>0) BURN.fadeSec=Number(CS.fadeSec);
+  }
   if(pp.lut){ Object.assign(LUT,pp.lut); if(!LUT.strengthPct)LUT.strengthPct=100;
     // 底片是照這顆 LUT 燒出來的 → 設成預覽濾鏡的零點
     BASELUT.name=LUT.name; BASELUT.strengthPct=LUT.strengthPct; }
