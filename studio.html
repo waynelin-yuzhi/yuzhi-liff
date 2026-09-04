@@ -106,7 +106,18 @@
   .segno{font-family:ui-monospace,Menlo,monospace;color:var(--moss);min-width:26px}
   .segt{font-family:ui-monospace,Menlo,monospace;color:var(--muted);margin-left:auto}
 
-  .coverimg{width:96px;aspect-ratio:9/16;object-fit:cover;border:1px solid var(--line);border-radius:2px;background:#000}
+  /* 封面縮圖＝核可卡那一塊的幾何（96×128、object-fit:cover＝上下各裁 240 原圖 px），
+     不是 9:16 滿版——舊寫法讓工作台與核可卡看到的是兩塊不同的畫面。
+     .covttl 的四個值就是燒錄端 title-center 的常數換算回縮圖：left/right 6%＝x 64.8/1015.2、
+     bottom 12%＝區塊下緣 y=1507.2、11px＝123.75、1.35＝167.06（scale 96/1080）。
+     邊框走 outline（不進盒模型），免得像核可卡那樣把百分比的基準撐成 98×130。 */
+  .covwrap{position:relative;display:inline-block;flex:none;width:96px;height:128px;font-size:0;
+           border-radius:2px;background:#000;outline:1px solid var(--line);overflow:hidden}
+  .coverimg{display:block;width:96px;height:128px;object-fit:cover;background:#000}
+  .covttl{position:absolute;left:6%;right:6%;bottom:12%;display:block;text-align:center;color:#fff;
+          font-family:"Noto Sans TC","PingFang TC",sans-serif;font-weight:500;font-size:11px;
+          line-height:1.35;letter-spacing:0;word-break:break-word;pointer-events:none;
+          text-shadow:0 1px 4px rgba(0,0,0,.75),0 0 12px rgba(0,0,0,.4)}
 
   /* 底部固定出口列（三出口每 step 可見） */
   .exits{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(242,237,227,.97);
@@ -363,12 +374,16 @@
 <section id="sec-pub">
   <div class="gatehint">G4 發佈：封面、文案、首則留言、發佈時間——就在最下方核可</div>
   <div class="bar" style="align-items:flex-start">
-    <img id="coverimg" class="coverimg" alt="" style="display:none" />
-    <canvas id="covc" class="coverimg" style="display:none"></canvas>
+    <span class="covwrap">
+      <img id="coverimg" class="coverimg" alt="" style="display:none" />
+      <canvas id="covc" class="coverimg" style="display:none"></canvas>
+      <span class="covttl" id="covpv"></span>
+    </span>
     <div style="flex:1">
       <div class="field">
         <label>封面標題（改了＝植影所自動重燒封面）</label>
         <input type="text" id="covttl" maxlength="80" />
+        <div class="hint" id="covhint" style="text-align:left;margin:4px 0 0"></div>
       </div>
       <button class="pos" id="setcov" style="width:100%">把目前畫面設為新封面影格</button>
       <div class="hint" id="covt" style="margin:6px 0 0"></div>
@@ -830,6 +845,45 @@ $("setcov").onclick=()=>{
   $("covt").textContent="新封面 @ "+vid.currentTime.toFixed(2)+"s（送出重剪後生效）";
   markRecut();
 };
+// 封面標題這一欄原本是全盲的：核可卡有即時預覽（oninput→covttl 疊在縮圖上，
+// public-approval-center.gs:832/892），工作台這端只有一個輸入框——而工作台才是他調畫面、
+// 也是唯一能換封面影格的地方，且這一欄按「核可發佈」就直接生效（approvalDecide 收 coverTitle）
+// 並觸發植影所重燒封面的 90 分守衛。與第十處（halo 少畫一層）同形狀：燒得出來、預覽不畫。
+// 幾何取燒錄端 title-center（scripts/make-cover.py 的 TC_*）換算回 96×128 縮圖＝上面那段 CSS。
+// 已知近似：燒錄端字型是 Noto Sans TC Medium，這裡沒有就退回 PingFang TC 500（單字墨跡差 ≤9%、折行一致）。
+let BASECOVTTL="";
+const COV_S=1080/96, COV_BAND_TOP=240, COV_CUT=285, COV_H=1920;   // 縮圖→原圖換算與 IG 4:5 安全區
+function covSrcY(boxY){ return COV_BAND_TOP + boxY*COV_S; }
+function covSync(){
+  const v=$("covttl").value, pv=$("covpv");
+  pv.textContent=v;
+  if(v===BASECOVTTL){
+    $("covhint").textContent = v
+      ? "＝投稿版原樣・這一塊就是核可卡上的封面。"
+      : "投稿版沒有封面標題（純畫面）。打字＝核可後由植影所自動重燒。";
+    return;
+  }
+  if(!v){ $("covhint").textContent="清空＝核可後重燒成純畫面封面（沒有字）。"; return; }
+  // 量測要看得到才算數：G4 以外的 step 整段是 display:none，offsetHeight 會是 0
+  // （拿它換算就會印出 y=240..240 這種假數字）。切到發佈那一關會再叫一次。
+  if(!pv.offsetHeight){
+    $("covhint").textContent="改了＝核可後由植影所自動重燒封面（守衛只等 90 分）。切到「發佈」那一關看落點。";
+    return;
+  }
+  // 用 getBoundingClientRect（次像素）不用 offsetTop（整數）——後者在 96×128 的縮圖上
+  // 一格就值 11.25 原圖 px，區塊下緣會從 1507.2 被湊成 1511。
+  const wr=$("covpv").parentNode.getBoundingClientRect(), pr=pv.getBoundingClientRect();
+  const top=covSrcY(pr.top-wr.top), bot=covSrcY(pr.bottom-wr.top);
+  const rows=Math.max(1,Math.round(pr.height/(11*1.35)));
+  const over=(top<COV_CUT||bot>COV_H-COV_CUT)?"　⚠ 超出 IG 4:5 安全區":"";
+  // 報「行框」不報「墨跡」：這裡量得到的是行盒（含 line-height 的上下留白），
+  // 燒錄端 make-cover.py 印的是墨跡 bbox、比行框窄約 29px（實測 8 字：行框 1173、墨跡 1201）。
+  // 用行框判安全區＝偏保守（早約 29px 就示警），而行框頂端與燒錄端第三個回傳值對得上（80 字兩端都是 -497）。
+  $("covhint").textContent="改了＝核可後由植影所自動重燒封面（守衛只等 90 分）。預覽 "
+    +rows+" 行・行框 y="+Math.round(top)+".."+Math.round(bot)
+    +"（IG 4:5 安全區 "+COV_CUT+".."+(COV_H-COV_CUT)+"）"+over;
+}
+$("covttl").addEventListener("input",covSync);
 $("covttl").addEventListener("change",saveDraft);
 ["caption","fc","collab","pubat","note"].forEach(id=>$(id).addEventListener("change",saveDraft));
 
@@ -853,12 +907,14 @@ function collabSync(){
 }
 $("collab").addEventListener("input",collabSync);
 collabSync();
+covSync();   // 沒帶包／MOCK 也要有一行提示，不要留空白
 
 // ── Step 切換 ──
 let secOn="cap";
 document.querySelectorAll(".step").forEach(s=>{
   s.onclick=()=>{
     secOn=s.dataset.s;
+    if(secOn==="pub") setTimeout(covSync,0);   // 這一關才量得到封面標題的落點
     document.querySelectorAll(".step").forEach(x=>x.classList.toggle("on",x===s));
     ["seg","cap","style","pub"].forEach(k=>$("sec-"+k).classList.toggle("on",k===secOn));
     paint();
@@ -889,7 +945,7 @@ function tryRestoreDraft(){
     if(cover.frameSec!=null) $("covt").textContent="新封面 @ "+(+cover.frameSec).toFixed(2)+"s（送出重剪後生效・縮圖仍是投稿版那張）"; }
   if(d.pub){ $("caption").value=d.pub.caption||""; $("fc").value=d.pub.fc||""; $("covttl").value=d.pub.covttl||"";
     $("collab").value=d.pub.collab||""; $("pubat").value=d.pub.pubat||""; $("note").value=d.pub.note||"";
-    collabSync(); }   // 草稿還原後控制項要回寫提示（09-03 第六處的同一條紀律）
+    collabSync(); covSync(); }   // 草稿還原後控制項要回寫提示（09-03 第六處的同一條紀律）
   recutDirty=!!d.recutDirty;
   const bar=$("draftbar"); bar.className="stat go"; bar.style.display="block";
   return true;
@@ -1145,7 +1201,8 @@ function applyPack(pk){
     +(pk.status?(" / "+pk.status):"");
   $("caption").value=pk.caption||"";
   $("fc").value=pk.firstComment||"";
-  $("covttl").value=(pk.cover&&pk.cover.title)||"";
+  BASECOVTTL=(pk.cover&&pk.cover.title)||"";
+  $("covttl").value=BASECOVTTL; covSync();
   if(pk.publishAt)$("pubat").value=String(pk.publishAt).replace(" ","T");
   if(pk.cover&&pk.cover.url){ const im=$("coverimg"); im.src=pk.cover.url+(pk.cover.url.indexOf("?")>=0?"&":"?")+"t="+Date.now(); im.style.display="block"; }
   const pp=pk.paramsNorm;
