@@ -386,6 +386,7 @@
     <div class="field">
       <label>IG 共同作者（選填・最多 3 個・逗號分隔）</label>
       <input type="text" id="collab" placeholder="例：帳號1, 帳號2" />
+      <div class="hint" id="collabhint" style="text-align:left;margin:4px 0 0"></div>
     </div>
     <div class="field">
       <label>排程發佈時間（留空＝核可即發）</label>
@@ -832,6 +833,27 @@ $("setcov").onclick=()=>{
 $("covttl").addEventListener("change",saveDraft);
 ["caption","fc","collab","pubat","note"].forEach(id=>$(id).addEventListener("change",saveDraft));
 
+// ── IG 共同作者：這一欄「核可發佈」帶不走（2026-09-04 讀碼實查） ──
+// 決策 handler 只把 caption／firstComment／text／coverTitle／publishAt 併回 payload
+// （public-approval-center.gs:1060 那個 forEach ＋ :1068 的 publishAt），collaborators 只在
+// approvalSubmit 當下收（:271）、發佈時用（:1494）。decform 也沒有這一欄。
+// 所以他在這裡打了名字再按「核可發佈」＝片子照發、共同作者靜默不見，而且發佈不可逆。
+// 這一欄也不在 recutSig 裡（刻意：進了簽章就會鎖住核可鈕，那是本站修過兩次的病），
+// 因此改用「說實話＋按下去之前再講一次」，不擋路。
+// 另註：tuner-pack 不回 collaborators（public-reels-archive.gs:126-130），所以投稿時若帶了共同作者，
+// 這一欄仍是空的——空白不代表沒有，這條已上板給總管。
+function collabList(){
+  return $("collab").value.split(/[,，]/).map(s=>s.trim().replace(/^@/,"")).filter(Boolean).slice(0,3);
+}
+function collabSync(){
+  const n=collabList().length;
+  $("collabhint").textContent = n
+    ? "這一欄只能走「送出重剪」帶給植影所重投——按「核可發佈」不會帶走它。"
+    : "投稿時已帶的共同作者不會顯示在這裡（參數包沒有這一欄），空白不代表沒有。";
+}
+$("collab").addEventListener("input",collabSync);
+collabSync();
+
 // ── Step 切換 ──
 let secOn="cap";
 document.querySelectorAll(".step").forEach(s=>{
@@ -866,7 +888,8 @@ function tryRestoreDraft(){
   if(d.cover){ cover=d.cover;
     if(cover.frameSec!=null) $("covt").textContent="新封面 @ "+(+cover.frameSec).toFixed(2)+"s（送出重剪後生效・縮圖仍是投稿版那張）"; }
   if(d.pub){ $("caption").value=d.pub.caption||""; $("fc").value=d.pub.fc||""; $("covttl").value=d.pub.covttl||"";
-    $("collab").value=d.pub.collab||""; $("pubat").value=d.pub.pubat||""; $("note").value=d.pub.note||""; }
+    $("collab").value=d.pub.collab||""; $("pubat").value=d.pub.pubat||""; $("note").value=d.pub.note||"";
+    collabSync(); }   // 草稿還原後控制項要回寫提示（09-03 第六處的同一條紀律）
   recutDirty=!!d.recutDirty;
   const bar=$("draftbar"); bar.className="stat go"; bar.style.display="block";
   return true;
@@ -884,6 +907,12 @@ function fillDecForm(){
 $("approvebtn").onclick=()=>{
   if(recutDirty||!AP.h) return;
   if(!confirm("確定核可發佈？發佈型修改（文案／封面標題／排程時間）會以此版本為準。")) return;
+  // 共同作者帶不走：發佈不可逆，所以在最後一步把差異講明白，讓他自己選要不要繞回重剪。
+  const cl=collabList();
+  if(cl.length && !confirm("提醒：共同作者（"+cl.join("、")+"）不會隨這次核可帶出去——\n"
+      +"核可發佈只帶文案、首則留言、封面標題、排程時間。\n\n"
+      +"要讓共同作者生效，請改按「送出重剪」讓植影所重投一張。\n"
+      +"仍要照現況發佈（不含共同作者）嗎？")) return;
   fillDecForm(); $("f_decision").value="approve"; $("f_reason").value="";
   dropDraft();
   const f=$("decform"); f.action=(pkData&&pkData.postUrl)||EXEC; f.submit();
@@ -918,7 +947,7 @@ $("recutbtn").onclick=()=>{
     bgm:(BGM.selected||BGM.candidates.length)?{selected:BGM.selected,volumePct:BGM.volume,offset:BGM.offset}:null,
     cover:cover,
     firstComment:$("fc").value.trim()||null,
-    collaborators:$("collab").value.split(/[,，]/).map(s=>s.trim().replace(/^@/,"")).filter(Boolean).slice(0,3),
+    collaborators:collabList(),
     publishAt:$("pubat").value?$("pubat").value.replace("T"," "):null,
     caption:$("caption").value.trim()||null,
     coverTitle:$("covttl").value.trim()||null,
