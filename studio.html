@@ -1195,7 +1195,11 @@ function applyPack(pk){
   const RAWV=(pk.params&&pk.params.video)||null;
   const BASEV=(RAWV&&RAWV.url)||(pk.video&&pk.video.url)||"";
   const BASEN=(RAWV&&RAWV.url&&RAWV.mediaName)||(pk.video&&pk.video.mediaName)||"";
-  if(!QV&&BASEV){ vid.src=BASEV+(BASEV.indexOf("?")>=0?"&":"?")+"t="+Date.now(); }
+  // 有乾淨版就一律用乾淨版，即使核可頁用 ?v= 帶了成片進來：核可頁 decision=tune 帶的 v 是
+  // payload.videoUrl＝字幕已燒的發佈用成片，之前 QV 優先＝底片燒一層、工作台再疊一層（AP-0466、
+  // Wayne 2026-09-05 實撞「都不用澆水」雙層）。沒有參數包乾淨版（舊卡）才維持 QV 原行為。
+  const CLEANV=(RAWV&&RAWV.url)||"";
+  if(BASEV&&(CLEANV||!QV)){ vid.src=BASEV+(BASEV.indexOf("?")>=0?"&":"?")+"t="+Date.now(); }
   $("subttl").textContent="STUDIO / "+(pk.reelName||AP.id||"示範")
     +(BASEN?(" / "+BASEN):"")
     +(pk.status?(" / "+pk.status):"");
