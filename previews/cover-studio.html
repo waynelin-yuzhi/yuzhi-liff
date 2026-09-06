@@ -24,24 +24,35 @@ video{width:100%;background:#000;border:1px solid var(--line);border-radius:2px;
 /* 封面預覽：完整 9:16 + 裁切遮罩 */
 .prevwrap{position:relative;width:100%;max-width:290px;margin:0 auto}
 #cv{width:100%;display:block;border:1px solid var(--line);border-radius:2px}
-.cropnote{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;text-align:center;margin-top:4px}
+.cropnote{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;text-align:center;margin-top:4px;line-height:1.5}
 .field{margin-bottom:10px}
 label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;letter-spacing:.06em}
 input[type=text]{width:100%;padding:9px 11px;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:15px;border-radius:2px}
 input[type=range]{width:100%;accent-color:var(--moss)}
-.seg{display:flex;gap:6px}
-.seg button{flex:1;padding:9px 4px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 88px;padding:9px 4px;border:1px solid var(--moss);color:var(--moss);background:#fff;border-radius:2px;font-family:inherit;font-size:13px;cursor:pointer}
 .seg button.on{background:var(--moss);color:var(--paper)}
 .send{width:100%;padding:13px;background:var(--moss);color:var(--paper);border:none;font-family:inherit;font-size:15px;letter-spacing:.1em;cursor:pointer;border-radius:2px;margin-top:6px}
 .stat{font-size:13px;padding:7px 0;min-height:18px}
 .stat.ok{color:#2f5d2a}.stat.bad{color:var(--warn)}
+/* 出圖端版型：本頁不畫版面，只說明會畫什麼 */
+.spec{font-size:12px;line-height:1.7;background:#fff;border:1px solid var(--line);border-left:3px solid var(--moss);border-radius:2px;padding:9px 11px;margin-top:10px}
+.spec b{font-weight:500}
+.spec .why{color:var(--warn);display:block;margin-top:5px}
+.thumbs{display:flex;gap:8px;margin-top:8px}
+.thumbs figure{flex:1;text-align:center}
+.thumbs canvas{width:100%;display:block;border:1px solid var(--line);background:#000;border-radius:2px}
+.thumbs figcaption{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:3px}
 </style>
 </head>
 <body>
 <h1>封面工作台</h1>
-<div class="sub">COVER STUDIO · 雜誌內頁排版 · 拖時間軸選底圖</div>
+<div class="sub">COVER STUDIO · 拖時間軸選底圖 · 版型五選一</div>
 <div class="help">
-拖<b>時間軸</b>選底圖 → 右邊即時預覽。<b>版型三選一</b>：米紙雜誌／苔綠雜誌（<b>版面做在安全區內，IG 怎麼裁都不會切到內容</b>，上下只是純色出血）／純畫面（零文字、整格畫面）。調好送出，植影所照這組設定出圖。<br>每支片各自選、不用固定同一型。從送審卡點進來會自動帶好影片；直接開的話上面貼網址或選本機檔。
+拖<b>時間軸</b>選底圖 → 右邊預覽。<b>版型五選一</b>：<br>
+<b>直排</b>（主版・案例巡禮／案場／季節）與<b>上下對比</b>（有前後或對照素材的片）＝ Wayne 2026-09-06 定案的兩版；這兩型的版面<b>由出圖端產生、本頁不畫</b>（同一套幾何只留一份，兩邊各畫一次就會慢慢對不上）——右邊給你看的是<b>底圖與格線</b>，出好的真圖會回到這頁。<br>
+米紙雜誌／苔綠雜誌＝舊版面（版面做在安全區內，IG 怎麼裁都不會切到內容）；純畫面＝零文字整格畫面。<br>
+每支片各自選、不用固定同一型。從送審卡點進來會自動帶好影片；直接開的話上面貼網址或選本機檔。
 </div>
 
 <div class="wrap">
@@ -62,19 +73,21 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       <span class="tv" id="tv">0.8s</span>
     </div>
     <div class="field txtonly">
-      <label>標題（4-10 字）</label>
+      <label id="zhlab">標題（4-10 字）</label>
       <input type="text" id="zh" value="四平方米的室內森林">
     </div>
     <div class="field txtonly">
-      <label>英文副標</label>
+      <label id="enlab">英文副標</label>
       <input type="text" id="en" value="A FOREST INDOORS">
     </div>
     <div class="field">
       <label>版型</label>
       <div class="seg" id="style">
+        <button data-s="vertical">直排</button>
+        <button data-s="split">上下對比</button>
+        <button data-s="plain">純畫面</button>
         <button data-s="mag-paper" class="on">米紙雜誌</button>
         <button data-s="mag-moss">苔綠雜誌</button>
-        <button data-s="plain">純畫面</button>
       </div>
     </div>
     <div id="magonly">
@@ -89,6 +102,36 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       <div class="field">
         <label>版面上下（整體位置）<span class="tv" id="lyv">0</span></label>
         <input type="range" id="ly" min="-160" max="160" step="4" value="0">
+      </div>
+    </div>
+    <div id="vertonly" style="display:none">
+      <div class="field">
+        <label>主標放哪一側（挑畫面留白的那邊）</label>
+        <div class="seg" id="side">
+          <button data-v="right" class="on">右側</button>
+          <button data-v="left">左側</button>
+        </div>
+      </div>
+    </div>
+    <div id="splitonly" style="display:none">
+      <div class="field">
+        <label>上下兩格畫面（拖時間軸到想要的那一格，再按下面的鈕）</label>
+        <div class="seg" id="halfpick">
+          <button id="setTop">設為上半</button>
+          <button id="setBottom">設為下半</button>
+        </div>
+        <div class="thumbs">
+          <figure><canvas id="thTop" width="270" height="480"></canvas><figcaption id="capTop">上半・未選</figcaption></figure>
+          <figure><canvas id="thBot" width="270" height="480"></canvas><figcaption id="capBot">下半・未選</figcaption></figure>
+        </div>
+      </div>
+      <div class="field">
+        <label>上半角標（中文/EN，留空＝不畫）</label>
+        <input type="text" id="tagT" placeholder="仿真/FAUX">
+      </div>
+      <div class="field">
+        <label>下半角標（中文/EN，留空＝不畫）</label>
+        <input type="text" id="tagB" placeholder="真植/LIVING">
       </div>
     </div>
     <div class="field">
@@ -107,19 +150,33 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       <canvas id="cv" width="1080" height="1920"></canvas>
       <div class="cropnote" id="cropnote">上下淡色＝IG 裁切區（版面已避開、裁掉不影響）</div>
     </div>
+    <div class="spec" id="spec" style="display:none"></div>
+    <div class="field" id="realbox" style="display:none;margin-top:10px">
+      <label>出圖回來的真圖（植影所出好會給你網址，貼進來就換成真圖）</label>
+      <input type="text" id="realurl" placeholder="https://…/cover.jpg">
+      <div class="seg" style="margin-top:6px">
+        <button id="realload">看真圖</button>
+        <button id="realclear">回到底圖</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
 const vid=$("vid"), cv=$("cv"), ctx=cv.getContext("2d");
-// 畫布＝1080×1350（IG 4:5）；原稿 1080×1920 的 y 需減 285
-const OFF=0, W=1080, H=1920, M=96, CUT=285;
+// 畫布＝1080×1920（原稿）；IG 動態牆 4:5 可見 y=285..1635、個人頁格線 3:4 可見 y=240..1680
+const OFF=0, W=1080, H=1920, M=96, CUT=285, CUT34=240;
 const PAPER="#F2EDE3", MOSS="#5F6E58", INK="#1B1A17";
-// coverStyle：mag-paper 米紙雜誌／mag-moss 苔綠雜誌／plain 純畫面
-// 出片端同名分派在 yuzhi-reels/scripts/make-cover.py，新增版型＝兩邊各加一個分支
+// coverStyle：mag-paper 米紙雜誌／mag-moss 苔綠雜誌／plain 純畫面／vertical 直排／split 上下對比
+// 出片端同名分派在 yuzhi-reels/scripts/make-cover.py。
+// vertical／split 的版面畫在 yuzhi-reels/scripts/cover-set/{C_vertical,D_split}.py，
+// 本頁**刻意不重畫**那兩套幾何（兩邊各一份＝遲早對不上，本站已為這件事修過十三次）。
 let style="mag-paper", phPct=0.36, phShift=0, layShift=0, showCrop=true;
+let side="right", topSec=null, botSec=null, realImg=null;
+const NOPAINT=new Set(["vertical","split"]);
 const isMag=()=>style.startsWith("mag-");
+const needsText=()=>isMag()||NOPAINT.has(style);
 
 function tracked(txt,x,y,size,color,track,font){
   ctx.font=`${size}px ${font}`; ctx.fillStyle=color; ctx.textBaseline="top";
@@ -133,21 +190,63 @@ function drawCrop(){
   ctx.beginPath(); ctx.moveTo(0,CUT); ctx.lineTo(W,CUT);
   ctx.moveTo(0,H-CUT); ctx.lineTo(W,H-CUT); ctx.stroke();
 }
+function drawGrid34(){
+  if(!showCrop) return;
+  ctx.save();
+  ctx.setLineDash([18,14]); ctx.strokeStyle="rgba(242,237,227,.85)"; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(0,CUT34); ctx.lineTo(W,CUT34);
+  ctx.moveTo(0,H-CUT34); ctx.lineTo(W,H-CUT34); ctx.stroke();
+  ctx.restore();
+}
+function coverFit(img,iw,ih){
+  const sc=Math.max(W/iw,H/ih), sw=W/sc, sh=H/sc;
+  ctx.drawImage(img,(iw-sw)/2,(ih-sh)/2,sw,sh,0,0,W,H);
+}
 function drawPlain(){
   ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
-  if(vid.videoWidth){
-    const sc=Math.max(W/vid.videoWidth, H/vid.videoHeight);
-    const sw=W/sc, sh=H/sc;
-    ctx.drawImage(vid,(vid.videoWidth-sw)/2,(vid.videoHeight-sh)/2,sw,sh,0,0,W,H);
-  }
+  if(vid.videoWidth) coverFit(vid,vid.videoWidth,vid.videoHeight);
   drawCrop();
 }
+// vertical／split：只畫底圖與格線，版面留給出圖端。有真圖就畫真圖。
+function drawSource(){
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+  if(realImg) coverFit(realImg,realImg.naturalWidth,realImg.naturalHeight);
+  else if(vid.videoWidth) coverFit(vid,vid.videoWidth,vid.videoHeight);
+  drawCrop(); drawGrid34();
+  ctx.font="500 30px 'Noto Sans TC',sans-serif"; ctx.textBaseline="top";
+  ctx.fillStyle=realImg?"rgba(95,110,88,.95)":"rgba(138,74,48,.95)";
+  ctx.fillRect(0,H/2-34,W,68);
+  ctx.fillStyle=PAPER;
+  const t=realImg?"出圖端產的真圖":"底圖・版面不在這裡畫";
+  ctx.fillText(t,(W-ctx.measureText(t).width)/2,H/2-15);
+}
+const SPEC={
+  vertical:()=>`<b>直排明體側邊</b>（出圖端 <code>cover-set/C_vertical.py</code>）<br>
+    主標逐字直排、明體 Bold，放<b>${side==="right"?"右":"左"}側</b>留白，文字後方一道深苔柔邊直帶把底壓下去；
+    副標橫排小字在<b>對側底部</b>；品牌小字一處。字全部落在 4:5 安全帶內、對比過 AA。<br>
+    <span class="why">這一欄是文字說明、不是預覽——版面由出圖端畫，出好會回一張真圖到這頁。</span>`,
+  split:()=>`<b>安靜上下對比</b>（出圖端 <code>cover-set/D_split.py</code>）<br>
+    上下各半、中間一條米紙細線；兩格畫面先統一白平衡與亮度、再壓一層均勻深苔（不加飽和）；
+    分割線上一條苔綠色帶放主標＋英文小字；上下角標各一處、品牌小字一處。<br>
+    上半 ${topSec===null?"<b>未選</b>":topSec.toFixed(2)+"s"}　下半 ${botSec===null?"<b>未選</b>":botSec.toFixed(2)+"s"}<br>
+    <span class="why">這一欄是文字說明、不是預覽——版面由出圖端畫，出好會回一張真圖到這頁。</span>`
+};
 function draw(){
-  document.querySelectorAll(".txtonly").forEach(e=>e.style.display=isMag()?"":"none");
+  const np=NOPAINT.has(style);
+  document.querySelectorAll(".txtonly").forEach(e=>e.style.display=needsText()?"":"none");
   $("magonly").style.display=isMag()?"":"none";
-  $("cropnote").textContent=isMag()
-    ? "上下淡色＝IG 裁切區（版面已避開、裁掉不影響）"
-    : "上下淡色＝IG 裁切區（純畫面版會被裁到、主體留中間）";
+  $("vertonly").style.display=style==="vertical"?"":"none";
+  $("splitonly").style.display=style==="split"?"":"none";
+  $("spec").style.display=np?"":"none";
+  $("realbox").style.display=np?"":"none";
+  $("zhlab").textContent=style==="vertical"?"標題（6-12 字，手機上 6-8 字最順）":"標題（4-10 字）";
+  $("enlab").textContent=style==="vertical"?"副標小字（橫排、放對側底部）":"英文副標";
+  $("cropnote").textContent=np
+    ? "黃線＝動態牆 4:5（y285..1635）；虛線＝個人頁格線 3:4（y240..1680）。出圖端把字放在黃線內"
+    : (isMag()
+      ? "上下淡色＝IG 裁切區（版面已避開、裁掉不影響）"
+      : "上下淡色＝IG 裁切區（純畫面版會被裁到、主體留中間）");
+  if(np){ $("spec").innerHTML=SPEC[style](); return drawSource(); }
   if(!isMag()) return drawPlain();
   const paper = style==="mag-paper";
   const bg = paper?PAPER:MOSS;
@@ -172,6 +271,18 @@ function draw(){
   tracked($("en").value.toUpperCase(), M, ly2+40, 30, sub, 0.20, '"Playfair Display",serif');
   drawCrop();
 }
+// 上下對比的兩格：把當下這一格畫成縮圖存起來（純素材確認、不套版面）
+function grabHalf(which){
+  if(!vid.videoWidth){ $("stat").textContent="影片還沒載好"; $("stat").className="stat bad"; return; }
+  const c=$(which==="top"?"thTop":"thBot"), g=c.getContext("2d");
+  const sc=Math.max(c.width/vid.videoWidth, c.height/vid.videoHeight);
+  const sw=c.width/sc, sh=c.height/sc;
+  g.drawImage(vid,(vid.videoWidth-sw)/2,(vid.videoHeight-sh)/2,sw,sh,0,0,c.width,c.height);
+  const t=+vid.currentTime.toFixed(2);
+  if(which==="top"){ topSec=t; $("capTop").textContent="上半・"+t.toFixed(2)+"s"; }
+  else { botSec=t; $("capBot").textContent="下半・"+t.toFixed(2)+"s"; }
+  draw();
+}
 // 底圖來源：?v=<影片網址>（植影所送卡時填好）；沒帶就讓 Wayne 自己貼網址或選本機檔。
 // 不再寫死某一支片的檔名——reels-media 暫存在發佈後會被清掉，寫死＝隔天工具就變黑畫面。
 function loadSrc(u){
@@ -180,7 +291,8 @@ function loadSrc(u){
   vid.src=u; vid.load();
   $("srcbox").style.display = "none";
 }
-const qv=new URLSearchParams(location.search).get("v");
+const qs=new URLSearchParams(location.search);
+const qv=qs.get("v");
 if(qv){ loadSrc(qv+(qv.indexOf("?")>=0?"&":"?")+"t="+Date.now()); } else { $("srcbox").style.display=""; }
 $("srcload").onclick=()=>loadSrc($("srcurl").value.trim());
 $("srcpick").onclick=()=>$("srcfile").click();
@@ -203,6 +315,24 @@ document.querySelectorAll("#style button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("#style button").forEach(x=>x.classList.toggle("on",x===b));
   draw();
 });
+document.querySelectorAll("#side button").forEach(b=>b.onclick=()=>{
+  side=b.dataset.v;
+  document.querySelectorAll("#side button").forEach(x=>x.classList.toggle("on",x===b));
+  draw();
+});
+$("setTop").onclick=()=>grabHalf("top");
+$("setBottom").onclick=()=>grabHalf("bottom");
+// 真圖：出圖端產好的封面（?c=<網址> 或手貼），畫上去後格線照舊，讓他在同一頁對安全區
+function loadReal(u){
+  if(!u) return;
+  const im=new Image(); im.crossOrigin="anonymous";
+  im.onload=()=>{ realImg=im; draw(); };
+  im.onerror=()=>{ $("stat").textContent="真圖載不到、請確認網址"; $("stat").className="stat bad"; };
+  im.src=u;
+}
+const qc=qs.get("c"); if(qc) loadReal(qc);
+$("realload").onclick=()=>loadReal($("realurl").value.trim());
+$("realclear").onclick=()=>{ realImg=null; draw(); };
 $("ph").oninput=e=>{phPct=+e.target.value/100;$("phv").textContent=e.target.value+"%";draw();};
 $("py").oninput=e=>{phShift=+e.target.value;$("pyv").textContent=phShift===0?"置中":(phShift>0?"往下"+phShift:"往上"+(-phShift));draw();};
 $("ly").oninput=e=>{layShift=+e.target.value;$("lyv").textContent=layShift;draw();};
@@ -215,24 +345,39 @@ document.fonts.ready.then(draw);
 const EXEC="https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec";
 const TK="7c7e94a5e2af4764a94cccf49c31aa0f";
 $("send").onclick=async()=>{
-  const st=$("stat"); st.textContent="傳送中…"; st.className="stat";
+  const st=$("stat");
+  if(style==="split" && (topSec===null||botSec===null)){
+    st.textContent="上下對比要兩格畫面：拖時間軸、分別按「設為上半」「設為下半」"; st.className="stat bad"; return;
+  }
+  st.textContent="傳送中…"; st.className="stat";
   const src=vid.currentSrc||"";
   const payload={title:"封面設定",
-    frameSec:+vid.currentTime.toFixed(2),
+    frameSec:+((style==="split"&&topSec!==null?topSec:vid.currentTime).toFixed(2)),
     videoUrl: src.startsWith("blob:") ? "(本機檔案)" : src,   // 哪支片的第幾秒，缺一不可
     coverStyle:style,
     scheme:(style==="mag-moss"?"moss":"paper"),   // 舊出片端相容、以 coverStyle 為準
     coverTitle:$("zh").value, coverEn:$("en").value.toUpperCase(),
     photoPct:+phPct.toFixed(2), photoShift:phShift, layoutShift:layShift};
+  if(style==="vertical"){
+    payload.side=side;
+    if($("en").value.trim()) payload.coverSub=[$("en").value.trim()];
+  }
+  if(style==="split"){
+    payload.frameSecTop=topSec; payload.frameSecBottom=botSec;
+    if($("tagT").value.trim()) payload.tagTop=$("tagT").value.trim();
+    if($("tagB").value.trim()) payload.tagBottom=$("tagB").value.trim();
+  }
   const body=new URLSearchParams({token:TK,payload:JSON.stringify(payload)});
   try{
     const r=await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body});
     let ok=false; try{ok=(await r.json()).ok;}catch(_){ok=r.ok||r.type==="opaque";}
     if(!ok) throw 0;
-    st.textContent="已送達 · 植影所會照這些設定產封面"; st.className="stat ok";
+    st.textContent="已送達 · 植影所會照這些設定出圖"; st.className="stat ok";
   }catch(_){
+    // 備援送一次 no-cors——回應是 opaque、讀不到成敗，所以這裡**不寫「已送出」**。
+    // 舊碼在這條路一律報成功，Wayne 因此遇過「我明明送了、板上卻沒有」（WORKFLOW 2026-08-09）。
     try{await fetch(EXEC+"?action=reelsTunerSubmit",{method:"POST",body,mode:"no-cors"});
-      st.textContent="已送出"; st.className="stat ok";}
+      st.textContent="已補送一次、但這條路讀不到回應＝無法確認板上收到沒有。等植影所回覆確認，沒回就再按一次"; st.className="stat bad";}
     catch(e){st.textContent="傳送失敗、請截圖傳我"; st.className="stat bad";}
   }
 };
