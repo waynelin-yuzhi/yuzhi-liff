@@ -18,6 +18,13 @@ function initYzPad(cv) {
     cx.lineWidth = 2.2; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.strokeStyle = '#1B1A17';
   }
   size();
+  if (!cv.nextElementSibling || cv.nextElementSibling.className !== 'yz-pad-hint') {
+    var hint = document.createElement('div');
+    hint.className = 'yz-pad-hint';
+    hint.setAttribute('style', 'font-size:12px;line-height:1.6;color:#6B6B65;margin:6px 0 2px');
+    hint.textContent = window.YZ_PAD_HINT || '請把姓名寫大、寫清楚，盡量簽滿整個簽名框；太小或潦草的簽名可能需要重簽一次。';
+    cv.parentNode.insertBefore(hint, cv.nextSibling);
+  }
   var drawing = false;
   function pos(e) {
     var r = cv.getBoundingClientRect();
