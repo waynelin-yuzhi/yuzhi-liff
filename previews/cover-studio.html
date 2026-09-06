@@ -47,10 +47,10 @@ input[type=range]{width:100%;accent-color:var(--moss)}
 </head>
 <body>
 <h1>封面工作台</h1>
-<div class="sub">COVER STUDIO · 拖時間軸選底圖 · 版型五選一</div>
+<div class="sub">COVER STUDIO · 拖時間軸選底圖 · 版型六選一</div>
 <div class="help">
-拖<b>時間軸</b>選底圖 → 右邊預覽。<b>版型五選一</b>：<br>
-<b>直排</b>（主版・案例巡禮／案場／季節）與<b>上下對比</b>（有前後或對照素材的片）＝ Wayne 2026-09-06 定案的兩版；這兩型的版面<b>由出圖端產生、本頁不畫</b>（同一套幾何只留一份，兩邊各畫一次就會慢慢對不上）——右邊給你看的是<b>底圖與格線</b>，出好的真圖會回到這頁。<br>
+拖<b>時間軸</b>選底圖 → 右邊預覽。<b>版型六選一</b>：<br>
+<b>直排</b>（主版・案例巡禮／案場／季節）、<b>上下對比</b>（有前後或對照素材的片）、<b>純文字</b>（字直接壓在實景上、你 09-06 看過的那版）＝ Wayne 2026-09-06 定案的三版；這三型的<b>版面由出圖端產生、本頁不畫</b>（同一套幾何只留一份，兩邊各畫一次就會慢慢對不上）——右邊給你看的是<b>底圖與格線</b>，出好的真圖會回到這頁。<br>
 米紙雜誌／苔綠雜誌＝舊版面（版面做在安全區內，IG 怎麼裁都不會切到內容）；純畫面＝零文字整格畫面。<br>
 每支片各自選、不用固定同一型。從送審卡點進來會自動帶好影片；直接開的話上面貼網址或選本機檔。
 </div>
@@ -85,6 +85,7 @@ input[type=range]{width:100%;accent-color:var(--moss)}
       <div class="seg" id="style">
         <button data-s="vertical">直排</button>
         <button data-s="split">上下對比</button>
+        <button data-s="text">純文字</button>
         <button data-s="plain">純畫面</button>
         <button data-s="mag-paper" class="on">米紙雜誌</button>
         <button data-s="mag-moss">苔綠雜誌</button>
@@ -111,6 +112,12 @@ input[type=range]{width:100%;accent-color:var(--moss)}
           <button data-v="right" class="on">右側</button>
           <button data-v="left">左側</button>
         </div>
+      </div>
+    </div>
+    <div id="textonly" style="display:none">
+      <div class="field">
+        <label>系列小字（刊頭・第一列，例 CASE REVISIT   No.01）</label>
+        <input type="text" id="lbl" value="CASE REVISIT   No.01">
       </div>
     </div>
     <div id="splitonly" style="display:none">
@@ -168,13 +175,19 @@ const vid=$("vid"), cv=$("cv"), ctx=cv.getContext("2d");
 // 畫布＝1080×1920（原稿）；IG 動態牆 4:5 可見 y=285..1635、個人頁格線 3:4 可見 y=240..1680
 const OFF=0, W=1080, H=1920, M=96, CUT=285, CUT34=240;
 const PAPER="#F2EDE3", MOSS="#5F6E58", INK="#1B1A17";
-// coverStyle：mag-paper 米紙雜誌／mag-moss 苔綠雜誌／plain 純畫面／vertical 直排／split 上下對比
+// coverStyle：mag-paper 米紙雜誌／mag-moss 苔綠雜誌／plain 純畫面／vertical 直排／split 上下對比／text 純文字
 // 出片端同名分派在 yuzhi-reels/scripts/make-cover.py。
-// vertical／split 的版面畫在 yuzhi-reels/scripts/cover-set/{C_vertical,D_split}.py，
-// 本頁**刻意不重畫**那兩套幾何（兩邊各一份＝遲早對不上，本站已為這件事修過十三次）。
+// vertical／split／text 的版面畫在 yuzhi-reels/scripts/cover-set/{C_vertical,D_split,A_band}.py，
+// 本頁**刻意不重畫**那三套幾何（兩邊各一份＝遲早對不上，本站已為這件事修過十三次）。
 let style="mag-paper", phPct=0.36, phShift=0, layShift=0, showCrop=true;
 let side="right", topSec=null, botSec=null, realImg=null;
-const NOPAINT=new Set(["vertical","split"]);
+const NOPAINT=new Set(["vertical","split","text"]);
+// 純文字版的**取景與壓暗**（不是版面）＝出圖端 A_band.py 的三顆常數，本頁照它換算一次。
+// 本班實測（1080×1920 母幀 → 成圖逐點比）：可見帶 x=70.4..1009.6、y=230.4..1900
+// ＝母幀上緣約 230px 會被切掉；壓暗＝往深苔 #2E3A2A 混 20%。照這組畫的預覽與成圖 mean|diff| 0.86
+// （＝JPEG 雜訊底），沿用舊的整格置中則差 45 灰階＝他會在錯的那塊畫面上挑鏡頭。
+// 改 A_band.py 的 ZOOM／FOCUS_Y／--darken 預設要同步這三個值（兩支是同一組取景的兩個實作）。
+const TXT_ZOOM=1.15, TXT_FOCUS=0.92, TXT_DIM=0.20, DEEP="#2E3A2A";
 const isMag=()=>style.startsWith("mag-");
 const needsText=()=>isMag()||NOPAINT.has(style);
 
@@ -202,6 +215,13 @@ function coverFit(img,iw,ih){
   const sc=Math.max(W/iw,H/ih), sw=W/sc, sh=H/sc;
   ctx.drawImage(img,(iw-sw)/2,(ih-sh)/2,sw,sh,0,0,W,H);
 }
+// 純文字版底圖：出圖端會放大取景並壓暗，這裡照同一組數字畫（文字那三列仍不畫）
+function drawTextBase(){
+  const iw=vid.videoWidth, ih=vid.videoHeight;
+  const cw=iw/TXT_ZOOM, chh=ih/TXT_ZOOM;
+  ctx.drawImage(vid,(iw-cw)/2,(ih-chh)*TXT_FOCUS,cw,chh,0,0,W,H);
+  ctx.save(); ctx.globalAlpha=TXT_DIM; ctx.fillStyle=DEEP; ctx.fillRect(0,0,W,H); ctx.restore();
+}
 function drawPlain(){
   ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
   if(vid.videoWidth) coverFit(vid,vid.videoWidth,vid.videoHeight);
@@ -211,13 +231,14 @@ function drawPlain(){
 function drawSource(){
   ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
   if(realImg) coverFit(realImg,realImg.naturalWidth,realImg.naturalHeight);
-  else if(vid.videoWidth) coverFit(vid,vid.videoWidth,vid.videoHeight);
+  else if(vid.videoWidth){ if(style==="text") drawTextBase(); else coverFit(vid,vid.videoWidth,vid.videoHeight); }
   drawCrop(); drawGrid34();
   ctx.font="500 30px 'Noto Sans TC',sans-serif"; ctx.textBaseline="top";
   ctx.fillStyle=realImg?"rgba(95,110,88,.95)":"rgba(138,74,48,.95)";
   ctx.fillRect(0,H/2-34,W,68);
   ctx.fillStyle=PAPER;
-  const t=realImg?"出圖端產的真圖":"底圖・版面不在這裡畫";
+  const t=realImg?"出圖端產的真圖"
+    :(style==="text"?"底圖＝出圖端的取景與壓暗・只差那三列字":"底圖・版面不在這裡畫");
   ctx.fillText(t,(W-ctx.measureText(t).width)/2,H/2-15);
 }
 const SPEC={
@@ -229,7 +250,14 @@ const SPEC={
     上下各半、中間一條米紙細線；兩格畫面先統一白平衡與亮度、再壓一層均勻深苔（不加飽和）；
     分割線上一條苔綠色帶放主標＋英文小字；上下角標各一處、品牌小字一處。<br>
     上半 ${topSec===null?"<b>未選</b>":topSec.toFixed(2)+"s"}　下半 ${botSec===null?"<b>未選</b>":botSec.toFixed(2)+"s"}<br>
-    <span class="why">這一欄是文字說明、不是預覽——版面由出圖端畫，出好會回一張真圖到這頁。</span>`
+    <span class="why">這一欄是文字說明、不是預覽——版面由出圖端畫，出好會回一張真圖到這頁。</span>`,
+  text:()=>`<b>純文字壓實景</b>（出圖端 <code>cover-set/A_band.py --no-band</code>）<br>
+    畫面中央略偏上三列米紙字：系列小字／中文主標（明體 Black、字級自動塞滿 900 寬）／英文副標；
+    字後方一道柔邊暗暈把底壓下去（不畫色帶），整張先往深苔壓暗 <b>20%</b>、暗暈 <b>45%</b>
+    ——這兩個數是出圖端預設，覺得字還不夠清楚就跟我說，我調完再出一張。下方一處品牌小字。<br>
+    右邊底圖<b>已照出圖端取景與壓暗</b>（放大 1.15×、往下取景＝母幀上緣約 230px 會被切掉），只差那三列字。<br>
+    <span class="why">三個文字欄留空不等於不畫——出圖端會沿用上一支片的字（本班實測：整張 md5 完全相同），
+    所以留空會被擋住不送。</span>`
 };
 function draw(){
   const np=NOPAINT.has(style);
@@ -237,10 +265,13 @@ function draw(){
   $("magonly").style.display=isMag()?"":"none";
   $("vertonly").style.display=style==="vertical"?"":"none";
   $("splitonly").style.display=style==="split"?"":"none";
+  $("textonly").style.display=style==="text"?"":"none";
   $("spec").style.display=np?"":"none";
   $("realbox").style.display=np?"":"none";
-  $("zhlab").textContent=style==="vertical"?"標題（6-12 字，手機上 6-8 字最順）":"標題（4-10 字）";
-  $("enlab").textContent=style==="vertical"?"副標小字（橫排、放對側底部）":"英文副標";
+  $("zhlab").textContent=style==="vertical"?"標題（6-12 字，手機上 6-8 字最順）"
+    :(style==="text"?"主標（4-8 字，字級會自動塞滿 900 寬）":"標題（4-10 字）");
+  $("enlab").textContent=style==="vertical"?"副標小字（橫排、放對側底部）"
+    :(style==="text"?"英文副標（橫排、排在主標下）":"英文副標");
   $("cropnote").textContent=np
     ? "黃線＝動態牆 4:5（y285..1635）；虛線＝個人頁格線 3:4（y240..1680）。出圖端把字放在黃線內"
     : (isMag()
@@ -349,6 +380,15 @@ $("send").onclick=async()=>{
   if(style==="split" && (topSec===null||botSec===null)){
     st.textContent="上下對比要兩格畫面：拖時間軸、分別按「設為上半」「設為下半」"; st.className="stat bad"; return;
   }
+  if(style==="text"){
+    // 留空＝出圖端沿用它自己的預設（＝上一支片的字），而且成圖看起來很正常＝最難發現的那種錯。
+    const miss=[["主標",$("zh").value],["英文副標",$("en").value],["系列小字",$("lbl").value]]
+      .filter(x=>!x[1].trim()).map(x=>x[0]);
+    if(miss.length){
+      st.textContent="純文字版要填齊："+miss.join("、")+"（留空的話出圖端會沿用上一支片的字）";
+      st.className="stat bad"; return;
+    }
+  }
   st.textContent="傳送中…"; st.className="stat";
   const src=vid.currentSrc||"";
   const payload={title:"封面設定",
@@ -361,6 +401,10 @@ $("send").onclick=async()=>{
   if(style==="vertical"){
     payload.side=side;
     if($("en").value.trim()) payload.coverSub=[$("en").value.trim()];
+  }
+  if(style==="text"){
+    payload.coverSub=$("en").value.trim();
+    payload.coverLabel=$("lbl").value.trim();
   }
   if(style==="split"){
     payload.frameSecTop=topSec; payload.frameSecBottom=botSec;
