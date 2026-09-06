@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>植間設計｜薪資單</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans TC", -apple-system, sans-serif; background: #F2EDE3; color: #1B1A17; line-height: 1.7; padding: 24px 14px 60px; margin: 0; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8a8275; text-align: center; margin-bottom: 16px; }
+  .card { background: #FFFCF5; border-radius: 12px; padding: 20px 18px; box-shadow: 0 4px 16px rgba(0,0,0,.06); margin-bottom: 14px; }
+  .row { display: flex; gap: 12px; padding: 7px 0; border-bottom: .5px solid #EDE9DE; font-size: 13.5px; }
+  .row:last-child { border-bottom: none; }
+  .k { width: 96px; flex: none; font-size: 11px; color: #A09A8C; letter-spacing: .1em; padding-top: 2px; }
+  .amt { background: #F4F1E8; border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .amt b { font-size: 19px; color: #5F6E58; }
+  .amt .lb { font-size: 11px; color: #6B675E; letter-spacing: .15em; }
+  .decl { font-size: 13px; color: #4A4A45; background: #f0f3ee; border-radius: 8px; padding: 12px 14px; margin: 0 0 14px; }
+  .lbl { font-size: 13px; color: #4A4A45; margin-bottom: 2px; }
+  .note { font-size: 11.5px; color: #8a8275; margin-bottom: 10px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: #A09A8C; letter-spacing: .1em; margin: 4px 0 4px; }
+  .field select, .field textarea { width: 100%; padding: 11px 12px; border: 1px solid #C9C2B0; border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; color: #1B1A17; }
+  .field textarea { min-height: 96px; resize: vertical; line-height: 1.6; }
+  .idgrid { display: flex; gap: 10px; }
+  .idslot { flex: 1; border: 1.5px dashed #C9C2B0; border-radius: 8px; min-height: 96px; padding: 8px; text-align: center; cursor: pointer; background: #fff; }
+  .idph { font-size: 12.5px; color: #8a8275; padding: 22px 0; }
+  .idst { font-size: 10.5px; color: #B8893E; margin-top: 4px; line-height: 1.4; }
+  .idslot img { width: 100%; border-radius: 6px; display: block; }
+  canvas.pad { width: 100%; height: 170px; background: #fff; border: 1.5px dashed #C9C2B0; border-radius: 8px; touch-action: none; }
+  .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .btn[disabled] { opacity: .55; cursor: default; }
+  .ghost { display: block; width: 100%; padding: 12px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 10px; }
+  .ghost.warn { color: #8a6a2e; border-color: #C9A45A; }
+  .clr { background: none; border: none; color: #8a8275; font-size: 13px; text-decoration: underline; padding: 8px; cursor: pointer; }
+  .done-card { background: #FFFCF5; border-radius: 12px; padding: 30px 22px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  .done-card h2 { color: #5F6E58; font-size: 18px; margin: 0 0 8px; }
+  .done-card h2.err { color: #A4392D; }
+  .done-card p { font-size: 14px; color: #4A4A45; margin: 0; }
+  .done-card .tm { font-size: 12.5px; color: #8a8275; margin-top: 4px; }
+  .done-card .keep { font-size: 12.5px; color: #5F6E58; background: #f0f3ee; border-radius: 8px; padding: 10px 12px; margin-top: 14px; line-height: 1.6; }
+  .linewarn { background: #FBF3E4; border: 1px solid #E3C990; padding: 12px 14px; font-size: 12.5px; color: #8a6a2e; }
+  #docwrap { overflow: hidden; margin: 10px -6px 0; position: relative; background: #fff; box-shadow: 0 2px 14px rgba(27,26,23,.10); border-radius: 4px; }
+  #docfr { border: 0; display: block; width: 794px; transform-origin: 0 0; background: #fff; }
+  .dochint { font-size: 11.5px; color: #A09A8C; margin: 6px 0 14px; text-align: center; }
+  #doczoom { position: fixed; inset: 0; z-index: 9999; background: rgba(27,26,23,.93); display: flex; flex-direction: column; }
+  #doczoom .zh { flex: none; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; color: #FFFCF5; font-size: 13px; letter-spacing: .08em; }
+  #doczoom .zx { width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,252,245,.16); color: #FFFCF5; font-size: 20px; line-height: 1; cursor: pointer; }
+  #doczoom .zb { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 0 40px; }
+  #doczoom iframe { border: 0; display: block; background: #fff; width: 794px; }
+  .ft { margin: 26px auto 12px; text-align: center; font-size: 10.5px; color: #A09A8C; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN</div>
+  <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取薪資單</p></div></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">paystub-view</span></div>
+</div>
+<script src="pad.js?v=2"></script>
+<script>
+/* LINE 內建瀏覽器：卡片連結已帶 openExternalBrowser=1；偶爾不吃 → 頁內再導一次觸發跳外部（同 labor-sign） */
+var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
+if (IN_LINE && !sessionStorage.getItem('yzPsExt')) {
+  sessionStorage.setItem('yzPsExt', '1');
+  location.replace(location.href);
+}
+var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+var QS = new URLSearchParams(location.search);
+var TOKEN = QS.get('token') || '';
+var PGV = QS.get('v') || '';
+if (PGV) { var _pv = document.getElementById('pgv'); if (_pv) _pv.textContent = 'paystub-view v' + PGV; }
+var app = document.getElementById('app');
+var D = null;              /* GET 回來的薪資單資料 */
+var IDS = { front: '', back: '' };   /* 身分證影本 base64（外包首次簽收、勞報單附頁） */
+var WM_YEAR = '';
+var REPORT_CATS = ['工時或天數不符', '金額計算有誤', '扣款項目有疑問', '個人資料有誤', '其他'];
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function money(n) {
+  var v = Number(n);
+  if (isNaN(v)) return String(n == null ? '' : n);
+  return 'NT$ ' + v.toLocaleString('zh-TW');
+}
+function safeId(id) { return String(id || '').replace(/[^A-Za-z0-9_-]/g, ''); }
+function dlUrl(id) { return 'https://drive.usercontent.google.com/download?id=' + safeId(id) + '&export=download'; }
+function doneCard(title, msg, err, extraHtml) {
+  app.innerHTML = '<div class="done-card"><h2' + (err ? ' class="err"' : '') + '>' + esc(title) + '</h2><p>' + esc(msg) + '</p>' + (extraHtml || '') + '</div>';
+  window.scrollTo(0, 0);
+}
+function statusUrl() {
+  return API + '?page=paystub-view&token=' + encodeURIComponent(TOKEN) + '&fmt=json&_=' + Date.now();
+}
+
+/* ── 入口：讀 token → GET fmt=json → 依 status 分流 ── */
+if (!TOKEN) {
+  doneCard('連結無效', '找不到這份薪資單；請與植間聯繫。', true);
+} else {
+  fetch(statusUrl(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(render)
+    .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次卡片按鈕。', true); });
+}
+
+var ERR_TEXT = {
+  token_invalid: ['連結無效', '找不到這份薪資單；請與植間聯繫。'],
+  expired: ['連結已過期', '這份薪資單的連結已失效；請與植間聯繫重新發送。'],
+  not_issued: ['薪資單尚未發放', '這個月的薪資單還在準備中，發放後會再通知你。']
+};
+
+function render(d) {
+  if (!d || !d.ok) {
+    var e = (d && ERR_TEXT[d.error]) || ERR_TEXT.token_invalid;
+    doneCard(e[0], (d && d.msg) || e[1], true);
+    return;
+  }
+  D = d;
+  if (d.status === '已簽') { renderSigned(d); return; }
+  if (d.status === '已回報') { renderReported(d); return; }
+  renderSign(d);
+}
+
+/* ── 待簽：標題 → 薪資單內嵌 → 摘要 → 簽名 → 兩顆鈕（回報區收在第二顆鈕底下） ── */
+function renderSign(d) {
+  var s = d.summary || {};
+  var lineWarn = IN_LINE
+    ? '<div class="card linewarn">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
+    : '';
+  var period = d.period && d.period.start ? esc(d.period.start) + ' 至 ' + esc(d.period.end || '') : '';
+  var docBlock = d.html
+    ? '<div id="docwrap"><iframe id="docfr" sandbox="allow-same-origin" scrolling="no" title="薪資單"></iframe></div>'
+      + '<div class="dochint">點薪資單可放大檢視明細</div>'
+    : '<div class="card" style="font-size:13px;color:#8a8275;text-align:center">薪資單內容載入中，請稍後重新開啟此連結。</div>';
+  var catOpts = REPORT_CATS.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+  WM_YEAR = d.wmYear || String(d.year || '');
+  var idSlot = function (w, label) {
+    return '<div style="flex:1;min-width:0"><div class="idslot" data-side="' + w + '"><img id="pv_' + w + '" style="display:none" alt="">'
+      + '<div id="ph_' + w + '" class="idph">點此拍攝<br>' + label + '</div><div id="st_' + w + '" class="idst"></div>'
+      + '<input type="file" id="f_' + w + '" accept="image/*" capture="environment" style="display:none">'
+      + '<input type="file" id="g_' + w + '" accept="image/*" style="display:none"></div>'
+      + '<button type="button" class="clr" id="al_' + w + '" style="display:block;margin:2px auto 0;padding:5px">從相簿選</button></div>';
+  };
+  var idCard = d.needId
+    ? '<div class="card" id="idcard"><div class="lbl">身分證影本（勞務報酬單報稅申報用）</div>'
+      + '<div class="note">首次簽收需附一次；系統自動轉成黑白影本並加「僅供報稅申報使用」浮水印，不會留存彩色原照。之後每月自動附上、不用再拍。</div>'
+      + '<div class="idgrid">' + idSlot('front', '正面') + idSlot('back', '背面') + '</div></div>'
+    : '';
+  app.innerHTML = '<h1>' + esc(d.empName || '') + '　' + esc(d.monthLabel || '') + ' 薪資單</h1>'
+    + '<div class="sub">' + (period || '請核對內容後簽名') + '</div>' + lineWarn
+    + docBlock
+    + '<div class="card" style="padding:14px 18px">'
+    + '<div class="row"><div class="k">應發合計</div><div>' + esc(money(s.earnTotal)) + '</div></div>'
+    + '<div class="row"><div class="k">應扣合計</div><div>' + esc(money(s.dedTotal)) + '</div></div>'
+    + '<div class="amt" style="margin-top:8px"><span class="lb">實發金額</span><b>' + esc(money(s.netPay)) + '</b></div></div>'
+    + idCard
+    + '<div class="card">'
+    + '<div class="decl">本人已核對本月薪資單內容，確認無誤。</div>'
+    + '<div class="lbl">簽名</div>'
+    + '<div class="note">' + (d.isOutsource ? '此簽名將用於本次薪資單及勞務報酬單' : '此簽名將用於本次薪資單') + '</div>'
+    + '<canvas id="cv" class="pad"></canvas>'
+    + '<div style="text-align:right"><button class="clr" id="clr" type="button">清除重簽</button></div>'
+    + '<button class="btn" id="go" type="button" disabled>確認無誤並簽名</button>'
+    + '<button class="ghost warn" id="rep" type="button">資料有問題，要回報</button>'
+    + '<div id="reppanel" style="display:none;margin-top:14px;padding-top:14px;border-top:.5px solid #EDE9DE">'
+    + '<div class="lbl">回報問題</div><div class="note">不需要簽名；公司確認後會重新發一份薪資單。</div>'
+    + '<div class="field"><label>問題分類</label><select id="repcat"><option value="">請選擇</option>' + catOpts + '</select></div>'
+    + '<div class="field"><label>說明</label><textarea id="repmsg" placeholder="例：7/12 有出勤但沒算到"></textarea></div>'
+    + '<button class="btn" id="repgo" type="button">送出回報</button>'
+    + '<div style="text-align:center"><button class="clr" id="repcancel" type="button">取消，回去簽名</button></div>'
+    + '</div></div>';
+  if (d.html) mountDoc(d.html);
+  if (d.needId) bindIdSlots();
+  initPad();
+  document.getElementById('clr').addEventListener('click', cvClear);
+  document.getElementById('go').addEventListener('click', doConfirm);
+  document.getElementById('rep').addEventListener('click', function () { toggleReport(true); });
+  document.getElementById('repcancel').addEventListener('click', function () { toggleReport(false); });
+  document.getElementById('repgo').addEventListener('click', doReport);
+}
+
+function toggleReport(open) {
+  var p = document.getElementById('reppanel');
+  var rep = document.getElementById('rep');
+  if (!p) return;
+  p.style.display = open ? '' : 'none';
+  rep.style.display = open ? 'none' : '';
+  if (open) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── 已簽：下載頁 ── */
+function renderSigned(d) {
+  var pdfId = safeId(d.signedPdfId);
+  var extra = (d.signedAt ? '<div class="tm">簽收時間　' + esc(d.signedAt) + '</div>' : '')
+    + (pdfId
+        ? '<a class="ghost" style="margin-top:18px" href="' + dlUrl(pdfId) + '" target="_blank" rel="noopener">下載薪資單 PDF</a>'
+        : '<div class="tm" style="margin-top:14px">已簽章 PDF 產生中，稍後重新開啟此連結即可下載。</div>')
+    + (d.isOutsource ? '<div class="keep">勞務報酬單已同步產生並簽章，公司留存</div>' : '');
+  doneCard('已簽收', (d.empName || '') + '　' + (d.monthLabel || '') + ' 薪資單', false, extra);
+}
+
+/* ── 已回報 ── */
+function renderReported(d) {
+  var extra = d.reportMessage ? '<div class="keep" style="text-align:left">你的回報：' + esc(d.reportMessage) + '</div>' : '';
+  doneCard('已收到你的回報', '公司確認後會重新發一份。', false, extra);
+}
+
+/* ── 薪資單 srcdoc 內嵌：A4 寬 794 縮到容器寬；高度量定後上鎖（手機捲動收合網址列的 resize 不准回頭改高） ── */
+var DOC_W = 794, DOC_H = 0, DOC_LOCKED = false, DOC_LASTW = 0, DOC_HTML = '';
+function mountDoc(html) {
+  var wrap = document.getElementById('docwrap'), fr = document.getElementById('docfr');
+  if (!wrap || !fr) return;
+  DOC_HTML = html;
+  fr.addEventListener('load', measureDoc);
+  fr.srcdoc = html;
+  scaleDoc();
+  window.addEventListener('resize', function () {
+    var w = wrap.clientWidth;
+    if (w && w !== DOC_LASTW) scaleDoc();
+  });
+  wrap.addEventListener('click', openZoom);
+}
+function scaleDoc() {
+  var wrap = document.getElementById('docwrap'), fr = document.getElementById('docfr');
+  if (!wrap || !fr) return;
+  var w = wrap.clientWidth;
+  if (!w) return;
+  DOC_LASTW = w;
+  var sc = w / DOC_W;
+  fr.style.transform = 'scale(' + sc + ')';
+  wrap.style.height = DOC_H ? Math.ceil(DOC_H * sc) + 'px' : Math.round(w * 1.2) + 'px';
+}
+function measureDoc() {
+  var fr = document.getElementById('docfr');
+  if (!fr) return;
+  try {
+    var doc = fr.contentDocument;
+    if (!doc || !doc.body) return;
+    var apply = function () {
+      if (DOC_LOCKED) return;
+      var h = Math.max(
+        Math.ceil(doc.documentElement.getBoundingClientRect().height),
+        Math.ceil(doc.body.getBoundingClientRect().bottom)
+      );
+      if (h > 100 && h + 16 > DOC_H) {
+        DOC_H = h + 16;
+        fr.style.height = DOC_H + 'px';
+        scaleDoc();
+      }
+    };
+    apply();
+    setTimeout(apply, 400); setTimeout(apply, 1200);
+    setTimeout(function () { DOC_LOCKED = true; }, 2600);
+    Array.prototype.forEach.call(doc.images || [], function (im) { im.addEventListener('load', apply); });
+    if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(apply);
+  } catch (e) {}
+}
+/* 放大檢視：1:1 原尺寸、雙向捲動（不做手勢縮放、任何瀏覽器都通） */
+function openZoom() {
+  if (!DOC_HTML || document.getElementById('doczoom')) return;
+  var ov = document.createElement('div');
+  ov.id = 'doczoom';
+  ov.innerHTML = '<div class="zh"><span>薪資單明細　可左右捲動</span><button class="zx" id="doczoom-x" type="button" aria-label="關閉">&#10005;</button></div><div class="zb" id="doczoom-body"></div>';
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  document.getElementById('doczoom-x').addEventListener('click', closeZoom);
+  var f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-same-origin');
+  f.setAttribute('scrolling', 'no');
+  f.setAttribute('title', '薪資單明細');
+  f.style.height = (DOC_H || 1123) + 'px';
+  f.addEventListener('load', function () {
+    try { f.style.height = (Math.ceil(f.contentDocument.documentElement.getBoundingClientRect().height) + 16) + 'px'; } catch (e) {}
+  });
+  document.getElementById('doczoom-body').appendChild(f);
+  f.srcdoc = DOC_HTML;
+}
+function closeZoom() {
+  var ov = document.getElementById('doczoom');
+  if (ov) ov.remove();
+  document.body.style.overflow = '';
+}
+
+/* ── 身分證影本：點格子開系統相機、或從相簿選；管線同 labor-sign ── */
+function bindIdSlots() {
+  ['front', 'back'].forEach(function (w) {
+    document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { document.getElementById('f_' + w).click(); });
+    document.getElementById('al_' + w).addEventListener('click', function () { document.getElementById('g_' + w).click(); });
+    document.getElementById('f_' + w).addEventListener('change', function () { fileProc(w, this); });
+    document.getElementById('g_' + w).addEventListener('change', function () { fileProc(w, this); });
+  });
+}
+function fileProc(w, inp) {
+  if (!inp.files || !inp.files[0]) return;
+  var st = document.getElementById('st_' + w);
+  st.textContent = '處理中…';
+  var img = new Image();
+  img.onload = function () {
+    if (Math.max(img.width, img.height) < 1000) {
+      st.textContent = '照片太小、請重拍';
+      alert('解析度不足，請靠近一點、對焦後重拍'); inp.value = ''; return;
+    }
+    applyCopy(img, w);
+    inp.value = '';
+  };
+  img.src = URL.createObjectURL(inp.files[0]);
+}
+function applyCopy(src, w) {
+  var st = document.getElementById('st_' + w);
+  var mx = Math.max(src.width, src.height);
+  var sc = mx > 1600 ? 1600 / mx : 1;
+  var w2 = Math.round(src.width * sc), h2 = Math.round(src.height * sc);
+  var c = document.createElement('canvas'); c.width = w2; c.height = h2;
+  var x = c.getContext('2d');
+  x.drawImage(src, 0, 0, w2, h2);
+  var da = x.getImageData(0, 0, w2, h2), d = da.data, sum = 0, i, g;
+  for (i = 0; i < d.length; i += 4) {
+    g = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+    sum += g;
+    g = (g - 128) * 1.45 + 134;
+    if (g < 0) g = 0; if (g > 255) g = 255;
+    d[i] = g; d[i + 1] = g; d[i + 2] = g;
+  }
+  var avg = sum / (d.length / 4);
+  if (avg < 42) { st.textContent = '照片太暗、請重拍'; alert('光線不足，請在亮一點的地方重拍'); return; }
+  x.putImageData(da, 0, 0);
+  x.save(); x.translate(w2 / 2, h2 / 2); x.rotate(-0.32);
+  x.fillStyle = 'rgba(120,120,120,0.16)';
+  x.font = 'bold ' + Math.round(w2 / 22) + 'px sans-serif';
+  x.textAlign = 'center';
+  var wm = '僅供 ' + WM_YEAR + ' 年度報稅申報使用';
+  for (var yy = -h2; yy <= h2; yy += Math.round(w2 / 5)) x.fillText(wm, 0, yy);
+  x.restore();
+  var du = c.toDataURL('image/jpeg', 0.82);
+  IDS[w] = du.slice(du.indexOf(',') + 1);
+  var pv = document.getElementById('pv_' + w);
+  pv.src = du; pv.style.display = 'block';
+  document.getElementById('ph_' + w).style.display = 'none';
+  st.textContent = '看得清楚再送出；不清楚請點圖重拍';
+}
+
+/* ── 簽名板（共用 pad.js）；有筆跡才開放送出 ── */
+var PAD = null;
+function initPad() {
+  var cv = document.getElementById('cv');
+  if (!cv) return;
+  PAD = initYzPad(cv);
+  var arm = function () { var b = document.getElementById('go'); if (b) b.disabled = false; };
+  cv.addEventListener('pointerdown', arm);
+  cv.addEventListener('touchstart', arm, { passive: true });
+  cv.addEventListener('mousedown', arm);
+}
+function cvClear() {
+  if (PAD) PAD.clear();
+  var b = document.getElementById('go');
+  if (b) b.disabled = true;
+}
+/* 簽名輸出前縮到寬 700px 內：高 DPR 手機 canvas 像素大、base64 會撞伺服器字元上限（contract-sign 教訓） */
+function padPng() {
+  var cv = document.getElementById('cv');
+  var maxW = 700;
+  if (cv.width <= maxW) return PAD.dataUrl();
+  var t = document.createElement('canvas');
+  t.width = maxW; t.height = Math.round(cv.height * maxW / cv.width);
+  t.getContext('2d').drawImage(cv, 0, 0, t.width, t.height);
+  return t.toDataURL('image/png');
+}
+
+/* ── 送出：fetch POST（respond=json）→ 失敗改全頁表單 POST（respond 缺＝伺服器回結果頁；LINE 內建瀏覽器擋跨網域 fetch 的備援） ── */
+function postFields(action, extra) {
+  var f = { publicSign: 'paystub', token: TOKEN, action: action };
+  for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) f[k] = extra[k];
+  return f;
+}
+function postJson(fields) {
+  var body = new URLSearchParams();
+  for (var k in fields) if (Object.prototype.hasOwnProperty.call(fields, k)) body.append(k, fields[k]);
+  body.append('respond', 'json');
+  return fetch(API + '?publicSign=paystub&respond=json', { method: 'POST', body: body, redirect: 'follow' })
+    .then(function (r) { return r.json(); });
+}
+function postForm(fields) {
+  var f = document.createElement('form');
+  f.method = 'POST';
+  f.action = API + '?publicSign=paystub';
+  for (var k in fields) {
+    if (!Object.prototype.hasOwnProperty.call(fields, k)) continue;
+    var i = document.createElement('input');
+    i.type = 'hidden'; i.name = k; i.value = fields[k];
+    f.appendChild(i);
+  }
+  document.body.appendChild(f);
+  f.submit();
+}
+
+function doConfirm() {
+  if (D && D.needId && (!IDS.front || !IDS.back)) { alert('請先拍攝身分證正面與背面'); return; }
+  if (!PAD || !PAD.hasInk()) { alert('請先簽名'); return; }
+  var btn = document.getElementById('go'), rep = document.getElementById('rep');
+  btn.disabled = true; btn.textContent = '送出中…';
+  if (rep) rep.disabled = true;
+  var extra = { sig: padPng() };
+  if (IDS.front) extra.idFront = IDS.front;
+  if (IDS.back) extra.idBack = IDS.back;
+  var fields = postFields('confirm', extra);
+  postJson(fields)
+    .then(function (res) {
+      if (res && res.ok) {
+        var merged = {};
+        for (var k in D) if (Object.prototype.hasOwnProperty.call(D, k)) merged[k] = D[k];
+        merged.status = '已簽';
+        merged.signedAt = res.signedAt || D.signedAt || '';
+        merged.signedPdfId = res.signedPdfId || D.signedPdfId || '';
+        merged.laborReceipt = res.laborReceipt || null;
+        renderSigned(merged);
+      } else {
+        btn.disabled = false; btn.textContent = '確認無誤並簽名';
+        if (rep) rep.disabled = false;
+        alert((res && res.msg) || '送出失敗，請再試一次');
+      }
+    })
+    .catch(function () { postForm(fields); });
+}
+
+function doReport() {
+  var cat = (document.getElementById('repcat').value || '').trim();
+  var msg = (document.getElementById('repmsg').value || '').trim();
+  if (!cat) { alert('請選擇問題分類'); return; }
+  if (!msg && cat === '其他') { alert('請簡單說明問題'); return; }
+  var btn = document.getElementById('repgo');
+  btn.disabled = true; btn.textContent = '送出中…';
+  var fields = postFields('report', { category: cat, message: msg });
+  postJson(fields)
+    .then(function (res) {
+      if (res && res.ok) {
+        var merged = { reportMessage: msg };
+        renderReported(merged);
+      } else {
+        btn.disabled = false; btn.textContent = '送出回報';
+        alert((res && res.msg) || '送出失敗，請再試一次');
+      }
+    })
+    .catch(function () { postForm(fields); });
+}
+</script>
+</body>
+</html>
