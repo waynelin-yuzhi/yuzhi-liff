@@ -128,8 +128,8 @@ input[type=range]{width:100%;accent-color:var(--moss)}
           <button id="setBottom">設為下半</button>
         </div>
         <div class="thumbs">
-          <figure><canvas id="thTop" width="270" height="480"></canvas><figcaption id="capTop">上半・未選</figcaption></figure>
-          <figure><canvas id="thBot" width="270" height="480"></canvas><figcaption id="capBot">下半・未選</figcaption></figure>
+          <figure><canvas id="thTop" width="270" height="240"></canvas><figcaption id="capTop">上半・未選</figcaption></figure>
+          <figure><canvas id="thBot" width="270" height="240"></canvas><figcaption id="capBot">下半・未選</figcaption></figure>
         </div>
       </div>
       <div class="field">
@@ -188,6 +188,14 @@ const NOPAINT=new Set(["vertical","split","text"]);
 // （＝JPEG 雜訊底），沿用舊的整格置中則差 45 灰階＝他會在錯的那塊畫面上挑鏡頭。
 // 改 A_band.py 的 ZOOM／FOCUS_Y／--darken 預設要同步這三個值（兩支是同一組取景的兩個實作）。
 const TXT_ZOOM=1.15, TXT_FOCUS=0.92, TXT_DIM=0.20, DEEP="#2E3A2A";
+// 上下對比兩格的**取景與壓暗**（不是版面）＝出圖端 D_split.py CONFIG 的四顆常數，本頁照它換算一次。
+// D_split 每一格是母幀（1080×1920）整寬、從 y=600（上半）／y=700（下半）起裁 960 高
+// ＝每格 1080×960、比例 9:8；舊寫法是 270×480 整格置中的 9:16，形狀與取景兩樣都不對，
+// 他會在錯的那塊畫面上挑鏡頭（跟純文字版踩過的同一顆）。改 D_split.py 的
+// top_crop_y／bottom_crop_y／裁切高／overlay_alpha 要同步這四個值（兩支是同一組取景的兩個實作）。
+// 未重現：D_split 還會把兩格的白平衡與亮度統一（wb_strength 0.35／lum_target 0.10），
+// 所以兩格之間的明暗關係以成圖為準，本縮圖只保證形狀與取景。
+const SPL_TOP_Y=600, SPL_BOT_Y=700, SPL_CROP_H=960, SPL_MOTHER_H=1920, SPL_DIM=0.30;
 const isMag=()=>style.startsWith("mag-");
 const needsText=()=>isMag()||NOPAINT.has(style);
 
@@ -250,6 +258,8 @@ const SPEC={
     上下各半、中間一條米紙細線；兩格畫面先統一白平衡與亮度、再壓一層均勻深苔（不加飽和）；
     分割線上一條苔綠色帶放主標＋英文小字；上下角標各一處、品牌小字一處。<br>
     上半 ${topSec===null?"<b>未選</b>":topSec.toFixed(2)+"s"}　下半 ${botSec===null?"<b>未選</b>":botSec.toFixed(2)+"s"}<br>
+    兩格縮圖<b>已照出圖端取景與壓暗</b>（整寬、上半從母幀 y=600／下半 y=700 起裁 960 高、往深苔壓暗 30%）；
+    兩格之間的明暗還會在出圖端統一白平衡與亮度，那一步以成圖為準。<br>
     <span class="why">這一欄是文字說明、不是預覽——版面由出圖端畫，出好會回一張真圖到這頁。</span>`,
   text:()=>`<b>純文字壓實景</b>（出圖端 <code>cover-set/A_band.py --no-band</code>）<br>
     畫面中央略偏上三列米紙字：系列小字／中文主標（明體 Black、字級自動塞滿 900 寬）／英文副標；
@@ -306,9 +316,11 @@ function draw(){
 function grabHalf(which){
   if(!vid.videoWidth){ $("stat").textContent="影片還沒載好"; $("stat").className="stat bad"; return; }
   const c=$(which==="top"?"thTop":"thBot"), g=c.getContext("2d");
-  const sc=Math.max(c.width/vid.videoWidth, c.height/vid.videoHeight);
-  const sw=c.width/sc, sh=c.height/sc;
-  g.drawImage(vid,(vid.videoWidth-sw)/2,(vid.videoHeight-sh)/2,sw,sh,0,0,c.width,c.height);
+  // 照 D_split.py 取景：整寬、從 y=600／700 起裁 960 高（母幀高 1920，非 1920 的來源等比換算）
+  const k=vid.videoHeight/SPL_MOTHER_H;
+  const sy=(which==="top"?SPL_TOP_Y:SPL_BOT_Y)*k, sh=SPL_CROP_H*k;
+  g.drawImage(vid,0,sy,vid.videoWidth,sh,0,0,c.width,c.height);
+  g.fillStyle=DEEP; g.globalAlpha=SPL_DIM; g.fillRect(0,0,c.width,c.height); g.globalAlpha=1;
   const t=+vid.currentTime.toFixed(2);
   if(which==="top"){ topSec=t; $("capTop").textContent="上半・"+t.toFixed(2)+"s"; }
   else { botSec=t; $("capBot").textContent="下半・"+t.toFixed(2)+"s"; }
