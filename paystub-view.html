@@ -31,6 +31,18 @@
   .idph { font-size: 12.5px; color: #8a8275; padding: 22px 0; }
   .idst { font-size: 10.5px; color: #B8893E; margin-top: 4px; line-height: 1.4; }
   .idslot img { width: 100%; border-radius: 6px; display: block; }
+  #cam { display: none; position: fixed; inset: 0; background: #000; z-index: 50; }
+  #camv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #camwin { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 88vw; max-width: 500px; aspect-ratio: 1.586; box-shadow: 0 0 0 200vmax rgba(0,0,0,.55); border-radius: 10px; }
+  .cnr { position: absolute; width: 26px; height: 26px; border: 0 solid #fff; }
+  .cnr.tl { left: -2px; top: -2px; border-left-width: 3.5px; border-top-width: 3.5px; border-top-left-radius: 10px; }
+  .cnr.tr { right: -2px; top: -2px; border-right-width: 3.5px; border-top-width: 3.5px; border-top-right-radius: 10px; }
+  .cnr.bl { left: -2px; bottom: -2px; border-left-width: 3.5px; border-bottom-width: 3.5px; border-bottom-left-radius: 10px; }
+  .cnr.br { right: -2px; bottom: -2px; border-right-width: 3.5px; border-bottom-width: 3.5px; border-bottom-right-radius: 10px; }
+  #camhint { position: absolute; left: 0; right: 0; top: calc(40% + 30vw); margin-top: 34px; text-align: center; color: #fff; font-size: 14px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  #cambar { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 22px calc(26px + env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: center; }
+  #camshoot { flex: 1; padding: 15px; background: #5F6E58; color: #fff; border: none; border-radius: 10px; font-size: 16.5px; font-weight: 700; }
+  #camcancel { padding: 15px 18px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 10px; font-size: 14.5px; }
   canvas.pad { width: 100%; height: 170px; background: #fff; border: 1.5px dashed #C9C2B0; border-radius: 8px; touch-action: none; }
   .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
   .btn[disabled] { opacity: .55; cursor: default; }
@@ -60,6 +72,12 @@
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取薪資單</p></div></div>
   <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">paystub-view</span></div>
+</div>
+<div id="cam">
+  <video id="camv" autoplay playsinline muted></video>
+  <div id="camwin"><span class="cnr tl"></span><span class="cnr tr"></span><span class="cnr bl"></span><span class="cnr br"></span></div>
+  <div id="camhint">將身分證平放、對齊四角框內</div>
+  <div id="cambar"><button id="camcancel" type="button">取消</button><button id="camshoot" type="button">拍攝</button></div>
 </div>
 <script src="pad.js?v=2"></script>
 <script>
@@ -289,12 +307,64 @@ function closeZoom() {
 /* ── 身分證影本：點格子開系統相機、或從相簿選；管線同 labor-sign ── */
 function bindIdSlots() {
   ['front', 'back'].forEach(function (w) {
-    document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { document.getElementById('f_' + w).click(); });
+    document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { idPick(w); });
     document.getElementById('al_' + w).addEventListener('click', function () { document.getElementById('g_' + w).click(); });
     document.getElementById('f_' + w).addEventListener('change', function () { fileProc(w, this); });
     document.getElementById('g_' + w).addEventListener('change', function () { fileProc(w, this); });
   });
 }
+function idPick(w) {
+  if (!IN_LINE && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) openCam(w);
+  else document.getElementById('f_' + w).click();
+}
+
+/* ── 即時相機：四角框對位 → 拍攝即裁切框內、背景不入鏡（Wayne 原設計、同 labor-sign） ── */
+var CAM_SIDE = '', CAM_STREAM = null;
+var camEl = document.getElementById('cam'), camV = document.getElementById('camv');
+document.getElementById('camcancel').addEventListener('click', closeCam);
+document.getElementById('camshoot').addEventListener('click', shootCam);
+function openCam(w) {
+  CAM_SIDE = w;
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+    .then(function (stream) {
+      CAM_STREAM = stream;
+      camV.srcObject = stream;
+      camEl.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    })
+    .catch(function () { document.getElementById('f_' + w).click(); });
+}
+function closeCam() {
+  camEl.style.display = 'none';
+  document.body.style.overflow = '';
+  if (CAM_STREAM) { CAM_STREAM.getTracks().forEach(function (t) { t.stop(); }); CAM_STREAM = null; }
+  camV.srcObject = null;
+}
+function shootCam() {
+  if (!CAM_STREAM || !camV.videoWidth) return;
+  var vw = camV.videoWidth, vh = camV.videoHeight;
+  var ew = window.innerWidth, eh = window.innerHeight;
+  var er = ew / eh, vr = vw / vh;
+  var sw, sh, sx, sy;   /* object-fit:cover 之下、畫面上實際可見的原始像素區 */
+  if (vr > er) { sh = vh; sw = vh * er; sx = (vw - sw) / 2; sy = 0; }
+  else { sw = vw; sh = vw / er; sx = 0; sy = (vh - sh) / 2; }
+  var r = document.getElementById('camwin').getBoundingClientRect();
+  var kx = sw / ew, ky = sh / eh;
+  var cx = sx + r.left * kx, cy = sy + r.top * ky, cw = r.width * kx, ch = r.height * ky;
+  var c = document.createElement('canvas');
+  c.width = Math.round(cw); c.height = Math.round(ch);
+  c.getContext('2d').drawImage(camV, cx, cy, cw, ch, 0, 0, c.width, c.height);
+  var side = CAM_SIDE;
+  closeCam();
+  if (c.width < 500) {
+    var st = document.getElementById('st_' + side);
+    st.textContent = '解析度不足、請改用系統相機';
+    document.getElementById('f_' + side).click();
+    return;
+  }
+  applyCopy(c, side);
+}
+
 function fileProc(w, inp) {
   if (!inp.files || !inp.files[0]) return;
   var st = document.getElementById('st_' + w);
