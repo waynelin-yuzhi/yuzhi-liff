@@ -26,6 +26,17 @@
   .btn[disabled] { opacity: .55; }
   .ghost { display: block; width: 100%; padding: 12px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 10px; }
   .clr { background: none; border: none; color: #8a8275; font-size: 13px; text-decoration: underline; padding: 8px; cursor: pointer; }
+  .tabs { display: flex; gap: 8px; }
+  .tab { flex: 1; padding: 11px 6px; border: 1.5px solid #C9C2B0; border-radius: 8px; background: #fff; color: #4A4A45; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; line-height: 1.4; }
+  .tab.on { background: #5F6E58; border-color: #5F6E58; color: #FFFCF5; }
+  .steps { margin: 12px 0 4px; padding-left: 22px; font-size: 13.5px; color: #4A4A45; line-height: 1.8; }
+  .steps li { margin-bottom: 6px; }
+  .steps b { color: #5F6E58; }
+  .fslot { border: 1.5px dashed #C9C2B0; border-radius: 8px; padding: 8px; text-align: center; cursor: pointer; background: #fff; margin-top: 12px; }
+  .fph { font-size: 13.5px; color: #8a8275; padding: 20px 0; line-height: 1.6; }
+  .fph span { font-size: 11.5px; color: #A09A8C; }
+  .fst { font-size: 11.5px; color: #B8893E; margin-top: 4px; line-height: 1.4; }
+  .fslot img { width: 100%; max-height: 260px; object-fit: contain; border-radius: 6px; display: block; }
   .done-card { background: #FFFCF5; border-radius: 12px; padding: 30px 22px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
   .done-card h2 { color: #5F6E58; font-size: 18px; margin: 0 0 8px; }
   .done-card h2.err { color: #A4392D; }
@@ -127,23 +138,64 @@ function render(d) {
         ? '<div class="card" style="text-align:center;font-size:13px;color:#5A5750;line-height:1.9">核對明細無誤後，於期限內匯款即可，無需簽回。<br>金額或內容有疑問，回 LINE 對話告訴我們就好。</div>'
           + '<div style="text-align:center;margin:4px 0 26px"><a href="#" id="showsign" style="font-size:12px;color:#A09A8C">公司內部需要簽收確認？點此簽名</a></div>'
         : '')
-    + '<div id="signwrap"' + (isStmt ? ' style="display:none"' : '') + '>'
+    + '<div id="confirmwrap"' + (isStmt ? ' style="display:none"' : '') + '>'
+    + (isStmt ? '' : '<div class="card" style="padding:14px 16px">'
+        + '<div style="font-size:11px;color:#A09A8C;letter-spacing:.15em;margin-bottom:10px">確認本報價單，請擇一完成</div>'
+        + '<div class="tabs"><button type="button" class="tab on" id="tabA">A　線上簽名</button><button type="button" class="tab" id="tabB">B　公司用印回傳</button></div></div>')
+    + '<div id="signwrap">'
     + '<div class="card"><div class="decl" style="margin:0">' + (isStmt ? '本人已收到並確認本請款單內容。' : '本人已詳閱並同意本報價單內容，確認簽回。') + '</div></div>'
     + '<div class="card"><div class="field"><label>簽署人姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
     + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
     + '<button class="btn" id="go">' + (isStmt ? '確認簽收' : '確認簽回') + '</button></div>'
+    + '</div>'
+    + (isStmt ? '' : stampBlock(d))
     + '</div>';
   initPad();
   fitDoc();
   loadDoc(d);
   window.addEventListener('resize', fitDoc);
   var ss = document.getElementById('showsign');
-  if (ss) ss.addEventListener('click', function (ev) { ev.preventDefault(); document.getElementById('signwrap').style.display = ''; ss.parentNode.style.display = 'none'; initPad(); });
+  if (ss) ss.addEventListener('click', function (ev) { ev.preventDefault(); document.getElementById('confirmwrap').style.display = ''; ss.parentNode.style.display = 'none'; initPad(); });
   document.getElementById('clr').addEventListener('click', cvClear);
   document.getElementById('go').addEventListener('click', doSign);
   var bk = document.getElementById('bkcopy');
   if (bk) bk.addEventListener('click', copyAcct);
+  var tA = document.getElementById('tabA'), tB = document.getElementById('tabB');
+  if (tA && tB) {
+    tA.addEventListener('click', function () { switchTab('A'); });
+    tB.addEventListener('click', function () { switchTab('B'); });
+    document.getElementById('stampslot').addEventListener('click', function () { document.getElementById('stampfile').click(); });
+    document.getElementById('stampfile').addEventListener('change', function () { stampProc(this); });
+    document.getElementById('stampgo').addEventListener('click', doStamp);
+  }
+}
+
+/* B 公司用印回傳：下載 PDF 蓋章、回到本頁上傳、完成（Wayne 2026-09 定向；A 線上簽名照舊） */
+function stampBlock(d) {
+  return '<div id="stampwrap" style="display:none">'
+    + '<div class="card"><div class="decl" style="margin:0">貴公司若需以公司章確認本報價單，請依下列三步完成。</div>'
+    + '<ol class="steps">'
+    + '<li><b>下載 PDF 蓋章</b><br>下載報價單，列印後蓋公司章，或以電子用印。</li>'
+    + '<li><b>回到本頁上傳</b><br>拍照或掃描成 PDF，在下方選擇檔案。</li>'
+    + '<li><b>完成</b><br>按「上傳用印檔」，本單即完成簽回。</li></ol>'
+    + (d.pdfUrl
+        ? '<a class="ghost" id="stampdl" href="' + esc(d.pdfUrl) + '" target="_blank">下載報價單 PDF</a>'
+        : '<div style="font-size:12.5px;color:#8a6a2e;background:#FBF3E4;border:1px solid #E3C990;border-radius:8px;padding:10px 12px;margin-top:10px">PDF 尚未產生，請回 LINE 對話向植間索取。</div>')
+    + '</div>'
+    + '<div class="card"><div class="field"><label>用印公司或經手人（選填）</label><input id="stampsigner" maxlength="60" placeholder="未填則記為「客戶用印」" autocomplete="organization"></div>'
+    + '<div class="fslot" id="stampslot"><img id="stamppv" style="display:none" alt="">'
+    + '<div id="stampph" class="fph">點此選擇用印檔<br><span>PDF 或照片，8MB 以內</span></div><div id="stampst" class="fst"></div></div>'
+    + '<input type="file" id="stampfile" accept="application/pdf,image/*" style="display:none">'
+    + '<button class="btn" id="stampgo" style="margin-top:12px">上傳用印檔</button></div>'
+    + '</div>';
+}
+function switchTab(which) {
+  var a = which === 'A';
+  document.getElementById('tabA').className = 'tab' + (a ? ' on' : '');
+  document.getElementById('tabB').className = 'tab' + (a ? '' : ' on');
+  document.getElementById('signwrap').style.display = a ? '' : 'none';
+  document.getElementById('stampwrap').style.display = a ? 'none' : '';
 }
 
 /* 文件載入：優先 srcdoc 同源內嵌（不連 Google、登入帳號也不會白框；高度可精準量測）；無 docHtml 才退回舊 src 路徑 */
@@ -151,7 +203,7 @@ function loadDoc(d) {
   var fr = document.getElementById('docfr');
   if (!fr) return;
   window.__docHtml = d.docHtml || '';
-  window.__pdfUrl = d.pdfUrl || '';
+  window.__pdfUrl = d.pdfViewUrl || d.pdfUrl || '';   /* 無 docHtml 時點文件開檢視頁；pdfUrl 是直接下載（給「下載報價單 PDF」鈕） */
   var wrap = document.getElementById('docwrap');
   if (wrap) wrap.addEventListener('click', openDocZoom);
   var zb = document.getElementById('zoombtn');
@@ -339,6 +391,107 @@ function pollCheck(btn, n) {
       if (n < 3) setTimeout(function () { pollCheck(btn, n + 1); }, 2500);
       else { btn.disabled = false; btn.textContent = '確認簽回'; alert('送出可能沒有成功，請再按一次'); }
     });
+}
+
+/* ── B 用印檔前處理：圖片縮到長邊 1600 轉 JPEG 0.85；PDF 原檔直送、8MB 以上擋 ── */
+var STAMP = null;
+var STAMP_MAX = 8 * 1024 * 1024;
+function stampProc(inp) {
+  var f = inp.files && inp.files[0];
+  if (!f) return;
+  var st = document.getElementById('stampst'), ph = document.getElementById('stampph'), pv = document.getElementById('stamppv');
+  STAMP = null;
+  pv.style.display = 'none'; ph.style.display = '';
+  var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+  var isImg = /^image\//.test(f.type || '');
+  if (!isPdf && !isImg) { st.textContent = '只接受 PDF 或照片檔，請重新選擇'; inp.value = ''; return; }
+  if (f.size > STAMP_MAX) { st.textContent = '檔案超過 8MB，請壓縮後再上傳，或改用手機拍照'; inp.value = ''; return; }
+  st.textContent = '處理中…';
+  if (isPdf) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      var du = String(rd.result || '');
+      STAMP = { b64: du.slice(du.indexOf(',') + 1), mime: 'application/pdf', name: f.name || 'stamped.pdf' };
+      ph.innerHTML = 'PDF　' + esc(f.name) + '<br><span>' + Math.round(f.size / 1024) + ' KB</span>';
+      st.textContent = '按下方「上傳用印檔」送出；選錯請點此重選';
+    };
+    rd.onerror = function () { st.textContent = '檔案讀取失敗，請重新選擇'; inp.value = ''; };
+    rd.readAsDataURL(f);
+    return;
+  }
+  var img = new Image();
+  var url = URL.createObjectURL(f);
+  img.onload = function () {
+    URL.revokeObjectURL(url);
+    var mx = Math.max(img.width, img.height);
+    var sc = mx > 1600 ? 1600 / mx : 1;
+    var w2 = Math.round(img.width * sc), h2 = Math.round(img.height * sc);
+    var c = document.createElement('canvas'); c.width = w2; c.height = h2;
+    var x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, w2, h2);
+    x.drawImage(img, 0, 0, w2, h2);
+    var du = c.toDataURL('image/jpeg', 0.85);
+    STAMP = { b64: du.slice(du.indexOf(',') + 1), mime: 'image/jpeg', name: String(f.name || 'stamped').replace(/\.[^.]+$/, '') + '.jpg' };
+    pv.src = du; pv.style.display = 'block'; ph.style.display = 'none';
+    st.textContent = '看得清楚再上傳；不清楚請點圖重選';
+    inp.value = '';
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); st.textContent = '照片讀取失敗，請改選其他檔案'; inp.value = ''; };
+  img.src = url;
+}
+
+function stampFields() {
+  var name = (document.getElementById('stampsigner').value || '').trim() || '客戶用印';
+  return { publicSign: 'quote', hash: HASH, mode: 'upload', fileB64: STAMP.b64, mime: STAMP.mime, fileName: STAMP.name, signerName: name };
+}
+function doStamp() {
+  if (!STAMP) { alert('請先選擇用印檔'); return; }
+  var btn = document.getElementById('stampgo');
+  var restore = function () { btn.disabled = false; btn.textContent = '上傳用印檔'; };
+  btn.disabled = true; btn.textContent = '上傳中…';
+  var fields = stampFields();
+  var body = new URLSearchParams();
+  Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
+  body.append('respond', 'json');
+  fetch(API + '?publicSign=quote&respond=json', { method: 'POST', body: body, redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (res && res.status === 'success') {
+        doneCard('已收到用印檔，本單已成交', (res.signedAt ? res.signedAt + '　' : '') + '用印檔已留存、植間已收到通知，感謝您！',
+          false, (res.confirmUrl ? '<a class="ghost" href="' + esc(res.confirmUrl) + '" target="_blank">下載已簽回報價單</a>' : '') + bankBlock());
+      }
+      else { restore(); alert((res && res.msg) || '上傳失敗、請再試一次'); }
+    })
+    .catch(function () { stampCheckDone(fields, restore, 0); });
+}
+/* fetch 斷在回應階段時伺服器可能已收檔成交（大檔比簽名 PNG 常見）：先查狀態，已簽回就直接完成；沒有才走全頁表單備援（重送會被「已完成簽回」擋成紅字） */
+function stampCheckDone(fields, restore, n) {
+  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.alreadySigned) {
+        doneCard('已收到用印檔，本單已成交', (d.signedAt ? d.signedAt + '　' : '') + '用印檔已留存、植間已收到通知，感謝您！',
+          false, (d.signedPdfUrl ? '<a class="ghost" href="' + esc(d.signedPdfUrl) + '" target="_blank">下載已簽回報價單</a>' : '') + bankBlock());
+      }
+      else if (n < 2) { setTimeout(function () { stampCheckDone(fields, restore, n + 1); }, 2500); }
+      else { stampFormPost(fields, restore); }
+    })
+    .catch(function () { stampFormPost(fields, restore); });
+}
+/* 備援：fetch 被瀏覽器擋時改全頁表單 POST（不帶 respond、伺服器回純 HTML 結果頁），同 labor-sign 慣例 */
+function stampFormPost(fields, restore) {
+  var f = document.createElement('form');
+  f.method = 'POST';
+  f.action = API + '?publicSign=quote';
+  f.target = '_top';
+  Object.keys(fields).forEach(function (k) {
+    var i = document.createElement('textarea');
+    i.name = k; i.value = fields[k]; i.style.display = 'none';
+    f.appendChild(i);
+  });
+  document.body.appendChild(f);
+  f.submit();
+  setTimeout(restore, 8000);
 }
 </script>
 </body>
