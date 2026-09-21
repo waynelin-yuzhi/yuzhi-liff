@@ -223,7 +223,7 @@
   var OPEN_GEN = 0;
   function openThread(cid, quiet) {
     var gen = ++OPEN_GEN;
-    cur = cid; dirty = false; if (!quiet) { ATT.draft = []; ATT.compose = []; } renderList();
+    cur = cid; dirty = false; if (!quiet) { ATT.draft = []; ATT.compose = []; } renderList(); try { sessionStorage.setItem('lastCid', cid); } catch (eS) {}
     document.body.classList.add('view-thread'); if (!quiet) window.scrollTo(0, 0);
     var c0 = LIST.filter(function (x) { return x.contactId === cid; })[0];
     document.getElementById('head').innerHTML = '<b>' + esc(c0 ? c0.name : '') + '</b>';
@@ -295,7 +295,24 @@
   function renderThread(t) {
     if (!t || !t.ok) { document.getElementById('head').innerHTML = '<span class="muted">讀取失敗 ' + esc(t && t.error) + '</span>'; return; }
     var typeLabel = t.type === 'group' ? '群組' : (t.type === 'room' ? '聊天室' : '個人');
-    document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill">' + esc(t.clientId) + '</span>' : '<span class="pill wait">未綁</span>') + (t.role && t.role !== '客戶' ? '<span class="pill">' + esc(t.role) + '</span>' : '') + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>');
+    document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill">' + esc(t.clientId) + '</span>' : '<span class="pill wait">未綁</span>') + (t.role && t.role !== '客戶' ? '<span class="pill">' + esc(t.role) + '</span>' : '') + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>') + '<button class="btn ghost small" id="threadReload" title="只重抓這位">↻ 這段</button><button class="btn ghost small" id="redraftBtn">請客服擬回覆</button><span class="small muted" id="headMsg"></span>';
+    document.getElementById('threadReload').onclick = function () { var cidH = cur; loadList(function () { if (cur === cidH) openThread(cidH, true); }, true); };
+    document.getElementById('redraftBtn').onclick = function () {
+      var cidH = cur, btn = this;
+      if (THREAD && THREAD.pending && !confirm('這位已有待核可稿（' + THREAD.pending.id + '），重擬會取代它。要繼續嗎？')) return;
+      busy(btn, true, '擬稿中'); document.getElementById('headMsg').textContent = '約 30 到 60 秒';
+      api({ redraft: { contactId: cidH } }).then(function (r) {
+        if (!r || r.ok === false) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
+        var runId = r.runId || '', tries = 0; (function waitR() {
+          if (cur !== cidH) return; tries++;
+          api({ inbox: { op: 'lastRun', contactId: cidH, runId: runId } }).then(function (x) {
+            var run = x && x.run; if (run && run.id === runId && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('headMsg').textContent = '稿好了'; loadList(function () { openThread(cidH, true); }, true); return; }
+            if (run && run.id === runId && (run.status === 'error' || run.status === 'skipped' || run.status === 'preview')) { busy(btn, false); document.getElementById('headMsg').textContent = '沒有擬出來：' + (run.skip_reason || '引擎回報錯誤'); return; }
+            if (tries < 20) setTimeout(waitR, 6000); else { busy(btn, false); document.getElementById('headMsg').textContent = '還在擬，稍後按 ↻'; }
+          }).catch(function () { if (tries < 20) setTimeout(waitR, 6000); });
+        })();
+      }).catch(function (e) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + e.message; });
+    };
     renderDossier(t);
     var chat = document.getElementById('chat');
     chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m, i) {
@@ -472,10 +489,10 @@
       document.querySelectorAll('#findRes [data-find]').forEach(function (b) { b.onclick = function () { document.getElementById('findRes').innerHTML = ''; openThread(b.getAttribute('data-find')); }; });
     });
   };
-  document.getElementById('back').onclick = function () { document.body.classList.remove('view-thread'); cur = null; THREAD = null; renderList(); window.scrollTo(0, 0); };
+  document.getElementById('back').onclick = function () { document.body.classList.remove('view-thread'); cur = null; THREAD = null; try { sessionStorage.removeItem('lastCid'); } catch (eS) {} renderList(); window.scrollTo(0, 0); };
   document.getElementById('reload').onclick = function () { refreshAll(true); };
   var BOOTED = false;
-  function boot() { if (BOOTED) return; BOOTED = true; loadList(function () { if (INIT_CID) { openThread(INIT_CID); INIT_CID = ''; } }); poll(); }
+  function boot() { if (BOOTED) return; BOOTED = true; var startCid = INIT_CID || ''; if (INIT_CID) { try { history.replaceState(null, '', location.pathname); } catch (eH) {} } if (!startCid) { try { startCid = sessionStorage.getItem('lastCid') || ''; } catch (eS) {} } loadList(function () { if (startCid) { openThread(startCid); INIT_CID = ''; } }); poll(); }
   sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
 </script>
 </body>
