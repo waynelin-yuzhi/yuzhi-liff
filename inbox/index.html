@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>植間 - 對話收件匣</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
 <style>
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--brick:#8a4a30;--amber:#F3E9C9;--tint:#EEF2E6}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -138,13 +138,14 @@
       var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
       payload.tenant = CFG.tenant;
       return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload) });
-    }).then(function (res) { if (res.status === 401 || res.status === 403) { showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error) stat('失敗：' + (d.detail || d.error)); return d; });
   }
   var OPS = { csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
   function run(fn, args, ok, fail) {
     var p;
     if (fn === 'csInboxContacts') p = api({ app: { op: 'contacts', sinceHours: (args[0] || {}).sinceHours, fresh: !!(args[0] || {}).fresh } });
-    else if (fn === 'csInboxThread') p = api({ app: { op: 'thread', contactId: args[0], fresh: args[1] !== false } });
+    else if (fn === 'csInboxThread') p = api({ app: { op: 'thread', contactId: args[0], fresh: args[1] === true } });
+    else if (fn === 'csInboxUpload') p = api({ media: { op: 'upload', name: (args[0] || {}).name, mime: (args[0] || {}).mime, b64: (args[0] || {}).b64 } });
     else if (fn === 'csInboxClientSearch') p = api({ app: { op: 'clientSearch', q: args[0] } });
     else if (fn === 'csInboxFind') p = api({ app: { op: 'find', q: args[0] } });
     else if (OPS[fn]) p = api({ app: Object.assign({ op: OPS[fn] }, args[0] || {}) });
@@ -156,7 +157,7 @@
   document.getElementById('gateSend').onclick = function () {
     var em = document.getElementById('gateEmail').value.trim(); if (!em) return; var btn = this; busy(btn, true, '寄送中');
     sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) {
-      busy(btn, false); document.getElementById('gateMsg').textContent = r.error ? ('寄送失敗：' + r.error.message) : '驗證碼已寄到信箱（一小時內有效）';
+      busy(btn, false); document.getElementById('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）';
       if (!r.error) document.getElementById('otpRow').style.display = 'flex';
     });
   };
@@ -164,7 +165,7 @@
     var em = document.getElementById('gateEmail').value.trim(), code = document.getElementById('gateCode').value.trim(); if (!em || !code) return; var btn = this; busy(btn, true, '確認中');
     sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) {
       busy(btn, false);
-      if (r.error) { document.getElementById('gateMsg').textContent = '驗證失敗：' + r.error.message; return; }
+      if (r.error) { document.getElementById('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; }
       showApp(); boot();
     });
   };
