@@ -402,7 +402,7 @@
       var at = document.getElementById('briefAt').value; at = at ? at.replace('T', ' ') : '';
       if (at && new Date(at.replace(' ', 'T')).getTime() < Date.now() + 60000) { document.getElementById('briefMsg').textContent = '預定時間要在現在之後'; return; }
       if (THREAD && THREAD.pending && !confirm('這位還有一份待核可稿（' + THREAD.pending.id + '），主動擬稿會取代它。要繼續嗎？')) return;
-      if (THREAD && (THREAD.scheduled || []).length && !confirm('這位已有排程要發的訊息（' + THREAD.scheduled.map(function (x) { return x.at; }).join('、') + '）。主動擬稿不會動它，兩則都會發。要繼續嗎？')) return;
+      if (THREAD && (THREAD.scheduled || []).length) { alert('這位已有排程要發的訊息（' + THREAD.scheduled.map(function (x) { return x.at; }).join('、') + '），請先到「已排程」取消，再主動擬稿。'); return; }
       var btn = this, cid0 = cur; busy(btn, true, '擬稿中'); document.getElementById('briefMsg').textContent = '客服擬稿中，約 30 到 60 秒';
       api({ compose: { contactId: cid0, brief: brief, scheduleAt: at } }).then(function (r) {
         if (!r || r.ok === false) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
