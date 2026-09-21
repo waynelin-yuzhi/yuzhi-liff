@@ -245,7 +245,7 @@
     }).catch(function (e) { if (cur !== cid || gen !== OPEN_GEN) return; stat('失敗：' + e.message); });
   }
   // 重畫前後保住使用者正在打的內容與展開狀態（審查 High 1）
-  function snapInputs() { var o = { open: !!(document.querySelector('#dossier details') && document.querySelector('#dossier details').open), draftId: (THREAD && THREAD.pending) ? THREAD.pending.id : '' }; ['manualText', 'manualAt', 'bindQ', 'roleNote', 'memNote', 'fbText', 'selfText', 'selfText2', 'sendAt', 'draft'].forEach(function (id) { var e = document.getElementById(id); if (e) o[id] = e.value; }); var wb = document.getElementById('manualWhenBox'); o.whenOn = !!(wb && wb.classList.contains('on')); return o; }
+  function snapInputs() { var o = { open: !!(document.querySelector('#dossier details') && document.querySelector('#dossier details').open), draftId: (THREAD && THREAD.pending) ? THREAD.pending.id : '' }; ['manualText', 'manualAt', 'bindQ', 'roleNote', 'memNote', 'fbText', 'selfText', 'selfText2', 'sendAt', 'draft', 'briefText', 'briefAt'].forEach(function (id) { var e = document.getElementById(id); if (e) o[id] = e.value; }); var wb = document.getElementById('manualWhenBox'); o.whenOn = !!(wb && wb.classList.contains('on')); return o; }
   function restoreInputs(o) { Object.keys(o).forEach(function (id) { if (id === 'open' || id === 'whenOn' || id === 'draftId') return; if (id === 'draft' && !(THREAD && THREAD.pending && THREAD.pending.id === o.draftId)) return; var e = document.getElementById(id); if (e && (id in o)) e.value = o[id]; }); var d = document.querySelector('#dossier details'); if (d && o.open) d.open = true; var wb = document.getElementById('manualWhenBox'); if (wb && o.whenOn) wb.classList.add('on'); }
   function loadExtras(cid, t, gen) {
     var memberIds = (t.members || []).filter(function (u) { return u && u.kind === 'in' && u.userId; }).map(function (u) { return u.userId; });
@@ -328,6 +328,7 @@
     var p = t.pending, pb = document.getElementById('pendBox');
     if (!p && t.extrasLoaded === false) { pb.innerHTML = '<div class="small muted" style="margin-top:8px"><span class="spin"></span>查看有沒有待核可稿</div>'; return; }
     if (!p && t.extrasFailed) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">待核可稿讀取失敗，按 ↻ 重試</div>'; return; }
+    if (!p && /^already_submitted/.test(String((t.dossier || {}).skipReason || ''))) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上一稿已處理；客戶再來訊時引擎會重新判斷。你也可以直接在下面回，或請客服擬一則主動訊息。</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
     var nCards = (p.cards || []).length || Number(p.attach) || 0;
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>會一起發的小卡 ' + nCards + ' 張（點開載入）</summary><div id="cardsBox" class="small muted">載入中…</div></details>' : '');
@@ -363,10 +364,30 @@
       + '<div class="att" id="att-compose"></div>'
       + '<div class="actions"><button class="btn main" id="manualSend"' + (t.extrasLoaded === false ? ' disabled' : '') + '>' + (t.extrasLoaded === false ? '確認稿件中' : '發送') + '</button><button class="btn ghost" id="manualWhen">預定時間</button><button class="btn ghost attbtn" id="manualAtt">附加照片／檔案</button></div>'
       + '<div class="when" id="manualWhenBox"><span>預定送出</span><input type="datetime-local" id="manualAt"><span class="muted">留空＝現在送</span></div>'
-      + '<div class="secondary">' + (t.manual ? '<button class="btn link" id="manualOff">恢復 AI 擬稿</button>' : '<button class="btn link" id="manualOn">此客戶改手動（暫停 AI）</button>') + '<button class="btn link" id="btnSelf2">補記我在 LINE 回過的話</button><span class="small muted" id="manualMsg"></span></div>' + selfBoxHtml('2', false) + '</div>';
+      + '<div class="secondary">' + (t.manual ? '<button class="btn link" id="manualOff">恢復 AI 擬稿</button>' : '<button class="btn link" id="manualOn">此客戶改手動（暫停 AI）</button>') + '<button class="btn link" id="btnSelf2">補記我在 LINE 回過的話</button><button class="btn link" id="btnBrief">請客服擬稿</button><span class="small muted" id="manualMsg"></span></div>' + selfBoxHtml('2', false)
+      + '<div class="fbbox" id="briefBox"><div class="small" style="margin-bottom:4px">要主動聯繫這位？寫下要傳達的事和要求，客服會用這位的檔案與語氣規則擬一則訊息，進到待核可讓你改、核可或排程。</div><textarea id="briefText" rows="3" placeholder="例：提醒週二下午兩點半場勘，請他們先拍好要放植栽的位置，語氣輕鬆，最後問那天是否方便"></textarea><div class="row"><span class="small">預定送出</span><input type="datetime-local" id="briefAt"><span class="small muted">留空＝核可後即發</span></div><div class="row"><button class="btn" id="briefSend">請客服擬稿</button><button class="btn ghost small" id="briefCancel">取消</button><span class="small muted" id="briefMsg"></span></div></div></div>';
     document.getElementById('manualWhen').onclick = function () { document.getElementById('manualWhenBox').classList.toggle('on'); };
     renderAtt('compose'); document.getElementById('manualAtt').onclick = function () { pickAtt('compose', 'manualMsg'); };
     document.getElementById('manualSend').onclick = function () { var txt = document.getElementById('manualText').value.trim(); if (!txt && !ATT.compose.length) return; if (!txt) txt = ATT.compose.some(function (a) { return a.kind !== 'image'; }) ? '附上檔案，請查收。' : '附上照片，請查收。'; var mAt = document.getElementById('manualAt').value; mAt = mAt ? mAt.replace('T', ' ') : ''; if (!confirm((mAt ? '排程在 ' + mAt + ' 發給客戶？' : '現在發給客戶？') + '\n\n' + txt)) return; busy(this, true, '發送中'); var nImg = ATT.compose.filter(function (a) { return a.kind === 'image'; }).length; var sendManual = function (force, forceApId, forceSched) { run('csInboxReply', [{ contactId: cur, text: txt, scheduleAt: mAt, attachments: ATT.compose, force: !!force, forceApId: forceApId || '', forceScheduled: !!forceSched }], function (r) { var sb0 = document.getElementById('manualSend'); if (r && r.error === 'pending_exists') { busy(sb0, false); if (confirm('這位還有一份待核可稿（' + (r.apId || '') + '）。要收掉那份稿、改送你打的這段嗎？')) { busy(sb0, true, '發送中'); sendManual(true, r.apId, forceSched); } return; } if (r && r.error === 'pending_changed') { busy(sb0, false); alert('那份待核可稿剛被處理過了，畫面已更新，請再確認一次'); loadList(null, true); openThread(cur, true); return; } if (r && r.error === 'scheduled_exists') { busy(sb0, false); var when = (r.items || []).map(function (x) { return x.at; }).join('、'); if (confirm('這位已有排程要發的訊息（' + when + '）。仍要現在再送這段嗎？')) { busy(sb0, true, '發送中'); sendManual(force, forceApId, true); } return; } if (r.ok) { ATT.compose = []; renderAtt('compose'); } if (r.ok && !r.scheduled && nImg && Number(r.imagesSent || 0) < nImg) r.note = '照片只送出 ' + Number(r.imagesSent || 0) + '/' + nImg + '，其餘失敗'; document.getElementById('manualMsg').textContent = r.ok ? ((r.scheduled ? ('已排程 ' + r.sendAt) : '已送出') + (r.note ? '（' + r.note + '）' : '')) : ('失敗：' + (r.detail || r.error)); if (r.ok) { document.getElementById('manualText').value = ''; setTimeout(function () { refreshAll(true); }, 1500); } else busy(document.getElementById('manualSend'), false); }); }; sendManual(false, '', false); };
+    document.getElementById('btnBrief').onclick = function () { document.getElementById('briefBox').classList.toggle('on'); };
+    document.getElementById('briefCancel').onclick = function () { document.getElementById('briefBox').classList.remove('on'); };
+    document.getElementById('briefSend').onclick = function () {
+      var brief = document.getElementById('briefText').value.trim(); if (!brief) { document.getElementById('briefMsg').textContent = '先寫要傳達的事'; return; }
+      var at = document.getElementById('briefAt').value; at = at ? at.replace('T', ' ') : '';
+      var btn = this, cid0 = cur, t0 = Date.now(); busy(btn, true, '擬稿中'); document.getElementById('briefMsg').textContent = '客服擬稿中，約 30 到 60 秒';
+      api({ compose: { contactId: cid0, brief: brief, scheduleAt: at } }).then(function (r) {
+        if (!r || r.ok === false) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
+        var tries = 0; (function waitRun() {
+          if (cur !== cid0) return; tries++;
+          api({ inbox: { op: 'lastRun', contactId: cid0 } }).then(function (x) {
+            var run = x && x.run; var fresh = run && (new Date(run.created_at).getTime() >= t0 - 60000);
+            if (fresh && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('briefMsg').textContent = '稿好了，往上看待核可'; loadList(function () { openThread(cid0, true); }, true); return; }
+            if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); document.getElementById('briefMsg').textContent = '沒有擬出來：' + (run.skip_reason || run.error || '?'); return; }
+            if (tries < 20) setTimeout(waitRun, 6000); else { busy(btn, false); document.getElementById('briefMsg').textContent = '還在擬，稍後按 ↻ 看'; }
+          }).catch(function () { if (tries < 20) setTimeout(waitRun, 6000); });
+        })();
+      }).catch(function (e) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + e.message; });
+    };
     var on = document.getElementById('manualOn'); if (on) on.onclick = function () { setManual(true); };
     var off = document.getElementById('manualOff'); if (off) off.onclick = function () { setManual(false); };
     bindSelf('2', 'btnSelf2', '', 'manualMsg');
@@ -418,7 +439,7 @@
         var overviewDue = (Date.now() - (OV.at || 0)) > 30000;
         var afterList = function () {
           if (!cid0 || cur !== cid0 || !THREAD) return;
-          var typing = ['manualText', 'fbText', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt', 'memNote', 'roleNote', 'draft'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '') !== String(e.defaultValue || '')); });
+          var typing = ['manualText', 'fbText', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt', 'memNote', 'roleNote', 'draft', 'briefText'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '') !== String(e.defaultValue || '')); });
           var ae = document.activeElement, tc = document.querySelector('.threadcard'); var editing = !!(ae && /^(TEXTAREA|INPUT|SELECT)$/.test(ae.tagName) && tc && tc.contains(ae));
           if (dirty || ATT.draft.length || ATT.compose.length || typing || editing) return;
           var threadChanged = String(ch.threadTs || '') !== String(THREAD.lastMsgTs || '') || Number(ch.threadCount || 0) !== Number(THREAD.msgTotal || 0);
