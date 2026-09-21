@@ -300,16 +300,18 @@
     document.getElementById('redraftBtn').onclick = function () {
       var cidH = cur, btn = this;
       if (THREAD && THREAD.pending && !confirm('這位已有待核可稿（' + THREAD.pending.id + '），重擬會取代它。要繼續嗎？')) return;
+      if (THREAD && (THREAD.scheduled || []).length) { alert('這位已有排程要發的訊息（' + THREAD.scheduled.map(function (x) { return x.at; }).join('、') + '），請先到「已排程」取消，再重擬。'); return; }
+      if (THREAD && !THREAD.awaitingReply && !confirm('客戶最後一則已經回過了。仍要針對客戶上一則訊息擬一份新回覆嗎？')) return;
       busy(btn, true, '擬稿中'); document.getElementById('headMsg').textContent = '約 30 到 60 秒';
       api({ redraft: { contactId: cidH } }).then(function (r) {
         if (!r || r.ok === false) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
         var runId = r.runId || '', tries = 0; (function waitR() {
           if (cur !== cidH) return; tries++;
           api({ inbox: { op: 'lastRun', contactId: cidH, runId: runId } }).then(function (x) {
-            var run = x && x.run; if (run && run.id === runId && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('headMsg').textContent = '稿好了'; loadList(function () { openThread(cidH, true); }, true); return; }
-            if (run && run.id === runId && (run.status === 'error' || run.status === 'skipped' || run.status === 'preview')) { busy(btn, false); document.getElementById('headMsg').textContent = '沒有擬出來：' + (run.skip_reason || '引擎回報錯誤'); return; }
-            if (tries < 20) setTimeout(waitR, 6000); else { busy(btn, false); document.getElementById('headMsg').textContent = '還在擬，稍後按 ↻'; }
-          }).catch(function () { if (tries < 20) setTimeout(waitR, 6000); });
+            var run = x && x.run; var hm0 = document.getElementById('headMsg'); if (run && run.id === runId && run.status && run.status !== 'error' && run.ap_id) { if (hm0) hm0.textContent = '稿好了'; loadList(function () { openThread(cidH, true); }, true); return; }
+            if (run && run.id === runId && (run.status === 'error' || run.status === 'skipped' || run.status === 'preview')) { busy(btn, false); if (hm0) hm0.textContent = '沒有擬出來：' + (run.skip_reason || '引擎回報錯誤'); return; }
+            if (tries < 20) setTimeout(waitR, 6000); else { busy(btn, false); var hm = document.getElementById('headMsg'); if (hm) hm.textContent = '還在擬，稍後按 ↻'; }
+          }).catch(function () { if (tries < 20) setTimeout(waitR, 6000); else busy(btn, false); });
         })();
       }).catch(function (e) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + e.message; });
     };
@@ -326,7 +328,7 @@
     }).join('');
     chat.scrollTop = chat.scrollHeight;
     var cidP = t.contactId;
-    var loadPhoto = function (btn, auto) { var mid = btn.getAttribute('data-mid'), i = Number(btn.getAttribute('data-i')); btn.textContent = auto ? '載入中' : '載入中…'; btn.disabled = true; api({ media: { op: 'fetch', contactId: cidP, msgId: mid } }).then(function (r) { if (cur !== cidP) return; if (!r || !r.ok || !r.url) { btn.textContent = r && r.error === 'too_large' ? '照片太大' : '照片已無法取得'; return; } var m = (THREAD.messages || [])[i]; if (m) m.img = r.url; var wrap = btn.parentNode; if (wrap) wrap.innerHTML = '<a href="' + esc(r.url) + '" target="_blank"><img src="' + esc(r.preview || r.url) + '" style="max-width:220px;border-radius:6px;display:block"></a>'; }).catch(function () { btn.textContent = '載入失敗'; btn.disabled = false; }); };
+    var loadPhoto = function (btn, auto) { var midT = btn.getAttribute('data-mid'); if (auto && PHOTO_TRIED[midT]) return; PHOTO_TRIED[midT] = 1; var mid = btn.getAttribute('data-mid'), i = Number(btn.getAttribute('data-i')); btn.textContent = auto ? '載入中' : '載入中…'; btn.disabled = true; api({ media: { op: 'fetch', contactId: cidP, msgId: mid } }).then(function (r) { if (cur !== cidP) return; if (!r || !r.ok || !r.url || !STORAGE_OK.test(r.url)) { btn.textContent = r && r.error === 'too_large' ? '照片太大' : '照片已無法取得'; btn.disabled = false; return; } var m = (THREAD.messages || [])[i]; if (m) m.img = r.url; var wrap = btn.parentNode; if (wrap) wrap.innerHTML = '<a href="' + esc(r.url) + '" target="_blank"><img src="' + esc(r.preview || r.url) + '" style="max-width:220px;border-radius:6px;display:block"></a>'; }).catch(function () { btn.textContent = '載入失敗'; btn.disabled = false; }); };
     var btns = Array.prototype.slice.call(chat.querySelectorAll('.photoLoad')); btns.forEach(function (b) { b.onclick = function () { loadPhoto(b, false); }; });
     // 最近一輪（我方上一則之後）的客戶照片自動載，最多 3 張
     var msgsA = t.messages || []; var start = 0; for (var k = msgsA.length - 1; k >= 0; k--) { if (msgsA[k].side === 'out' || msgsA[k].side === 'owner' || msgsA[k].side === 'employee') { start = k + 1; break; } }
@@ -406,12 +408,12 @@
         if (!r || r.ok === false) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
         var runId = r.runId || ''; var tries = 0; (function waitRun() {
           if (cur !== cid0) return; tries++;
-          api({ inbox: { op: 'lastRun', contactId: cid0 } }).then(function (x) {
+          api({ inbox: { op: 'lastRun', contactId: cid0, runId: runId } }).then(function (x) {
             var run = x && x.run; var fresh = !!(run && runId && run.id === runId);
             if (fresh && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('briefMsg').textContent = '稿好了，往上看待核可'; document.getElementById('briefText').value = ''; document.getElementById('briefBox').classList.remove('on'); loadList(function () { openThread(cid0, true); }, true); return; }
             if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); var why = run.skip_reason || (String(run.error || '').indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : '引擎回報錯誤，請再試一次'); document.getElementById('briefMsg').textContent = '沒有擬出來：' + why; return; }
-            if (tries < 20) setTimeout(waitRun, 6000); else { busy(btn, false); document.getElementById('briefMsg').textContent = '還在擬，稍後按 ↻ 看'; }
-          }).catch(function () { if (tries < 20) setTimeout(waitRun, 6000); });
+            if (tries < 20) setTimeout(waitRun, 6000); else { busy(btn, false); var bm = document.getElementById('briefMsg'); if (bm) bm.textContent = '還在擬，稍後按 ↻ 看'; }
+          }).catch(function () { if (tries < 20) setTimeout(waitRun, 6000); else busy(btn, false); });
         })();
       }).catch(function (e) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + e.message; });
     };
@@ -419,7 +421,7 @@
     var off = document.getElementById('manualOff'); if (off) off.onclick = function () { setManual(false); };
     bindSelf('2', 'btnSelf2', '', 'manualMsg');
   }
-  var ATT = { draft: [], compose: [] }, attTarget = 'draft';
+  var ATT = { draft: [], compose: [] }, attTarget = 'draft', PHOTO_TRIED = {};
   var STORAGE_OK = /^https:\/\/ytlakkxrbookftluulbo\.supabase\.co\/storage\//;
   function attHtml(list, who) { return list.map(function (a, i) { return '<div class="it">' + (a.kind === 'image' && STORAGE_OK.test(a.preview || a.url) ? '<img src="' + esc(a.preview || a.url) + '">' : '<div style="padding:6px 4px">檔案 ' + esc(a.name || 'PDF') + '</div>') + '<button class="x" data-att="' + who + '" data-i="' + i + '" title="移除">×</button></div>'; }).join(''); }
   function renderAtt(who) { var box = document.getElementById('att-' + who); if (!box) return; box.innerHTML = attHtml(ATT[who], who); box.querySelectorAll('[data-att]').forEach(function (b) { b.onclick = function () { ATT[who].splice(Number(b.getAttribute('data-i')), 1); renderAtt(who); }; }); }
