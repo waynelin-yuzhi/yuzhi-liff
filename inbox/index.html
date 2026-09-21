@@ -178,7 +178,7 @@
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + e.message); });
-    OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
+    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 30000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
   function mergeOverview() {
@@ -400,23 +400,27 @@
     stat(on ? '切換手動中' : '恢復 AI 中', true);
     run('csInboxManual', [{ contactId: cur, on: on }], function (r) { if (r.ok) refreshAll(true); else stat('失敗：' + (r.detail || r.error)); });
   }
-  function poll() {
+  var LAST_LIST_TS = null;
+  function poll() {   // 加速第四段：先問引擎「有沒有變」（毫秒級）；沒變就什麼都不抓；總覽每 30 秒更新一次
     if (pollTimer) clearTimeout(pollTimer);
     pollTimer = setTimeout(function () {
-      loadList(function () {
-        var typing = ['manualText', 'fbText', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt', 'memNote', 'roleNote'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '').trim()); });
-        var ae = document.activeElement, tc = document.querySelector('.threadcard'); var editing = !!(ae && /^(TEXTAREA|INPUT|SELECT)$/.test(ae.tagName) && tc && tc.contains(ae));
-        if (cur && !dirty && !ATT.draft.length && !ATT.compose.length && !typing && !editing) {
-          var cid0 = cur;
-          api({ inbox: { op: 'thread', contactId: cid0, limit: 120 } }).then(function (t) {
-            if (cur !== cid0 || !THREAD || !t || t.ok === false) return;
-            var newP = ((LIST.filter(function (c) { return c.contactId === cid0; })[0] || {}).pending || {}).id || '', oldP = THREAD.pending ? THREAD.pending.id : '';
-            var lastTs = function (x) { var m = (x.messages || []); return m.length ? String(m[m.length - 1].ts || '') : ''; };
-            var oldN = (THREAD.messages || []).length, newN = (t.messages || []).length;
-            if (oldN !== newN || lastTs(THREAD) !== lastTs(t) || THREAD.engineManual !== !!t.manual || (THREAD.extrasLoaded && !THREAD.extrasFailed && newP !== oldP)) openThread(cid0, true);
-          }).catch(function () {});
-        }
-      });
+      var cid0 = cur;
+      api({ inbox: { op: 'changes', contactId: cid0 || '' } }).then(function (ch) {
+        if (!ch || ch.ok === false) throw new Error('changes');
+        var listChanged = LAST_LIST_TS === null || ch.listTs !== LAST_LIST_TS; LAST_LIST_TS = ch.listTs;
+        var overviewDue = (Date.now() - (OV.at || 0)) > 30000;
+        var afterList = function () {
+          if (!cid0 || cur !== cid0 || !THREAD) return;
+          var typing = ['manualText', 'fbText', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt', 'memNote', 'roleNote'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '').trim()); });
+          var ae = document.activeElement, tc = document.querySelector('.threadcard'); var editing = !!(ae && /^(TEXTAREA|INPUT|SELECT)$/.test(ae.tagName) && tc && tc.contains(ae));
+          if (dirty || ATT.draft.length || ATT.compose.length || typing || editing) return;
+          var threadChanged = String(ch.threadTs || '') !== String(THREAD.lastMsgTs || '') || Number(ch.threadCount || 0) !== Number(THREAD.msgTotal || 0);
+          var newP = ((LIST.filter(function (c) { return c.contactId === cid0; })[0] || {}).pending || {}).id || '', oldP = THREAD.pending ? THREAD.pending.id : '';
+          var pendChanged = THREAD.extrasLoaded && !THREAD.extrasFailed && newP !== oldP;
+          if (threadChanged || pendChanged) openThread(cid0, true);
+        };
+        if (listChanged || overviewDue || !LIST.length) loadList(afterList, false); else afterList();
+      }).catch(function () { loadList(); });
       poll();
     }, 15000);
   }
