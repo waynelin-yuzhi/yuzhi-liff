@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>植間 - 對話收件匣</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--brick:#8a4a30;--amber:#F3E9C9;--tint:#EEF2E6}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",-apple-system,sans-serif;padding:12px;max-width:1200px;margin:0 auto;overflow-x:hidden}
+  h1{font-size:18px;letter-spacing:.05em;margin:8px 0 2px}
+  .sub{font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:10px}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:12px}
+  .wrap>*{min-width:0}
+  @media(max-width:820px){.wrap{grid-template-columns:1fr} body{padding:8px}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0;overflow:hidden}
+  .btn{padding:9px 14px;background:var(--moss);color:var(--paper);border:none;border-radius:4px;font-family:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+  .btn.ghost{background:#fff;color:var(--moss);border:1px solid var(--moss)}
+  .btn.small{padding:5px 10px;font-size:12px}
+  .btn.link{background:none;border:none;color:var(--moss);padding:4px 6px;font-size:12px;text-decoration:underline}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.busy{opacity:.6;pointer-events:none}
+  .tabs{display:flex;gap:4px;margin:6px 0 8px}
+  .tabs button{flex:1;padding:8px 4px;border:1px solid var(--line);background:#fff;border-radius:4px;font-family:inherit;font-size:13px;color:var(--body);cursor:pointer}
+  .tabs button.on{background:var(--moss);color:#fff;border-color:var(--moss)}
+  .find{display:flex;gap:6px;margin-bottom:8px}
+  .find input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line);font-family:inherit;font-size:13px}
+  .ct{padding:10px 8px;border-bottom:1px solid var(--line);cursor:pointer;overflow:hidden}
+  .ct.on{background:#E9EDE3}
+  .ct.hot{background:#FBF9F1}
+  .ct .n{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .ct .m{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .ct .t{font-size:11px;color:var(--muted);float:right}
+  .pill{display:inline-block;font-size:11px;padding:1px 7px;border:1px solid #D9D3C4;border-radius:10px;color:#5F6E58;vertical-align:middle;font-weight:400}
+  .pill.ap{background:var(--tint);border-color:#B9C4AE}
+  .pill.man{background:var(--amber);border-color:#E0CF93;color:#7a5a12}
+  .pill.wait{background:#F7E4DC;border-color:#E4B9A8;color:var(--brick)}
+  .sched{padding:8px;border-bottom:1px solid var(--line);font-size:13px}
+  .head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .head b{font-size:17px}
+  .back{display:none}
+  @media(max-width:820px){
+    body.view-thread .listcard{display:none}
+    body:not(.view-thread) .threadcard{display:none}
+    .back{display:inline-block}
+  }
+  #contacts{max-height:72vh;overflow-y:auto}
+  @media(max-width:820px){#contacts{max-height:none}}
+  details.dossier{margin:8px 0;border:1px solid var(--line);border-radius:6px;background:#FBF9F3}
+  details.dossier summary{padding:8px 10px;font-size:13px;cursor:pointer;color:var(--moss);font-weight:600;list-style:none}
+  details.dossier summary::-webkit-details-marker{display:none}
+  details.dossier .in{padding:0 10px 10px;font-size:12px;color:var(--body);overflow-wrap:anywhere}
+  details.dossier ul{margin-left:16px}
+  details.dossier h4{font-size:12px;color:var(--muted);margin:10px 0 4px;font-weight:600}
+  .chat{min-height:200px;max-height:46vh;overflow-y:auto;overflow-x:hidden;padding:6px 2px;border-top:1px solid var(--line);margin-top:6px}
+  .msg{max-width:84%;margin:8px 0;padding:9px 12px;border-radius:12px;font-size:14px;white-space:pre-wrap;line-height:1.5;overflow-wrap:anywhere;word-break:break-word}
+  .msg.in{margin-right:auto;background:#fff;border:1px solid var(--line);border-bottom-left-radius:3px}
+  .msg.out{margin-left:auto;background:#DCE8D3;border-bottom-right-radius:3px}
+  .msg.event{max-width:100%;background:none;color:var(--muted);font-size:11px;text-align:center;padding:2px}
+  .msg .who{font-size:11px;color:var(--muted);margin-bottom:2px}
+  .msg.out .who,.msg.out .ts{text-align:right}
+  .msg .ts{font-size:11px;color:var(--muted);margin-top:3px}
+  .draft{margin-top:10px;padding:12px;border:1px solid #B9C4AE;background:#F6F8F2;border-radius:8px}
+  .draft .lab{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .draft textarea{width:100%;padding:10px;border:1px solid var(--line);font-family:inherit;font-size:15px;line-height:1.5;background:#fff;color:var(--ink);border-radius:6px}
+  .draft details{margin-top:6px;font-size:12px;color:var(--body)}
+  .draft details summary{cursor:pointer;color:var(--moss)}
+  .draft .brief{white-space:pre-wrap;padding:6px 8px;background:var(--tint);border-radius:6px;margin-top:4px}
+  .actions{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .actions .btn.main{flex:1 1 140px;font-size:15px;padding:12px}
+  .secondary{display:flex;gap:2px;margin-top:4px;flex-wrap:wrap;align-items:center}
+  .when{display:none;margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--body)}
+  .when.on{display:flex}
+  .when input{font-size:13px;padding:5px 6px;border:1px solid var(--line);font-family:inherit}
+  .fbbox{display:none;margin-top:8px;padding:10px;background:var(--amber);border-radius:6px}
+  .fbbox.on{display:block}
+  .fbbox textarea{width:100%;padding:8px;border:1px solid #E0CF93;font-family:inherit;font-size:14px;background:#fff}
+  .stars{display:inline-flex;gap:2px;margin-right:8px;vertical-align:middle}
+  .stars button{background:none;border:0;padding:0 1px;font-size:18px;line-height:1;cursor:pointer;color:#D9D3C4}
+  .stars button.on{color:#C9A227}
+  .compose{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .compose textarea{width:100%;padding:10px;border:1px solid var(--line);font-family:inherit;font-size:15px;line-height:1.5;background:#fff;border-radius:6px}
+  .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .small{font-size:12px}.muted{color:var(--muted)}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #D9D3C4;border-top-color:var(--moss);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .loading{padding:18px 8px;color:var(--muted);font-size:13px}
+  .att{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .att .it{position:relative;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;font-size:11px;color:var(--body);max-width:120px}
+  .att .it img{display:block;max-width:110px;max-height:90px;border-radius:4px}
+  .att .it .x{position:absolute;top:-6px;right:-6px;background:var(--brick);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;cursor:pointer;padding:0}
+  .attbtn{font-size:12px}
+  input[type=text],select{padding:6px 8px;border:1px solid var(--line);font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="gate" class="card" style="max-width:420px;margin:40px auto;display:none">
+  <h2 style="font-size:16px;margin-bottom:8px">進入收件匣</h2>
+  <div class="small muted" style="margin-bottom:10px">輸入信箱收一組驗證碼；同一台裝置通過一次就會記住。</div>
+  <div class="row"><input type="email" id="gateEmail" placeholder="waynelin@yuzhiplant.com" style="flex:1;min-width:200px;padding:8px 10px;border:1px solid var(--line);font-family:inherit;font-size:14px"><button class="btn" id="gateSend">寄驗證碼</button></div>
+  <div class="row" id="otpRow" style="display:none"><input type="text" id="gateCode" placeholder="信裡的 8 碼" inputmode="numeric" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--line);font-family:inherit;font-size:14px"><button class="btn" id="gateVerify">進入</button></div>
+  <div class="small muted" id="gateMsg" style="margin-top:8px"></div>
+</div>
+<div id="app" style="display:none">
+<h1>對話收件匣 <button class="btn link" id="leave" style="float:right">離開</button></h1>
+<div class="sub"><span id="counts"></span> <span id="stat"></span></div>
+<div class="wrap">
+  <div class="card listcard">
+    <div class="tabs"><button data-tab="todo" class="on">待處理</button><button data-tab="sched">已排程</button><button data-tab="all">全部</button><button data-tab="staff">員工</button></div>
+    <div class="find"><input type="text" id="findQ" placeholder="開新對話：輸入客戶、廠商或員工名稱"><button class="btn ghost small" id="findBtn">找</button><button class="btn ghost small" id="reload" title="重新整理">↻</button></div>
+    <div id="findRes"></div>
+    <div id="batch"></div>
+    <div id="contacts"></div>
+  </div>
+  <div class="card threadcard">
+    <div class="head"><button class="btn ghost small back" id="back">← 清單</button><span id="head"><span class="muted small">左邊選一位聯絡人</span></span></div>
+    <div id="dossier"></div>
+    <div class="chat" id="chat"></div>
+    <div id="pendBox"></div>
+    <div id="manualBox"></div>
+  </div>
+</div>
+</div>
+<input type="file" id="attFile" accept="image/jpeg,image/png,application/pdf" style="display:none">
+<script>
+  var INIT_CID = (new URLSearchParams(location.search).get('cid') || '').replace(/[^A-Za-z0-9]/g, '').substring(0, 40);
+  var cur = null, LIST = [], OV = { pending: [], scheduled: [] }, THREAD = null, dirty = false, pollTimer = null, fbStars = 0, TAB = 'todo';
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function stat(t, busyFlag) { document.getElementById('stat').innerHTML = (busyFlag ? '<span class="spin"></span>' : '') + esc(t || ''); }
+  function loadingBox(id, t) { document.getElementById(id).innerHTML = '<div class="loading"><span class="spin"></span>' + esc(t) + '</div>'; }
+  function busy(btn, on, label) { if (!btn) return; if (on) { btn.setAttribute('data-label', btn.textContent); btn.innerHTML = '<span class="spin"></span>' + esc(label || '處理中'); btn.classList.add('busy'); } else { btn.textContent = btn.getAttribute('data-label') || btn.textContent; btn.classList.remove('busy'); } }
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4', engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/cs-run', tenant: 'yuzhi' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  function api(payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      payload.tenant = CFG.tenant;
+      return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  var OPS = { csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
+  function run(fn, args, ok, fail) {
+    var p;
+    if (fn === 'csInboxContacts') p = api({ app: { op: 'contacts', sinceHours: (args[0] || {}).sinceHours, fresh: !!(args[0] || {}).fresh } });
+    else if (fn === 'csInboxThread') p = api({ app: { op: 'thread', contactId: args[0], fresh: args[1] !== false } });
+    else if (fn === 'csInboxClientSearch') p = api({ app: { op: 'clientSearch', q: args[0] } });
+    else if (fn === 'csInboxFind') p = api({ app: { op: 'find', q: args[0] } });
+    else if (OPS[fn]) p = api({ app: Object.assign({ op: OPS[fn] }, args[0] || {}) });
+    else p = Promise.reject(new Error('unknown ' + fn));
+    p.then(function (r) { ok(r); }).catch(function (e) { stat('失敗：' + e.message); if (fail) fail(e); });
+  }
+  function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; }
+  function showApp() { document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
+  document.getElementById('gateSend').onclick = function () {
+    var em = document.getElementById('gateEmail').value.trim(); if (!em) return; var btn = this; busy(btn, true, '寄送中');
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) {
+      busy(btn, false); document.getElementById('gateMsg').textContent = r.error ? ('寄送失敗：' + r.error.message) : '驗證碼已寄到信箱（一小時內有效）';
+      if (!r.error) document.getElementById('otpRow').style.display = 'flex';
+    });
+  };
+  document.getElementById('gateVerify').onclick = function () {
+    var em = document.getElementById('gateEmail').value.trim(), code = document.getElementById('gateCode').value.trim(); if (!em || !code) return; var btn = this; busy(btn, true, '確認中');
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) {
+      busy(btn, false);
+      if (r.error) { document.getElementById('gateMsg').textContent = '驗證失敗：' + r.error.message; return; }
+      showApp(); boot();
+    });
+  };
+  document.getElementById('leave').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
+  function refreshAll(fresh) { loadList(null, fresh); if (cur) openThread(cur); }
+
+  function loadList(cb, fresh) {
+    if (!LIST.length) loadingBox('contacts', '載入聯絡人');
+    stat('更新中', true);
+    run('csInboxOverview', [], function (o) { OV = o || OV; renderList(); });
+    run('csInboxContacts', [{ fresh: !!fresh }], function (d) { LIST = d.contacts || []; renderList(); stat(''); if (cb) cb(); });
+  }
+  function renderList() {
+    var pendN = (OV.pending || []).length, schedN = (OV.scheduled || []).length;
+    document.getElementById('counts').textContent = '待核可 ' + pendN + '　已排程 ' + schedN;
+    document.querySelectorAll('.tabs button').forEach(function (b) { b.className = b.getAttribute('data-tab') === TAB ? 'on' : ''; });
+    var box = document.getElementById('contacts'), batch = document.getElementById('batch'); batch.innerHTML = '';
+    if (TAB === 'sched') {
+      var sc = OV.scheduled || [];
+      box.innerHTML = sc.length ? sc.map(function (x) { return '<div class="sched"><span class="pill">' + esc(x.at) + '</span> <b style="cursor:pointer" data-open="' + esc(x.contactId) + '">' + esc(x.name) + '</b><div class="small muted" style="margin:3px 0">' + esc(x.text) + '</div><button class="btn link cancel" data-kind="' + esc(x.kind) + '" data-id="' + esc(x.id || '') + '" data-row="' + esc(x.row || '') + '" data-cid="' + esc(x.contactId) + '">取消排程</button></div>'; }).join('') : '<div class="small muted" style="padding:8px">（沒有已排程的訊息）</div>';
+      box.querySelectorAll('[data-open]').forEach(function (el) { el.onclick = function () { openThread(el.getAttribute('data-open')); }; });
+      box.querySelectorAll('.cancel').forEach(function (b) { b.onclick = function () { if (!confirm('取消這則排程？')) return; busy(b, true, '取消中'); run('csInboxCancelScheduled', [{ kind: b.getAttribute('data-kind'), id: b.getAttribute('data-id'), row: Number(b.getAttribute('data-row')) || 0, contactId: b.getAttribute('data-cid') }], function () { refreshAll(true); }); }; });
+      return;
+    }
+    var rows = LIST.filter(function (c) { return TAB === 'staff' ? c.isEmp : (TAB === 'all' ? !c.isEmp : (!c.isEmp && (c.pending || c.awaitingReply || c.manual))); });
+    if (TAB === 'todo') rows.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || String(b.lastTs || '').localeCompare(String(a.lastTs || '')); });
+    if (TAB === 'todo') {
+      var withAt = (OV.pending || []).filter(function (p) { return p.publishAt; });
+      if (withAt.length > 1) { batch.innerHTML = '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
+        document.getElementById('sendAll').onclick = function () { if (!confirm('把 ' + withAt.length + ' 則待核可稿全部照各自的建議時間排程送出？')) return; busy(this, true, '送出中'); var i = 0; (function next() { if (i >= withAt.length) { refreshAll(true); return; } var p = withAt[i++]; run('csInboxSend', [{ apId: p.id, contactId: p.contactId, publishAt: p.publishAt }], next, next); })(); }; }
+    }
+    box.innerHTML = rows.length ? rows.map(function (c) {
+      var badges = (c.pending ? '<span class="pill ap">待核可</span>' : '') + (c.awaitingReply && !c.pending ? '<span class="pill wait">待回</span>' : '') + (c.scheduled ? '<span class="pill ap">排程 ' + c.scheduled + '</span>' : '') + (c.manual ? '<span class="pill man">手動</span>' : '') + (c.role && c.role !== '員工' ? '<span class="pill">' + esc(c.role) + '</span>' : '');
+      var snip = c.pending ? '稿：' + esc((OV.pending.filter(function (p) { return p.contactId === c.contactId; })[0] || {}).text || c.pending.title) : esc(c.lastText || '');
+      return '<div class="ct' + (cur === c.contactId ? ' on' : '') + (c.pending ? ' hot' : '') + '" data-cid="' + esc(c.contactId) + '"><span class="t">' + esc((c.lastTs || '').slice(5, 16)) + '</span><div class="n">' + esc(c.name) + badges + '</div><div class="m">' + snip + '</div></div>';
+    }).join('') : '<div class="small muted" style="padding:8px">（這一頁沒有東西）</div>';
+    box.querySelectorAll('.ct').forEach(function (el) { el.onclick = function () { openThread(el.getAttribute('data-cid')); }; });
+  }
+
+  function openThread(cid) {
+    cur = cid; dirty = false; ATT.draft = []; ATT.compose = []; renderList();
+    document.body.classList.add('view-thread'); window.scrollTo(0, 0);
+    var c0 = LIST.filter(function (x) { return x.contactId === cid; })[0];
+    document.getElementById('head').innerHTML = '<b>' + esc(c0 ? c0.name : '') + '</b>';
+    ['dossier', 'pendBox', 'manualBox'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
+    loadingBox('chat', '載入對話與客戶檔案');
+    stat('讀取對話', true);
+    run('csInboxThread', [cid, true], function (t) { if (cur !== cid) return; THREAD = t; renderThread(t); stat(''); });
+  }
+  function dossierHtml(t) {
+    var d = t.dossier || {}; var memo = d.memory || {};
+    var facts = (d.facts || []).map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('');
+    var roleSel = '<select id="roleSel">' + (t.roles || ['客戶']).map(function (r) { return '<option value="' + esc(r) + '"' + ((t.role || '客戶') === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>';
+    var mem = (t.members || []).map(function (u) {
+      if (u.kind !== 'in') return '<div class="row"><span class="pill">' + esc(u.label) + '</span><span class="small muted">我方</span></div>';
+      return '<div class="row" data-uid="' + esc(u.userId) + '"><span class="small muted">' + esc(u.lineName || '（LINE 名稱抓不到）') + '</span><input type="text" class="mName" placeholder="稱呼" value="' + esc(u.name || '') + '" style="width:110px"><select class="mRole"><option value="">角色</option>' + (t.memberRoles || []).map(function (r) { return '<option value="' + esc(r) + '"' + (u.role === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select><button class="btn ghost small mSave">存</button></div>';
+    }).join('');
+    return '<details class="dossier"><summary>客戶檔案與設定 ▾ <span class="small muted" style="font-weight:400">' + (d.client ? esc(d.client.short || d.client.full) + '（' + esc(d.client.clientId) + '）' : '未綁客戶') + (memo.summary ? '・有摘要' : '') + (d.skip ? '・引擎不擬稿：' + esc(d.skipReason) : '') + '</span></summary><div class="in">'
+      + (t.clientId ? '' : '<h4>這位是哪個客戶？</h4><div class="row"><input type="text" id="bindQ" placeholder="簡稱、抬頭或統編" style="flex:1;min-width:160px"><button class="btn ghost small" id="bindSearch">搜尋</button><span class="small muted" id="bindMsg"></span></div><div id="bindCands"></div>')
+      + '<h4>對象類型</h4><div class="row">' + roleSel + '<input type="text" id="roleNote" placeholder="備註（例：群智會計 Phoebe）" value="' + esc(t.roleNote || '') + '" style="flex:1;min-width:140px"><button class="btn ghost small" id="roleSave">儲存</button><span class="small muted" id="roleMsg"></span></div>'
+      + (mem ? '<h4>群組成員</h4>' + mem : '')
+      + '<h4>檔案（引擎擬稿看的同一份）</h4>' + (facts ? '<ul>' + facts + '</ul>' : '<span class="muted">（沒有資料）</span>')
+      + '<h4>客服對這位的認識</h4>' + (memo.summary ? '<div style="white-space:pre-wrap">' + esc(memo.summary) + '</div><div class="small muted">更新 ' + esc(memo.updatedAt || '') + '</div>' : '<span class="muted">（還沒有摘要，引擎第一次擬稿時會產生）</span>')
+      + '<div class="row"><textarea id="memNote" rows="2" placeholder="你的補充（引擎每次都會讀、不會被覆蓋）" style="flex:1;min-width:200px;font-size:12px;padding:6px;border:1px solid var(--line);font-family:inherit">' + esc(memo.note || '') + '</textarea><button class="btn ghost small" id="memSave">存補充</button></div>'
+      + '</div></details>';
+  }
+  function renderThread(t) {
+    if (!t || !t.ok) { document.getElementById('head').innerHTML = '<span class="muted">讀取失敗 ' + esc(t && t.error) + '</span>'; return; }
+    var typeLabel = t.type === 'group' ? '群組' : (t.type === 'room' ? '聊天室' : '個人');
+    document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill">' + esc(t.clientId) + '</span>' : '<span class="pill wait">未綁</span>') + (t.role && t.role !== '客戶' ? '<span class="pill">' + esc(t.role) + '</span>' : '') + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>');
+    document.getElementById('dossier').innerHTML = dossierHtml(t);
+    var bs = document.getElementById('bindSearch');
+    if (bs) bs.onclick = function () {
+      var q = document.getElementById('bindQ').value.trim(); if (!q) return; document.getElementById('bindMsg').textContent = '搜尋中';
+      run('csInboxClientSearch', [q], function (r) {
+        document.getElementById('bindMsg').textContent = r.ok ? '' : ('失敗：' + r.error); var cs = r.candidates || [];
+        document.getElementById('bindCands').innerHTML = cs.length ? cs.map(function (c) { return '<button class="btn ghost small" style="margin:4px 4px 0 0" data-bind="' + esc(c.clientId) + '">' + esc(c.short || c.full) + '（' + esc(c.clientId) + '）</button>'; }).join('') : '<span class="small muted">查無，可先在客戶頁建檔</span>';
+        document.querySelectorAll('#bindCands [data-bind]').forEach(function (b) { b.onclick = function () { if (!confirm('把這位聯絡人綁到 ' + b.textContent + '？')) return; run('csInboxBind', [{ contactId: cur, clientId: b.getAttribute('data-bind') }], function (rr) { if (rr.ok) refreshAll(true); else document.getElementById('bindMsg').textContent = '綁定失敗：' + (rr.detail || rr.error); }); }; });
+      });
+    };
+    document.getElementById('roleSave').onclick = function () { busy(this, true, '儲存中'); run('csInboxRole', [{ contactId: cur, role: document.getElementById('roleSel').value, note: document.getElementById('roleNote').value }], function (r) { document.getElementById('roleMsg').textContent = r.ok ? '已設為 ' + r.role : ('失敗：' + (r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 600); }); };
+    document.getElementById('memSave').onclick = function () { busy(this, true, '存'); run('csInboxMemoryNote', [{ contactId: cur, note: document.getElementById('memNote').value }], function (r) { if (r.ok) openThread(cur); }); };
+    document.querySelectorAll('#dossier [data-uid]').forEach(function (row) { row.querySelector('.mSave').onclick = function () { busy(this, true, '存'); run('csInboxMember', [{ contactId: cur, userId: row.getAttribute('data-uid'), name: row.querySelector('.mName').value, role: row.querySelector('.mRole').value }], function (r) { if (r.ok) openThread(cur); }); }; });
+    var chat = document.getElementById('chat');
+    chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m) {
+      if (m.kind === 'event') return '<div class="msg event">' + esc(m.text) + '</div>';
+      var body = m.kind === 'card' ? '<span class="pill">卡片</span> ' + esc(m.text.replace('[卡片]', '').trim()) : esc(m.text);
+      var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
+      var who = m.side === 'owner' ? 'Wayne（群組內）' : (m.side === 'employee' ? esc(m.senderName || '員工') : (m.side === 'out' ? '植間' : (m.senderName ? esc(m.senderName) : '對方')));
+      return '<div class="msg ' + (ours ? 'out' : 'in') + '"><div class="who">' + who + '</div>' + body + '<div class="ts">' + esc(m.ts) + '</div></div>';
+    }).join('');
+    chat.scrollTop = chat.scrollHeight;
+    renderPending(t); renderCompose(t);
+  }
+  function renderPending(t) {
+    var p = t.pending, pb = document.getElementById('pendBox');
+    if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
+    var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : '';
+    pb.innerHTML = '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
+      + '<textarea id="draft" rows="6">' + esc(p.text) + '</textarea>'
+      + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + cards
+      + (p.images && p.images.length ? '<div class="att">' + p.images.map(function (u) { return STORAGE_OK.test(u) ? '<div class="it"><img src="' + esc(u) + '"></div>' : ''; }).join('') + '</div>' : '')
+      + '<div class="att" id="att-draft"></div>'
+      + '<div class="actions"><button class="btn main" id="btnSend">送出</button><button class="btn ghost" id="btnWhen">' + (p.publishAt ? '建議 ' + esc(p.publishAt) : '預定時間') + '</button><button class="btn ghost attbtn" id="btnAtt">附加照片／檔案</button></div>'
+      + '<div class="when' + (p.publishAt ? ' on' : '') + '" id="whenBox"><span>預定送出</span><input type="datetime-local" id="sendAt" value="' + esc(p.publishAt ? p.publishAt.replace(' ', 'T') : '') + '"><span class="muted">留空＝現在送</span></div>'
+      + '<div class="secondary"><button class="btn link" id="btnFb">給意見重擬</button><button class="btn link" id="btnReject">退回不用</button><button class="btn link" id="btnManual">改手動回覆</button><button class="btn link" id="btnSelf">已在 LINE 回過</button><span class="small muted" id="pendMsg"></span></div>'
+      + '<div class="fbbox" id="fbBox"><div class="small" style="margin-bottom:4px">意見會學進規則庫並重擬。一定要出現的句子用【】框起來。</div><span class="stars" id="fbStars">' + [1, 2, 3, 4, 5].map(function (n) { return '<button data-star="' + n + '">★</button>'; }).join('') + '</span><textarea id="fbText" rows="3" placeholder="例：不用解釋收費理由；【低消是五萬含稅】"></textarea><div class="row"><button class="btn" id="fbSend">送出意見並重擬</button><button class="btn ghost small" id="fbCancel">取消</button></div></div>' + selfBoxHtml('', true) + '</div>';
+    var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = dirty ? '修改後送出' : '送出'; };
+    var whenVal = function () { var v = document.getElementById('sendAt').value; return v ? v.replace('T', ' ') : ''; };
+    document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
+    renderAtt('draft'); document.getElementById('btnAtt').onclick = function () { pickAtt('draft', 'pendMsg'); };
+    document.getElementById('btnSend').onclick = function () { var at = whenVal(), edited = dirty; if (!confirm((at ? '排程在 ' + at + ' ' : '現在') + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft }], function (r) { if (r.ok) ATT.draft = []; else busy(sendBtn, false); document.getElementById('pendMsg').textContent = r.ok ? ('完成：' + r.status) : ('失敗：' + (r.detail || r.error)); dirty = false; setTimeout(function () { refreshAll(true); }, 1200); }); };
+    document.getElementById('btnFb').onclick = function () { document.getElementById('fbBox').classList.toggle('on'); };
+    document.getElementById('fbCancel').onclick = function () { document.getElementById('fbBox').classList.remove('on'); };
+    document.querySelectorAll('#fbStars [data-star]').forEach(function (sb) { sb.onclick = function () { fbStars = Number(sb.getAttribute('data-star')); document.querySelectorAll('#fbStars [data-star]').forEach(function (x) { x.className = Number(x.getAttribute('data-star')) <= fbStars ? 'on' : ''; }); }; });
+    document.getElementById('fbSend').onclick = function () { var fb = document.getElementById('fbText').value.trim(); if (!fb) { document.getElementById('pendMsg').textContent = '先寫意見'; return; } busy(this, true, '學習中'); document.getElementById('pendMsg').textContent = '退回舊稿、引擎學習重擬中'; run('csInboxFeedback', [{ apId: p.id, contactId: cur, feedback: fb, stars: fbStars }], function (r) { document.getElementById('pendMsg').textContent = r.ok ? r.note : ('失敗：' + (r.detail || r.error)); dirty = false; setTimeout(function () { refreshAll(true); }, 3000); }); };
+    document.getElementById('btnReject').onclick = function () { if (!confirm('退回這則稿？不會發給客戶，投稿方會收到通知。')) return; busy(this, true, '退回中'); run('csInboxReject', [{ apId: p.id, contactId: cur }], function (r) { document.getElementById('pendMsg').textContent = r.ok ? '已退回' : ('失敗：' + (r.detail || r.error)); setTimeout(function () { refreshAll(true); }, 1000); }); };
+    document.getElementById('btnManual').onclick = function () { setManual(true); };
+    bindSelf('', 'btnSelf', p.id, 'pendMsg');
+  }
+  function renderCompose(t) {
+    var mb = document.getElementById('manualBox');
+    var sc = t.scheduled || [];
+    mb.innerHTML = (sc.length ? '<div class="small muted" style="margin-top:8px">已排程 ' + sc.length + ' 則：' + sc.map(function (x) { return esc(x.at); }).join('、') + '（到「已排程」分頁可取消）</div>' : '')
+      + '<div class="compose"><textarea id="manualText" rows="2" placeholder="' + (t.manual ? '手動回覆中：在這裡打字直接發給客戶' : '自己回一句給客戶（會留在對話紀錄）') + '"></textarea>'
+      + '<div class="att" id="att-compose"></div>'
+      + '<div class="actions"><button class="btn main" id="manualSend">發送</button><button class="btn ghost" id="manualWhen">預定時間</button><button class="btn ghost attbtn" id="manualAtt">附加照片／檔案</button></div>'
+      + '<div class="when" id="manualWhenBox"><span>預定送出</span><input type="datetime-local" id="manualAt"><span class="muted">留空＝現在送</span></div>'
+      + '<div class="secondary">' + (t.manual ? '<button class="btn link" id="manualOff">恢復 AI 擬稿</button>' : '<button class="btn link" id="manualOn">此客戶改手動（暫停 AI）</button>') + '<button class="btn link" id="btnSelf2">補記我在 LINE 回過的話</button><span class="small muted" id="manualMsg"></span></div>' + selfBoxHtml('2', false) + '</div>';
+    document.getElementById('manualWhen').onclick = function () { document.getElementById('manualWhenBox').classList.toggle('on'); };
+    renderAtt('compose'); document.getElementById('manualAtt').onclick = function () { pickAtt('compose', 'manualMsg'); };
+    document.getElementById('manualSend').onclick = function () { var txt = document.getElementById('manualText').value.trim(); if (!txt && !ATT.compose.length) return; if (!txt) txt = ATT.compose.some(function (a) { return a.kind !== 'image'; }) ? '附上檔案，請查收。' : '附上照片，請查收。'; var mAt = document.getElementById('manualAt').value; mAt = mAt ? mAt.replace('T', ' ') : ''; if (!confirm((mAt ? '排程在 ' + mAt + ' 發給客戶？' : '現在發給客戶？') + '\n\n' + txt)) return; busy(this, true, '發送中'); var nImg = ATT.compose.filter(function (a) { return a.kind === 'image'; }).length; run('csInboxReply', [{ contactId: cur, text: txt, scheduleAt: mAt, attachments: ATT.compose }], function (r) { if (r.ok) { ATT.compose = []; renderAtt('compose'); } if (r.ok && !r.scheduled && nImg && Number(r.imagesSent || 0) < nImg) r.note = '照片只送出 ' + Number(r.imagesSent || 0) + '/' + nImg + '，其餘失敗'; document.getElementById('manualMsg').textContent = r.ok ? ((r.scheduled ? ('已排程 ' + r.sendAt) : '已送出') + (r.note ? '（' + r.note + '）' : '')) : ('失敗：' + (r.detail || r.error)); if (r.ok) { document.getElementById('manualText').value = ''; setTimeout(function () { refreshAll(true); }, 1500); } else busy(document.getElementById('manualSend'), false); }); };
+    var on = document.getElementById('manualOn'); if (on) on.onclick = function () { setManual(true); };
+    var off = document.getElementById('manualOff'); if (off) off.onclick = function () { setManual(false); };
+    bindSelf('2', 'btnSelf2', '', 'manualMsg');
+  }
+  var ATT = { draft: [], compose: [] }, attTarget = 'draft';
+  var STORAGE_OK = /^https:\/\/ytlakkxrbookftluulbo\.supabase\.co\/storage\//;
+  function attHtml(list, who) { return list.map(function (a, i) { return '<div class="it">' + (a.kind === 'image' && STORAGE_OK.test(a.preview || a.url) ? '<img src="' + esc(a.preview || a.url) + '">' : '<div style="padding:6px 4px">檔案 ' + esc(a.name || 'PDF') + '</div>') + '<button class="x" data-att="' + who + '" data-i="' + i + '" title="移除">×</button></div>'; }).join(''); }
+  function renderAtt(who) { var box = document.getElementById('att-' + who); if (!box) return; box.innerHTML = attHtml(ATT[who], who); box.querySelectorAll('[data-att]').forEach(function (b) { b.onclick = function () { ATT[who].splice(Number(b.getAttribute('data-i')), 1); renderAtt(who); }; }); }
+  function pickAtt(who, msgId) {
+    attTarget = who; var cidAtPick = cur; var inp = document.getElementById('attFile'); inp.value = '';
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      if (f.size > 10 * 1024 * 1024) { document.getElementById(msgId).textContent = '檔案超過 10MB'; return; }
+      document.getElementById(msgId).textContent = '上傳中…';
+      var rd = new FileReader();
+      rd.onload = function () {
+        var b64 = String(rd.result).split(',')[1] || '';
+        run('csInboxUpload', [{ name: f.name, mime: f.type, b64: b64 }], function (r) {
+          if (cur !== cidAtPick) return;
+          if (!r || !r.ok) { document.getElementById(msgId).textContent = '上傳失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
+          ATT[who].push({ url: r.url, preview: r.preview, kind: r.kind, name: r.name || f.name }); renderAtt(who); document.getElementById(msgId).textContent = '';
+        }, function () { var m = document.getElementById(msgId); if (m) m.textContent = '上傳失敗'; });
+      };
+      rd.readAsDataURL(f);
+    };
+    inp.click();
+  }
+  function selfBoxHtml(sfx, withDraft) {
+    return '<div class="fbbox" id="selfBox' + sfx + '"><div class="small" style="margin-bottom:4px">LINE 不會把你在後台親回的話傳回來。貼上原文，客服才看得懂整段對話' + (withDraft ? '；這份稿會一併收掉' : '') + '。</div><textarea id="selfText' + sfx + '" rows="3" placeholder="貼上你回的原文（多則就一起貼）"></textarea><div class="row"><button class="btn" id="selfSend' + sfx + '">' + (withDraft ? '存進紀錄並收掉稿' : '存進紀錄') + '</button><button class="btn ghost small" id="selfCancel' + sfx + '">取消</button></div></div>';
+  }
+  function bindSelf(sfx, toggleId, apId, msgId) {
+    document.getElementById(toggleId).onclick = function () { document.getElementById('selfBox' + sfx).classList.toggle('on'); };
+    document.getElementById('selfCancel' + sfx).onclick = function () { document.getElementById('selfBox' + sfx).classList.remove('on'); };
+    document.getElementById('selfSend' + sfx).onclick = function () { var txt = document.getElementById('selfText' + sfx).value.trim(); if (!txt) { document.getElementById(msgId).textContent = '先貼上原文'; return; } busy(this, true, '存檔中'); run('csInboxSelfReplied', [{ contactId: cur, apId: apId || '', text: txt }], function (r) { document.getElementById(msgId).textContent = r.ok ? ('已存進對話紀錄' + (r.note ? '（' + r.note + '）' : '')) : ('失敗：' + (r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 1200); }); };
+  }
+  function setManual(on) {
+    if (on && !confirm('這位客戶改成手動回覆？AI 會停止擬稿，現有待核可稿會略過，你在對話框直接回。隨時可恢復。')) return;
+    stat(on ? '切換手動中' : '恢復 AI 中', true);
+    run('csInboxManual', [{ contactId: cur, on: on }], function (r) { if (r.ok) refreshAll(true); else stat('失敗：' + (r.detail || r.error)); });
+  }
+  function poll() {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(function () {
+      loadList(function () {
+        var typing = !!(document.getElementById('manualText') && document.getElementById('manualText').value.trim());
+        if (cur && !dirty && !ATT.draft.length && !ATT.compose.length && !typing) run('csInboxThread', [cur], function (t) {
+          var oldP = THREAD && THREAD.pending ? THREAD.pending.id : '', newP = t && t.pending ? t.pending.id : '';
+          var oldN = THREAD ? (THREAD.messages || []).length : 0, newN = t ? (t.messages || []).length : 0;
+          if (oldP !== newP || oldN !== newN || (THREAD && t && THREAD.manual !== t.manual)) { THREAD = t; renderThread(t); }
+        });
+      });
+      poll();
+    }, 15000);
+  }
+  document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); }; });
+  document.getElementById('findBtn').onclick = function () {
+    var q = document.getElementById('findQ').value.trim(); if (!q) return;
+    document.getElementById('findRes').innerHTML = '<div class="small muted">找中…</div>';
+    run('csInboxFind', [q], function (r) {
+      var cs = r.candidates || [];
+      document.getElementById('findRes').innerHTML = cs.length ? cs.map(function (c) { return '<button class="btn ghost small" style="margin:0 4px 6px 0" data-find="' + esc(c.contactId) + '">' + esc(c.name) + '（' + esc(c.type) + (c.clientId ? '・' + esc(c.clientId) : '') + '）</button>'; }).join('') : '<div class="small muted">' + esc(r.note || '查無') + '</div>';
+      document.querySelectorAll('#findRes [data-find]').forEach(function (b) { b.onclick = function () { document.getElementById('findRes').innerHTML = ''; openThread(b.getAttribute('data-find')); }; });
+    });
+  };
+  document.getElementById('back').onclick = function () { document.body.classList.remove('view-thread'); cur = null; THREAD = null; renderList(); window.scrollTo(0, 0); };
+  document.getElementById('reload').onclick = function () { refreshAll(true); };
+  var BOOTED = false;
+  function boot() { if (BOOTED) return; BOOTED = true; loadList(function () { if (INIT_CID) { openThread(INIT_CID); INIT_CID = ''; } }); poll(); }
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
+</script>
+</body>
+</html>
