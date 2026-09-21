@@ -178,7 +178,7 @@
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + e.message); });
-    OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; OV.loaded = true; mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
+    OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
   function mergeOverview() {
@@ -235,13 +235,17 @@
       var fl = t.flags || {};
       if (t.dossier && !t.dossier.error) { t.dossier.loading = false; t.dossier.skip = !!fl.skip; t.dossier.skipReason = String(fl.skipReason || ''); t.dossier.memory = t.memory || null; t.dossierFromEngine = true; }
       else t.dossier = { loading: true, skip: !!fl.skip, skipReason: String(fl.skipReason || ''), memory: t.memory || null, facts: [] };
-      THREAD = t; renderThread(t); stat('');
+      THREAD = t; if (quiet) { var snapQ = snapInputs(); renderThread(t); restoreInputs(snapQ); } else renderThread(t); stat('');
       loadExtras(cid, t, gen);
+      if (t.dossierFromEngine && t.dossier.stale) setTimeout(function () {   // 引擎背景更新後把新資料換上（審查 Medium 4）
+        if (cur !== cid || gen !== OPEN_GEN) return;
+        api({ inbox: { op: 'thread', contactId: cid, limit: 120 } }).then(function (t2) { if (cur !== cid || gen !== OPEN_GEN || !t2 || !t2.dossier || t2.dossier.stale) return; t2.dossier.loading = false; t2.dossier.skip = t.dossier.skip; t2.dossier.skipReason = t.dossier.skipReason; t2.dossier.memory = t.dossier.memory; t.dossier = t2.dossier; var sn = snapInputs(); renderDossier(t); restoreInputs(sn); }).catch(function () {});
+      }, 6000);
     }).catch(function (e) { if (cur !== cid || gen !== OPEN_GEN) return; stat('失敗：' + e.message); });
   }
   // 重畫前後保住使用者正在打的內容與展開狀態（審查 High 1）
   function snapInputs() { var o = { open: !!(document.querySelector('#dossier details') && document.querySelector('#dossier details').open) }; ['manualText', 'manualAt', 'bindQ', 'roleNote', 'memNote', 'fbText', 'selfText', 'selfText2', 'sendAt'].forEach(function (id) { var e = document.getElementById(id); if (e) o[id] = e.value; }); var wb = document.getElementById('manualWhenBox'); o.whenOn = !!(wb && wb.classList.contains('on')); return o; }
-  function restoreInputs(o) { Object.keys(o).forEach(function (id) { if (id === 'open' || id === 'whenOn') return; var e = document.getElementById(id); if (e && o[id]) e.value = o[id]; }); var d = document.querySelector('#dossier details'); if (d && o.open) d.open = true; var wb = document.getElementById('manualWhenBox'); if (wb && o.whenOn) wb.classList.add('on'); }
+  function restoreInputs(o) { Object.keys(o).forEach(function (id) { if (id === 'open' || id === 'whenOn') return; var e = document.getElementById(id); if (e && (id in o)) e.value = o[id]; }); var d = document.querySelector('#dossier details'); if (d && o.open) d.open = true; var wb = document.getElementById('manualWhenBox'); if (wb && o.whenOn) wb.classList.add('on'); }
   function loadExtras(cid, t, gen) {
     var memberIds = (t.members || []).filter(function (u) { return u && u.kind === 'in' && u.userId; }).map(function (u) { return u.userId; });
     var finish = function () { if (cur !== cid || gen !== OPEN_GEN) return; t.dossier.loading = false; t.extrasLoaded = true; t.extrasFailed = true; var snap = snapInputs(); renderDossier(t); renderPending(t); renderCompose(t); restoreInputs(snap); };
@@ -250,7 +254,8 @@
     ovWait.then(function () {
       if (cur !== cid || gen !== OPEN_GEN) return;
       var hasPend = (OV.pending || []).some(function (p) { return p.contactId === cid; }), hasSched = (OV.scheduled || []).some(function (x) { return x.contactId === cid; });
-      if (OV.loaded && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); return; }
+      var ovFresh = OV.loaded && (Date.now() - (OV.at || 0)) < 45000;
+      if (ovFresh && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { try { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); } catch (eS) { finish(); } return; }
       api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
@@ -271,7 +276,7 @@
       if (u.kind !== 'in') return '<div class="row"><span class="pill">' + esc(u.label) + '</span><span class="small muted">我方</span></div>';
       return '<div class="row" data-uid="' + esc(u.userId) + '"><span class="small muted">' + esc(u.lineName || '（LINE 名稱抓不到）') + '</span><input type="text" class="mName" placeholder="稱呼" value="' + esc(u.name || '') + '" style="width:110px"><select class="mRole"><option value="">角色</option>' + (t.memberRoles || []).map(function (r) { return '<option value="' + esc(r) + '"' + (u.role === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select><button class="btn ghost small mSave">存</button></div>';
     }).join('');
-    return '<details class="dossier"><summary>客戶檔案與設定 ▾ <span class="small muted" style="font-weight:400">' + (d.client ? esc(d.client.short || d.client.full) + '（' + esc(d.client.clientId) + '）' : '未綁客戶') + (memo.summary ? '・有摘要' : '') + (d.skip ? '・引擎不擬稿：' + esc(d.skipReason) : '') + '</span></summary><div class="in">'
+    return '<details class="dossier"><summary>客戶檔案與設定 ▾ <span class="small muted" style="font-weight:400">' + (d.client ? esc(d.client.short || d.client.full) + '（' + esc(d.client.clientId) + '）' : '未綁客戶') + (memo.summary ? '・有摘要' : '') + (d.skip ? '・引擎不擬稿：' + esc(d.skipReason) : '') + (d.stale && d.businessAt ? '・資料時間 ' + esc(String(d.businessAt).slice(5)) + '（更新中）' : '') + '</span></summary><div class="in">'
       + (t.clientId ? '' : '<h4>這位是哪個客戶？</h4><div class="row"><input type="text" id="bindQ" placeholder="簡稱、抬頭或統編" style="flex:1;min-width:160px"><button class="btn ghost small" id="bindSearch">搜尋</button><span class="small muted" id="bindMsg"></span></div><div id="bindCands"></div>')
       + '<h4>對象類型</h4><div class="row">' + roleSel + '<input type="text" id="roleNote" placeholder="備註（例：群智會計 Phoebe）" value="' + esc(t.roleNote || '') + '" style="flex:1;min-width:140px"><button class="btn ghost small" id="roleSave">儲存</button><span class="small muted" id="roleMsg"></span></div>'
       + (mem ? '<h4>群組成員</h4>' + mem : '')
@@ -354,7 +359,7 @@
       + '<div class="secondary">' + (t.manual ? '<button class="btn link" id="manualOff">恢復 AI 擬稿</button>' : '<button class="btn link" id="manualOn">此客戶改手動（暫停 AI）</button>') + '<button class="btn link" id="btnSelf2">補記我在 LINE 回過的話</button><span class="small muted" id="manualMsg"></span></div>' + selfBoxHtml('2', false) + '</div>';
     document.getElementById('manualWhen').onclick = function () { document.getElementById('manualWhenBox').classList.toggle('on'); };
     renderAtt('compose'); document.getElementById('manualAtt').onclick = function () { pickAtt('compose', 'manualMsg'); };
-    document.getElementById('manualSend').onclick = function () { var txt = document.getElementById('manualText').value.trim(); if (!txt && !ATT.compose.length) return; if (!txt) txt = ATT.compose.some(function (a) { return a.kind !== 'image'; }) ? '附上檔案，請查收。' : '附上照片，請查收。'; var mAt = document.getElementById('manualAt').value; mAt = mAt ? mAt.replace('T', ' ') : ''; if (!confirm((mAt ? '排程在 ' + mAt + ' 發給客戶？' : '現在發給客戶？') + '\n\n' + txt)) return; busy(this, true, '發送中'); var nImg = ATT.compose.filter(function (a) { return a.kind === 'image'; }).length; var sendManual = function (force) { run('csInboxReply', [{ contactId: cur, text: txt, scheduleAt: mAt, attachments: ATT.compose, force: !!force }], function (r) { if (r && r.error === 'pending_exists' && !force) { busy(document.getElementById('manualSend'), false); if (confirm('這位還有一份待核可稿（' + (r.apId || '') + '）。要收掉那份稿、改送你打的這段嗎？')) { busy(document.getElementById('manualSend'), true, '發送中'); sendManual(true); } return; } if (r.ok) { ATT.compose = []; renderAtt('compose'); } if (r.ok && !r.scheduled && nImg && Number(r.imagesSent || 0) < nImg) r.note = '照片只送出 ' + Number(r.imagesSent || 0) + '/' + nImg + '，其餘失敗'; document.getElementById('manualMsg').textContent = r.ok ? ((r.scheduled ? ('已排程 ' + r.sendAt) : '已送出') + (r.note ? '（' + r.note + '）' : '')) : ('失敗：' + (r.detail || r.error)); if (r.ok) { document.getElementById('manualText').value = ''; setTimeout(function () { refreshAll(true); }, 1500); } else busy(document.getElementById('manualSend'), false); }); }; sendManual(false); };
+    document.getElementById('manualSend').onclick = function () { var txt = document.getElementById('manualText').value.trim(); if (!txt && !ATT.compose.length) return; if (!txt) txt = ATT.compose.some(function (a) { return a.kind !== 'image'; }) ? '附上檔案，請查收。' : '附上照片，請查收。'; var mAt = document.getElementById('manualAt').value; mAt = mAt ? mAt.replace('T', ' ') : ''; if (!confirm((mAt ? '排程在 ' + mAt + ' 發給客戶？' : '現在發給客戶？') + '\n\n' + txt)) return; busy(this, true, '發送中'); var nImg = ATT.compose.filter(function (a) { return a.kind === 'image'; }).length; var sendManual = function (force, forceApId, forceSched) { run('csInboxReply', [{ contactId: cur, text: txt, scheduleAt: mAt, attachments: ATT.compose, force: !!force, forceApId: forceApId || '', forceScheduled: !!forceSched }], function (r) { var sb0 = document.getElementById('manualSend'); if (r && r.error === 'pending_exists') { busy(sb0, false); if (confirm('這位還有一份待核可稿（' + (r.apId || '') + '）。要收掉那份稿、改送你打的這段嗎？')) { busy(sb0, true, '發送中'); sendManual(true, r.apId, forceSched); } return; } if (r && r.error === 'pending_changed') { busy(sb0, false); alert('那份待核可稿剛被處理過了，畫面已更新，請再確認一次'); refreshAll(true); return; } if (r && r.error === 'scheduled_exists') { busy(sb0, false); var when = (r.items || []).map(function (x) { return x.at; }).join('、'); if (confirm('這位已有排程要發的訊息（' + when + '）。仍要現在再送這段嗎？')) { busy(sb0, true, '發送中'); sendManual(force, forceApId, true); } return; } if (r.ok) { ATT.compose = []; renderAtt('compose'); } if (r.ok && !r.scheduled && nImg && Number(r.imagesSent || 0) < nImg) r.note = '照片只送出 ' + Number(r.imagesSent || 0) + '/' + nImg + '，其餘失敗'; document.getElementById('manualMsg').textContent = r.ok ? ((r.scheduled ? ('已排程 ' + r.sendAt) : '已送出') + (r.note ? '（' + r.note + '）' : '')) : ('失敗：' + (r.detail || r.error)); if (r.ok) { document.getElementById('manualText').value = ''; setTimeout(function () { refreshAll(true); }, 1500); } else busy(document.getElementById('manualSend'), false); }); }; sendManual(false, '', false); };
     var on = document.getElementById('manualOn'); if (on) on.onclick = function () { setManual(true); };
     var off = document.getElementById('manualOff'); if (off) off.onclick = function () { setManual(false); };
     bindSelf('2', 'btnSelf2', '', 'manualMsg');
@@ -399,7 +404,7 @@
     if (pollTimer) clearTimeout(pollTimer);
     pollTimer = setTimeout(function () {
       loadList(function () {
-        var typing = ['manualText', 'fbText', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '').trim()); });
+        var typing = ['manualText', 'fbText', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt', 'memNote', 'roleNote'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '').trim()); });
         var ae = document.activeElement, tc = document.querySelector('.threadcard'); var editing = !!(ae && /^(TEXTAREA|INPUT|SELECT)$/.test(ae.tagName) && tc && tc.contains(ae));
         if (cur && !dirty && !ATT.draft.length && !ATT.compose.length && !typing && !editing) {
           var cid0 = cur;
