@@ -231,7 +231,9 @@
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!t || t.ok === false) { stat('失敗：' + ((t && t.error) || 'thread')); document.getElementById('chat').innerHTML = '<div class="small muted" style="padding:12px">對話讀取失敗 <button class="btn ghost small" id="chatRetry">重試</button></div>'; var rb = document.getElementById('chatRetry'); if (rb) rb.onclick = function () { openThread(cid); }; return; }
       t.roles = ROLES; t.memberRoles = MEMBER_ROLES; t.awaitingReply = !!(t.flags && t.flags.awaiting); t.scheduled = []; t.pending = null; t.extrasLoaded = false; t.engineManual = !!t.manual;
-      t.dossier = { loading: true, skip: !!(t.flags && t.flags.skip), skipReason: String((t.flags || {}).skipReason || ''), memory: t.memory || null, facts: [] };
+      var fl = t.flags || {};
+      if (t.dossier && !t.dossier.error) { t.dossier.loading = false; t.dossier.skip = !!fl.skip; t.dossier.skipReason = String(fl.skipReason || ''); t.dossier.memory = t.memory || null; t.dossierFromEngine = true; }
+      else t.dossier = { loading: true, skip: !!fl.skip, skipReason: String(fl.skipReason || ''), memory: t.memory || null, facts: [] };
       THREAD = t; renderThread(t); stat('');
       loadExtras(cid, t, gen);
     }).catch(function (e) { if (cur !== cid || gen !== OPEN_GEN) return; stat('失敗：' + e.message); });
@@ -242,13 +244,13 @@
   function loadExtras(cid, t, gen) {
     var memberIds = (t.members || []).filter(function (u) { return u && u.kind === 'in' && u.userId; }).map(function (u) { return u.userId; });
     var finish = function () { if (cur !== cid || gen !== OPEN_GEN) return; t.dossier.loading = false; t.extrasLoaded = true; t.extrasFailed = true; var snap = snapInputs(); renderDossier(t); renderPending(t); renderCompose(t); restoreInputs(snap); };
-    api({ app: { op: 'extras', contactId: cid, memberIds: memberIds } }).then(function (x) {
+    api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
       t.pending = x.pending || null; t.scheduled = x.scheduled || []; t.extrasLoaded = true;
       if (x.members) (t.members || []).forEach(function (u) { var m = x.members[u.userId]; if (!m) return; u.lineName = m.lineName || u.lineName; u.name = m.name || u.name; u.role = m.role || u.role; });
       if (x.dossier) { x.dossier.skip = t.dossier.skip; x.dossier.skipReason = t.dossier.skipReason; if (!x.dossier.memory) x.dossier.memory = t.memory || null; t.dossier = x.dossier; }
-      else { t.dossier.loading = false; }
+      else if (!t.dossierFromEngine) { t.dossier.loading = false; }
       t.roles = x.roles || ROLES; t.memberRoles = x.memberRoles || MEMBER_ROLES; if (x.role != null) t.role = x.role; if (x.roleNote != null) t.roleNote = x.roleNote; if (x.manual != null) t.manual = !!x.manual;
       THREAD = t; var snap = snapInputs(); renderDossier(t); renderPending(t); renderCompose(t); restoreInputs(snap);
     }).catch(function () { finish(); });
@@ -307,7 +309,8 @@
     if (!p && t.extrasLoaded === false) { pb.innerHTML = '<div class="small muted" style="margin-top:8px"><span class="spin"></span>查看有沒有待核可稿</div>'; return; }
     if (!p && t.extrasFailed) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">待核可稿讀取失敗，按 ↻ 重試</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
-    var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : '';
+    var nCards = (p.cards || []).length || Number(p.attach) || 0;
+    var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>會一起發的小卡 ' + nCards + ' 張（點開載入）</summary><div id="cardsBox" class="small muted">載入中…</div></details>' : '');
     pb.innerHTML = '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
       + '<textarea id="draft" rows="6">' + esc(p.text) + '</textarea>'
       + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + cards
@@ -317,6 +320,8 @@
       + '<div class="when' + (p.publishAt ? ' on' : '') + '" id="whenBox"><span>預定送出</span><input type="datetime-local" id="sendAt" value="' + esc(p.publishAt ? p.publishAt.replace(' ', 'T') : '') + '"><span class="muted">留空＝現在送</span></div>'
       + '<div class="secondary"><button class="btn link" id="btnFb">給意見重擬</button><button class="btn link" id="btnReject">退回不用</button><button class="btn link" id="btnManual">改手動回覆</button><button class="btn link" id="btnSelf">已在 LINE 回過</button><span class="small muted" id="pendMsg"></span></div>'
       + '<div class="fbbox" id="fbBox"><div class="small" style="margin-bottom:4px">意見會學進規則庫並重擬。一定要出現的句子用【】框起來。</div><span class="stars" id="fbStars">' + [1, 2, 3, 4, 5].map(function (n) { return '<button data-star="' + n + '">★</button>'; }).join('') + '</span><textarea id="fbText" rows="3" placeholder="例：不用解釋收費理由；【低消是五萬含稅】"></textarea><div class="row"><button class="btn" id="fbSend">送出意見並重擬</button><button class="btn ghost small" id="fbCancel">取消</button></div></div>' + selfBoxHtml('', true) + '</div>';
+    var cl = document.getElementById('cardsLazy');
+    if (cl) cl.ontoggle = function () { if (!cl.open || cl.getAttribute('data-loaded')) return; cl.setAttribute('data-loaded', '1'); api({ app: { op: 'cardsPreview', apId: p.id } }).then(function (r) { var box = document.getElementById('cardsBox'); if (!box) return; if (!r || !r.ok) { box.textContent = '小卡預覽讀取失敗'; return; } p.cards = r.cards || []; box.innerHTML = p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') || '（沒有可預覽的小卡）'; }).catch(function () { var box = document.getElementById('cardsBox'); if (box) box.textContent = '小卡預覽讀取失敗'; }); };
     var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = dirty ? '修改後送出' : '送出'; };
     var whenVal = function () { var v = document.getElementById('sendAt').value; return v ? v.replace('T', ' ') : ''; };
     document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
