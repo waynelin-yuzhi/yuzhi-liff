@@ -299,8 +299,8 @@
     document.getElementById('threadReload').onclick = function () { var cidH = cur; loadList(function () { if (cur === cidH) openThread(cidH, true); }, true); };
     document.getElementById('redraftBtn').onclick = function () {
       var cidH = cur, btn = this;
-      if (THREAD && THREAD.pending && !confirm('這位已有待核可稿（' + THREAD.pending.id + '），重擬會取代它。要繼續嗎？')) return;
       if (THREAD && (THREAD.scheduled || []).length) { alert('這位已有排程要發的訊息（' + THREAD.scheduled.map(function (x) { return x.at; }).join('、') + '），請先到「已排程」取消，再重擬。'); return; }
+      if (THREAD && THREAD.pending && !confirm('這位已有待核可稿（' + THREAD.pending.id + '），重擬會取代它。要繼續嗎？')) return;
       if (THREAD && !THREAD.awaitingReply && !confirm('客戶最後一則已經回過了。仍要針對客戶上一則訊息擬一份新回覆嗎？')) return;
       busy(btn, true, '擬稿中'); document.getElementById('headMsg').textContent = '約 30 到 60 秒';
       api({ redraft: { contactId: cidH } }).then(function (r) {
@@ -309,7 +309,7 @@
           if (cur !== cidH) return; tries++;
           api({ inbox: { op: 'lastRun', contactId: cidH, runId: runId } }).then(function (x) {
             var run = x && x.run; var hm0 = document.getElementById('headMsg'); if (run && run.id === runId && run.status && run.status !== 'error' && run.ap_id) { if (hm0) hm0.textContent = '稿好了'; loadList(function () { openThread(cidH, true); }, true); return; }
-            if (run && run.id === runId && (run.status === 'error' || run.status === 'skipped' || run.status === 'preview')) { busy(btn, false); if (hm0) hm0.textContent = '沒有擬出來：' + (run.skip_reason || '引擎回報錯誤'); return; }
+            if (run && run.id === runId && (run.status === 'error' || run.status === 'skipped' || run.status === 'preview')) { busy(btn, false); var errR = String(run.error || ''); var whyR = run.skip_reason || (errR.indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : (errR.indexOf('status_unknown') >= 0 ? '查不到既有稿的狀態，請按 ↻ 再試' : '引擎回報錯誤，請再試一次')); if (hm0) hm0.textContent = '沒有擬出來：' + whyR; return; }
             if (tries < 20) setTimeout(waitR, 6000); else { busy(btn, false); var hm = document.getElementById('headMsg'); if (hm) hm.textContent = '還在擬，稍後按 ↻'; }
           }).catch(function () { if (tries < 20) setTimeout(waitR, 6000); else busy(btn, false); });
         })();
@@ -411,7 +411,7 @@
           api({ inbox: { op: 'lastRun', contactId: cid0, runId: runId } }).then(function (x) {
             var run = x && x.run; var fresh = !!(run && runId && run.id === runId);
             if (fresh && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('briefMsg').textContent = '稿好了，往上看待核可'; document.getElementById('briefText').value = ''; document.getElementById('briefBox').classList.remove('on'); loadList(function () { openThread(cid0, true); }, true); return; }
-            if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); var why = run.skip_reason || (String(run.error || '').indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : '引擎回報錯誤，請再試一次'); document.getElementById('briefMsg').textContent = '沒有擬出來：' + why; return; }
+            if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); var errC = String(run.error || ''); var why = run.skip_reason || (errC.indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : (errC.indexOf('status_unknown') >= 0 ? '查不到既有稿的狀態，請再試一次' : '引擎回報錯誤，請再試一次')); document.getElementById('briefMsg').textContent = '沒有擬出來：' + why; return; }
             if (tries < 20) setTimeout(waitRun, 6000); else { busy(btn, false); var bm = document.getElementById('briefMsg'); if (bm) bm.textContent = '還在擬，稍後按 ↻ 看'; }
           }).catch(function () { if (tries < 20) setTimeout(waitRun, 6000); else busy(btn, false); });
         })();
