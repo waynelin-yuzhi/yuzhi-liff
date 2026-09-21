@@ -173,11 +173,12 @@
   document.getElementById('leave').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
   function refreshAll(fresh) { loadList(null, fresh); if (cur) openThread(cur); }
 
+  var OVP = null;
   function loadList(cb, fresh) {
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + e.message); });
-    api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; OV.loaded = true; mergeOverview(); renderList(); } }).catch(function () {});
+    OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; OV.loaded = true; mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
   function mergeOverview() {
@@ -244,7 +245,13 @@
   function loadExtras(cid, t, gen) {
     var memberIds = (t.members || []).filter(function (u) { return u && u.kind === 'in' && u.userId; }).map(function (u) { return u.userId; });
     var finish = function () { if (cur !== cid || gen !== OPEN_GEN) return; t.dossier.loading = false; t.extrasLoaded = true; t.extrasFailed = true; var snap = snapInputs(); renderDossier(t); renderPending(t); renderCompose(t); restoreInputs(snap); };
-    api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
+    // 總覽說這位沒有待核可也沒有排程、客戶資料又已從引擎拿到＝不用問後台
+    var ovWait = OVP ? Promise.race([OVP, new Promise(function (r) { setTimeout(r, 4000); })]) : Promise.resolve();
+    ovWait.then(function () {
+      if (cur !== cid || gen !== OPEN_GEN) return;
+      var hasPend = (OV.pending || []).some(function (p) { return p.contactId === cid; }), hasSched = (OV.scheduled || []).some(function (x) { return x.contactId === cid; });
+      if (OV.loaded && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); return; }
+      api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
       t.pending = x.pending || null; t.scheduled = x.scheduled || []; t.extrasLoaded = true;
@@ -253,7 +260,8 @@
       else if (!t.dossierFromEngine) { t.dossier.loading = false; }
       t.roles = x.roles || ROLES; t.memberRoles = x.memberRoles || MEMBER_ROLES; if (x.role != null) t.role = x.role; if (x.roleNote != null) t.roleNote = x.roleNote; if (x.manual != null) t.manual = !!x.manual;
       THREAD = t; var snap = snapInputs(); renderDossier(t); renderPending(t); renderCompose(t); restoreInputs(snap);
-    }).catch(function () { finish(); });
+      }).catch(function () { finish(); });
+    });
   }
   function dossierHtml(t) {
     var d = t.dossier || {}; var memo = d.memory || {};
