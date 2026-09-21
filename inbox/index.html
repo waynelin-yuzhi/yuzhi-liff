@@ -298,15 +298,22 @@
     document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill">' + esc(t.clientId) + '</span>' : '<span class="pill wait">未綁</span>') + (t.role && t.role !== '客戶' ? '<span class="pill">' + esc(t.role) + '</span>' : '') + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>');
     renderDossier(t);
     var chat = document.getElementById('chat');
-    chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m) {
+    chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m, i) {
       if (m.kind === 'event') return '<div class="msg event">' + esc(m.text) + '</div>';
       var body = m.kind === 'card' ? '<span class="pill">卡片</span> ' + esc(m.text.replace('[卡片]', '').trim()) : esc(m.text);
-      if (m.kind === 'image' && m.img && STORAGE_OK.test(m.img)) body = '<img src="' + esc(m.img) + '" style="max-width:220px;border-radius:6px;display:block">';
+      if (m.kind === 'image' && m.img && STORAGE_OK.test(m.img)) body = '<a href="' + esc(m.img) + '" target="_blank"><img src="' + esc(m.img.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=600') + '" style="max-width:220px;border-radius:6px;display:block"></a>';
+      else if (m.kind === 'image' && m.mediaId) body = '（照片）<button class="btn link photoLoad" data-mid="' + esc(m.mediaId) + '" data-i="' + i + '">載入照片</button>';
       var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
       var who = m.side === 'owner' ? 'Wayne（群組內）' : (m.side === 'employee' ? esc(m.senderName || '員工') : (m.side === 'out' ? '植間' : (m.senderName ? esc(m.senderName) : '對方')));
       return '<div class="msg ' + (ours ? 'out' : 'in') + '"><div class="who">' + who + '</div>' + body + '<div class="ts">' + esc(m.ts) + '</div></div>';
     }).join('');
     chat.scrollTop = chat.scrollHeight;
+    var cidP = t.contactId;
+    var loadPhoto = function (btn, auto) { var mid = btn.getAttribute('data-mid'), i = Number(btn.getAttribute('data-i')); btn.textContent = auto ? '載入中' : '載入中…'; btn.disabled = true; api({ media: { op: 'fetch', contactId: cidP, msgId: mid } }).then(function (r) { if (cur !== cidP) return; if (!r || !r.ok || !r.url) { btn.textContent = r && r.error === 'too_large' ? '照片太大' : '照片已無法取得'; return; } var m = (THREAD.messages || [])[i]; if (m) m.img = r.url; var wrap = btn.parentNode; if (wrap) wrap.innerHTML = '<a href="' + esc(r.url) + '" target="_blank"><img src="' + esc(r.preview || r.url) + '" style="max-width:220px;border-radius:6px;display:block"></a>'; }).catch(function () { btn.textContent = '載入失敗'; btn.disabled = false; }); };
+    var btns = Array.prototype.slice.call(chat.querySelectorAll('.photoLoad')); btns.forEach(function (b) { b.onclick = function () { loadPhoto(b, false); }; });
+    // 最近一輪（我方上一則之後）的客戶照片自動載，最多 3 張
+    var msgsA = t.messages || []; var start = 0; for (var k = msgsA.length - 1; k >= 0; k--) { if (msgsA[k].side === 'out' || msgsA[k].side === 'owner' || msgsA[k].side === 'employee') { start = k + 1; break; } }
+    btns.filter(function (b) { return Number(b.getAttribute('data-i')) >= start; }).slice(-3).forEach(function (b) { loadPhoto(b, true); });
     renderPending(t); renderCompose(t);
   }
   function renderDossier(t) {
@@ -374,15 +381,18 @@
     document.getElementById('briefSend').onclick = function () {
       var brief = document.getElementById('briefText').value.trim(); if (!brief) { document.getElementById('briefMsg').textContent = '先寫要傳達的事'; return; }
       var at = document.getElementById('briefAt').value; at = at ? at.replace('T', ' ') : '';
-      var btn = this, cid0 = cur, t0 = Date.now(); busy(btn, true, '擬稿中'); document.getElementById('briefMsg').textContent = '客服擬稿中，約 30 到 60 秒';
+      if (at && new Date(at.replace(' ', 'T')).getTime() < Date.now() + 60000) { document.getElementById('briefMsg').textContent = '預定時間要在現在之後'; return; }
+      if (THREAD && THREAD.pending && !confirm('這位還有一份待核可稿（' + THREAD.pending.id + '），主動擬稿會取代它。要繼續嗎？')) return;
+      if (THREAD && (THREAD.scheduled || []).length && !confirm('這位已有排程要發的訊息（' + THREAD.scheduled.map(function (x) { return x.at; }).join('、') + '）。主動擬稿不會動它，兩則都會發。要繼續嗎？')) return;
+      var btn = this, cid0 = cur; busy(btn, true, '擬稿中'); document.getElementById('briefMsg').textContent = '客服擬稿中，約 30 到 60 秒';
       api({ compose: { contactId: cid0, brief: brief, scheduleAt: at } }).then(function (r) {
         if (!r || r.ok === false) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
-        var tries = 0; (function waitRun() {
+        var runId = r.runId || ''; var tries = 0; (function waitRun() {
           if (cur !== cid0) return; tries++;
           api({ inbox: { op: 'lastRun', contactId: cid0 } }).then(function (x) {
-            var run = x && x.run; var fresh = run && (new Date(run.created_at).getTime() >= t0 - 60000);
-            if (fresh && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('briefMsg').textContent = '稿好了，往上看待核可'; loadList(function () { openThread(cid0, true); }, true); return; }
-            if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); document.getElementById('briefMsg').textContent = '沒有擬出來：' + (run.skip_reason || run.error || '?'); return; }
+            var run = x && x.run; var fresh = !!(run && runId && run.id === runId);
+            if (fresh && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('briefMsg').textContent = '稿好了，往上看待核可'; document.getElementById('briefText').value = ''; document.getElementById('briefBox').classList.remove('on'); loadList(function () { openThread(cid0, true); }, true); return; }
+            if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); var why = run.skip_reason || (String(run.error || '').indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : '引擎回報錯誤，請再試一次'); document.getElementById('briefMsg').textContent = '沒有擬出來：' + why; return; }
             if (tries < 20) setTimeout(waitRun, 6000); else { busy(btn, false); document.getElementById('briefMsg').textContent = '還在擬，稍後按 ↻ 看'; }
           }).catch(function () { if (tries < 20) setTimeout(waitRun, 6000); });
         })();
