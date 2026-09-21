@@ -140,6 +140,7 @@
       return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload) });
     }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error) stat('失敗：' + (d.detail || d.error)); return d; });
   }
+  var ROLES = ['客戶', '會計事務所', '廠商', '合作夥伴', '其他'], MEMBER_ROLES = ['窗口', '主管', '會計', '採購', '其他'];
   var OPS = { csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
   function run(fn, args, ok, fail) {
     var p;
@@ -175,8 +176,20 @@
   function loadList(cb, fresh) {
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
-    run('csInboxOverview', [], function (o) { OV = o || OV; renderList(); });
-    run('csInboxContacts', [{ fresh: !!fresh }], function (d) { LIST = d.contacts || []; renderList(); stat(''); if (cb) cb(); });
+    api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + e.message); });
+    api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false) { OV = o; mergeOverview(); renderList(); } }).catch(function () {});
+  }
+  // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
+  function mergeOverview() {
+    var pend = {}, sched = {}, schedName = {};
+    (OV.pending || []).forEach(function (p) { pend[p.contactId] = p; });
+    (OV.scheduled || []).forEach(function (x) { sched[x.contactId] = (sched[x.contactId] || 0) + 1; schedName[x.contactId] = x.name; });
+    var seen = {};
+    LIST.forEach(function (c) { seen[c.contactId] = 1; c.pending = pend[c.contactId] ? { id: pend[c.contactId].id, title: pend[c.contactId].title } : null; c.scheduled = sched[c.contactId] || 0; });
+    Object.keys(pend).concat(Object.keys(sched)).forEach(function (cid) {
+      if (seen[cid]) return; seen[cid] = 1; var p = pend[cid] || {};
+      LIST.push({ contactId: cid, name: p.name || schedName[cid] || cid.substring(0, 8), type: p.type || '', clientId: '', role: '', isEmp: false, lastTs: '', lastDirection: '', lastText: '（近期無對話）', awaitingReply: false, handledAction: '', manual: false, pending: pend[cid] ? { id: pend[cid].id, title: pend[cid].title } : null, scheduled: sched[cid] || 0 });
+    });
   }
   function renderList() {
     var pendN = (OV.pending || []).length, schedN = (OV.scheduled || []).length;
@@ -211,9 +224,26 @@
     var c0 = LIST.filter(function (x) { return x.contactId === cid; })[0];
     document.getElementById('head').innerHTML = '<b>' + esc(c0 ? c0.name : '') + '</b>';
     ['dossier', 'pendBox', 'manualBox'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
-    loadingBox('chat', '載入對話與客戶檔案');
+    loadingBox('chat', '載入對話');
     stat('讀取對話', true);
-    run('csInboxThread', [cid, true], function (t) { if (cur !== cid) return; THREAD = t; renderThread(t); stat(''); });
+    api({ inbox: { op: 'thread', contactId: cid, limit: 120 } }).then(function (t) {
+      if (cur !== cid) return;
+      if (!t || t.ok === false) { stat('失敗：' + ((t && t.error) || 'thread')); return; }
+      t.roles = ROLES; t.memberRoles = MEMBER_ROLES; t.awaitingReply = !!(t.flags && t.flags.awaiting); t.scheduled = []; t.pending = null; t.extrasLoaded = false;
+      t.dossier = { loading: true, skip: !!(t.flags && t.flags.skip), skipReason: String((t.flags || {}).skipReason || ''), memory: t.memory || null, facts: [] };
+      THREAD = t; renderThread(t); stat('');
+      loadExtras(cid, t);
+    }).catch(function (e) { stat('失敗：' + e.message); });
+  }
+  function loadExtras(cid, t) {
+    api({ app: { op: 'extras', contactId: cid } }).then(function (x) {
+      if (cur !== cid || !x || x.ok === false) return;
+      t.pending = x.pending || null; t.scheduled = x.scheduled || []; t.extrasLoaded = true;
+      if (x.dossier) { x.dossier.skip = t.dossier.skip; x.dossier.skipReason = t.dossier.skipReason; if (!x.dossier.memory) x.dossier.memory = t.memory || null; t.dossier = x.dossier; }
+      else { t.dossier.loading = false; }
+      t.roles = x.roles || ROLES; t.memberRoles = x.memberRoles || MEMBER_ROLES; if (x.role != null) t.role = x.role; if (x.roleNote != null) t.roleNote = x.roleNote; if (x.manual != null) t.manual = !!x.manual;
+      THREAD = t; renderDossier(t); renderPending(t); renderCompose(t);
+    }).catch(function () { t.dossier.loading = false; t.extrasLoaded = true; renderDossier(t); renderPending(t); });
   }
   function dossierHtml(t) {
     var d = t.dossier || {}; var memo = d.memory || {};
@@ -227,7 +257,7 @@
       + (t.clientId ? '' : '<h4>這位是哪個客戶？</h4><div class="row"><input type="text" id="bindQ" placeholder="簡稱、抬頭或統編" style="flex:1;min-width:160px"><button class="btn ghost small" id="bindSearch">搜尋</button><span class="small muted" id="bindMsg"></span></div><div id="bindCands"></div>')
       + '<h4>對象類型</h4><div class="row">' + roleSel + '<input type="text" id="roleNote" placeholder="備註（例：群智會計 Phoebe）" value="' + esc(t.roleNote || '') + '" style="flex:1;min-width:140px"><button class="btn ghost small" id="roleSave">儲存</button><span class="small muted" id="roleMsg"></span></div>'
       + (mem ? '<h4>群組成員</h4>' + mem : '')
-      + '<h4>檔案（引擎擬稿看的同一份）</h4>' + (facts ? '<ul>' + facts + '</ul>' : '<span class="muted">（沒有資料）</span>')
+      + '<h4>檔案（引擎擬稿看的同一份）</h4>' + (d.loading ? '<span class="muted"><span class="spin"></span>客戶資料載入中</span>' : (facts ? '<ul>' + facts + '</ul>' : '<span class="muted">（沒有資料）</span>'))
       + '<h4>客服對這位的認識</h4>' + (memo.summary ? '<div style="white-space:pre-wrap">' + esc(memo.summary) + '</div><div class="small muted">更新 ' + esc(memo.updatedAt || '') + '</div>' : '<span class="muted">（還沒有摘要，引擎第一次擬稿時會產生）</span>')
       + '<div class="row"><textarea id="memNote" rows="2" placeholder="你的補充（引擎每次都會讀、不會被覆蓋）" style="flex:1;min-width:200px;font-size:12px;padding:6px;border:1px solid var(--line);font-family:inherit">' + esc(memo.note || '') + '</textarea><button class="btn ghost small" id="memSave">存補充</button></div>'
       + '</div></details>';
@@ -236,6 +266,20 @@
     if (!t || !t.ok) { document.getElementById('head').innerHTML = '<span class="muted">讀取失敗 ' + esc(t && t.error) + '</span>'; return; }
     var typeLabel = t.type === 'group' ? '群組' : (t.type === 'room' ? '聊天室' : '個人');
     document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill">' + esc(t.clientId) + '</span>' : '<span class="pill wait">未綁</span>') + (t.role && t.role !== '客戶' ? '<span class="pill">' + esc(t.role) + '</span>' : '') + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>');
+    renderDossier(t);
+    var chat = document.getElementById('chat');
+    chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m) {
+      if (m.kind === 'event') return '<div class="msg event">' + esc(m.text) + '</div>';
+      var body = m.kind === 'card' ? '<span class="pill">卡片</span> ' + esc(m.text.replace('[卡片]', '').trim()) : esc(m.text);
+      if (m.kind === 'image' && m.img && STORAGE_OK.test(m.img)) body = '<img src="' + esc(m.img) + '" style="max-width:220px;border-radius:6px;display:block">';
+      var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
+      var who = m.side === 'owner' ? 'Wayne（群組內）' : (m.side === 'employee' ? esc(m.senderName || '員工') : (m.side === 'out' ? '植間' : (m.senderName ? esc(m.senderName) : '對方')));
+      return '<div class="msg ' + (ours ? 'out' : 'in') + '"><div class="who">' + who + '</div>' + body + '<div class="ts">' + esc(m.ts) + '</div></div>';
+    }).join('');
+    chat.scrollTop = chat.scrollHeight;
+    renderPending(t); renderCompose(t);
+  }
+  function renderDossier(t) {
     document.getElementById('dossier').innerHTML = dossierHtml(t);
     var bs = document.getElementById('bindSearch');
     if (bs) bs.onclick = function () {
@@ -249,19 +293,10 @@
     document.getElementById('roleSave').onclick = function () { busy(this, true, '儲存中'); run('csInboxRole', [{ contactId: cur, role: document.getElementById('roleSel').value, note: document.getElementById('roleNote').value }], function (r) { document.getElementById('roleMsg').textContent = r.ok ? '已設為 ' + r.role : ('失敗：' + (r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 600); }); };
     document.getElementById('memSave').onclick = function () { busy(this, true, '存'); run('csInboxMemoryNote', [{ contactId: cur, note: document.getElementById('memNote').value }], function (r) { if (r.ok) openThread(cur); }); };
     document.querySelectorAll('#dossier [data-uid]').forEach(function (row) { row.querySelector('.mSave').onclick = function () { busy(this, true, '存'); run('csInboxMember', [{ contactId: cur, userId: row.getAttribute('data-uid'), name: row.querySelector('.mName').value, role: row.querySelector('.mRole').value }], function (r) { if (r.ok) openThread(cur); }); }; });
-    var chat = document.getElementById('chat');
-    chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m) {
-      if (m.kind === 'event') return '<div class="msg event">' + esc(m.text) + '</div>';
-      var body = m.kind === 'card' ? '<span class="pill">卡片</span> ' + esc(m.text.replace('[卡片]', '').trim()) : esc(m.text);
-      var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
-      var who = m.side === 'owner' ? 'Wayne（群組內）' : (m.side === 'employee' ? esc(m.senderName || '員工') : (m.side === 'out' ? '植間' : (m.senderName ? esc(m.senderName) : '對方')));
-      return '<div class="msg ' + (ours ? 'out' : 'in') + '"><div class="who">' + who + '</div>' + body + '<div class="ts">' + esc(m.ts) + '</div></div>';
-    }).join('');
-    chat.scrollTop = chat.scrollHeight;
-    renderPending(t); renderCompose(t);
   }
   function renderPending(t) {
     var p = t.pending, pb = document.getElementById('pendBox');
+    if (!p && t.extrasLoaded === false) { pb.innerHTML = '<div class="small muted" style="margin-top:8px"><span class="spin"></span>查看有沒有待核可稿</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : '';
     pb.innerHTML = '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
@@ -343,11 +378,15 @@
     pollTimer = setTimeout(function () {
       loadList(function () {
         var typing = !!(document.getElementById('manualText') && document.getElementById('manualText').value.trim());
-        if (cur && !dirty && !ATT.draft.length && !ATT.compose.length && !typing) run('csInboxThread', [cur], function (t) {
-          var oldP = THREAD && THREAD.pending ? THREAD.pending.id : '', newP = t && t.pending ? t.pending.id : '';
-          var oldN = THREAD ? (THREAD.messages || []).length : 0, newN = t ? (t.messages || []).length : 0;
-          if (oldP !== newP || oldN !== newN || (THREAD && t && THREAD.manual !== t.manual)) { THREAD = t; renderThread(t); }
-        });
+        if (cur && !dirty && !ATT.draft.length && !ATT.compose.length && !typing) {
+          var cid0 = cur;
+          api({ inbox: { op: 'thread', contactId: cid0, limit: 120 } }).then(function (t) {
+            if (cur !== cid0 || !THREAD || !t || t.ok === false) return;
+            var newP = ((OV.pending || []).filter(function (p) { return p.contactId === cid0; })[0] || {}).id || '', oldP = THREAD.pending ? THREAD.pending.id : '';
+            var oldN = (THREAD.messages || []).length, newN = (t.messages || []).length;
+            if (oldN !== newN || THREAD.manual !== t.manual || (THREAD.extrasLoaded && newP !== oldP)) openThread(cid0);
+          }).catch(function () {});
+        }
       });
       poll();
     }, 15000);
