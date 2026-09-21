@@ -310,8 +310,8 @@
           api({ inbox: { op: 'lastRun', contactId: cidH, runId: runId } }).then(function (x) {
             var run = x && x.run; var hm0 = document.getElementById('headMsg'); if (run && run.id === runId && run.status && run.status !== 'error' && run.ap_id) { if (hm0) hm0.textContent = '稿好了'; loadList(function () { openThread(cidH, true); }, true); return; }
             if (run && run.id === runId && (run.status === 'error' || run.status === 'skipped' || run.status === 'preview')) { busy(btn, false); var errR = String(run.error || ''); var whyR = run.skip_reason || (errR.indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : (errR.indexOf('status_unknown') >= 0 ? '查不到既有稿的狀態，請按 ↻ 再試' : '引擎回報錯誤，請再試一次')); if (hm0) hm0.textContent = '沒有擬出來：' + whyR; return; }
-            if (tries < 20) setTimeout(waitR, 6000); else { busy(btn, false); var hm = document.getElementById('headMsg'); if (hm) hm.textContent = '還在擬，稍後按 ↻'; }
-          }).catch(function () { if (tries < 20) setTimeout(waitR, 6000); else busy(btn, false); });
+            if (tries < 45) setTimeout(waitR, 6000); else { busy(btn, false); var hm = document.getElementById('headMsg'); if (hm) hm.textContent = '還在擬，稍後按 ↻'; }
+          }).catch(function () { if (tries < 45) setTimeout(waitR, 6000); else busy(btn, false); });
         })();
       }).catch(function (e) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + e.message; });
     };
@@ -412,8 +412,8 @@
             var run = x && x.run; var fresh = !!(run && runId && run.id === runId);
             if (fresh && run.status && run.status !== 'error' && run.ap_id) { document.getElementById('briefMsg').textContent = '稿好了，往上看待核可'; document.getElementById('briefText').value = ''; document.getElementById('briefBox').classList.remove('on'); loadList(function () { openThread(cid0, true); }, true); return; }
             if (fresh && (run.status === 'error' || run.status === 'skipped')) { busy(btn, false); var errC = String(run.error || ''); var why = run.skip_reason || (errC.indexOf('scheduled_exists') >= 0 ? '這位有排程要發的訊息，請先取消排程' : (errC.indexOf('status_unknown') >= 0 ? '查不到既有稿的狀態，請再試一次' : '引擎回報錯誤，請再試一次')); document.getElementById('briefMsg').textContent = '沒有擬出來：' + why; return; }
-            if (tries < 20) setTimeout(waitRun, 6000); else { busy(btn, false); var bm = document.getElementById('briefMsg'); if (bm) bm.textContent = '還在擬，稍後按 ↻ 看'; }
-          }).catch(function () { if (tries < 20) setTimeout(waitRun, 6000); else busy(btn, false); });
+            if (tries < 45) setTimeout(waitRun, 6000); else { busy(btn, false); var bm = document.getElementById('briefMsg'); if (bm) bm.textContent = '還在擬，稍後按 ↻ 看'; }
+          }).catch(function () { if (tries < 45) setTimeout(waitRun, 6000); else busy(btn, false); });
         })();
       }).catch(function (e) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + e.message; });
     };
