@@ -128,7 +128,15 @@
   var INIT_CID = (new URLSearchParams(location.search).get('cid') || '').replace(/[^A-Za-z0-9]/g, '').substring(0, 40);
   var cur = null, LIST = [], OV = { pending: [], scheduled: [], loaded: false }, THREAD = null, dirty = false, pollTimer = null, fbStars = 0, TAB = 'todo';
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-  function stat(t, busyFlag) { document.getElementById('stat').innerHTML = (busyFlag ? '<span class="spin"></span>' : '') + esc(t || ''); }
+  function friendlyErr(m) {
+    m = String(m || '');
+    if (/<!DOCTYPE|http 404|http 50\d|not found/i.test(m)) return '後台（GAS）暫時沒回應，幾秒後再試一次';
+    if (/TimeoutError|timed out|out_of_time/i.test(m)) return '後台回應太慢，系統會自動重試，稍後按 ↻';
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '網路連線失敗，確認網路後再試';
+    if (/forbidden/i.test(m)) return '這個帳號沒有權限';
+    return m.length > 90 ? m.slice(0, 90) + '…' : m;
+  }
+  function stat(t, busyFlag) { t = String(t || ''); if (t.indexOf('失敗：') === 0) t = '失敗：' + friendlyErr(t.slice(3)); document.getElementById('stat').innerHTML = (busyFlag ? '<span class="spin"></span>' : '') + esc(t); }
   function loadingBox(id, t) { document.getElementById(id).innerHTML = '<div class="loading"><span class="spin"></span>' + esc(t) + '</div>'; }
   function busy(btn, on, label) { if (!btn) return; if (on) { btn.setAttribute('data-label', btn.textContent); btn.innerHTML = '<span class="spin"></span>' + esc(label || '處理中'); btn.classList.add('busy'); } else { btn.textContent = btn.getAttribute('data-label') || btn.textContent; btn.classList.remove('busy'); } }
   var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4', engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/cs-run', tenant: 'yuzhi' };
@@ -151,7 +159,7 @@
     else if (fn === 'csInboxFind') p = api({ app: { op: 'find', q: args[0] } });
     else if (OPS[fn]) p = api({ app: Object.assign({ op: OPS[fn] }, args[0] || {}) });
     else p = Promise.reject(new Error('unknown ' + fn));
-    p.then(function (r) { ok(r); }).catch(function (e) { stat('失敗：' + e.message); if (fail) fail(e); });
+    p.then(function (r) { ok(r); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); if (fail) fail(e); });
   }
   function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; }
   function showApp() { document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
@@ -177,7 +185,7 @@
   function loadList(cb, fresh) {
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
-    api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + e.message); });
+    api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); });
     if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 30000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
@@ -242,7 +250,7 @@
         if (cur !== cid || gen !== OPEN_GEN) return;
         api({ inbox: { op: 'thread', contactId: cid, limit: 120 } }).then(function (t2) { if (cur !== cid || gen !== OPEN_GEN || !t2 || !t2.dossier || t2.dossier.stale) return; t2.dossier.loading = false; t2.dossier.skip = t.dossier.skip; t2.dossier.skipReason = t.dossier.skipReason; t2.dossier.memory = t.dossier.memory; t.dossier = t2.dossier; var sn = snapInputs(); renderDossier(t); restoreInputs(sn); }).catch(function () {});
       }, 6000);
-    }).catch(function (e) { if (cur !== cid || gen !== OPEN_GEN) return; stat('失敗：' + e.message); });
+    }).catch(function (e) { if (cur !== cid || gen !== OPEN_GEN) return; stat('失敗：' + friendlyErr(e.message)); });
   }
   // 重畫前後保住使用者正在打的內容與展開狀態（審查 High 1）
   function snapInputs() { var o = { open: !!(document.querySelector('#dossier details') && document.querySelector('#dossier details').open), draftId: (THREAD && THREAD.pending) ? THREAD.pending.id : '' }; ['manualText', 'manualAt', 'bindQ', 'roleNote', 'memNote', 'fbText', 'selfText', 'selfText2', 'sendAt', 'draft', 'briefText', 'briefAt'].forEach(function (id) { var e = document.getElementById(id); if (e) o[id] = e.value; }); var wb = document.getElementById('manualWhenBox'); o.whenOn = !!(wb && wb.classList.contains('on')); return o; }
@@ -304,7 +312,7 @@
       if (THREAD && !THREAD.awaitingReply && !confirm('客戶最後一則已經回過了。仍要針對客戶上一則訊息擬一份新回覆嗎？')) return;
       busy(btn, true, '擬稿中'); document.getElementById('headMsg').textContent = '約 30 到 60 秒';
       api({ redraft: { contactId: cidH } }).then(function (r) {
-        if (!r || r.ok === false) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
+        if (!r || r.ok === false) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + friendlyErr((r && (r.detail || r.error)) || '?'); return; }
         var runId = r.runId || '', tries = 0; (function waitR() {
           if (cur !== cidH) return; tries++;
           api({ inbox: { op: 'lastRun', contactId: cidH, runId: runId } }).then(function (x) {
@@ -313,7 +321,7 @@
             if (tries < 45) setTimeout(waitR, 6000); else { busy(btn, false); var hm = document.getElementById('headMsg'); if (hm) hm.textContent = '還在擬，稍後按 ↻'; }
           }).catch(function () { if (tries < 45) setTimeout(waitR, 6000); else busy(btn, false); });
         })();
-      }).catch(function (e) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + e.message; });
+      }).catch(function (e) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + friendlyErr(e.message); });
     };
     renderDossier(t);
     var chat = document.getElementById('chat');
@@ -405,7 +413,7 @@
       if (THREAD && (THREAD.scheduled || []).length) { alert('這位已有排程要發的訊息（' + THREAD.scheduled.map(function (x) { return x.at; }).join('、') + '），請先到「已排程」取消，再主動擬稿。'); return; }
       var btn = this, cid0 = cur; busy(btn, true, '擬稿中'); document.getElementById('briefMsg').textContent = '客服擬稿中，約 30 到 60 秒';
       api({ compose: { contactId: cid0, brief: brief, scheduleAt: at } }).then(function (r) {
-        if (!r || r.ok === false) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
+        if (!r || r.ok === false) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + friendlyErr((r && (r.detail || r.error)) || '?'); return; }
         var runId = r.runId || ''; var tries = 0; (function waitRun() {
           if (cur !== cid0) return; tries++;
           api({ inbox: { op: 'lastRun', contactId: cid0, runId: runId } }).then(function (x) {
@@ -415,7 +423,7 @@
             if (tries < 45) setTimeout(waitRun, 6000); else { busy(btn, false); var bm = document.getElementById('briefMsg'); if (bm) bm.textContent = '還在擬，稍後按 ↻ 看'; }
           }).catch(function () { if (tries < 45) setTimeout(waitRun, 6000); else busy(btn, false); });
         })();
-      }).catch(function (e) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + e.message; });
+      }).catch(function (e) { busy(btn, false); document.getElementById('briefMsg').textContent = '失敗：' + friendlyErr(e.message); });
     };
     var on = document.getElementById('manualOn'); if (on) on.onclick = function () { setManual(true); };
     var off = document.getElementById('manualOff'); if (off) off.onclick = function () { setManual(false); };
