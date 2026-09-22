@@ -363,9 +363,9 @@
     var p = t.pending, pb = document.getElementById('pendBox');
     if (!p && t.extrasLoaded === false) { pb.innerHTML = '<div class="small muted" style="margin-top:8px"><span class="spin"></span>查看有沒有待核可稿</div>'; return; }
     if (!p && t.extrasFailed) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">待核可稿讀取失敗，按 ↻ 重試</div>'; return; }
-    if (!p && /^already_submitted/.test(String((t.dossier || {}).skipReason || ''))) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上一稿已處理；客戶再來訊時引擎會重新判斷。你也可以直接在下面回，或請客服擬一則主動訊息。</div>'; return; }
     var qo = t.queue || [];
     if (!p && qo.length) { var kindMap = { webhook: '客戶來訊自動擬稿', feedback: '依你的意見重擬', app: '重擬回覆', compose: '主動聯繫擬稿', manual: '補跑擬稿', retry: '補跑擬稿' }; var q0 = qo[qo.length - 1]; pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px"><span class="spin"></span>客服擬稿中：' + esc(kindMap[q0.kind] || q0.kind) + (q0.state === 'running' ? '（第 ' + q0.tries + ' 次嘗試，' + esc(q0.startedAt || '') + ' 開始）' : '（排隊中，' + esc(q0.createdAt || '') + ' 送出）') + '。通常 1 到 3 分鐘；後台慢時會自動重試，稿好了會自己出現，不用再按重擬。</div>'; return; }
+    if (!p && /^already_submitted/.test(String((t.dossier || {}).skipReason || ''))) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上一稿已處理；客戶再來訊時引擎會重新判斷。你也可以直接在下面回，或請客服擬一則主動訊息。</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
     var nCards = (p.cards || []).length || Number(p.attach) || 0;
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>會一起發的小卡 ' + nCards + ' 張（點開載入）</summary><div id="cardsBox" class="small muted">載入中…</div></details>' : '');
@@ -487,6 +487,7 @@
           var qsigNow = (THREAD.queue || []).map(function (q) { return q.id + ':' + q.state + ':' + q.tries; }).join(','); var queueChanged = String(ch.queueSig || '') !== qsigNow;
           var newP = ((LIST.filter(function (c) { return c.contactId === cid0; })[0] || {}).pending || {}).id || '', oldP = THREAD.pending ? THREAD.pending.id : '';
           var pendChanged = THREAD.extrasLoaded && !THREAD.extrasFailed && newP !== oldP;
+          if (queueChanged) OV.at = 0;   // 排隊剛清空＝稿剛投進核可中心，總覽要立刻重抓才看得到
           if (threadChanged || pendChanged || queueChanged) openThread(cid0, true);
         };
         if (listChanged || overviewDue || !LIST.length) loadList(afterList, false); else afterList();
