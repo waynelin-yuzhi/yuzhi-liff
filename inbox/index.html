@@ -231,7 +231,7 @@
   var OPEN_GEN = 0;
   function openThread(cid, quiet) {
     var gen = ++OPEN_GEN;
-    cur = cid; dirty = false; if (!quiet) { ATT.draft = []; ATT.compose = []; } renderList(); try { sessionStorage.setItem('lastCid', cid); } catch (eS) {}
+    cur = cid; dirty = false; if (!quiet) { ATT.draft = []; ATT.compose = []; } renderList();
     document.body.classList.add('view-thread'); if (!quiet) window.scrollTo(0, 0);
     var c0 = LIST.filter(function (x) { return x.contactId === cid; })[0];
     document.getElementById('head').innerHTML = '<b>' + esc(c0 ? c0.name : '') + '</b>';
@@ -511,10 +511,10 @@
       document.querySelectorAll('#findRes [data-find]').forEach(function (b) { b.onclick = function () { document.getElementById('findRes').innerHTML = ''; openThread(b.getAttribute('data-find')); }; });
     });
   };
-  document.getElementById('back').onclick = function () { document.body.classList.remove('view-thread'); cur = null; THREAD = null; try { sessionStorage.removeItem('lastCid'); } catch (eS) {} renderList(); window.scrollTo(0, 0); };
+  document.getElementById('back').onclick = function () { document.body.classList.remove('view-thread'); cur = null; THREAD = null; renderList(); window.scrollTo(0, 0); };
   document.getElementById('reload').onclick = function () { refreshAll(true); };
   var BOOTED = false;
-  function boot() { if (BOOTED) return; BOOTED = true; var startCid = INIT_CID || ''; if (INIT_CID) { try { history.replaceState(null, '', location.pathname); } catch (eH) {} } if (!startCid) { try { startCid = sessionStorage.getItem('lastCid') || ''; } catch (eS) {} } loadList(function () { if (startCid) { openThread(startCid); INIT_CID = ''; } }); poll(); }
+  function boot() { if (BOOTED) return; BOOTED = true; var startCid = INIT_CID || ''; if (INIT_CID) { try { history.replaceState(null, '', location.pathname); } catch (eH) {} } loadList(function () { if (startCid) { openThread(startCid); INIT_CID = ''; } }); poll(); }
   sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
 </script>
 </body>
