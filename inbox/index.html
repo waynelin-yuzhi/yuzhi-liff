@@ -126,6 +126,7 @@
 <input type="file" id="attFile" accept="image/jpeg,image/png,application/pdf" style="display:none">
 <script>
   var INIT_CID = (new URLSearchParams(location.search).get('cid') || '').replace(/[^A-Za-z0-9]/g, '').substring(0, 40);
+  (function () { var tq = Number(new URLSearchParams(location.search).get('t') || 0); if (INIT_CID && (!tq || Date.now() - tq > 20 * 60000)) INIT_CID = ''; })();   // 只有卡片剛點的連結（20 分內）才直接開對話；捷徑／書籤帶的 cid 一律進清單
   var cur = null, LIST = [], OV = { pending: [], scheduled: [], loaded: false }, THREAD = null, dirty = false, pollTimer = null, fbStars = 0, TAB = 'todo';
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function friendlyErr(m) {
