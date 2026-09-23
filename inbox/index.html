@@ -127,7 +127,7 @@
 <script>
   var INIT_CID = (new URLSearchParams(location.search).get('cid') || '').replace(/[^A-Za-z0-9]/g, '').substring(0, 40);
   (function () { var tq = Number(new URLSearchParams(location.search).get('t') || 0); if (INIT_CID && (!tq || Date.now() - tq > 20 * 60000)) INIT_CID = ''; })();   // 只有卡片剛點的連結（20 分內）才直接開對話；捷徑／書籤帶的 cid 一律進清單
-  var cur = null, LIST = [], OV = { pending: [], scheduled: [], loaded: false }, THREAD = null, dirty = false, pollTimer = null, fbStars = 0, TAB = 'todo';
+  var cur = null, LIST = [], OV = { pending: [], scheduled: [], other: [], loaded: false }, THREAD = null, dirty = false, pollTimer = null, fbStars = 0, TAB = 'todo';
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function friendlyErr(m) {
     m = String(m || '');
@@ -217,9 +217,12 @@
     }
     var rows = LIST.filter(function (c) { return TAB === 'staff' ? c.isEmp : (TAB === 'all' ? !c.isEmp : (!c.isEmp && (c.pending || c.awaitingReply || c.manual))); });
     if (TAB === 'todo') rows.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || String(b.lastTs || '').localeCompare(String(a.lastTs || '')); });
+    if (TAB === 'todo' && (OV.other || []).length) {   // 非客服的待核可（銀行對帳、守望者提醒…）不在這個清單裡，至少讓他知道有
+      batch.innerHTML = '<div class="fbbox on" style="margin:0 0 8px"><div class="small"><b>另有 ' + OV.other.length + ' 件待核可不在這裡</b>（銀行對帳、系統提醒這類不是客服稿）：<br>' + OV.other.slice(0, 5).map(function (o) { return '・' + esc(o.id) + ' ' + esc(o.title) + '（' + esc(String(o.ts).substring(5, 16)) + '）'; }).join('<br>') + '<br>請從 LINE 的核可卡處理。</div></div>';
+    }
     if (TAB === 'todo') {
       var withAt = (OV.pending || []).filter(function (p) { return p.publishAt; });
-      if (withAt.length > 1) { batch.innerHTML = '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
+      if (withAt.length > 1) { batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
         document.getElementById('sendAll').onclick = function () { if (!confirm('把 ' + withAt.length + ' 則待核可稿全部照各自的建議時間排程送出？')) return; busy(this, true, '送出中'); var i = 0; (function next() { if (i >= withAt.length) { refreshAll(true); return; } var p = withAt[i++]; run('csInboxSend', [{ apId: p.id, contactId: p.contactId, publishAt: p.publishAt }], next, next); })(); }; }
     }
     box.innerHTML = rows.length ? rows.map(function (c) {
