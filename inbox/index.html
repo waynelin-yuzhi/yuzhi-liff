@@ -36,7 +36,7 @@
   .pill{display:inline-block;font-size:11px;padding:1px 7px;border:1px solid #D9D3C4;border-radius:10px;color:#5F6E58;vertical-align:middle;font-weight:400}
   .pill.ap{background:var(--tint);border-color:#B9C4AE}
   .pill.man{background:var(--amber);border-color:#E0CF93;color:#7a5a12}
-  .pill.wait{background:#F7E4DC;border-color:#E4B9A8;color:var(--brick)}
+  .pill.tag{background:#EEF2E6;border-color:#C9D3B8;color:#4B5A42}.pill.wait{background:#F7E4DC;border-color:#E4B9A8;color:var(--brick)}
   .sched{padding:8px;border-bottom:1px solid var(--line);font-size:13px}
   .head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .head b{font-size:17px}
@@ -223,7 +223,7 @@
         document.getElementById('sendAll').onclick = function () { if (!confirm('把 ' + withAt.length + ' 則待核可稿全部照各自的建議時間排程送出？')) return; busy(this, true, '送出中'); var i = 0; (function next() { if (i >= withAt.length) { refreshAll(true); return; } var p = withAt[i++]; run('csInboxSend', [{ apId: p.id, contactId: p.contactId, publishAt: p.publishAt }], next, next); })(); }; }
     }
     box.innerHTML = rows.length ? rows.map(function (c) {
-      var badges = (c.pending ? '<span class="pill ap">待核可</span>' : '') + (c.awaitingReply && !c.pending ? '<span class="pill wait">待回</span>' : '') + (c.scheduled ? '<span class="pill ap">排程 ' + c.scheduled + '</span>' : '') + (c.manual ? '<span class="pill man">手動</span>' : '') + (c.role && c.role !== '員工' ? '<span class="pill">' + esc(c.role) + '</span>' : '');
+      var badges = (c.pending ? '<span class="pill ap">待核可</span>' : '') + (c.awaitingReply && !c.pending ? '<span class="pill wait">待回</span>' : '') + (c.scheduled ? '<span class="pill ap">排程 ' + c.scheduled + '</span>' : '') + (c.manual ? '<span class="pill man">手動</span>' : '') + (c.role && c.role !== '員工' ? '<span class="pill">' + esc(c.role) + '</span>' : '') + (c.tags || []).map(function (g) { return '<span class="pill tag">' + esc(g) + '</span>'; }).join('');
       var pv0 = c.pending ? ((OV.pending || []).filter(function (p) { return p.id === c.pending.id; })[0] || {}) : {};
       var snip = c.pending ? '稿：' + esc(pv0.snippet || String(pv0.text || '').substring(0, 160) || c.pending.title) : esc(c.lastText || '');
       return '<div class="ct' + (cur === c.contactId ? ' on' : '') + (c.pending ? ' hot' : '') + '" data-cid="' + esc(c.contactId) + '"><span class="t">' + esc((c.lastTs || '').slice(5, 16)) + '</span><div class="n">' + esc(c.name) + badges + '</div><div class="m">' + snip + '</div></div>';
@@ -306,8 +306,12 @@
   function renderThread(t) {
     if (!t || !t.ok) { document.getElementById('head').innerHTML = '<span class="muted">讀取失敗 ' + esc(t && t.error) + '</span>'; return; }
     var typeLabel = t.type === 'group' ? '群組' : (t.type === 'room' ? '聊天室' : '個人');
-    document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill">' + esc(t.clientId) + '</span>' : '<span class="pill wait">未綁</span>') + (t.role && t.role !== '客戶' ? '<span class="pill">' + esc(t.role) + '</span>' : '') + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>') + '<button class="btn ghost small" id="threadReload" title="只重抓這位">↻ 這段</button><button class="btn ghost small" id="redraftBtn">重擬回覆</button><span class="small muted" id="headMsg"></span>';
+    document.getElementById('head').innerHTML = '<b>' + esc(t.name || t.contactId.substring(0, 8)) + '</b><span class="pill">' + typeLabel + '</span>' + (t.clientId ? '<span class="pill" id="pillBind" title="點一下改綁定" style="cursor:pointer">' + esc(t.clientId) + '</span>' : '<span class="pill wait" id="pillBind" title="點一下綁客戶" style="cursor:pointer">未綁</span>') + '<span class="pill" id="pillRole" title="點一下改對象類型" style="cursor:pointer">' + esc(t.role || '客戶') + '</span>' + (t.tags || []).map(function (g) { return '<span class="pill tag">' + esc(g) + '</span>'; }).join('') + '<span class="pill" id="pillTags" title="新增或修改標籤" style="cursor:pointer;border-style:dashed">＋標籤</span>' + (t.manual ? '<span class="pill man">手動回覆中</span>' : '<span class="pill ap">AI 擬稿中</span>') + '<button class="btn ghost small" id="threadReload" title="只重抓這位">↻ 這段</button><button class="btn ghost small" id="redraftBtn">重擬回覆</button><span class="small muted" id="headMsg"></span>';
     if ((t.queue || []).length) { var rbQ = document.getElementById('redraftBtn'); rbQ.disabled = true; rbQ.title = '客服擬稿中，等稿出來再說'; }
+    var openDossier = function (focusId) { var d = document.querySelector('#dossier details'); if (d) d.open = true; var e = document.getElementById(focusId); if (e) { e.scrollIntoView({ block: 'center' }); try { e.focus(); } catch (eF) {} } };
+    document.getElementById('pillBind').onclick = function () { openDossier(t.clientId ? 'bindQ' : 'bindQ'); };
+    document.getElementById('pillRole').onclick = function () { openDossier('roleSel'); };
+    document.getElementById('pillTags').onclick = function () { var cur0 = (t.tags || []).join('、'); var v = prompt('標籤（用、分開，最多 8 個，每個 12 字內；清空＝全部移除）', cur0); if (v === null) return; var tags = v.split(/[、,，\s]+/).map(function (x) { return x.trim(); }).filter(Boolean); var cidT = cur; api({ inbox: { op: 'tags', contactId: cidT, tags: tags } }).then(function (r) { if (!r || r.ok === false) { stat('失敗：' + ((r && r.error) || 'tags')); return; } if (cur === cidT) { t.tags = r.tags || []; renderThread(t); } loadList(null, true); }).catch(function (e) { stat('失敗：' + e.message); }); };
     document.getElementById('threadReload').onclick = function () { var cidH = cur; loadList(function () { if (cur === cidH) openThread(cidH, true); }, true); };
     document.getElementById('redraftBtn').onclick = function () {
       var cidH = cur, btn = this;
