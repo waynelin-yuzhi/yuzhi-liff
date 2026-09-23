@@ -88,8 +88,8 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .loading{padding:18px 8px;color:var(--muted);font-size:13px}
   .att{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-  .att .it{position:relative;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;font-size:11px;color:var(--body);max-width:120px}
-  .att .it img{display:block;max-width:110px;max-height:90px;border-radius:4px}
+  .att .it{position:relative;flex:0 0 auto;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;font-size:11px;color:var(--body);max-width:120px}
+  .att .it img{display:block;width:84px;height:84px;object-fit:cover;border-radius:4px}
   .att .it .x{position:absolute;top:-6px;right:-6px;background:var(--brick);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;cursor:pointer;padding:0}
   .attbtn{font-size:12px}
   input[type=text],select{padding:6px 8px;border:1px solid var(--line);font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
@@ -123,7 +123,7 @@
   </div>
 </div>
 </div>
-<input type="file" id="attFile" accept="image/jpeg,image/png,application/pdf" style="display:none">
+<input type="file" id="attFile" accept="image/jpeg,image/png,application/pdf" multiple style="display:none">
 <script>
   var INIT_CID = (new URLSearchParams(location.search).get('cid') || '').replace(/[^A-Za-z0-9]/g, '').substring(0, 40);
   (function () { var tq = Number(new URLSearchParams(location.search).get('t') || 0); if (INIT_CID && (!tq || Date.now() - tq > 20 * 60000)) INIT_CID = ''; })();   // 只有卡片剛點的連結（20 分內）才直接開對話；捷徑／書籤帶的 cid 一律進清單
@@ -456,19 +456,25 @@
   function pickAtt(who, msgId) {
     attTarget = who; var cidAtPick = cur; var inp = document.getElementById('attFile'); inp.value = '';
     inp.onchange = function () {
-      var f = inp.files && inp.files[0]; if (!f) return;
-      if (f.size > 10 * 1024 * 1024) { document.getElementById(msgId).textContent = '檔案超過 10MB'; return; }
-      document.getElementById(msgId).textContent = '上傳中…';
-      var rd = new FileReader();
-      rd.onload = function () {
-        var b64 = String(rd.result).split(',')[1] || '';
-        run('csInboxUpload', [{ name: f.name, mime: f.type, b64: b64 }], function (r) {
-          if (cur !== cidAtPick) return;
-          if (!r || !r.ok) { document.getElementById(msgId).textContent = '上傳失敗：' + ((r && (r.detail || r.error)) || '?'); return; }
-          ATT[who].push({ url: r.url, preview: r.preview, kind: r.kind, name: r.name || f.name }); renderAtt(who); document.getElementById(msgId).textContent = '';
-        }, function () { var m = document.getElementById(msgId); if (m) m.textContent = '上傳失敗'; });
+      var files = Array.prototype.slice.call(inp.files || []); if (!files.length) return;
+      var total = files.length, done = 0, failed = 0, msg = document.getElementById(msgId);
+      var next = function () {   // 逐張上傳（一次選多張、順序不亂、任一張失敗不影響其他）
+        var f = files.shift();
+        if (!f) { if (msg) msg.textContent = failed ? ('上傳完成，' + failed + ' 張失敗') : ''; return; }
+        if (f.size > 10 * 1024 * 1024) { failed++; if (msg) msg.textContent = f.name + ' 超過 10MB，略過'; return next(); }
+        if (msg) msg.textContent = '上傳中 ' + (done + failed + 1) + '/' + total + '…';
+        var rd = new FileReader();
+        rd.onload = function () {
+          var b64 = String(rd.result).split(',')[1] || '';
+          run('csInboxUpload', [{ name: f.name, mime: f.type, b64: b64 }], function (r) {
+            if (cur !== cidAtPick) return;
+            if (!r || !r.ok) { failed++; if (msg) msg.textContent = '上傳失敗：' + ((r && (r.detail || r.error)) || '?'); return next(); }
+            ATT[who].push({ url: r.url, preview: r.preview, kind: r.kind, name: r.name || f.name }); renderAtt(who); done++; next();
+          }, function () { failed++; if (msg) msg.textContent = '上傳失敗'; next(); });
+        };
+        rd.readAsDataURL(f);
       };
-      rd.readAsDataURL(f);
+      next();
     };
     inp.click();
   }
