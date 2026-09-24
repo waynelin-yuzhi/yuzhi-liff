@@ -189,7 +189,7 @@
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); });
-    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 30000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } return OV; }).catch(function () { return OV; });
+    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 90000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.failed = false; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } else { OV.failed = true; renderList(); } return OV; }).catch(function () { OV.failed = true; renderList(); return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
   function mergeOverview() {
@@ -197,6 +197,7 @@
     (OV.pending || []).forEach(function (p) { pend[p.contactId] = p; });
     (OV.scheduled || []).forEach(function (x) { sched[x.contactId] = (sched[x.contactId] || 0) + 1; schedName[x.contactId] = x.name; });
     var seen = {}; LIST = LIST.filter(function (c) { return !c._stub; });
+    if (!OV.loaded) return;   // 清單 0.2 秒就回、總覽還在路上：這時抹掉 c.pending 等於每次刷新都讓待核可徽章消失一次
     LIST.forEach(function (c) { seen[c.contactId] = 1; c.pending = pend[c.contactId] ? { id: pend[c.contactId].id, title: pend[c.contactId].title } : null; c.scheduled = sched[c.contactId] || 0; });
     Object.keys(pend).concat(Object.keys(sched)).forEach(function (cid) {
       if (seen[cid]) return; seen[cid] = 1; var p = pend[cid] || {};
@@ -205,7 +206,7 @@
   }
   function renderList() {
     var pendN = (OV.pending || []).length, schedN = (OV.scheduled || []).length;
-    document.getElementById('counts').textContent = OV.loaded === false ? '待核可 …　已排程 …' : ('待核可 ' + pendN + '　已排程 ' + schedN);
+    document.getElementById('counts').textContent = OV.loaded === false ? (OV.failed ? '總覽讀不到，按 ↻ 重試' : '待核可 …　已排程 …') : ('待核可 ' + pendN + '　已排程 ' + schedN);
     document.querySelectorAll('.tabs button').forEach(function (b) { b.className = b.getAttribute('data-tab') === TAB ? 'on' : ''; });
     var box = document.getElementById('contacts'), batch = document.getElementById('batch'); batch.innerHTML = '';
     if (TAB === 'sched') {
@@ -575,15 +576,16 @@
     stat(on ? '切換手動中' : '恢復 AI 中', true);
     run('csInboxManual', [{ contactId: cur, on: on }], function (r) { if (r.ok) refreshAll(true); else stat('失敗：' + (r.detail || r.error)); });
   }
-  var LAST_LIST_TS = null, PEND_TRY = { id: '', at: 0 };
+  var LAST_LIST_TS = null, PEND_TRY = { id: '', at: 0 }, POLL_FAILS = 0;
   function poll() {   // 加速第四段：先問引擎「有沒有變」（毫秒級）；沒變就什麼都不抓；總覽每 30 秒更新一次
     if (pollTimer) clearTimeout(pollTimer);
     pollTimer = setTimeout(function () {
       var cid0 = cur;
       api({ inbox: { op: 'changes', contactId: cid0 || '' } }).then(function (ch) {
         if (!ch || ch.ok === false) throw new Error('changes');
+        POLL_FAILS = 0;
         var listChanged = LAST_LIST_TS === null || ch.listTs !== LAST_LIST_TS; LAST_LIST_TS = ch.listTs;
-        var overviewDue = (Date.now() - (OV.at || 0)) > 30000;
+        var overviewDue = (Date.now() - (OV.at || 0)) > 90000;
         var afterList = function () {
           if (!cid0 || cur !== cid0 || !THREAD) return;
           if (userBusy()) return;
@@ -600,9 +602,9 @@
           if (threadChanged || pendChanged || queueChanged) openThread(cid0, true);
         };
         if (listChanged || overviewDue || !LIST.length) loadList(afterList, false); else afterList();
-      }).catch(function () { loadList(); });
+      }).catch(function () { POLL_FAILS++; });
       poll();
-    }, 15000);
+    }, Math.min(15000 * (POLL_FAILS + 1), 60000));
   }
   document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); }; });
   document.getElementById('findBtn').onclick = function () {
