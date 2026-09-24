@@ -189,7 +189,7 @@
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); });
-    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 90000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.failed = false; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } else { OV.failed = true; renderList(); } return OV; }).catch(function () { OV.failed = true; renderList(); return OV; });
+    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 45000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.failed = false; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } else { OV.failed = true; renderList(); } return OV; }).catch(function () { OV.failed = true; renderList(); return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
   function mergeOverview() {
@@ -585,7 +585,7 @@
         if (!ch || ch.ok === false) throw new Error('changes');
         POLL_FAILS = 0;
         var listChanged = LAST_LIST_TS === null || ch.listTs !== LAST_LIST_TS; LAST_LIST_TS = ch.listTs;
-        var overviewDue = (Date.now() - (OV.at || 0)) > 90000;
+        var overviewDue = (Date.now() - (OV.at || 0)) > 45000;
         var afterList = function () {
           if (!cid0 || cur !== cid0 || !THREAD) return;
           if (userBusy()) return;
@@ -602,8 +602,7 @@
           if (threadChanged || pendChanged || queueChanged) openThread(cid0, true);
         };
         if (listChanged || overviewDue || !LIST.length) loadList(afterList, false); else afterList();
-      }).catch(function () { POLL_FAILS++; });
-      poll();
+      }).catch(function () { POLL_FAILS++; stat('連線不穩，稍後自動重試'); if (POLL_FAILS >= 2) loadList(); }).then(function () { poll(); });
     }, Math.min(15000 * (POLL_FAILS + 1), 60000));
   }
   document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); }; });
