@@ -508,6 +508,29 @@
   var ATT = { draft: [], compose: [] }, attTarget = 'draft', PHOTO_TRIED = {};
   var STORAGE_OK = /^https:\/\/ytlakkxrbookftluulbo\.supabase\.co\/storage\//;
   function attHtml(list, who) { return list.map(function (a, i) { return '<div class="it">' + (a.kind === 'image' && STORAGE_OK.test(a.preview || a.url) ? '<img src="' + esc(a.preview || a.url) + '">' : '<div style="padding:6px 4px">檔案 ' + esc(a.name || 'PDF') + '</div>') + '<button class="x" data-att="' + who + '" data-i="' + i + '" title="移除">×</button></div>'; }).join(''); }
+  function shrinkImage(file, cb) {   // 手機原圖 3072x4096／8MB 直接送出，LINE 載不出來（polly 2026-09-24 實案）：先縮到長邊 1600、JPEG 0.85
+    if (!/^image\/(jpeg|png)$/i.test(String(file.type || ''))) return cb(null);
+    var draw = function (src, w, h) {
+      if (!w || !h) return cb(null);
+      var lng = Math.max(w, h), scale = lng > 1600 ? 1600 / lng : 1;
+      if (scale === 1 && file.size <= 1200000) return cb(null);
+      var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+      var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+      var cx = cv.getContext('2d'); if (!cx) return cb(null);
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch); cx.drawImage(src, 0, 0, cw, ch);
+      try { cv.toBlob(function (b) { cb(b && b.size < file.size ? b : null); }, 'image/jpeg', 0.85); } catch (e) { cb(null); }
+    };
+    try {
+      if (window.createImageBitmap) {
+        createImageBitmap(file, { imageOrientation: 'from-image' }).then(function (bm) { draw(bm, bm.width, bm.height); }).catch(function () { cb(null); });
+        return;
+      }
+    } catch (e) {}
+    var im = new Image(); var ou = URL.createObjectURL(file);
+    im.onload = function () { draw(im, im.naturalWidth, im.naturalHeight); try { URL.revokeObjectURL(ou); } catch (e2) {} };
+    im.onerror = function () { cb(null); try { URL.revokeObjectURL(ou); } catch (e3) {} };
+    im.src = ou;
+  }
   function renderAtt(who) { var box = document.getElementById('att-' + who); if (!box) return; box.innerHTML = attHtml(ATT[who], who); box.querySelectorAll('[data-att]').forEach(function (b) { b.onclick = function () { ATT[who].splice(Number(b.getAttribute('data-i')), 1); renderAtt(who); }; }); }
   function pickAtt(who, msgId) {
     attTarget = who; var cidAtPick = cur; var inp = document.getElementById('attFile'); inp.value = '';
@@ -517,18 +540,23 @@
       var next = function () {   // 逐張上傳（一次選多張、順序不亂、任一張失敗不影響其他）
         var f = files.shift();
         if (!f) { if (msg) msg.textContent = failed ? ('上傳完成，' + failed + ' 張失敗') : ''; return; }
-        if (f.size > 10 * 1024 * 1024) { failed++; if (msg) msg.textContent = f.name + ' 超過 10MB，略過'; return next(); }
+        if (f.size > 20 * 1024 * 1024) { failed++; if (msg) msg.textContent = f.name + ' 超過 20MB，略過'; return next(); }
+        if (msg) msg.textContent = '處理中 ' + (done + failed + 1) + '/' + total + '…';
+        shrinkImage(f, function (blob) {
+        var src = blob || f, upMime = blob ? 'image/jpeg' : f.type, upName = blob ? String(f.name).replace(/\.[^.]+$/, '') + '.jpg' : f.name;
+        if (src.size > 10 * 1024 * 1024) { failed++; if (msg) msg.textContent = f.name + ' 壓縮後仍超過 10MB，略過'; return next(); }
         if (msg) msg.textContent = '上傳中 ' + (done + failed + 1) + '/' + total + '…';
         var rd = new FileReader();
         rd.onload = function () {
           var b64 = String(rd.result).split(',')[1] || '';
-          run('csInboxUpload', [{ name: f.name, mime: f.type, b64: b64 }], function (r) {
+          run('csInboxUpload', [{ name: upName, mime: upMime, b64: b64 }], function (r) {
             if (cur !== cidAtPick) return;
             if (!r || !r.ok) { failed++; if (msg) msg.textContent = '上傳失敗：' + ((r && (r.detail || r.error)) || '?'); return next(); }
             ATT[who].push({ url: r.url, preview: r.preview, kind: r.kind, name: r.name || f.name }); renderAtt(who); done++; next();
           }, function () { failed++; if (msg) msg.textContent = '上傳失敗'; next(); });
         };
-        rd.readAsDataURL(f);
+        rd.readAsDataURL(src);
+        });
       };
       next();
     };
