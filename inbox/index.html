@@ -298,6 +298,7 @@
       api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
+      var snap = snapInputs();   // 要在換掉 t.pending 之前拍：不然 draftId 會記成新稿，舊稿內文被還原進新稿的框
       var pendSame = !!(t.pending && x.pending && t.pending.id === x.pending.id);
       var textGrew = pendSame && String(x.pending.text || '').length > String(t.pending.text || '').length;   // 總覽版的稿被截到 4000 字，補件版才是完整的
       if (!pendSame) t.pending = x.pending || null; else if (x.pending) t.pending = x.pending;
@@ -306,7 +307,7 @@
       if (x.dossier) { x.dossier.skip = t.dossier.skip; x.dossier.skipReason = t.dossier.skipReason; if (!x.dossier.memory) x.dossier.memory = t.memory || null; t.dossier = x.dossier; }
       else if (!t.dossierFromEngine) { t.dossier.loading = false; }
       t.roles = x.roles || ROLES; t.memberRoles = x.memberRoles || MEMBER_ROLES; if (x.role != null) t.role = x.role; if (x.roleNote != null) t.roleNote = x.roleNote; if (x.manual != null) t.manual = !!x.manual;
-      THREAD = t; var snap = snapInputs(); renderDossier(t); if (!pendSame || (textGrew && !userBusy())) renderPending(t); renderCompose(t); restoreInputs(snap);
+      THREAD = t; renderDossier(t); if (!pendSame || (textGrew && !userBusy())) renderPending(t); renderCompose(t); restoreInputs(snap);
       }).catch(function () { finish(); });
     });
   }
@@ -397,20 +398,27 @@
   function renderPending(t) {
     var p = t.pending, pb = document.getElementById('pendBox');
     var qo = t.queue || [], lj = t.lastJob || null;
-    var ovp0 = (OV.pending || []).filter(function (x) { return x.contactId === t.contactId; })[0] || null;
+    var ovp0 = (OV.pending || []).filter(function (x) { return x.contactId === t.contactId; }).slice(-1)[0] || null;
+    var settled = t.extrasLoaded === true && !t.extrasFailed;   // 補件已經給了確定答案：稿送出／退回之後就是它說了算
     var KIND_NAME = { webhook: '客戶來訊自動擬稿', feedback: '依你的意見重擬', app: '重擬回覆', compose: '主動聯繫擬稿', manual: '補跑擬稿', retry: '補跑擬稿' };
     var SKIP_WHY = { no_reply_needed: '這則你標了不用回', no_conversation: '這位沒有對話紀錄', superseded_by_newer_message: '客戶又傳了新訊息，改用新的那一輪', closing_remark: '客戶只是客套收尾', blocked: '對方已封鎖或刪好友', blocked_manual: '這位在黑名單裡', manual_mode: '這位設成手動回覆中', daily_cap: '今天這位的擬稿次數已達上限', no_inbound_text: '客戶沒有可回的文字訊息' };
     // 引擎自己的資料（排隊列與上一輪結果）排在後台補件之前：後台慢的時候，這是唯一還講得出話的來源
     if (!p && qo.length) { var q0 = qo[qo.length - 1]; pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px"><span class="spin"></span>客服擬稿中：' + esc(KIND_NAME[q0.kind] || q0.kind) + (q0.state === 'running' ? '（第 ' + q0.tries + ' 次嘗試，' + esc(q0.startedAt || '') + ' 開始）' : '（排隊中，' + esc(q0.createdAt || '') + ' 送出）') + '。通常 1 到 3 分鐘；後台慢時會自動重試，稿好了會自己出現，不用再按重擬。</div>'; return; }
     var ljName = lj ? (KIND_NAME[lj.kind] || lj.kind) : '';
-    var ljHandled = !!(lj && /^handled:/.test(String(lj.skipReason || '')));
+    var ljHandled = !!(lj && /^handled:AP-/.test(String(lj.skipReason || '')));
     var doneAp = (lj && lj.apId) || (ljHandled ? String(lj.skipReason).replace('handled:', '') : '') || (ovp0 ? ovp0.id : '');
-    if (!p && (ovp0 || ljHandled || (lj && lj.apId && lj.runStatus !== 'error'))) {   // 稿其實已經產生了，只是內容還沒載進來：不可以說成失敗
-      pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px"><span class="spin"></span>' + (ljName ? esc(ljName) + '已經完成，' : '') + '稿號 ' + esc(doneAp || '（取得中）') + '，正在載入內容。後台慢的時候會多等幾秒，沒出現就按 ↻。</div>';
+    if (!p && !settled && (ovp0 || ljHandled || (lj && lj.apId && lj.runStatus !== 'error'))) {   // 稿其實已經產生了，只是內容還沒載進來：不可以說成失敗
+      pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px">' + (t.extrasFailed ? '' : '<span class="spin"></span>') + (ljName ? esc(ljName) + '已經完成，' : '') + '稿號 ' + esc(doneAp || '（取得中）') + (t.extrasFailed ? '，但後台讀不到內容，按 ↻ 重試。' : '，正在載入內容。後台慢的時候會多等幾秒，沒出現就按 ↻。') + '</div>';
       return;
     }
     if (!p && lj && (lj.runStatus === 'error' || (lj.state === 'dead' && !lj.apId))) {
-      var why = /out_of_time|TimeoutError|timed out/i.test(String(lj.error || '')) ? '後台太慢，試了 ' + lj.tries + ' 次都沒擬成' : (/scheduled_exists/.test(String(lj.error || '')) ? '這位已經有排程要發的訊息' : (friendlyErr(lj.error) || lj.error || '後台沒有回應'));
+      var e0 = String(lj.error || '');
+      var why = /out_of_time|TimeoutError|timed out/i.test(e0) ? '後台太慢，試了 ' + lj.tries + ' 次都沒擬成'
+        : /scheduled_exists/.test(e0) ? '這位已經有排程要發的訊息'
+        : /status_unknown/.test(e0) ? '查不到原本那份稿的狀態，為了不誤撤就停手了'
+        : /duplicate_pending/.test(e0) ? '這位已經有一份待核可稿'
+        : /http 50\d|<!DOCTYPE|not found/i.test(e0) ? '後台沒有正常回應'
+        : (e0 || '後台沒有回應');
       pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px solid #C0705A;border-radius:6px;color:#8C3B25"><b>' + esc(ljName) + '沒有成功</b>（' + esc(lj.at) + ' 送出）。原因：' + esc(why)
         + '<div style="margin-top:6px">按上面的「重擬回覆」再擬一次。</div>'
         + (lj.note ? '<div style="margin-top:6px">你上次打的意見還留著，新稿出來後貼回「給意見」就好：<div style="margin-top:4px;padding:6px;background:#FFF6F3;border-radius:4px;white-space:pre-wrap">' + esc(lj.note) + '</div></div>' : '') + '</div>';
