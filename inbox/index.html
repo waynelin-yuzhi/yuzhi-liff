@@ -391,6 +391,17 @@
     if (!p && t.extrasFailed) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">待核可稿讀取失敗，按 ↻ 重試</div>'; return; }
     var qo = t.queue || [];
     if (!p && qo.length) { var kindMap = { webhook: '客戶來訊自動擬稿', feedback: '依你的意見重擬', app: '重擬回覆', compose: '主動聯繫擬稿', manual: '補跑擬稿', retry: '補跑擬稿' }; var q0 = qo[qo.length - 1]; pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px"><span class="spin"></span>客服擬稿中：' + esc(kindMap[q0.kind] || q0.kind) + (q0.state === 'running' ? '（第 ' + q0.tries + ' 次嘗試，' + esc(q0.startedAt || '') + ' 開始）' : '（排隊中，' + esc(q0.createdAt || '') + ' 送出）') + '。通常 1 到 3 分鐘；後台慢時會自動重試，稿好了會自己出現，不用再按重擬。</div>'; return; }
+    var lj = t.lastJob;   // 排隊列跑完之後也要講實話：稿好了在載入、還是整組失敗（Wayne 2026-09-24「我怎麼知道還在處理中」）
+    if (!p && lj) {
+      var ljName = { feedback: '依你的意見重擬', app: '重擬回覆', compose: '主動聯繫擬稿' }[lj.kind] || lj.kind;
+      if (lj.apId && (lj.runStatus === 'submitted' || lj.runStatus === 'handoff')) { pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px"><span class="spin"></span>' + esc(ljName) + '已經完成，稿號 ' + esc(lj.apId) + '，正在載入內容。後台慢的時候會多等幾秒，沒出現就按 ↻。</div>'; return; }
+      if (lj.runStatus === 'error' || (!lj.apId && lj.runStatus !== 'skipped' && lj.tries >= 3)) {
+        pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px solid #C0705A;border-radius:6px;color:#8C3B25"><b>' + esc(ljName) + '沒有成功</b>（' + esc(lj.at) + ' 送出，試了 ' + lj.tries + ' 次）。原因：' + esc(friendlyErr(lj.error) || lj.error || '後台沒有回應')
+          + (lj.keptNote ? '<br>你打的意見系統還留著，再送一次意見就會自動把前面幾輪一起帶上，不用重打。' : '<br>可以按「請客服擬回覆」再試一次。') + '</div>';
+        return;
+      }
+      if (lj.runStatus === 'skipped') { pb.innerHTML = '<div class="small muted" style="margin-top:8px">' + esc(ljName) + '這一輪沒有擬稿（' + esc(lj.error || '引擎判斷不需要') + '）。你可以直接在下面回，或再按一次重擬。</div>'; return; }
+    }
     if (!p && /^already_submitted/.test(String((t.dossier || {}).skipReason || ''))) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上一稿已處理；客戶再來訊時引擎會重新判斷。你也可以直接在下面回，或請客服擬一則主動訊息。</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
     var nCards = (p.cards || []).length || Number(p.attach) || 0;
