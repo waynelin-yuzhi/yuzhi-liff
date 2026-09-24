@@ -189,7 +189,7 @@
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); if (cb) cb(); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); });
-    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 30000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); } return OV; }).catch(function () { return OV; });
+    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 30000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } return OV; }).catch(function () { return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
   function mergeOverview() {
@@ -235,6 +235,18 @@
   }
 
   var OPEN_GEN = 0;
+  function ovPendingFor(cid) {   // 總覽裡就有稿的內容，不必等後台補件
+    var ovp = (OV.pending || []).filter(function (p) { return p.contactId === cid; }).slice(-1)[0];
+    if (!ovp || !ovp.text) return null;
+    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [] };
+  }
+  function applyOvPending(cid) {   // 總覽比對話框晚到時（後台慢）補畫一次，否則稿明明拿到了畫面卻空著
+    if (!THREAD || cur !== cid || THREAD.pending) return false;
+    var op = ovPendingFor(cid); if (!op) return false;
+    THREAD.pending = op; THREAD.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); THREAD.extrasLoaded = true; THREAD.extrasFailed = false;
+    try { var sn = snapInputs(); renderPending(THREAD); renderCompose(THREAD); restoreInputs(sn); } catch (e) {}
+    return true;
+  }
   function openThread(cid, quiet) {
     var gen = ++OPEN_GEN;
     cur = cid; dirty = false; if (!quiet) { ATT.draft = []; ATT.compose = []; } renderList();
@@ -271,8 +283,8 @@
       var hasPend = (OV.pending || []).some(function (p) { return p.contactId === cid; }), hasSched = (OV.scheduled || []).some(function (x) { return x.contactId === cid; });
       var ovFresh = OV.loaded && (Date.now() - (OV.at || 0)) < 45000;
       if (ovFresh && hasPend) {   // 稿的內容總覽裡就有：先畫出來，補件只補群組成員與排程
-        var ovp = (OV.pending || []).filter(function (p) { return p.contactId === cid; }).slice(-1)[0];
-        if (ovp && ovp.text) { t.pending = { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [] }; t.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); t.extrasLoaded = true; try { var snapP = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snapP); } catch (eP) {} }
+        var ovp2 = ovPendingFor(cid);
+        if (ovp2) { t.pending = ovp2; t.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); t.extrasLoaded = true; try { var snapP = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snapP); } catch (eP) {} }
       }
       if (ovFresh && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { try { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); } catch (eS) { finish(); } return; }
       api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
@@ -516,7 +528,7 @@
           var threadChanged = String(ch.threadTs || '') !== String(THREAD.lastMsgTs || '') || Number(ch.threadCount || 0) !== Number(THREAD.msgTotal || 0);
           var qsigNow = (THREAD.queue || []).map(function (q) { return q.id + ':' + q.state + ':' + q.tries; }).join(','); var queueChanged = String(ch.queueSig || '') !== qsigNow;
           var newP = ((LIST.filter(function (c) { return c.contactId === cid0; })[0] || {}).pending || {}).id || '', oldP = THREAD.pending ? THREAD.pending.id : '';
-          var pendChanged = THREAD.extrasLoaded && !THREAD.extrasFailed && newP !== oldP;
+          var pendChanged = newP !== oldP && (newP ? true : (THREAD.extrasLoaded && !THREAD.extrasFailed));   // 清單說有稿、對話框沒畫出來＝一定要補刷（後台慢時的實案）
           if (queueChanged) OV.at = 0;   // 排隊剛清空＝稿剛投進核可中心，總覽要立刻重抓才看得到
           if (threadChanged || pendChanged || queueChanged) openThread(cid0, true);
         };
