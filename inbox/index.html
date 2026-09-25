@@ -309,7 +309,7 @@
         var ovp2 = ovPendingFor(cid);
         if (ovp2) { t.pending = ovp2; t.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); t.extrasLoaded = true; try { var snapP = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snapP); } catch (eP) {} }
       }
-      if (ovFresh && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { try { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); } catch (eS) { finish(); } return; }
+      if (ovFresh && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { try { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); } catch (eS) {} }   // 先畫「沒稿」，但不 return：總覽現在是鏡像，漏推時靠下面這支補件補回來
       api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
@@ -471,8 +471,12 @@
     renderAtt('draft'); document.getElementById('btnAtt').onclick = function () { pickAtt('draft', 'pendMsg'); };
     document.getElementById('btnSend').onclick = function () { var at = whenVal(), edited = dirty, nightOk = false;
       var hTp = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei', hour: 'numeric', hour12: false }));
-      if (!at && (hTp >= 21 || hTp < 9)) {   // 21:00–09:00 靜默時段：後台會改排明早 09:00，要現在送得明講
-        if (confirm('現在是靜默時段（21:00 到 09:00），客戶不該半夜收到。\n\n按「確定」排到明早 09:00 送出（建議）\n按「取消」我再問你要不要現在送')) { /* 排明早：不帶 nightOk，後台自己改時間 */ }
+      if (!at && (hTp >= 21 || hTp < 9)) {   // 21:00–09:00 靜默時段：要現在送得明講；排明早由 App 自己算時間帶 publishAt（後台守衛是備援）
+        if (confirm('現在是靜默時段（21:00 到 09:00），客戶不該半夜收到。\n\n按「確定」排到明早 09:00 送出（建議）\n按「取消」我再問你要不要現在送')) {
+          var tp = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })); if (tp.getHours() >= 21) tp.setDate(tp.getDate() + 1);
+          at = tp.getFullYear() + '-' + ('0' + (tp.getMonth() + 1)).slice(-2) + '-' + ('0' + tp.getDate()).slice(-2) + ' 09:00';
+          var sa = document.getElementById('sendAt'); if (sa) sa.value = at.replace(' ', 'T');
+        }
         else if (confirm('確定現在就送給客戶？')) nightOk = true;
         else return;
       }
