@@ -34,6 +34,8 @@
 .chip.ghost{position:fixed;z-index:99;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.25);transform:scale(1.08)}
 .cal .day.over{outline:2px solid var(--moss);outline-offset:-2px;background:#F4F6F1}
 .chip.over{outline:2px solid var(--moss)}
+.chip i{font-style:normal;font-size:8px;opacity:.7;margin-right:1px;vertical-align:1px}
+.chip.punch{white-space:normal;line-height:1.15}
 </style>
 </head>
 <body>
@@ -87,11 +89,11 @@
     days.forEach(function (ds) {
       var hh = hol[ds], isHol = hh && hh.kind !== '補班';
       h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '" data-d="' + ds + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : '');
-      if (past) { (r.punches[ds] || []).forEach(function (p) { h += '<span class="chip punch">' + esc(p.time) + ' ' + esc(shortLabel(p.siteName)) + '</span>'; }); }
-      else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (x.startTime ? ' ' + esc(x.startTime) : '') + '">' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(shortLabel(x.shortName)) + '</span>'; });
+      if (past) { (r.punches[ds] || []).forEach(function (p) { h += '<span class="chip punch"><i>' + esc(p.time) + '</i><br>' + esc(shortLabel(p.siteName)) + '</span>'; }); }
+      else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (x.startTime ? ' ' + esc(x.startTime) : '') + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; });
       h += '</div>';
     });
-    h += '</div><div class="legend">早／午＝上午／下午，數字＝當天第幾站。長按一個班可以拖到別天，或拖到另一個班上改順序。橘底＝假日；橘框的班要移。</div></div>';
+    h += '</div><div class="legend">小數字＝當天第幾站；淡藍底＝下午班。長按一個班可以拖到別天，或拖到另一個班上改順序。橘底＝假日；橘框的班要移。</div></div>';
     if (!past && (r.mySites || []).length) {   // 只提醒有客戶限制的、和沒固定星期要自己加的；其他不列（Wayne：整排規則太亂沒幫助）
       var lim = r.mySites.filter(function (s) { return s.fixedStart || (s.noDays && s.noDays.length) || s.slot; });
       var selfAdd = r.mySites.filter(function (s) { return !s.weekday && /週|月/.test(s.freq || ''); });

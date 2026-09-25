@@ -19,6 +19,7 @@
 .st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:#EEE9DD;color:#5A5344}.st.wait{background:#FFF1E6;color:#9A4E1E}.st.ok{background:#E3EFE1;color:#3D6B3A}
 .emp{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.emp .dot{width:10px;height:10px;border-radius:5px;flex:0 0 auto}
 .pun{font-size:12px}.pun .no{color:#9A4E1E}.pun .yes{color:#3D6B3A}
+.chip i{font-style:normal;font-size:8px;opacity:.7;margin-right:1px;vertical-align:1px}
 </style>
 </head>
 <body>
@@ -72,7 +73,8 @@
     }
     h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
     var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
-    days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:#fff" title="' + esc(r.emps[x.empId] || x.empId) + ' ' + esc(x.shortName) + '">' + esc((r.emps[x.empId] || x.empId).slice(0, 2)) + ' ' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(shortLabel(x.shortName)) + '</span>'; }); h += '</div>'; });
+    days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:' + (x.slot === '下午' ? '#EEF2F8' : '#fff') + '" title="' + esc(r.emps[x.empId] || x.empId) + ' ' + esc(x.shortName) + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; }); h += '</div>'; });
+    h += '</div><div class="small muted" style="margin:6px 2px 0">顏色＝員工（見上方名單）；小數字＝當天第幾站；淡藍底＝下午班。</div>';
     h += '</div></div>';
     $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
