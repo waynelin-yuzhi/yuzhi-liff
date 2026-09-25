@@ -462,9 +462,16 @@
     var whenVal = function () { var v = document.getElementById('sendAt').value; return v ? v.replace('T', ' ') : ''; };
     document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
     renderAtt('draft'); document.getElementById('btnAtt').onclick = function () { pickAtt('draft', 'pendMsg'); };
-    document.getElementById('btnSend').onclick = function () { var at = whenVal(), edited = dirty; if (!confirm((at ? '排程在 ' + at + ' ' : '現在') + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft }], function (r) {
+    document.getElementById('btnSend').onclick = function () { var at = whenVal(), edited = dirty, nightOk = false;
+      var hTp = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei', hour: 'numeric', hour12: false }));
+      if (!at && (hTp >= 21 || hTp < 9)) {   // 21:00–09:00 靜默時段：後台會改排明早 09:00，要現在送得明講
+        if (confirm('現在是靜默時段（21:00 到 09:00），客戶不該半夜收到。\n\n按「確定」排到明早 09:00 送出（建議）\n按「取消」我再問你要不要現在送')) { /* 排明早：不帶 nightOk，後台自己改時間 */ }
+        else if (confirm('確定現在就送給客戶？')) nightOk = true;
+        else return;
+      }
+      if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft, nightOk: nightOk }], function (r) {
       var pm = document.getElementById('pendMsg');
-      if (r.ok) { ATT.draft = []; pm.textContent = '完成：' + r.status; dirty = false; setTimeout(function () { refreshAll(true); }, 1200); return; }
+      if (r.ok) { ATT.draft = []; pm.textContent = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); dirty = false; setTimeout(function () { refreshAll(true); }, r.quietGuard ? 2500 : 1200); return; }
       busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
       if (r.error === 'publishAt_past') {   // 流程不准斷在半路：就地給一鍵現在送，不要叫他回頭改時間
         pm.innerHTML = '這個預定時間已經過了。<a href="#" id="sendNow">改成現在送出</a>　或改一個未來的時間再按送出。';
