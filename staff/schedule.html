@@ -140,7 +140,7 @@
       T.api('schedMove', p).then(function (r) { if (r.ok) { closeSheet(); load(YM); return; } if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n要照排嗎？')) return save(true); $('ad-msg').textContent = ''; return; } $('ad-msg').textContent = r.detail || r.error; }).catch(function () { $('ad-msg').textContent = '後台沒回應，請再按一次'; }); };
     $('ad-save').onclick = function () { save(false); };
   }
-  T.init().then(function (me) { ME = me; load(YM || thisYm()); }).catch(function () {});
+  T.init().then(function (me) { ME = me; load(YM || (new Date().getDate() >= 15 ? addYm(thisYm(), 1) : thisYm())); }).catch(function () {});   // 月中之後預設開下個月（排班一個月前確認）
 })();
 </script>
 </body>
