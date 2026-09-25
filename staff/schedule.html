@@ -10,9 +10,9 @@
 <script src="config.js?v=5"></script>
 <script src="staff.js?v=7"></script>
 <style>
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .cal .wd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}
-.cal .day{min-height:64px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:11px;position:relative}
+.cal .day{min-height:64px;min-width:0;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:11px;position:relative}
 .cal .day.out{background:transparent;border-color:transparent}
 .cal .day.hol{background:#FFF1E6}
 .cal .day.today{border-color:#5F6F52;box-shadow:inset 0 0 0 1px #5F6F52}
@@ -87,8 +87,8 @@
     days.forEach(function (ds) {
       var hh = hol[ds], isHol = hh && hh.kind !== '補班';
       h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '" data-d="' + ds + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : '');
-      if (past) { (r.punches[ds] || []).forEach(function (p) { h += '<span class="chip punch">' + esc(p.time) + ' ' + esc(p.siteName).slice(0, 6) + '</span>'; }); }
-      else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '">' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(x.shortName).slice(0, 5) + (x.startTime ? ' ' + esc(x.startTime) : '') + '</span>'; });
+      if (past) { (r.punches[ds] || []).forEach(function (p) { h += '<span class="chip punch">' + esc(p.time) + ' ' + esc(shortLabel(p.siteName)) + '</span>'; }); }
+      else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (x.startTime ? ' ' + esc(x.startTime) : '') + '">' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(shortLabel(x.shortName)) + '</span>'; });
       h += '</div>';
     });
     h += '</div><div class="legend">早／午＝上午／下午，數字＝當天第幾站。長按一個班可以拖到別天，或拖到另一個班上改順序。橘底＝假日；橘框的班要移。</div></div>';
@@ -113,6 +113,10 @@
       document.querySelectorAll('.day[data-d]').forEach(function (d) { d.onclick = function () { if (SAVING) return; openAdd(d.getAttribute('data-d')); }; });
       bindDrag();
     }
+  }
+  function shortLabel(n) {   // 月曆格子很窄：去掉地區前綴、公司字尾，讓前幾個字就看得出是哪家
+    n = String(n || '').replace(/^[^｜|]{1,4}[｜|]\s*/, '').replace(/\s*(股份)?有限公司$/, '').replace(/^(台灣|台北|新北|桃園)(?=[^\s])/, '').replace(/\s+/g, '');
+    return n;
   }
   function msg(t) { MSG = t; var m = $('msg'); if (m) m.textContent = t; }
   function preCheck(site, p, rows, skipKey) {   // 與後端 _schedCheck_ 同規則，先在手機上擋，不用等後台

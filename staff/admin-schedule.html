@@ -10,9 +10,9 @@
 <script src="config.js?v=5"></script>
 <script src="staff.js?v=7"></script>
 <style>
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .cal .wd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}
-.cal .day{min-height:70px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:10px}
+.cal .day{min-height:70px;min-width:0;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:10px}
 .cal .day.out{background:transparent;border-color:transparent}.cal .day.hol{background:#FFF1E6}.cal .day.today{box-shadow:inset 0 0 0 1px #5F6F52}
 .cal .dn{font-size:11px;color:var(--muted)}.cal .hn{font-size:9px;color:#9A4E1E;line-height:1.1}
 .chip{display:block;border-radius:6px;padding:1px 3px;margin-top:2px;line-height:1.2;border:1px solid;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -37,6 +37,10 @@
   function addYm(ym, n) { var d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function wdOf(ds) { var w = new Date(ds + 'T00:00:00').getDay(); return w === 0 ? 7 : w; }
   function daysOf(ym) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)); var n = new Date(y, m, 0).getDate(); var o = []; for (var i = 1; i <= n; i++) o.push(ym + '-' + String(i).padStart(2, '0')); return o; }
+  function shortLabel(n) {   // 月曆格子很窄：去掉地區前綴、公司字尾，讓前幾個字就看得出是哪家
+    n = String(n || '').replace(/^[^｜|]{1,4}[｜|]\s*/, '').replace(/\s*(股份)?有限公司$/, '').replace(/^(台灣|台北|新北|桃園)(?=[^\s])/, '').replace(/\s+/g, '');
+    return n;
+  }
   function stChip(s) { return '<span class="st ' + (s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : '')) + '">' + esc(s || '未建立') + '</span>'; }
   function load(ym, keep) {
     if (!keep) MSG = ''; YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
@@ -68,7 +72,7 @@
     }
     h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
     var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
-    days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:#fff">' + esc((r.emps[x.empId] || x.empId).slice(0, 2)) + ' ' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(x.shortName).slice(0, 4) + '</span>'; }); h += '</div>'; });
+    days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:#fff" title="' + esc(r.emps[x.empId] || x.empId) + ' ' + esc(x.shortName) + '">' + esc((r.emps[x.empId] || x.empId).slice(0, 2)) + ' ' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(shortLabel(x.shortName)) + '</span>'; }); h += '</div>'; });
     h += '</div></div>';
     $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
