@@ -7,8 +7,8 @@
 <title>植間｜排班總覽</title>
 <link rel="stylesheet" href="staff.css?v=3">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="config.js?v=4"></script>
-<script src="staff.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="staff.js?v=5"></script>
 <style>
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .cal .wd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}
@@ -32,14 +32,14 @@
   var T = window.STAFF, esc = T.esc, $ = T.$;
   $('pgv').textContent = T.CFG.version || ''; $('home-lnk').href = T.href('index.html');
   var WD = ['一', '二', '三', '四', '五', '六', '日'], COLORS = ['#5F6F52', '#8C6A3F', '#4C6E8A', '#8A4C6E', '#6E8A4C', '#4C8A7E', '#A0522D', '#6B6B6B'];
-  var YM = T.qs.get('ym') || '';
+  var YM = T.qs.get('ym') || '', MSG = '';
   function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function addYm(ym, n) { var d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function wdOf(ds) { var w = new Date(ds + 'T00:00:00').getDay(); return w === 0 ? 7 : w; }
   function daysOf(ym) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)); var n = new Date(y, m, 0).getDate(); var o = []; for (var i = 1; i <= n; i++) o.push(ym + '-' + String(i).padStart(2, '0')); return o; }
   function stChip(s) { return '<span class="st ' + (s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : '')) + '">' + esc(s || '未建立') + '</span>'; }
-  function load(ym) {
-    YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
+  function load(ym, keep) {
+    if (!keep) MSG = ''; YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
     T.api('schedOverview', { ym: ym }).then(function (r) { if (!r || !r.ok) { T.showErr(r && r.error === 'forbidden' ? '這頁只給 Wayne 看。' : T.errText(r)); return; } render(r); }).catch(function () { T.showErr('載入失敗，請重試'); });
   }
   function render(r) {
@@ -67,9 +67,9 @@
     var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
     days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:#fff">' + esc((r.emps[x.empId] || x.empId).slice(0, 2)) + ' ' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(x.shortName).slice(0, 4) + '</span>'; }); h += '</div>'; });
     h += '</div></div>';
-    $('app').innerHTML = h;
+    $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
-    document.querySelectorAll('[data-approve]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-approve'); if (!confirm('核可 ' + (r.emps[e] || e) + ' 的 ' + YM + ' 班表？核可後系統會擬各客戶的養護日期通知進核可中心。')) return; b.disabled = true; b.textContent = '核可中'; T.api('schedApprove', { ym: YM, empId: e }).then(function (x) { $('msg').textContent = x.ok ? '已核可 ' + x.apId : ('失敗：' + (x.detail || x.error)); load(YM); }); }; });
+    document.querySelectorAll('[data-approve]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-approve'); if (!confirm('核可 ' + (r.emps[e] || e) + ' 的 ' + YM + ' 班表？核可後系統會擬各客戶的養護日期通知進核可中心。')) return; b.disabled = true; b.textContent = '核可中'; T.api('schedApprove', { ym: YM, empId: e }).then(function (x) { MSG = x.ok ? '已核可 ' + x.apId + '，客戶通知已擬進核可中心' : ('失敗：' + (x.detail || x.error)); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
   }
   T.init().then(function () { load(YM || thisYm()); }).catch(function () {});
 })();
