@@ -122,5 +122,12 @@
     } catch (e) {}
   })();
 
+  // 每頁頁首注入「‹ 員工首頁」（首頁本身除外）
+  try {
+    if (!/index\.html$|\/staff\/?$/.test(location.pathname)) {
+      var app0 = document.getElementById('app');
+      if (app0 && !document.querySelector('.topbar')) { var tb = document.createElement('div'); tb.className = 'topbar'; tb.innerHTML = '<a href="' + href('index.html') + '">‹ 員工首頁</a>'; app0.parentNode.insertBefore(tb, app0); }
+    }
+  } catch (eT) {}
   window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, cacheGet: cacheGet, cacheSet: cacheSet, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
 })();

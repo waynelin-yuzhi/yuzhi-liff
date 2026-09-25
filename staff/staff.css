@@ -41,3 +41,7 @@ select,input[type=text],input[type=date],input[type=time]{width:100%;min-width:0
 .done{ text-align:center;padding:10px 0}
 .done .ck{width:52px;height:52px;border-radius:26px;background:var(--moss);color:var(--paper);font-size:26px;line-height:52px;margin:0 auto 10px}
 a.lnk{color:var(--moss);text-decoration:none;font-weight:600}
+/* 回員工首頁：頁尾改成整排按鈕，另由 staff.js 在頁首注入一顆（Wayne 2026-09-25：要明顯一點） */
+#home-lnk{display:block;margin:0 auto 10px;max-width:420px;padding:12px 16px;border-radius:12px;background:#fff;border:1.5px solid var(--moss);color:var(--moss);font-size:15px;font-weight:700;text-align:center;text-decoration:none}
+.topbar{display:flex;align-items:center;margin:0 0 10px}
+.topbar a{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:#fff;border:1.5px solid var(--moss);color:var(--moss);font-size:14px;font-weight:700;text-decoration:none}
