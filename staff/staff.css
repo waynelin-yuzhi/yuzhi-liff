@@ -34,7 +34,8 @@ html,body{background:var(--rice);color:var(--ink);font-family:"Noto Sans TC","Pi
 .gps{font-size:13px;color:var(--body);display:flex;align-items:center;gap:8px}
 .gps .dot{width:9px;height:9px;border-radius:5px;background:var(--line);display:inline-block}
 .gps .dot.ok{background:var(--moss)}.gps .dot.far{background:var(--amber)}.gps .dot.no{background:var(--terra)}
-select,input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:11px 12px;font-size:15px;background:#fff;color:var(--ink)}
+select,input[type=text],input[type=date],input[type=time]{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:11px 12px;font-size:15px;background:#fff;color:var(--ink)}
+.timerow{display:flex;gap:4px;align-items:center;min-width:0}.timerow input[type=time]{flex:1;min-width:0;padding:11px 4px;text-align:center}.timerow span{flex:0 0 auto;color:var(--muted)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ft{text-align:center;font-size:11px;color:var(--muted);margin-top:22px;line-height:1.7}
 .done{ text-align:center;padding:10px 0}

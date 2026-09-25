@@ -221,7 +221,7 @@
     if (A.editing && st.reportId) h += '<div class="editing"><span>編輯中：' + esc(st.clientName || '') + ' ' + esc(st.reportDate) + '</span><button class="btn sm secondary" id="new-report">建立新報告</button></div>';
     // 基本
     h += '<div class="card"><div class="fld"><label>客戶</label><select id="f-client"><option value="">選擇客戶…</option>' + A.sites.map(function (s) { return '<option value="' + esc(s.id) + '"' + (st.clientId === s.id ? ' selected' : '') + '>' + esc(s.shortName || s.name) + (s.today ? '（今天）' : '') + '</option>'; }).join('') + '</select></div>'
-      + '<div class="two"><div class="fld"><label>養護日期</label><input type="date" id="f-date" value="' + esc(st.reportDate) + '"></div><div class="fld"><label>服務時間</label><div style="display:flex;gap:6px;align-items:center"><input type="time" id="f-start" value="' + esc(st.startTime) + '"><span>–</span><input type="time" id="f-end" value="' + esc(st.endTime) + '"></div></div></div>'
+      + '<div class="two"><div class="fld"><label>養護日期</label><input type="date" id="f-date" value="' + esc(st.reportDate) + '"></div><div class="fld"><label>服務時間</label><div class="timerow"><input type="time" id="f-start" value="' + esc(st.startTime) + '"><span>–</span><input type="time" id="f-end" value="' + esc(st.endTime) + '"></div></div></div>'
       + '<div class="hint" id="time-hint"></div></div>';
     // 案場資訊
     var site = siteById(st.clientId);
