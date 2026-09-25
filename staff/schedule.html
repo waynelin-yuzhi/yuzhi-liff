@@ -138,7 +138,7 @@
       }).catch(function () { $('sh-msg').textContent = '後台沒回應，請再按一次'; });
     };
     $('sh-save').onclick = function () { save(false); };
-    $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = prompt('申請這個月不跑 ' + x.shortName + '，請寫原因（Wayne 會看到）', ''); if (!rs2 || !rs2.trim()) return; rq.reason = rs2.trim(); } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; T.api('schedMove', rq).then(function (r) { if (r.ok) { closeSheet(); if (r.requested) msg('已送出變更申請（' + r.apId + '），Wayne 核可後生效'); load(YM, !!r.requested); } else $('sh-msg').textContent = r.detail || r.error; }).catch(function () { $('sh-msg').textContent = '後台沒回應，請再按一次'; }); };
+    $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效')) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; T.api('schedMove', rq).then(function (r) { if (r.ok) { closeSheet(); if (r.requested) msg('已送出變更申請（' + r.apId + '），Wayne 核可後生效'); load(YM, !!r.requested); } else $('sh-msg').textContent = r.detail || r.error; }).catch(function () { $('sh-msg').textContent = '後台沒回應，請再按一次'; }); };
   }
   function openAdd(ds) {
     var sites = DATA.mySites || []; if (!sites.length) return;
