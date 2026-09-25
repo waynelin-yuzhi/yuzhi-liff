@@ -224,7 +224,14 @@
     if (TAB === 'todo') {
       var withAt = (OV.pending || []).filter(function (p) { return p.publishAt && Date.parse(String(p.publishAt).replace(' ', 'T') + ':00') > Date.now() + 60000; });   // 建議時間已經過的不能批次送，照舊路會立刻發給客戶
       if (withAt.length > 1) { batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
-        document.getElementById('sendAll').onclick = function () { if (!confirm('把 ' + withAt.length + ' 則待核可稿全部照各自的建議時間排程送出？')) return; busy(this, true, '送出中'); var i = 0; (function next() { if (i >= withAt.length) { refreshAll(true); return; } var p = withAt[i++]; run('csInboxSend', [{ apId: p.id, contactId: p.contactId, publishAt: p.publishAt }], next, next); })(); }; }
+        document.getElementById('sendAll').onclick = function () { if (!confirm('把 ' + withAt.length + ' 則待核可稿全部照各自的建議時間排程送出？')) return; var saBtn = this; busy(saBtn, true, '送出中'); var i = 0, bad = []; (function next(r) {
+          if (r && r.ok === false && withAt[i - 1]) bad.push(withAt[i - 1].id + '（' + withAt[i - 1].name + '）' + (r.error === 'line_send_failed' ? '客戶沒收到：' + String(r.detail || '').slice(0, 40) : r.error === 'publishAt_past' ? '時間已過' : friendlyErr(r.detail || r.error)));
+          if (i >= withAt.length) {   // 批次也要走單件的三道防線：失敗的列出來，不能靜悄悄消失
+            if (bad.length) { busy(saBtn, false); batch.innerHTML = '<div class="small" style="margin:0 0 8px;padding:8px;border:1px solid #C0705A;border-radius:6px;color:#8C3B25"><b>' + bad.length + ' 件沒送出</b><br>' + bad.map(esc).join('<br>') + '<br>點進各自的對話框處理。</div>'; }
+            refreshAll(true); return;
+          }
+          var p = withAt[i++]; run('csInboxSend', [{ apId: p.id, contactId: p.contactId, publishAt: p.publishAt }], next, function () { next({ ok: false, error: 'timeout' }); });
+        })(); }; }
     }
     box.innerHTML = rows.length ? rows.map(function (c) {
       var badges = (c.pending ? '<span class="pill ap">待核可</span>' : '') + (c.awaitingReply && !c.pending ? '<span class="pill wait">待回</span>' : '') + (c.scheduled ? '<span class="pill ap">排程 ' + c.scheduled + '</span>' : '') + (c.manual ? '<span class="pill man">手動</span>' : '') + (c.role && c.role !== '員工' ? '<span class="pill">' + esc(c.role) + '</span>' : '') + (c.tags || []).filter(function (g) { return g !== '不跟進' && g !== '要跟進'; }).map(function (g) { return '<span class="pill tag">' + esc(g) + '</span>'; }).join('');
@@ -412,6 +419,7 @@
       pb.innerHTML = '<div class="small" style="margin-top:8px;padding:8px;border:1px dashed #C9C2B0;border-radius:6px">' + (t.extrasFailed ? '' : '<span class="spin"></span>') + (ljName ? esc(ljName) + '已經完成，' : '') + '稿號 ' + esc(doneAp || '（取得中）') + (t.extrasFailed ? '，但後台讀不到內容，按 ↻ 重試。' : '，正在載入內容。後台慢的時候會多等幾秒，沒出現就按 ↻。') + '</div>';
       return;
     }
+    if (!p && lj && (lj.runStatus === 'error' || (lj.state === 'dead' && !lj.apId)) && !t.awaitingReply && lj.kind === 'webhook') { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上次自動擬稿沒成功，但這位後來已經有人回過了。</div>'; return; }   // 手動回、已在 LINE 回過都不會建排隊列，紅字會掛 6 小時
     if (!p && lj && (lj.runStatus === 'error' || (lj.state === 'dead' && !lj.apId))) {
       var e0 = String(lj.error || '');
       var why = /out_of_time|TimeoutError|timed out/i.test(e0) ? '後台太慢，試了 ' + lj.tries + ' 次都沒擬成'
@@ -457,13 +465,13 @@
     document.getElementById('btnSend').onclick = function () { var at = whenVal(), edited = dirty; if (!confirm((at ? '排程在 ' + at + ' ' : '現在') + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft }], function (r) {
       var pm = document.getElementById('pendMsg');
       if (r.ok) { ATT.draft = []; pm.textContent = '完成：' + r.status; dirty = false; setTimeout(function () { refreshAll(true); }, 1200); return; }
-      busy(sendBtn, false); dirty = false;
+      busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
       if (r.error === 'publishAt_past') {   // 流程不准斷在半路：就地給一鍵現在送，不要叫他回頭改時間
         pm.innerHTML = '這個預定時間已經過了。<a href="#" id="sendNow">改成現在送出</a>　或改一個未來的時間再按送出。';
         var sn = document.getElementById('sendNow'); if (sn) sn.onclick = function (ev) { ev.preventDefault(); var w = document.getElementById('sendAt'); if (w) w.value = ''; var wb = document.getElementById('whenBox'); if (wb) wb.classList.remove('on'); document.getElementById('btnSend').click(); };
         return;
       }
-      if (r.error === 'line_send_failed') { pm.innerHTML = '<b style="color:#8C3B25">客戶沒有收到</b>：' + esc(String(r.detail || '').slice(0, 120)) + '。稿還在，確認對方沒有封鎖後再按一次送出。'; setTimeout(function () { refreshAll(true); }, 2000); return; }
+      if (r.error === 'line_send_failed') { pm.innerHTML = '<b style="color:#8C3B25">客戶沒有收到</b>：' + esc(String(r.detail || '').slice(0, 120)) + '。稿已退回待核可，確認對方沒有封鎖後再按一次送出。'; return; }
       pm.textContent = '失敗：' + friendlyErr(r.detail || r.error) + '。正在重新確認有沒有送出…'; setTimeout(function () { refreshAll(true); }, 3000);
     }, function () { busy(sendBtn, false); document.getElementById('pendMsg').textContent = '後台回應太慢，訊息可能已經送出，3 秒後重新確認（對話紀錄有我方那則＝已送出）'; setTimeout(function () { refreshAll(true); }, 3000); }); };
     document.getElementById('btnFb').onclick = function () { document.getElementById('fbBox').classList.toggle('on'); };
