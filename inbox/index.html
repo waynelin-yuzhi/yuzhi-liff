@@ -93,6 +93,7 @@
   .att .it .x{position:absolute;top:-6px;right:-6px;background:var(--brick);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;cursor:pointer;padding:0}
   .attbtn{font-size:12px}
   input[type=text],select{padding:6px 8px;border:1px solid var(--line);font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
+.chip{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;background:#EEE9DD;color:#5A5344;border:1px solid #DDD5C2}.chip.ok{background:#E3EFE1;color:#3D6B3A;border-color:#C6DCC3}.chip.warn{background:#FFF1E6;color:#9A4E1E;border-color:#F1CDB0}
 </style>
 </head>
 <body>
@@ -152,7 +153,7 @@
     }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error) stat('失敗：' + (d.detail || d.error)); return d; });
   }
   var ROLES = ['客戶', '會計事務所', '廠商', '合作夥伴', '其他'], MEMBER_ROLES = ['窗口', '主管', '會計', '採購', '其他'];
-  var OPS = { csInboxNoReply: 'noReply', csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
+  var OPS = { csInboxDocSend: 'docSend', csInboxNoReply: 'noReply', csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
   function run(fn, args, ok, fail) {
     var p;
     if (fn === 'csInboxContacts') p = api({ app: { op: 'contacts', sinceHours: (args[0] || {}).sinceHours, fresh: !!(args[0] || {}).fresh } });
@@ -326,6 +327,21 @@
       }).catch(function () { finish(); });
     });
   }
+  function docStripHtml(t) {   // 文件狀態列：狀態讀進來、動作送出去（都投核可），正本留在報價／合約系統
+    var d = t.dossier || {}; if (d.loading) return '';
+    var qs = (d.quotes || []).slice(0, 3), ars = (d.receivables || []).filter(function (r) { return Number(r.balance) > 0 || /未|部分/.test(String(r.status || '')); }), cts = (d.contracts || []).slice(0, 2);
+    var rows = [];
+    qs.forEach(function (q) {
+      var st = q.signedAt ? '已簽回' : (q.status || '未簽'); var chip = q.signedAt ? 'chip ok' : 'chip warn';
+      rows.push('<div class="row" style="align-items:center;gap:6px;flex-wrap:wrap"><span class="' + chip + '">' + esc(st) + '</span><span class="small">' + esc(q.quoteNo) + (q.subtitle ? '・' + esc(String(q.subtitle).slice(0, 14)) : '') + (q.total ? '・NT$ ' + esc(String(q.total)) : '') + '</span>'
+        + '<button class="btn ghost small" data-doc="quote" data-no="' + esc(q.quoteNo) + '">發報價卡</button>' + (q.signedAt ? '' : '<button class="btn ghost small" data-doc="quoteRemind" data-no="' + esc(q.quoteNo) + '">催簽</button>') + '</div>');
+    });
+    if (ars.length) { var bal = ars.reduce(function (a, r) { return a + (Number(r.balance) || 0); }, 0); rows.push('<div class="row" style="align-items:center;gap:6px"><span class="chip warn">未收</span><span class="small">' + ars.length + ' 筆' + (bal ? '・餘 NT$ ' + bal.toLocaleString() : '') + '</span></div>'); }
+    cts.forEach(function (c) { rows.push('<div class="row" style="align-items:center;gap:6px"><span class="chip">合約</span><span class="small">' + esc(c.contractNo || '') + (c.typeName ? '・' + esc(c.typeName) : '') + '・' + esc(c.signedAt ? '已簽' : (c.status || '')) + '</span></div>'); });
+    if (!t.clientId) rows.push('<div class="row" style="align-items:center;gap:6px"><span class="chip">未建檔</span><button class="btn ghost small" data-doc="intake">發基本資料卡</button></div>');
+    if (!rows.length) return '';
+    return '<h4>文件</h4><div id="docStrip">' + rows.join('') + '<div class="small muted" id="docMsg"></div></div>';
+  }
   function dossierHtml(t) {
     var d = t.dossier || {}; var memo = d.memory || {};
     var facts = (d.facts || []).map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('');
@@ -339,6 +355,7 @@
       + (function () { var fu = t.followup; if (!fu) return ''; var lbl = { on: '跟進中', off: '已關閉（你設的）', done: '這一輪跟完了', declined: '客戶已婉拒', booked: '已約好下次', waiting_us: '等我們回客戶', na: '目前不跟' }[fu.state] || fu.state; var extra = fu.state === 'on' ? ('已跟 ' + fu.round + ' 次，' + (fu.nextDays > 0 ? '再 ' + fu.nextDays + ' 天' : '今天就符合') + '；已安靜 ' + fu.quietDays + ' 天') : ''; return '<h4 id="fuBox">跟進</h4><div class="small" style="margin-bottom:6px"><b>' + esc(lbl) + '</b>　' + esc(fu.reason) + (extra ? '<br>' + esc(extra) : '') + '</div>' + '<div class="row"><button class="btn ghost small" data-fu="auto">交給系統判斷</button><button class="btn ghost small" data-fu="force">一定要跟</button><button class="btn ghost small" data-fu="off">不要跟這位</button><span class="small muted" id="fuMsg"></span></div>'; })()
       + '<h4>對象類型</h4><div class="row">' + roleSel + '<input type="text" id="roleNote" placeholder="備註（例：群智會計 Phoebe）" value="' + esc(t.roleNote || '') + '" style="flex:1;min-width:140px"><button class="btn ghost small" id="roleSave">儲存</button><span class="small muted" id="roleMsg"></span></div>'
       + (mem ? '<h4>群組成員</h4>' + mem : '')
+      + docStripHtml(t)
       + '<h4>檔案（引擎擬稿看的同一份）</h4>' + (d.loading ? '<span class="muted"><span class="spin"></span>客戶資料載入中</span>' : (d.error ? '<span class="muted">客戶資料讀取失敗</span>' : (facts ? '<ul>' + facts + '</ul>' : '<span class="muted">（沒有資料）</span>')))
       + '<h4>客服對這位的認識</h4>' + (memo.summary ? '<div style="white-space:pre-wrap">' + esc(memo.summary) + '</div><div class="small muted">更新 ' + esc(memo.updatedAt || '') + '</div>' : '<span class="muted">（還沒有摘要，引擎第一次擬稿時會產生）</span>')
       + '<div class="row"><textarea id="memNote" rows="2" placeholder="你的補充（引擎每次都會讀、不會被覆蓋）" style="flex:1;min-width:200px;font-size:12px;padding:6px;border:1px solid var(--line);font-family:inherit">' + esc(memo.note || '') + '</textarea><button class="btn ghost small" id="memSave">存補充</button></div>'
@@ -405,6 +422,12 @@
         document.querySelectorAll('#bindCands [data-bind]').forEach(function (b) { b.onclick = function () { if (!confirm('把這位聯絡人綁到 ' + b.textContent + '？')) return; run('csInboxBind', [{ contactId: cur, clientId: b.getAttribute('data-bind') }], function (rr) { if (rr.ok) refreshAll(true); else document.getElementById('bindMsg').textContent = '綁定失敗：' + (rr.detail || rr.error); }); }; });
       });
     };
+    document.querySelectorAll('#docStrip [data-doc]').forEach(function (b) { b.onclick = function () {
+      var kind = b.getAttribute('data-doc'), no = b.getAttribute('data-no') || '', label = b.textContent;
+      if (!confirm(label + (no ? ' ' + no : '') + '？會先變成一張待核可稿，你看過再送。')) return;
+      busy(b, true, '投稿中'); var dm = document.getElementById('docMsg');
+      run('csInboxDocSend', [{ contactId: cur, kind: kind, no: no }], function (r) { busy(b, false); if (dm) dm.textContent = r.ok ? ('已投核可：' + r.id + '，稿會出現在上面') : ('失敗：' + friendlyErr(r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 1500); }, function () { busy(b, false); if (dm) dm.textContent = '後台回應太慢，稍後重新整理看有沒有投進去'; });
+    }; });
     document.querySelectorAll('[data-fu]').forEach(function (b) { b.onclick = function () { var mode = b.getAttribute('data-fu'), cidF = cur; if (mode === 'off' && !confirm('這位以後都不自動跟進？（你還是可以手動主動聯繫）')) return; busy(b, true, '設定中'); var say = function (m) { var e = document.getElementById('fuMsg'); if (e) e.textContent = m; }; api({ inbox: { op: 'followupSet', contactId: cidF, mode: mode } }).then(function (r) { busy(b, false); if (!r || r.ok === false) { say('失敗：' + friendlyErr((r && r.error) || '?')); return; } if (cur !== cidF) return; t.followup = r.followup; t.tags = r.tags || []; var snap = snapInputs(); renderThread(t); renderDossier(t); restoreInputs(snap); var d = document.querySelector('#dossier details'); if (d) d.open = true; loadList(null, true); }).catch(function (e) { busy(b, false); say('失敗：' + friendlyErr(e.message)); }); }; });
     document.getElementById('roleSave').onclick = function () { busy(this, true, '儲存中'); run('csInboxRole', [{ contactId: cur, role: document.getElementById('roleSel').value, note: document.getElementById('roleNote').value }], function (r) { document.getElementById('roleMsg').textContent = r.ok ? '已設為 ' + r.role : ('失敗：' + (r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 600); }); };
     document.getElementById('memSave').onclick = function () { busy(this, true, '存'); run('csInboxMemoryNote', [{ contactId: cur, note: document.getElementById('memNote').value }], function (r) { if (r.ok) openThread(cur); }); };
