@@ -45,3 +45,5 @@ a.lnk{color:var(--moss);text-decoration:none;font-weight:600}
 #home-lnk{display:block;margin:0 auto 10px;max-width:420px;padding:12px 16px;border-radius:12px;background:#fff;border:1.5px solid var(--moss);color:var(--moss);font-size:15px;font-weight:700;text-align:center;text-decoration:none}
 .topbar{display:flex;align-items:center;margin:0 0 10px}
 .topbar a{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:#fff;border:1.5px solid var(--moss);color:var(--moss);font-size:14px;font-weight:700;text-decoration:none}
+.chip.req{border:1.5px dashed var(--moss)}
+.fld textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cfcabd;border-radius:10px;font:inherit;background:#fff}

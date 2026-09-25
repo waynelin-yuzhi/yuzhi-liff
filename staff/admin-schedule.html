@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>植間｜排班總覽</title>
-<link rel="stylesheet" href="staff.css?v=6">
+<link rel="stylesheet" href="staff.css?v=7">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="config.js?v=5"></script>
 <script src="staff.js?v=7"></script>
@@ -56,6 +56,8 @@
         + (s.status === '待核可' ? '<button class="btn sm" data-approve="' + esc(e) + '">核可</button>' : '') + '</div>';
     });
     h += '<div class="small muted" id="msg" style="margin-top:6px"></div></div>';
+    var chg = r.changes || [];
+    if (chg.length) { h += '<div class="card" style="padding:10px 12px"><div class="small"><b>變更申請 ' + chg.length + ' 件</b></div>'; chg.forEach(function (c) { h += '<div class="emp"><span class="small" style="flex:1"><b>' + esc(c.empName || c.empId) + '</b>　' + esc(c.desc) + '<br><span class="muted">原因：' + esc(c.reason) + '　' + esc(c.apId) + '</span></span><button class="btn sm" data-chg="' + esc(c.reqId) + '">核可</button><button class="btn secondary sm" data-chgno="' + esc(c.reqId) + '">退回</button></div>'; }); h += '</div>'; }
     if (r.today && r.today.slice(0, 7) !== r.ym) h += '<div class="card" style="padding:10px 12px"><div class="small muted">今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡在 ' + esc(r.today.slice(0, 7).replace('-', ' / ')) + '，按「‹ 上個月」看。</div></div>';
     if (r.today && r.today.slice(0, 7) === r.ym) {
       h += '<div class="card" style="padding:10px 12px"><div class="small"><b>今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡</b></div>';
@@ -71,6 +73,7 @@
     $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
     document.querySelectorAll('[data-approve]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-approve'); if (!confirm('核可 ' + (r.emps[e] || e) + ' 的 ' + YM + ' 班表？核可後系統會擬各客戶的養護日期通知進核可中心。')) return; b.disabled = true; b.textContent = '核可中'; T.api('schedApprove', { ym: YM, empId: e }).then(function (x) { MSG = x.ok ? ('已核可 ' + x.apId + '。' + (x.execMsg ? x.execMsg : (x.notifiedAt ? '客戶通知已擬進核可中心' : '注意：客戶通知沒有跑，請查系統事件'))) : ('失敗：' + (x.detail || x.error)); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
+    document.querySelectorAll('[data-chg],[data-chgno]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-chg') || b.getAttribute('data-chgno'); var rej = !!b.getAttribute('data-chgno'); var why = ''; if (rej) { why = prompt('退回原因（員工會看到）', '') || ''; if (!why.trim()) return; } else if (!confirm('核可這筆變更？核可後班表更新，系統會擬改期通知給客戶進核可中心。')) return; b.disabled = true; b.textContent = rej ? '退回中' : '核可中'; T.api('schedChangeDecide', { reqId: id, decision: rej ? 'reject' : 'approve', reason: why }).then(function (x) { MSG = x.ok ? ((rej ? '已退回 ' : '已核可 ') + id + (x.result ? '：' + x.result : '')) : ('失敗：' + (x.detail || x.error)); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
   }
   T.init().then(function () { load(YM || (new Date().getDate() >= 15 ? addYm(thisYm(), 1) : thisYm())); }).catch(function () {});
 })();
