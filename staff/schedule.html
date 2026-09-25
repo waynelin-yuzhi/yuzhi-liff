@@ -62,6 +62,7 @@
     var h = '<div class="hd"><div><h1>' + esc(ym.replace('-', ' / ')) + '</h1><div class="sub">' + (past ? '過去月份：顯示實際打卡' : stChip(r.status) + (r.apId ? '　' + esc(r.apId) : '')) + '</div></div></div>';
     h += '<div class="two" style="margin-bottom:10px"><button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button></div>';
     if (!past) {
+      h += '<div class="small muted" style="margin:-4px 0 8px"><a class="lnk" href="' + T.href('manual.html') + '#schedule">怎麼排？看教學</a></div>';
       var locked = r.status === '已核可' || r.status === '待核可';
       h += '<div class="card" style="padding:10px 12px">';
       if (r.status === '未建立' || !rows.length) h += '<div class="note">這個月還沒排。按下面一鍵照慣例鋪滿，再調整。</div>';
