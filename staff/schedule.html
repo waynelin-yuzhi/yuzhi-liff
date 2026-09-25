@@ -50,7 +50,7 @@
   $('pgv').textContent = T.CFG.version || '';
   $('home-lnk').href = T.href('index.html');
   var WD = ['一', '二', '三', '四', '五', '六', '日'];
-  var ME = null, YM = T.qs.get('ym') || '', DATA = null, MSG = '';
+  var ME = null, YM = T.qs.get('ym') || '', DATA = null, MSG = '', SAVING = false;
   function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function addYm(ym, n) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)) - 1 + n; var d = new Date(y, m, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function wdOf(ds) { var d = new Date(ds + 'T00:00:00'); var w = d.getDay(); return w === 0 ? 7 : w; }
@@ -106,11 +106,11 @@
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
     if (!past) {
       var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true); };
-      $('draft').onclick = function () { if (rows.length && !confirm('重新照慣例排會蓋掉你調整過的班，確定？')) return; busy(this, '排班中'); T.api('schedDraft', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); MSG = '已排 ' + x.count + ' 場' + ((x.warn || []).length ? '。注意：' + x.warn.join('；') : ''); if (x.view && x.view.ok) { DATA = x.view; render(); } else load(YM, true); }).catch(fail); };
-      $('submit').onclick = function () { var warnN = rows.filter(function (x) { return x.holiday && String(x.note || '').indexOf('照排') < 0; }).length; var forceH = false; if (warnN) { if (!confirm('還有 ' + warnN + ' 個班在假日。客戶確認假日照常要做才按確定；否則按取消回去移班。')) return; forceH = true; } if (!confirm('送出 ' + YM + ' 的班表給 Wayne 核可？')) return; busy(this, '送出中'); T.api('schedSubmit', { ym: YM, forceHolidays: forceH ? '1' : '' }).then(function (x) { if (!x.ok) return fail(x); msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true); }).catch(fail); };
-      var wb = $('withdraw'); if (wb) wb.onclick = function () { if (!confirm('撤回這個月的送件、回到草稿重排？')) return; busy(this, '撤回中'); T.api('schedWithdraw', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); msg('已撤回，回到草稿'); load(YM, true); }).catch(fail); };
-      document.querySelectorAll('.chip[data-k]').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); if (c.dataset.dragged) { delete c.dataset.dragged; return; } var k = c.getAttribute('data-k').split('|'); openSheet(rows.filter(function (x) { return x.siteCode === k[0] && x.date === k[1] && x.slot === k[2]; })[0]); }; });
-      document.querySelectorAll('.day[data-d]').forEach(function (d) { d.onclick = function () { openAdd(d.getAttribute('data-d')); }; });
+      $('draft').onclick = function () { if (SAVING) { msg('還在儲存上一筆，等一下'); return; } if (rows.length && !confirm('重新照慣例排會蓋掉你調整過的班，確定？')) return; busy(this, '排班中'); T.api('schedDraft', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); MSG = '已排 ' + x.count + ' 場' + ((x.warn || []).length ? '。注意：' + x.warn.join('；') : ''); if (x.view && x.view.ok) { DATA = x.view; render(); } else load(YM, true); }).catch(fail); };
+      var sb = $('submit'); if (sb) sb.onclick = function () { if (SAVING) { msg('還在儲存上一筆，等一下再送'); return; } var warnN = rows.filter(function (x) { return x.holiday && String(x.note || '').indexOf('照排') < 0; }).length; var forceH = false; if (warnN) { if (!confirm('還有 ' + warnN + ' 個班在假日。客戶確認假日照常要做才按確定；否則按取消回去移班。')) return; forceH = true; } if (!confirm('送出 ' + YM + ' 的班表給 Wayne 核可？')) return; busy(this, '送出中'); T.api('schedSubmit', { ym: YM, forceHolidays: forceH ? '1' : '' }).then(function (x) { if (!x.ok) return fail(x); msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true); }).catch(fail); };
+      var wb = $('withdraw'); if (wb) wb.onclick = function () { if (SAVING) { msg('還在儲存上一筆，等一下'); return; } if (!confirm('撤回這個月的送件、回到草稿重排？')) return; busy(this, '撤回中'); T.api('schedWithdraw', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); msg('已撤回，回到草稿'); load(YM, true); }).catch(fail); };
+      document.querySelectorAll('.chip[data-k]').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); if (c.dataset.dragged) { delete c.dataset.dragged; return; } if (SAVING) return; var k = c.getAttribute('data-k').split('|'); openSheet(rows.filter(function (x) { return x.siteCode === k[0] && x.date === k[1] && x.slot === k[2]; })[0]); }; });
+      document.querySelectorAll('.day[data-d]').forEach(function (d) { d.onclick = function () { if (SAVING) return; openAdd(d.getAttribute('data-d')); }; });
       bindDrag();
     }
   }
@@ -129,20 +129,22 @@
       var hhS = DATA.holidays[p.newDate]; if (hhS && hhS.kind !== '補班' && p.newDate !== x.date) { if (!confirm(md(p.newDate) + ' 是 ' + hhS.name + '。客戶確認假日照常要做的話可以照排。要照排嗎？')) return; p.force = '1'; } }
     var snap = DATA, opt = !approved;
     if (opt) { DATA = Object.assign({}, DATA, { rows: localApply(DATA.rows || [], p) }); closeSheet(); MSG = '儲存中…'; render(); } else if (ui.busy) ui.busy();
+    SAVING = true;
     T.api('schedMove', p).then(function (r) {
+      SAVING = false;
       if (r.ok) { if (!opt) closeSheet(); MSG = r.requested ? '已送出變更申請（' + r.apId + '），Wayne 核可後生效' : ''; if (r.view && r.view.ok) { DATA = r.view; render(); } else load(YM, !!r.requested); return; }
       if (opt) { DATA = snap; MSG = ''; render(); }
-      if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n客戶確認假日照常要做的話可以照排。要照排嗎？')) { if (ui.retry) ui.retry(); else doMove(x, p, true, ui); } else if (!opt && ui.err) ui.err(''); return; }
-      var fresh = ['rule', 'reason_required', 'no_change'].indexOf(r.error) >= 0;   // 規則類＝畫面沒過時；重複、找不到、鎖住多半是畫面比後台舊（上一筆其實存到了）→ 重載
+      if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n客戶確認假日照常要做的話可以照排。要照排嗎？')) doMove(x, p, true, ui); else if (!opt && ui.err) ui.err(''); return; }   // 重送用同一份 p，不再回頭讀表單（表單可能已換成別的班）
+      var fresh = ['rule', 'reason_required', 'no_change', 'change_pending'].indexOf(r.error) >= 0;   // 規則類＝畫面沒過時；重複、找不到、鎖住多半是畫面比後台舊（上一筆其實存到了）→ 重載
       if (!fresh) { MSG = '後台的班表跟畫面不同步（' + (r.detail || r.error || '沒回應') + '），已重新載入'; load(YM, true); return; }
       if (opt) { MSG = '沒儲存：' + (r.detail || r.error); render(); } else if (ui.err) ui.err(r.detail || r.error);
-    }).catch(function () { MSG = '後台沒回應，重新載入確認有沒有存到'; load(YM, true); });
+    }).catch(function () { SAVING = false; MSG = '後台沒回應，重新載入確認有沒有存到'; load(YM, true); });
   }
   function bindDrag() {   // 長按 0.35 秒拖到別天（移日期）或別的班上（插到它的位置）；已核可要寫原因，不開放拖
     if (DATA.status === '已核可' || DATA.mode === 'past') return;
     document.querySelectorAll('.chip[data-k]').forEach(function (c) {
       c.addEventListener('pointerdown', function (ev) {
-        if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+        if (ev.pointerType === 'mouse' && ev.button !== 0) return; if (SAVING) return;
         var k = c.getAttribute('data-k'), sx = ev.clientX, sy = ev.clientY, pid = ev.pointerId, timer = null, started = false, ghost = null, target = null;
         var clear = function () { document.querySelectorAll('.day.over,.chip.over').forEach(function (q) { q.classList.remove('over'); }); };
         var end = function () { clearTimeout(timer); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onUp); if (ghost) ghost.remove(); clear(); c.classList.remove('dragging'); };
@@ -176,6 +178,7 @@
     r.holiday = (hh && hh.kind !== '補班') ? hh.name : '';
     var groups = {}; out.forEach(function (x) { var k = x.date + '|' + x.slot; (groups[k] = groups[k] || []).push(x); });
     Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return ((b.fixedStart ? 1 : 0) - (a.fixedStart ? 1 : 0)) || (a.order - b.order); }).forEach(function (x, i) { x.order = i + 1; }); });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.slot !== b.slot ? (a.slot === '上午' ? -1 : 1) : a.order - b.order); });
     return out;
   }
   function busy(b, t) { b.disabled = true; b.textContent = t; }
@@ -198,10 +201,10 @@
     var save = function (force) {
       var p = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, newDate: $('sh-date').value, newSlot: $('sh-slot').value, newOrder: $('sh-order').value };
       if (approved) { var rs = String(($('sh-reason') || {}).value || '').trim(); if (!rs) { $('sh-msg').textContent = '請寫原因'; return; } p.reason = rs; }
-      doMove(x, p, force, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = approved ? '送出申請中…' : '儲存中…'; }, retry: function () { save(true); } });
+      doMove(x, p, force, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = approved ? '送出申請中…' : '儲存中…'; } });
     };
     $('sh-save').onclick = function () { save(false); };
-    $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效')) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; var snapR = DATA, optR = !approved; if (optR) { DATA = Object.assign({}, DATA, { rows: localApply(DATA.rows || [], { siteCode: x.siteCode, date: x.date, slot: x.slot, remove: true }) }); closeSheet(); MSG = '儲存中…'; render(); } else $('sh-msg').textContent = '送出申請中…'; T.api('schedMove', rq).then(function (r) { if (r.ok) { if (!optR) closeSheet(); MSG = r.requested ? '已送出變更申請（' + r.apId + '），Wayne 核可後生效' : ''; if (r.view && r.view.ok) { DATA = r.view; render(); } else load(YM, !!r.requested); } else if (optR) { DATA = snapR; MSG = '沒移除：' + (r.detail || r.error); render(); } else $('sh-msg').textContent = r.detail || r.error; }).catch(function () { if (optR) { DATA = snapR; MSG = '後台沒回應，這筆沒儲存，請再試一次'; render(); } else $('sh-msg').textContent = '後台沒回應，請再按一次'; }); };
+    $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效')) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; var snapR = DATA, optR = !approved; if (optR) { DATA = Object.assign({}, DATA, { rows: localApply(DATA.rows || [], { siteCode: x.siteCode, date: x.date, slot: x.slot, remove: true }) }); closeSheet(); MSG = '儲存中…'; render(); } else $('sh-msg').textContent = '送出申請中…'; SAVING = true; T.api('schedMove', rq).then(function (r) { SAVING = false; if (r.ok) { if (!optR) closeSheet(); MSG = r.requested ? '已送出變更申請（' + r.apId + '），Wayne 核可後生效' : ''; if (r.view && r.view.ok) { DATA = r.view; render(); } else load(YM, !!r.requested); } else if (['rule', 'reason_required', 'no_change', 'change_pending'].indexOf(r.error) < 0) { MSG = '後台的班表跟畫面不同步（' + (r.detail || r.error) + '），已重新載入'; load(YM, true); } else if (optR) { DATA = snapR; MSG = '沒移除：' + (r.detail || r.error); render(); } else $('sh-msg').textContent = r.detail || r.error; }).catch(function () { SAVING = false; MSG = '後台沒回應，重新載入確認有沒有存到'; load(YM, true); }); };
   }
   function openAdd(ds) {
     var sites = DATA.mySites || []; if (!sites.length) return;
@@ -212,10 +215,11 @@
       + (DATA.status === '已核可' ? '<div class="fld"><label>原因（Wayne 會看到）</label><textarea id="ad-reason" rows="2" placeholder="例：客戶要求這個月多一次"></textarea></div>' : '') + '<div class="small muted" id="ad-msg" style="margin:6px 0"></div><div class="two"><button class="btn sm" id="ad-save">' + (DATA.status === '已核可' ? '送出變更申請' : '加入') + '</button><button class="btn secondary sm" id="ad-close">取消</button></div>';
     $('sheet').innerHTML = h; $('sheet').classList.add('on'); $('mask').classList.add('on');
     $('ad-close').onclick = closeSheet;
-    var save = function (force) { var p = { ym: YM, siteCode: $('ad-site').value, date: ds, newDate: ds, newSlot: $('ad-slot').value, newOrder: $('ad-order').value, add: '1' }; if (force) p.force = '1'; if (DATA.status === '已核可') { var rs = String(($('ad-reason') || {}).value || '').trim(); if (!rs) { $('ad-msg').textContent = '請寫原因'; return; } p.reason = rs; } if (!force) { var siteA = sites.filter(function (s) { return s.siteCode === p.siteCode; })[0] || { siteCode: p.siteCode }; var peA = preCheck(siteA, p, DATA.rows || [], ''); if (peA) { $('ad-msg').textContent = peA; return; } var hhA = DATA.holidays[ds]; if (hhA && hhA.kind !== '補班') { if (!confirm(md(ds) + ' 是 ' + hhA.name + '。要照排嗎？')) return; p.force = '1'; } }
+    var save = function (force, prev) { var p = prev ? Object.assign({}, prev) : { ym: YM, siteCode: $('ad-site').value, date: ds, newDate: ds, newSlot: $('ad-slot').value, newOrder: $('ad-order').value, add: '1' }; if (force) p.force = '1'; if (DATA.status === '已核可' && !prev) { var rs = String(($('ad-reason') || {}).value || '').trim(); if (!rs) { $('ad-msg').textContent = '請寫原因'; return; } p.reason = rs; } if (!force) { var siteA = sites.filter(function (s) { return s.siteCode === p.siteCode; })[0] || { siteCode: p.siteCode }; var peA = preCheck(siteA, p, DATA.rows || [], ''); if (peA) { $('ad-msg').textContent = peA; return; } var hhA = DATA.holidays[ds]; if (hhA && hhA.kind !== '補班') { if (!confirm(md(ds) + ' 是 ' + hhA.name + '。要照排嗎？')) return; p.force = '1'; } }
       var snapA = DATA, optA = DATA.status !== '已核可';
       if (optA) { DATA = Object.assign({}, DATA, { rows: localApply(DATA.rows || [], { siteCode: p.siteCode, add: true, newDate: p.newDate, newSlot: p.newSlot, newOrder: p.newOrder }) }); closeSheet(); MSG = '儲存中…'; render(); } else $('ad-msg').textContent = '送出申請中…';
-      T.api('schedMove', p).then(function (r) { if (r.ok) { if (!optA) closeSheet(); MSG = r.requested ? '已送出變更申請（' + r.apId + '），Wayne 核可後生效' : ''; if (r.view && r.view.ok) { DATA = r.view; render(); } else load(YM, !!r.requested); return; } if (optA) { DATA = snapA; MSG = ''; render(); } if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n要照排嗎？')) return save(true); if (!optA) $('ad-msg').textContent = ''; return; } if (optA) { MSG = '沒加入：' + (r.detail || r.error); render(); } else $('ad-msg').textContent = r.detail || r.error; }).catch(function () { if (optA) { DATA = snapA; MSG = '後台沒回應，這筆沒儲存，請再試一次'; render(); } else $('ad-msg').textContent = '後台沒回應，請再按一次'; }); };
+      SAVING = true;
+      T.api('schedMove', p).then(function (r) { SAVING = false; if (r.ok) { if (!optA) closeSheet(); MSG = r.requested ? '已送出變更申請（' + r.apId + '），Wayne 核可後生效' : ''; if (r.view && r.view.ok) { DATA = r.view; render(); } else load(YM, !!r.requested); return; } if (optA) { DATA = snapA; MSG = ''; render(); } if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n要照排嗎？')) return save(true, p); if (!optA) $('ad-msg').textContent = ''; return; } if (['rule', 'reason_required', 'no_change', 'change_pending'].indexOf(r.error) < 0) { MSG = '後台的班表跟畫面不同步（' + (r.detail || r.error) + '），已重新載入'; load(YM, true); return; } if (optA) { MSG = '沒加入：' + (r.detail || r.error); render(); } else $('ad-msg').textContent = r.detail || r.error; }).catch(function () { SAVING = false; MSG = '後台沒回應，重新載入確認有沒有存到'; load(YM, true); }); };
     $('ad-save').onclick = function () { save(false); };
   }
   T.init().then(function (me) { ME = me; load(YM || (new Date().getDate() >= 15 ? addYm(thisYm(), 1) : thisYm())); }).catch(function () {});   // 月中之後預設開下個月（排班一個月前確認）
