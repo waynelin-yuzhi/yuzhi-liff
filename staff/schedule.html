@@ -103,7 +103,7 @@
   function openSheet(x) {
     if (!x) return; var locked = DATA.status === '已核可' || DATA.status === '待核可';
     var days = daysOf(YM);
-    var h = '<div class="small" style="margin-bottom:8px"><b>' + esc(x.shortName) + '</b>　' + esc(md(x.date)) + '（' + WD[wdOf(x.date) - 1] + '）' + esc(x.slot) + ' 第 ' + x.order + ' 站' + (x.holiday ? '<br><span style="color:#8C3B25">這天是 ' + esc(x.holiday) + '，請移到別天</span>' : '') + (x.fixedStart ? '<br>客戶指定 ' + esc(x.fixedStart) + ' 開始（固定上午第 1 站）' : '') + (x.noDays && x.noDays.length ? '<br>不可排週' + x.noDays.map(function (n) { return WD[n - 1]; }).join('、') : '') + '</div>';
+    var h = '<div class="small" style="margin-bottom:8px"><b>' + esc(x.shortName) + '</b>　' + esc(md(x.date)) + '（' + WD[wdOf(x.date) - 1] + '）' + esc(x.slot) + ' 第 ' + x.order + ' 站' + (x.holiday ? '<br><span style="color:#8C3B25">這天是 ' + esc(x.holiday) + (String(x.note || '').indexOf('照排') >= 0 ? '，已確認照排' : '，請移到別天') + '</span>' : '') + (x.fixedStart ? '<br>客戶指定 ' + esc(x.fixedStart) + ' 開始（固定' + (parseInt(x.fixedStart, 10) < 12 ? '上午' : '下午') + '第 1 站）' : '') + (x.noDays && x.noDays.length ? '<br>不可排週' + x.noDays.map(function (n) { return WD[n - 1]; }).join('、') : '') + '</div>';
     if (locked) h += '<div class="note">已送出，不能改。</div><button class="btn secondary sm" id="sh-close">關閉</button>';
     else h += '<div class="two"><div class="fld"><label>日期</label><select id="sh-date">' + days.map(function (d) { var hh = DATA.holidays[d]; return '<option value="' + d + '"' + (d === x.date ? ' selected' : '') + '>' + md(d) + '（' + WD[wdOf(d) - 1] + '）' + (hh && hh.kind !== '補班' ? ' 假' : '') + '</option>'; }).join('') + '</select></div>'
       + '<div class="fld"><label>時段</label><select id="sh-slot"><option' + (x.slot === '上午' ? ' selected' : '') + '>上午</option><option' + (x.slot === '下午' ? ' selected' : '') + '>下午</option></select></div></div>'
@@ -122,10 +122,10 @@
         if (r.ok) { closeSheet(); load(YM); return; }
         if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n客戶確認假日照常要做的話可以照排。要照排嗎？')) return save(true); $('sh-msg').textContent = ''; return; }
         $('sh-msg').textContent = r.detail || r.error;
-      });
+      }).catch(function () { $('sh-msg').textContent = '後台沒回應，請再按一次'; });
     };
     $('sh-save').onclick = function () { save(false); };
-    $('sh-remove').onclick = function (ev) { ev.preventDefault(); if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; T.api('schedMove', { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }).then(function (r) { if (r.ok) { closeSheet(); load(YM); } else $('sh-msg').textContent = r.detail || r.error; }); };
+    $('sh-remove').onclick = function (ev) { ev.preventDefault(); if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; T.api('schedMove', { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }).then(function (r) { if (r.ok) { closeSheet(); load(YM); } else $('sh-msg').textContent = r.detail || r.error; }).catch(function () { $('sh-msg').textContent = '後台沒回應，請再按一次'; }); };
   }
   function openAdd(ds) {
     var sites = DATA.mySites || []; if (!sites.length) return;
@@ -137,7 +137,7 @@
     $('sheet').innerHTML = h; $('sheet').classList.add('on'); $('mask').classList.add('on');
     $('ad-close').onclick = closeSheet;
     var save = function (force) { var p = { ym: YM, siteCode: $('ad-site').value, date: ds, newDate: ds, newSlot: $('ad-slot').value, newOrder: $('ad-order').value, add: '1' }; if (force) p.force = '1'; $('ad-msg').textContent = '加入中…';
-      T.api('schedMove', p).then(function (r) { if (r.ok) { closeSheet(); load(YM); return; } if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n要照排嗎？')) return save(true); $('ad-msg').textContent = ''; return; } $('ad-msg').textContent = r.detail || r.error; }); };
+      T.api('schedMove', p).then(function (r) { if (r.ok) { closeSheet(); load(YM); return; } if (r.error === 'holiday' && !force) { if (confirm(r.detail + '\n\n要照排嗎？')) return save(true); $('ad-msg').textContent = ''; return; } $('ad-msg').textContent = r.detail || r.error; }).catch(function () { $('ad-msg').textContent = '後台沒回應，請再按一次'; }); };
     $('ad-save').onclick = function () { save(false); };
   }
   T.init().then(function (me) { ME = me; load(YM || thisYm()); }).catch(function () {});
