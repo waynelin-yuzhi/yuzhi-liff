@@ -56,6 +56,7 @@
         + (s.status === '待核可' ? '<button class="btn sm" data-approve="' + esc(e) + '">核可</button>' : '') + '</div>';
     });
     h += '<div class="small muted" id="msg" style="margin-top:6px"></div></div>';
+    if (r.today && r.today.slice(0, 7) !== r.ym) h += '<div class="card" style="padding:10px 12px"><div class="small muted">今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡在 ' + esc(r.today.slice(0, 7).replace('-', ' / ')) + '，按「‹ 上個月」看。</div></div>';
     if (r.today && r.today.slice(0, 7) === r.ym) {
       h += '<div class="card" style="padding:10px 12px"><div class="small"><b>今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡</b></div>';
       var todays = byDate[r.today] || [];
