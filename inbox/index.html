@@ -329,12 +329,13 @@
   }
   function docStripHtml(t) {   // 文件狀態列：狀態讀進來、動作送出去（都投核可），正本留在報價／合約系統
     var d = t.dossier || {}; if (d.loading) return '';
-    var qs = (d.quotes || []).slice(0, 3), ars = (d.receivables || []).filter(function (r) { return Number(r.balance) > 0 || /未|部分/.test(String(r.status || '')); }), cts = (d.contracts || []).slice(0, 2);
+    var qs = (d.quotes || []).filter(function (q) { return String(q.status || '') !== '已作廢'; }).slice(0, 3), ars = (d.receivables || []).filter(function (r) { return Number(r.balance) > 0 || /未|部分/.test(String(r.status || '')); }), cts = (d.contracts || []).slice(0, 2);
     var rows = [];
     qs.forEach(function (q) {
-      var st = q.signedAt ? '已簽回' : (q.status || '未簽'); var chip = q.signedAt ? 'chip ok' : 'chip warn';
+      var done = !!q.signedAt || /已成交/.test(String(q.status || ''));
+      var st = q.signedAt ? '已簽回' : (q.status || '未簽'); var chip = done ? 'chip ok' : 'chip warn';
       rows.push('<div class="row" style="align-items:center;gap:6px;flex-wrap:wrap"><span class="' + chip + '">' + esc(st) + '</span><span class="small">' + esc(q.quoteNo) + (q.subtitle ? '・' + esc(String(q.subtitle).slice(0, 14)) : '') + (q.total ? '・NT$ ' + esc(String(q.total)) : '') + '</span>'
-        + '<button class="btn ghost small" data-doc="quote" data-no="' + esc(q.quoteNo) + '">發報價卡</button>' + (q.signedAt ? '' : '<button class="btn ghost small" data-doc="quoteRemind" data-no="' + esc(q.quoteNo) + '">催簽</button>') + '</div>');
+        + '<button class="btn ghost small" data-doc="quote" data-no="' + esc(q.quoteNo) + '">' + (q.signedAt ? '發副本' : '發報價卡') + '</button>' + (done ? '' : '<button class="btn ghost small" data-doc="quoteRemind" data-no="' + esc(q.quoteNo) + '">催簽</button>') + '</div>');
     });
     if (ars.length) { var bal = ars.reduce(function (a, r) { return a + (Number(r.balance) || 0); }, 0); rows.push('<div class="row" style="align-items:center;gap:6px"><span class="chip warn">未收</span><span class="small">' + ars.length + ' 筆' + (bal ? '・餘 NT$ ' + bal.toLocaleString() : '') + '</span></div>'); }
     cts.forEach(function (c) { rows.push('<div class="row" style="align-items:center;gap:6px"><span class="chip">合約</span><span class="small">' + esc(c.contractNo || '') + (c.typeName ? '・' + esc(c.typeName) : '') + '・' + esc(c.signedAt ? '已簽' : (c.status || '')) + '</span></div>'); });
@@ -426,7 +427,7 @@
       var kind = b.getAttribute('data-doc'), no = b.getAttribute('data-no') || '', label = b.textContent;
       if (!confirm(label + (no ? ' ' + no : '') + '？會先變成一張待核可稿，你看過再送。')) return;
       busy(b, true, '投稿中'); var dm = document.getElementById('docMsg');
-      run('csInboxDocSend', [{ contactId: cur, kind: kind, no: no }], function (r) { busy(b, false); if (dm) dm.textContent = r.ok ? ('已投核可：' + r.id + '，稿會出現在上面') : ('失敗：' + friendlyErr(r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 1500); }, function () { busy(b, false); if (dm) dm.textContent = '後台回應太慢，稍後重新整理看有沒有投進去'; });
+      run('csInboxDocSend', [{ contactId: cur, kind: kind, no: no }], function (r) { busy(b, false); if (dm) dm.textContent = r.ok ? (r.attached ? ('已附掛到待核可稿 ' + r.id) : ('已投核可：' + r.id + '，稿會出現在上面')) : ('失敗：' + (r.detail || friendlyErr(r.error))); if (r.ok) setTimeout(function () { openThread(cur, true); }, 1200); }, function () { busy(b, false); if (dm) dm.textContent = '後台回應太慢，稍後重新整理看有沒有投進去'; });
     }; });
     document.querySelectorAll('[data-fu]').forEach(function (b) { b.onclick = function () { var mode = b.getAttribute('data-fu'), cidF = cur; if (mode === 'off' && !confirm('這位以後都不自動跟進？（你還是可以手動主動聯繫）')) return; busy(b, true, '設定中'); var say = function (m) { var e = document.getElementById('fuMsg'); if (e) e.textContent = m; }; api({ inbox: { op: 'followupSet', contactId: cidF, mode: mode } }).then(function (r) { busy(b, false); if (!r || r.ok === false) { say('失敗：' + friendlyErr((r && r.error) || '?')); return; } if (cur !== cidF) return; t.followup = r.followup; t.tags = r.tags || []; var snap = snapInputs(); renderThread(t); renderDossier(t); restoreInputs(snap); var d = document.querySelector('#dossier details'); if (d) d.open = true; loadList(null, true); }).catch(function (e) { busy(b, false); say('失敗：' + friendlyErr(e.message)); }); }; });
     document.getElementById('roleSave').onclick = function () { busy(this, true, '儲存中'); run('csInboxRole', [{ contactId: cur, role: document.getElementById('roleSel').value, note: document.getElementById('roleNote').value }], function (r) { document.getElementById('roleMsg').textContent = r.ok ? '已設為 ' + r.role : ('失敗：' + (r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 600); }); };
