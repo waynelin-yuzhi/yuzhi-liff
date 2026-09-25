@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>植間｜排班總覽</title>
+<link rel="stylesheet" href="staff.css?v=3">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="config.js?v=4"></script>
+<script src="staff.js?v=4"></script>
+<style>
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .wd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}
+.cal .day{min-height:70px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:10px}
+.cal .day.out{background:transparent;border-color:transparent}.cal .day.hol{background:#FFF1E6}.cal .day.today{box-shadow:inset 0 0 0 1px #5F6F52}
+.cal .dn{font-size:11px;color:var(--muted)}.cal .hn{font-size:9px;color:#9A4E1E;line-height:1.1}
+.chip{display:block;border-radius:6px;padding:1px 3px;margin-top:2px;line-height:1.2;border:1px solid;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:#EEE9DD;color:#5A5344}.st.wait{background:#FFF1E6;color:#9A4E1E}.st.ok{background:#E3EFE1;color:#3D6B3A}
+.emp{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.emp .dot{width:10px;height:10px;border-radius:5px;flex:0 0 auto}
+.pun{font-size:12px}.pun .no{color:#9A4E1E}.pun .yes{color:#3D6B3A}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN · 排班總覽</div>
+  <div id="app"><div class="card"><div class="note">載入中…</div></div></div>
+  <div class="ft"><a class="lnk" id="home-lnk" href="index.html">回員工首頁</a><br>植間設計股份有限公司<br><span id="pgv"></span></div>
+</div>
+<script>
+(function () {
+  var T = window.STAFF, esc = T.esc, $ = T.$;
+  $('pgv').textContent = T.CFG.version || ''; $('home-lnk').href = T.href('index.html');
+  var WD = ['一', '二', '三', '四', '五', '六', '日'], COLORS = ['#5F6F52', '#8C6A3F', '#4C6E8A', '#8A4C6E', '#6E8A4C', '#4C8A7E', '#A0522D', '#6B6B6B'];
+  var YM = T.qs.get('ym') || '';
+  function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function addYm(ym, n) { var d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function wdOf(ds) { var w = new Date(ds + 'T00:00:00').getDay(); return w === 0 ? 7 : w; }
+  function daysOf(ym) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)); var n = new Date(y, m, 0).getDate(); var o = []; for (var i = 1; i <= n; i++) o.push(ym + '-' + String(i).padStart(2, '0')); return o; }
+  function stChip(s) { return '<span class="st ' + (s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : '')) + '">' + esc(s || '未建立') + '</span>'; }
+  function load(ym) {
+    YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
+    T.api('schedOverview', { ym: ym }).then(function (r) { if (!r || !r.ok) { T.showErr(r && r.error === 'forbidden' ? '這頁只給 Wayne 看。' : T.errText(r)); return; } render(r); }).catch(function () { T.showErr('載入失敗，請重試'); });
+  }
+  function render(r) {
+    var emps = Object.keys(r.emps || {}); var color = {}; emps.forEach(function (e, i) { color[e] = COLORS[i % COLORS.length]; });
+    var byDate = {}; (r.rows || []).forEach(function (x) { (byDate[x.date] = byDate[x.date] || []).push(x); });
+    var stMap = {}; (r.status || []).forEach(function (s) { stMap[s.empId] = s; });
+    var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">全員排班</div></div></div>';
+    h += '<div class="two" style="margin-bottom:10px"><button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button></div>';
+    h += '<div class="card" style="padding:10px 12px">';
+    if (!emps.length) h += '<div class="note">這個月還沒有人排班。</div>';
+    emps.forEach(function (e) {
+      var s = stMap[e] || {}; var n = (r.rows || []).filter(function (x) { return x.empId === e; }).length;
+      h += '<div class="emp"><span class="dot" style="background:' + color[e] + '"></span><span class="small" style="flex:1"><b>' + esc(r.emps[e]) + '</b>　' + n + ' 場　' + stChip(s.status) + (s.apId ? ' <span class="muted">' + esc(s.apId) + '</span>' : '') + '</span>'
+        + (s.status === '待核可' ? '<button class="btn sm" data-approve="' + esc(e) + '">核可</button>' : '') + '</div>';
+    });
+    h += '<div class="small muted" id="msg" style="margin-top:6px"></div></div>';
+    if (r.today && r.today.slice(0, 7) === r.ym) {
+      h += '<div class="card" style="padding:10px 12px"><div class="small"><b>今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡</b></div>';
+      var todays = byDate[r.today] || [];
+      if (!todays.length) h += '<div class="small muted">今天沒有排班。</div>';
+      todays.forEach(function (x) { var ps = (r.punchesToday || {})[x.empId] || []; var hit = ps.filter(function (p) { return p.siteCode === x.siteCode; }); h += '<div class="pun">' + esc(r.emps[x.empId] || x.empId) + '・' + esc(x.shortName) + '（' + esc(x.slot) + x.order + '）：' + (hit.length ? '<span class="yes">已打卡 ' + hit.map(function (p) { return p.time + ' ' + (p.action || '').split('｜')[0]; }).join('、') + '</span>' : '<span class="no">未打卡</span>') + '</div>'; });
+      h += '</div>';
+    }
+    h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
+    var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
+    days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:#fff">' + esc((r.emps[x.empId] || x.empId).slice(0, 2)) + ' ' + esc(x.slot === '下午' ? '午' : '早') + x.order + ' ' + esc(x.shortName).slice(0, 4) + '</span>'; }); h += '</div>'; });
+    h += '</div></div>';
+    $('app').innerHTML = h;
+    $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
+    document.querySelectorAll('[data-approve]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-approve'); if (!confirm('核可 ' + (r.emps[e] || e) + ' 的 ' + YM + ' 班表？核可後系統會擬各客戶的養護日期通知進核可中心。')) return; b.disabled = true; b.textContent = '核可中'; T.api('schedApprove', { ym: YM, empId: e }).then(function (x) { $('msg').textContent = x.ok ? '已核可 ' + x.apId : ('失敗：' + (x.detail || x.error)); load(YM); }); }; });
+  }
+  T.init().then(function () { load(YM || thisYm()); }).catch(function () {});
+})();
+</script>
+</body>
+</html>

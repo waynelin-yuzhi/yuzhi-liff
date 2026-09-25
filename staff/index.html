@@ -54,6 +54,8 @@
     h += '<div class="grid">'
       + '<a class="mod" href="' + T.href('checkin.html') + '"><div class="ic">打</div><div class="t">打卡</div><div class="d">抵達／離開</div></a>'
       + '<a class="mod" href="' + T.href('shifts.html') + '"><div class="ic">班</div><div class="t">我的班表</div><div class="d">本週安排</div></a>'
+      + '<a class="mod" href="' + T.href('schedule.html') + '"><div class="ic">排</div><div class="t">排班</div><div class="d">下個月照慣例排、送核可</div></a>'
+      + (String((me.emp || {}).empId || '').toUpperCase() === 'EMP001' ? '<a class="mod" href="' + T.href('admin-schedule.html') + '"><div class="ic">總</div><div class="t">排班總覽</div><div class="d">全員班表・今天打卡・核可</div></a>' : '')
       + '<a class="mod" href="' + T.href('report.html') + '"><div class="ic">報</div><div class="t">養護報告</div><div class="d">填寫／我的報告</div></a>'
       + '<a class="mod" href="' + T.href('salary.html') + '"><div class="ic">薪</div><div class="t">時光回顧</div><div class="d">本月工時／預估薪資</div></a>'
       + '<a class="mod" href="' + T.href('manual.html') + '"><div class="ic">手</div><div class="t">使用手冊</div><div class="d">打卡／報告說明</div></a>'
