@@ -154,7 +154,7 @@
         if (ev.pointerType === 'mouse' && ev.button !== 0) return; if (SAVING) return;
         var k = c.getAttribute('data-k'), sx = ev.clientX, sy = ev.clientY, pid = ev.pointerId, timer = null, started = false, ghost = null, target = null;
         var clear = function () { document.querySelectorAll('.day.over,.chip.over').forEach(function (q) { q.classList.remove('over'); }); };
-        var end = function () { clearTimeout(timer); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onUp); if (ghost) ghost.remove(); clear(); c.classList.remove('dragging'); };
+        var end = function () { clearTimeout(timer); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onCancel); if (ghost) ghost.remove(); clear(); c.classList.remove('dragging'); };
         var onMove = function (e) {
           if (!started) { if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) end(); return; }
           e.preventDefault(); ghost.style.left = (e.clientX + 10) + 'px'; ghost.style.top = (e.clientY - 16) + 'px';
@@ -162,8 +162,9 @@
           if (chip && chip !== c) { chip.classList.add('over'); target = { chip: chip.getAttribute('data-k') }; } else if (day) { day.classList.add('over'); target = { day: day.getAttribute('data-d') }; }
         };
         var onUp = function () { var was = started, t = target; end(); if (!was) return; c.dataset.dragged = '1'; setTimeout(function () { delete c.dataset.dragged; }, 400); if (t) dropTo(k, t); };
+        var onCancel = function () { target = null; onUp(); };   // 被系統手勢／來電打斷：放回原位、不落班
         timer = setTimeout(function () { started = true; try { c.setPointerCapture(pid); } catch (e0) {} c.classList.add('dragging'); ghost = c.cloneNode(true); ghost.className = 'chip ghost'; document.body.appendChild(ghost); ghost.style.left = (sx + 10) + 'px'; ghost.style.top = (sy - 16) + 'px'; if (navigator.vibrate) navigator.vibrate(15); }, 350);
-        document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onUp);
+        document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onCancel);
       });
     });
   }
