@@ -278,8 +278,15 @@
       var fl = t.flags || {};
       if (t.dossier && !t.dossier.error) { t.dossier.loading = false; t.dossier.skip = !!fl.skip; t.dossier.skipReason = String(fl.skipReason || ''); t.dossier.memory = t.memory || null; t.dossierFromEngine = true; }
       else t.dossier = { loading: true, skip: !!fl.skip, skipReason: String(fl.skipReason || ''), memory: t.memory || null, facts: [] };
-      THREAD = t; if (quiet) { var snapQ = snapInputs(); renderThread(t); restoreInputs(snapQ); } else renderThread(t); stat('');
-      loadExtras(cid, t, gen);
+      // 第一次畫面等總覽一起到（總覽現在讀引擎本地，1～3 秒）：不然會先畫「客戶在等回覆」、幾秒後才跳出待核可稿，畫面更新兩次（Wayne 2026-09-25）
+      var firstPaint = function () {
+        if (cur !== cid || gen !== OPEN_GEN) return;
+        if (!quiet && OV.loaded) { var op0 = ovPendingFor(cid); if (op0) { t.pending = op0; t.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); t.extrasLoaded = true; } }
+        THREAD = t; if (quiet) { var snapQ = snapInputs(); renderThread(t); restoreInputs(snapQ); } else renderThread(t); stat('');
+        loadExtras(cid, t, gen);
+      };
+      if (!quiet && !OV.loaded && OVP) { stat('讀取待核可', true); Promise.race([OVP, new Promise(function (r) { setTimeout(r, 5000); })]).then(firstPaint, firstPaint); }
+      else firstPaint();
       if (t.dossierFromEngine && t.dossier.stale) setTimeout(function () {   // 引擎背景更新後把新資料換上（審查 Medium 4）
         if (cur !== cid || gen !== OPEN_GEN) return;
         api({ inbox: { op: 'thread', contactId: cid, limit: 120 } }).then(function (t2) { if (cur !== cid || gen !== OPEN_GEN || !t2 || !t2.dossier || t2.dossier.stale) return; t2.dossier.loading = false; t2.dossier.skip = t.dossier.skip; t2.dossier.skipReason = t.dossier.skipReason; t2.dossier.memory = t.dossier.memory; t.dossier = t2.dossier; var sn = snapInputs(); renderDossier(t); restoreInputs(sn); }).catch(function () {});
