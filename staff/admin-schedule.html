@@ -71,7 +71,7 @@
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
     document.querySelectorAll('[data-approve]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-approve'); if (!confirm('核可 ' + (r.emps[e] || e) + ' 的 ' + YM + ' 班表？核可後系統會擬各客戶的養護日期通知進核可中心。')) return; b.disabled = true; b.textContent = '核可中'; T.api('schedApprove', { ym: YM, empId: e }).then(function (x) { MSG = x.ok ? ('已核可 ' + x.apId + '。' + (x.execMsg ? x.execMsg : (x.notifiedAt ? '客戶通知已擬進核可中心' : '注意：客戶通知沒有跑，請查系統事件'))) : ('失敗：' + (x.detail || x.error)); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
   }
-  T.init().then(function () { load(YM || thisYm()); }).catch(function () {});
+  T.init().then(function () { load(YM || (new Date().getDate() > 15 ? addYm(thisYm(), 1) : thisYm())); }).catch(function () {});
 })();
 </script>
 </body>
