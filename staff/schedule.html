@@ -85,7 +85,16 @@
       h += '</div>';
     });
     h += '</div><div class="legend">早／午＝上午／下午，數字＝當天第幾站。橘底＝假日；橘框的班要移。</div></div>';
-    if (!past && (r.mySites || []).length) h += '<div class="card" style="padding:10px 12px"><div class="small"><b>我的客戶規則</b></div>' + r.mySites.map(function (s) { return '<div class="small muted">' + esc(s.shortName) + '：' + (s.weekday ? (s.freq === '週' ? '每週' : s.freq === '月' ? '每月週' : (s.freq ? s.freq + '・' : '') + '週') + WD[s.weekday - 1] : (s.freq || '') + (/週|月/.test(s.freq || '') ? '（沒固定星期：照慣例排不帶入，請自己點日期加班）' : '')) + (s.slot ? '・' + s.slot : '') + (s.noDays && s.noDays.length ? '・不可排週' + s.noDays.map(function (n) { return WD[n - 1]; }).join('、') : '') + (s.fixedStart ? '・' + s.fixedStart + ' 開始' : '') + '</div>'; }).join('') + '</div>';
+    if (!past && (r.mySites || []).length) {   // 只提醒有客戶限制的、和沒固定星期要自己加的；其他不列（Wayne：整排規則太亂沒幫助）
+      var lim = r.mySites.filter(function (s) { return s.fixedStart || (s.noDays && s.noDays.length) || s.slot; });
+      var selfAdd = r.mySites.filter(function (s) { return !s.weekday && /週|月/.test(s.freq || ''); });
+      if (lim.length || selfAdd.length) {
+        h += '<div class="card" style="padding:10px 12px"><div class="small"><b>提醒</b></div>';
+        if (lim.length) h += '<div class="small muted">客戶限制：' + lim.map(function (s) { return esc(s.shortName) + ' ' + [s.fixedStart ? s.fixedStart + ' 開始' : (s.slot ? '只排' + s.slot : ''), s.noDays && s.noDays.length ? '不可週' + s.noDays.map(function (n) { return WD[n - 1]; }).join('、') : ''].filter(Boolean).join('・'); }).join('；') + '</div>';
+        if (selfAdd.length) h += '<div class="small muted">沒固定星期、要自己點日期加：' + selfAdd.map(function (s) { return esc(s.shortName); }).join('、') + '</div>';
+        h += '</div>';
+      }
+    }
     $('app').innerHTML = h; if (MSG) msg(MSG);
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
     if (!past) {
