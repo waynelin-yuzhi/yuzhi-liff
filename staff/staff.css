@@ -46,4 +46,16 @@ a.lnk{color:var(--moss);text-decoration:none;font-weight:600}
 .topbar{display:flex;align-items:center;margin:0 0 10px}
 .topbar a{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:#fff;border:1.5px solid var(--moss);color:var(--moss);font-size:14px;font-weight:700;text-decoration:none}
 .chip.req{border:1.5px dashed var(--moss)}
+.seg{display:flex;background:var(--paper);border-radius:10px;padding:4px;margin-bottom:10px;box-shadow:0 4px 16px rgba(27,26,23,.06)}
+.seg button{flex:1;border:none;background:none;padding:9px;border-radius:8px;font-size:14px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--moss);color:var(--paper)}
+.wk .day{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:6px;min-height:46px}
+.wk .day.hol{background:#FFF3EA}
+.wk .day.today{border-color:var(--moss)}
+.wk .day.out{opacity:.55}
+.wk .day.over{outline:2px solid var(--moss);outline-offset:-2px;background:#F4F6F1}
+.wk .dn{width:60px;flex:none;font-size:13px;line-height:1.25;color:var(--body)}
+.wk .hn{font-size:10px;color:#9A4E1E;line-height:1.1;margin-top:2px}
+.wk .chips{flex:1;display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.wk .chip{display:inline-block;font-size:12px;padding:4px 9px;white-space:nowrap;margin:0;line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .fld textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cfcabd;border-radius:10px;font:inherit;background:#fff}

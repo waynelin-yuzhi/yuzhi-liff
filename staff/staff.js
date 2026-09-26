@@ -132,5 +132,8 @@
   }
   // staff.js 在 <head> 載入，#app 還不存在，等 DOM 好了再注入
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectTopbar); else injectTopbar();
-  window.STAFF = { S: S, CFG: CFG, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, cacheGet: cacheGet, cacheSet: cacheSet, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
+  function beacon(fn, params) {   // 離開頁面時的最後一送（fire-and-forget；GAS 的 doPost 在第一個 POST 就執行、不必等轉址）
+    try { if (!navigator.sendBeacon) return false; var body = new URLSearchParams(); body.append('fn', fn); if (S.dev) body.append('devToken', S.dev.token); else body.append('idToken', S.idToken || ''); Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) body.append(k, String(params[k])); }); return navigator.sendBeacon(CFG.api + '?staff=1', body); } catch (e) { return false; }
+  }
+  window.STAFF = { S: S, CFG: CFG, beacon: beacon, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, cacheGet: cacheGet, cacheSet: cacheSet, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
 })();
