@@ -174,7 +174,7 @@
     if (opt) { DATA = Object.assign({}, DATA, { rows: localApply(DATA.rows || [], p) }); closeSheet(); MSG = ''; render(); } else if (ui.busy) ui.busy();
     QUEUE.push({ x: x, p: p, force: force, ui: ui, opt: opt, snap: snap }); persistQueue(); pump();
   }
-  function pkey() { return 'sched_pending_' + ((ME && ME.empId) || 'me'); }
+  function pkey() { return 'sched_pending_' + ((ME && ME.emp && ME.emp.empId) || (ME && ME.empId) || 'me'); }
   function pendingList() { return (INFLIGHT_JOB ? [INFLIGHT_JOB.p] : []).concat(QUEUE.map(function (j) { return j.p; })); }
   function persistQueue() { try { var list = pendingList(); if (list.length) localStorage.setItem(pkey(), JSON.stringify({ moves: list, at: Date.now() })); else localStorage.removeItem(pkey()); } catch (e) {} }
   function flushOnLeave() {   // 離開／切到背景：還沒送出的改動一次用 sendBeacon 送去，並留在 localStorage，重開頁面再確認一次（batchId 冪等）
