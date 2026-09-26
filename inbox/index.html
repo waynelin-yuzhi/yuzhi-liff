@@ -9,12 +9,12 @@
 <style>
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--brick:#8a4a30;--amber:#F3E9C9;--tint:#EEF2E6}
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",-apple-system,sans-serif;padding:12px;max-width:1200px;margin:0 auto;overflow-x:hidden}
+  body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",-apple-system,sans-serif;overflow-x:hidden}
   h1{font-size:18px;letter-spacing:.05em;margin:8px 0 2px}
   .sub{font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:10px}
   .wrap{display:grid;grid-template-columns:320px 1fr;gap:12px}
   .wrap>*{min-width:0}
-  @media(max-width:820px){.wrap{grid-template-columns:1fr} body{padding:8px}}
+  @media(max-width:820px){.wrap{grid-template-columns:1fr}}
   .card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0;overflow:hidden}
   .btn{padding:9px 14px;background:var(--moss);color:var(--paper);border:none;border-radius:4px;font-family:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
   .btn.ghost{background:#fff;color:var(--moss);border:1px solid var(--moss)}
@@ -94,6 +94,46 @@
   .attbtn{font-size:12px}
   input[type=text],select{padding:6px 8px;border:1px solid var(--line);font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
 .chip{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;background:#EEE9DD;color:#5A5344;border:1px solid #DDD5C2}.chip.ok{background:#E3EFE1;color:#3D6B3A;border-color:#C6DCC3}.chip.warn{background:#FFF1E6;color:#9A4E1E;border-color:#F1CDB0}
+
+  /* ── Workspace 殼同款外觀（2026-09-26）：桌機＝工具列；手機＝上方列＋底部分頁＋☰ 全部工具 ── */
+  .page{max-width:1200px;margin:0 auto;padding:12px}
+  .yz-tabbar{background:#fff;border-bottom:1px solid rgba(27,26,23,.12);padding:0 24px;display:flex;flex-wrap:wrap;align-items:stretch}
+  .yz-tab{display:inline-flex;align-items:center;gap:7px;padding:11px 13px;color:rgba(27,26,23,.62);text-decoration:none;font-size:13px;border-bottom:2px solid transparent;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;cursor:pointer}
+  .yz-tab:hover{color:#1B1A17;background:#F2EDE3}
+  .yz-tab.active{color:var(--moss);border-bottom-color:var(--moss);background:#E9EDE3;font-weight:500}
+  .yz-tab svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+  .yz-tab.yz-tab-home{border-right:1px solid rgba(27,26,23,.08);margin-right:6px;padding-right:16px;color:rgba(27,26,23,.45)}
+  .yz-tab.yz-tab-settings{margin-left:auto;border-left:1px solid rgba(27,26,23,.08);padding-left:14px}
+  .yz-tab.yz-tab-out{font-size:12px;color:rgba(27,26,23,.45)}
+  .yz-appbar,.yz-bottomnav,.yz-sheet,.yz-sheet-mask{display:none}
+  @media(max-width:820px){
+    body{padding-bottom:calc(66px + env(safe-area-inset-bottom))}
+    body.view-thread{padding-bottom:8px}
+    .page{padding:8px}
+    .yz-tabbar,#app>.page>h1,.tabs{display:none}
+    .yz-appbar{display:flex;position:sticky;top:0;z-index:50;align-items:center;gap:6px;height:50px;padding:0 6px 0 4px;background:#fff;border-bottom:1px solid rgba(27,26,23,.10)}
+    .yz-appbar a,.yz-appbar button{display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:44px;height:44px;padding:0 6px;border:none;background:none;color:#4F6147;font-family:inherit;font-size:14px;text-decoration:none;border-radius:10px;white-space:nowrap}
+    .yz-appbar a:active,.yz-appbar button:active{background:var(--paper)}
+    .yz-appbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .yz-appbar .yz-appbar-t{flex:1;text-align:center;font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    body.view-thread #yz-home{display:none} body:not(.view-thread) #yz-back{display:none}
+    .back{display:none !important}   /* 上方列已有「清單」 */
+    .sub{padding:6px 4px 0}
+    .yz-bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid rgba(27,26,23,.10);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:60}
+    .yz-bottomnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;border:none;background:none;font-family:inherit;font-size:11px;color:rgba(27,26,23,.6);cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .yz-bottomnav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .yz-bottomnav button.on{color:#4F6147}
+    body.view-thread .yz-bottomnav{display:none}
+    .yz-sheet-mask.on{display:block;position:fixed;inset:0;background:rgba(27,26,23,.35);z-index:70}
+    .yz-sheet.on{display:block;position:fixed;left:0;right:0;bottom:0;max-height:78vh;overflow-y:auto;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));z-index:71}
+    .yz-sheet h3{margin:0 0 10px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+    .yz-sheet h3 button{border:none;background:none;font-family:inherit;font-size:14px;color:rgba(27,26,23,.6);padding:6px 10px}
+    .yz-sheet-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .yz-sheet-grid a{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:1px solid rgba(27,26,23,.08);border-radius:12px;text-decoration:none;color:var(--ink);font-size:12px}
+    .yz-sheet-grid a svg{width:22px;height:22px;stroke:#4F6147;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .yz-sheet-grid a.active{background:#E9EDE3;border-color:var(--moss)}
+    .yz-sheet-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+  }
 </style>
 </head>
 <body>
@@ -105,7 +145,135 @@
   <div class="small muted" id="gateMsg" style="margin-top:8px"></div>
 </div>
 <div id="app" style="display:none">
-<h1>對話收件匣 <button class="btn link" id="leave" style="float:right">離開</button></h1>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3L21 19H3z"></path>
+    <line x1="12" y1="10" x2="12" y2="14"></line>
+    <circle cx="12" cy="17" r="0.7" fill="currentColor" stroke="none"></circle>
+  </symbol>
+<symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="20" y1="12" x2="4" y2="12"></line>
+    <polyline points="10 6 4 12 10 18"></polyline>
+  </symbol>
+<symbol id="icon-bank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="12 3 2 8 22 8"></polygon>
+    <line x1="4" y1="10" x2="4" y2="18"></line>
+    <line x1="9" y1="10" x2="9" y2="18"></line>
+    <line x1="15" y1="10" x2="15" y2="18"></line>
+    <line x1="20" y1="10" x2="20" y2="18"></line>
+    <line x1="2" y1="20" x2="22" y2="20"></line>
+  </symbol>
+<symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="5" width="18" height="16" rx="1"></rect>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
+    <line x1="8" y1="3" x2="8" y2="7"></line>
+    <line x1="16" y1="3" x2="16" y2="7"></line>
+  </symbol>
+<symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="5 12 10 17 19 7"></polyline>
+  </symbol>
+<symbol id="icon-client" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="8" cy="9" r="3"></circle>
+    <circle cx="15" cy="10" r="2.5"></circle>
+    <path d="M3 19c0-3 2-5 5-5s5 2 5 5"></path>
+    <path d="M12 19c0-2.5 1.5-4 3-4s3 1.5 3 4"></path>
+  </symbol>
+<symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8"></circle>
+    <polyline points="12 7 12 12 16 14"></polyline>
+  </symbol>
+<symbol id="icon-contract" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 3h10l4 4v14H5z"></path>
+    <path d="M15 3v4h4"></path>
+    <line x1="8" y1="13" x2="16" y2="13"></line>
+    <line x1="8" y1="17" x2="13" y2="17"></line>
+  </symbol>
+<symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7h6l2 2h10v11H3z"></path>
+    <line x1="3" y1="11" x2="21" y2="11"></line>
+  </symbol>
+<symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="1"></rect>
+    <circle cx="9" cy="10" r="1.5"></circle>
+    <polyline points="4 18 10 13 14 17 17 14 20 17"></polyline>
+  </symbol>
+<symbol id="icon-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="1"></rect>
+    <polyline points="3 7 12 14 21 7"></polyline>
+  </symbol>
+<symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="6" x2="20" y2="6"></line>
+    <line x1="4" y1="12" x2="20" y2="12"></line>
+    <line x1="4" y1="18" x2="20" y2="18"></line>
+  </symbol>
+<symbol id="icon-payment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="6" width="18" height="13" rx="1"></rect>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
+    <line x1="7" y1="15" x2="11" y2="15"></line>
+  </symbol>
+<symbol id="icon-plant" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21V11"></path>
+    <path d="M12 11C12 8 9 6 6 6c0 3 3 5 6 5z"></path>
+    <path d="M12 11c0-3 3-5 6-5 0 3-3 5-6 5z"></path>
+  </symbol>
+<symbol id="icon-quote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="3" width="14" height="18"></rect>
+    <line x1="7" y1="8" x2="15" y2="8"></line>
+    <line x1="7" y1="12" x2="15" y2="12"></line>
+    <line x1="7" y1="16" x2="12" y2="16"></line>
+  </symbol>
+<symbol id="icon-report" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="3" width="16" height="18"></rect>
+    <line x1="8" y1="8" x2="16" y2="8"></line>
+    <line x1="8" y1="12" x2="16" y2="12"></line>
+    <circle cx="9" cy="16" r="0.8" fill="currentColor" stroke="none"></circle>
+    <line x1="11" y1="16" x2="16" y2="16"></line>
+  </symbol>
+<symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M5.5 18.5l2-2M16.5 7.5l2-2"></path>
+  </symbol>
+  <symbol id="yzs-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="yzs-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="yzs-tray" viewBox="0 0 24 24"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></symbol>
+</svg>
+<div class="yz-appbar" id="yz-appbar">
+  <a id="yz-home" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=home2&amp;openExternalBrowser=1" target="_blank" rel="noopener"><svg><use href="#yzs-back"/></svg>首頁</a>
+  <button type="button" id="yz-back" aria-label="回清單"><svg><use href="#yzs-back"/></svg>清單</button>
+  <div class="yz-appbar-t" id="yz-appbar-t" role="heading" aria-level="1">對話收件匣</div>
+  <button type="button" id="yz-more" aria-label="全部工具"><svg><use href="#yzs-menu"/></svg></button>
+</div>
+<nav class="yz-tabbar" id="yz-tabbar">
+  <a class="yz-tab yz-tab-home" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec"><svg><use href="#icon-arrow-left"/></svg><span class="yz-tab-label">Workspace</span></a>
+  <a class="yz-tab" data-page="quote" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=quote"><svg><use href="#icon-quote"/></svg><span class="yz-tab-label">報價單</span></a>
+  <a class="yz-tab" data-page="proposals" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=proposals"><svg><use href="#icon-report"/></svg><span class="yz-tab-label">提案</span></a>
+  <a class="yz-tab" data-page="clients" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=clients"><svg><use href="#icon-client"/></svg><span class="yz-tab-label">客戶</span></a>
+  <a class="yz-tab" data-page="billing-schedule" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=billing-schedule"><svg><use href="#icon-payment"/></svg><span class="yz-tab-label">收款</span></a>
+  <a class="yz-tab" data-page="contract" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=contract"><svg><use href="#icon-contract"/></svg><span class="yz-tab-label">合約</span></a>
+  <a class="yz-tab" data-page="projects" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=projects"><svg><use href="#icon-folder"/></svg><span class="yz-tab-label">案件</span></a>
+  <a class="yz-tab" data-page="care" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=care"><svg><use href="#icon-plant"/></svg><span class="yz-tab-label">養護</span></a>
+  <a class="yz-tab" data-page="care-issues" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=care-issues"><svg><use href="#icon-alert"/></svg><span class="yz-tab-label">異常</span></a>
+  <a class="yz-tab" data-page="cases-admin" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=cases-admin"><svg><use href="#icon-image"/></svg><span class="yz-tab-label">案例</span></a>
+  <a class="yz-tab active" data-page="cs-engine" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=cs-engine"><svg><use href="#icon-mail"/></svg><span class="yz-tab-label">客服</span></a>
+  <a class="yz-tab" data-page="board" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=board"><svg><use href="#icon-report"/></svg><span class="yz-tab-label">看板</span></a>
+  <a class="yz-tab" data-page="publish" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=publish"><svg><use href="#icon-check"/></svg><span class="yz-tab-label">核可</span></a>
+  <a class="yz-tab" data-page="hr-docs" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=hr-docs"><svg><use href="#icon-folder"/></svg><span class="yz-tab-label">文書</span></a>
+  <a class="yz-tab" data-page="employees" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=employees"><svg><use href="#icon-calendar"/></svg><span class="yz-tab-label">人事</span></a>
+  <a class="yz-tab" data-page="payroll" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=payroll"><svg><use href="#icon-bank"/></svg><span class="yz-tab-label">薪資</span></a>
+  <a class="yz-tab" data-page="materials" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=materials"><svg><use href="#icon-plant"/></svg><span class="yz-tab-label">材料</span></a>
+  <a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a>
+  <button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button>
+</nav>
+<nav class="yz-bottomnav" id="yz-bottomnav">
+  <button type="button" data-tab="todo" class="on"><svg><use href="#yzs-tray"/></svg>待處理</button>
+  <button type="button" data-tab="sched"><svg><use href="#icon-clock"/></svg>已排程</button>
+  <button type="button" data-tab="all"><svg><use href="#icon-menu"/></svg>全部</button>
+  <button type="button" data-tab="staff"><svg><use href="#icon-client"/></svg>員工</button>
+</nav>
+<div class="yz-sheet-mask" id="yz-sheet-mask"></div>
+<div class="yz-sheet" id="yz-sheet"><h3>全部工具<button type="button" id="yz-sheet-close">關閉</button></h3><div class="yz-sheet-grid" id="yz-sheet-grid"></div><div class="yz-sheet-foot"><span class="small muted">Workspace 工具會另開瀏覽器（需要 Google 登入）</span><button type="button" class="btn link" id="leave2">登出這台裝置</button></div></div>
+<div class="page">
+<h1>對話收件匣</h1>
 <div class="sub"><span id="counts"></span> <span id="stat"></span></div>
 <div class="wrap">
   <div class="card listcard">
@@ -122,6 +290,7 @@
     <div id="pendBox"></div>
     <div id="manualBox"></div>
   </div>
+</div>
 </div>
 </div>
 <input type="file" id="attFile" accept="image/jpeg,image/png,application/pdf" multiple style="display:none">
@@ -666,6 +835,29 @@
       }).catch(function () { POLL_FAILS++; stat('連線不穩，稍後自動重試'); if (POLL_FAILS >= 2) loadList(); }).then(function () { poll(); });
     }, Math.min(15000 * (POLL_FAILS + 1), 60000));
   }
+  (function () {   // 殼：☰ 全部工具、底部分頁、上方列標題跟著清單／對話切換
+    var grid = document.getElementById('yz-sheet-grid');
+    document.querySelectorAll('#yz-tabbar .yz-tab[data-page]').forEach(function (a) { var c = document.createElement('a'); c.href = a.href + '&openExternalBrowser=1'; c.target = '_blank'; c.rel = 'noopener'; if (a.classList.contains('active')) c.classList.add('active'); var lab = a.querySelector('.yz-tab-label'); c.innerHTML = a.querySelector('svg').outerHTML + '<span>' + esc(lab ? lab.textContent : (a.title || a.dataset.page)) + '</span>'; grid.appendChild(c); });
+    var sheet = document.getElementById('yz-sheet'), mask = document.getElementById('yz-sheet-mask');
+    var toggle = function (on) { sheet.classList.toggle('on', on); mask.classList.toggle('on', on); };
+    document.getElementById('yz-more').onclick = function () { toggle(true); };
+    document.getElementById('yz-sheet-close').onclick = function () { toggle(false); };
+    mask.onclick = function () { toggle(false); };
+    document.getElementById('leave2').onclick = function () { document.getElementById('leave').click(); };
+    document.getElementById('yz-back').onclick = function () { document.getElementById('back').click(); };
+    document.querySelectorAll('#yz-bottomnav button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); window.scrollTo(0, 0); }; });
+    var syncBar = function () {
+      var th = document.body.classList.contains('view-thread'), hb = document.querySelector('#head b');
+      document.getElementById('yz-appbar-t').textContent = th ? ((hb && hb.textContent.trim()) || '對話') : '對話收件匣';
+      document.querySelectorAll('#yz-bottomnav button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === TAB); });
+    };
+    if (window.MutationObserver) {
+      new MutationObserver(syncBar).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      new MutationObserver(syncBar).observe(document.getElementById('head'), { childList: true, subtree: true });
+      new MutationObserver(syncBar).observe(document.querySelector('.tabs'), { attributes: true, subtree: true, attributeFilter: ['class'] });
+    }
+    syncBar();
+  })();
   document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); }; });
   document.getElementById('findBtn').onclick = function () {
     var q = document.getElementById('findQ').value.trim(); if (!q) return;
