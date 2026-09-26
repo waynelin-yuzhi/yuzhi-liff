@@ -60,6 +60,7 @@
       var s = stMap[e] || {}; var n = (r.rows || []).filter(function (x) { return x.empId === e; }).length;
       h += '<div class="emp"><span class="dot" style="background:' + color[e] + '"></span><span class="small" style="flex:1"><b>' + esc(r.emps[e]) + '</b>　' + n + ' 場　' + stChip(s.status) + (s.apId ? ' <span class="muted">' + esc(s.apId) + '</span>' : '') + '</span>'
         + (s.status === '待核可' ? '<button class="btn sm" data-approve="' + esc(e) + '">核可</button>' : '') + '</div>';
+      var cv = (r.coverage || {})[e] || []; if (cv.length) h += '<div class="small muted" style="margin:-4px 0 6px 18px">還沒排：' + cv.map(function (c) { return esc(c.shortName) + ' ' + c.actual + '/' + c.expected; }).join('、') + '</div>';
     });
     h += '<div class="small muted" id="msg" style="margin-top:6px"></div></div>';
     var chg = r.changes || [];
