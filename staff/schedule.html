@@ -64,7 +64,7 @@
   function fmtD(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function addD(ds, n) { var d = new Date(ds + 'T00:00:00'); d.setDate(d.getDate() + n); return fmtD(d); }
   function mondayOf(ds) { return addD(ds, -(wdOf(ds) - 1)); }
-  function defaultWeek() { var days = daysOf(YM); var t = (DATA && DATA.today) || ''; return mondayOf(t && t.slice(0, 7) === YM ? t : days[0]); }
+  function defaultWeek() { var days = daysOf(YM); var t = (DATA && DATA.today) || ''; if (t && t.slice(0, 7) === YM) return mondayOf(t); var w = wdOf(days[0]); return w >= 5 ? addD(days[0], 8 - w) : mondayOf(days[0]); }   // 月初落在週五～日就從下個週一開始，免得整週都是上個月
   function weekInMonth(w) { for (var i = 0; i < 7; i++) if (addD(w, i).slice(0, 7) === YM) return true; return false; }
   function stChip(s) { var cls = s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : ''); return '<span class="st ' + cls + '">' + esc(s || '未建立') + '</span>'; }
   function load(ym, keep) {
