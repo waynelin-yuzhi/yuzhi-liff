@@ -188,8 +188,18 @@
     } else A.st.zones.forEach(function (z) { z.issues = z.issues.filter(function (i) { return i.continuedFrom !== oi.ref; }); });
   }
   function loadOpenIssues(clientId) {
-    A.openIssues = []; A.openLoading = true; renderOpen();
+    A.openIssues = []; A.openLoading = true; A.coachNotes = []; renderOpen();
     T.api('openIssues', { clientId: clientId }).then(function (r) { A.openLoading = false; A.openIssues = (r && r.ok && r.issues) || []; renderOpen(); }).catch(function () { A.openLoading = false; renderOpen(); });
+    T.api('coachNotes', { clientId: clientId }).then(function (r) { A.coachNotes = (r && r.ok && r.notes) || []; renderOpen(); }).catch(function () {});   // 老闆交代（養護指導）
+  }
+  function coachHtml() {
+    var list = A.coachNotes || []; if (!list.length) return '';
+    return '<div class="card"><h2>老闆交代（' + list.length + '）</h2>' + list.map(function (n, i) {
+      return '<div class="oi"><div class="m">' + esc(n.reportDate ? '針對 ' + n.reportDate + ' 的回報' : '') + (n.zone ? '　區域：' + esc(n.zone) : '') + '</div>'
+        + '<div class="d" style="white-space:pre-wrap">' + esc(n.content) + '</div>'
+        + (n.photoId ? '<img data-coach="' + esc(n.photoId) + '" alt="老闆標示的照片" style="max-width:100%;border-radius:8px;margin-top:6px;display:block">' : '')
+        + '<div class="acts"><button type="button" data-cr="' + i + '|已處理">已處理</button><button type="button" class="grey" data-cr="' + i + '|狀況一樣">狀況一樣</button><button type="button" class="grey" data-cr="' + i + '|有問題想問">有問題想問</button></div></div>';
+    }).join('') + '</div>';
   }
   function daysAgo(ds) { if (!ds) return ''; var d = new Date(ds + 'T00:00:00'); var n = Math.round((Date.now() - d.getTime()) / 86400000); if (isNaN(n)) return ''; return n <= 0 ? '今天' : (n + ' 天前'); }
 
@@ -261,22 +271,29 @@
     var w = $('open-wrap'); if (!w) return;
     if (!A.st.clientId) { w.innerHTML = ''; return; }
     if (A.openLoading) { w.innerHTML = '<div class="card"><h2>上次未結案異常</h2><div class="note">載入中…</div></div>'; return; }
-    if (!A.openIssues.length) { w.innerHTML = '<div class="card"><h2>上次未結案異常</h2><div class="note">這家目前沒有未結案的異常。</div></div>'; return; }
-    w.innerHTML = '<div class="card"><h2>上次未結案異常（' + A.openIssues.length + '）</h2>' + A.openIssues.map(function (oi, i) {
+    if (!A.openIssues.length) { w.innerHTML = coachHtml() + '<div class="card"><h2>上次未結案異常</h2><div class="note">這家目前沒有未結案的異常。</div></div>'; bindCoach(w); return; }
+    w.innerHTML = coachHtml() + '<div class="card"><h2>上次未結案異常（' + A.openIssues.length + '）</h2>' + A.openIssues.map(function (oi, i) {
       var sel = A.proposals[oi.ref] && A.proposals[oi.ref].proposalType;
       var hint = sel === '狀況一樣' ? '會自動延續到本次區域異常，不用重填' : (sel === '已處理' ? '主管確認後結案、下次不再出現' : (sel === '需要換植' ? '後台會排補貨並通知客戶' : ''));
       return '<div class="oi"><div class="d">' + esc(oi.desc) + (oi.pendingProposal ? ' <span class="badge">先前已標：' + esc(oi.pendingProposal) + '</span>' : '') + '</div>'
         + '<div class="m">' + (daysAgo(oi.reportDate) ? '上次回報 ' + esc(daysAgo(oi.reportDate)) + '　' : '') + '區域：' + esc(oi.zoneName || '—') + '　狀態：' + esc(oi.effectiveStatus) + '</div>'
         + (oi.assignNote ? '<div class="assign">後台交辦：' + esc(oi.assignNote) + '</div>' : '')
-        + (oi.coachPhoto ? '<div class="assign"><img data-coach="' + esc(oi.coachPhoto) + '" alt="老闆標示的照片" style="max-width:100%;border-radius:8px;margin-top:6px;display:block"></div>' : '')
         + '<div class="acts"><button data-p="' + i + '|已處理" class="' + (sel === '已處理' ? 'on' : '') + '">已處理</button><button data-p="' + i + '|狀況一樣" class="grey' + (sel === '狀況一樣' ? ' on' : '') + '">狀況一樣</button><button data-p="' + i + '|需要換植" class="terra' + (sel === '需要換植' ? ' on' : '') + '">需要換植</button></div>'
         + (hint ? '<div class="hint ok">' + esc(hint) + '</div>' : '')
         + (sel ? '<input type="text" style="width:100%;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px" placeholder="備註（可空）" value="' + esc(A.proposals[oi.ref].note || '') + '" data-pn="' + i + '">' : '')
         + '</div>';
     }).join('') + '</div>';
-    Array.prototype.forEach.call(w.querySelectorAll('img[data-coach]'), function (img) { T.api('photoData', { fileId: img.getAttribute('data-coach') }).then(function (r) { if (r && r.ok && r.dataUri) img.src = r.dataUri; else img.remove(); }).catch(function () { img.remove(); }); });   // 老闆標示過的照片
+    bindCoach(w);
     Array.prototype.forEach.call(w.querySelectorAll('[data-p]'), function (b) { b.addEventListener('click', function () { var a = b.getAttribute('data-p').split('|'); setProposal(Number(a[0]), a[1]); }); });
     Array.prototype.forEach.call(w.querySelectorAll('[data-pn]'), function (inp) { inp.addEventListener('input', function () { var oi = A.openIssues[Number(inp.getAttribute('data-pn'))]; if (oi && A.proposals[oi.ref]) { A.proposals[oi.ref].note = inp.value; markDirty(); } }); });
+  }
+  function bindCoach(w) {
+    Array.prototype.forEach.call(w.querySelectorAll('img[data-coach]'), function (img) { if (img.dataset.loaded) return; img.dataset.loaded = '1'; T.api('photoData', { fileId: img.getAttribute('data-coach') }).then(function (r) { if (r && r.ok && r.dataUri) img.src = r.dataUri; else img.remove(); }).catch(function () { img.remove(); }); });
+    Array.prototype.forEach.call(w.querySelectorAll('[data-cr]'), function (b) { b.addEventListener('click', function () {
+      var a = b.getAttribute('data-cr').split('|'); var n = (A.coachNotes || [])[Number(a[0])]; if (!n) return;
+      b.disabled = true;
+      T.api('coachReply', { noteId: n.noteId, reply: a[1] }).then(function (r) { if (r && r.ok) { A.coachNotes = A.coachNotes.filter(function (x) { return x.noteId !== n.noteId; }); renderOpen(); } else { b.disabled = false; alert('沒送出：' + T.errText(r)); } }).catch(function () { b.disabled = false; alert('沒送出，請再試一次'); });
+    }); });
   }
   function renderZones() {
     var w = $('zones'); if (!w) return;
