@@ -63,7 +63,7 @@
       throw e;
     });
   }
-  var ERR_MSG = { not_staff: '這個 LINE 帳號還沒綁定員工，請聯絡 Wayne 綁定後再試。', not_configured: '員工 App 尚未設定完成（後端未設 channel）。', token_invalid: 'LINE 身分驗證失敗，請關閉後重新從 LINE 開啟。', no_token: '沒有 LINE 身分。', dev_token_invalid: '測試身分過期，請重新取得。' };
+  var ERR_MSG = { exception: '後台暫時出錯，請再試一次。', not_staff: '這個 LINE 帳號還沒綁定員工，請聯絡 Wayne 綁定後再試。', not_configured: '員工 App 尚未設定完成（後端未設 channel）。', token_invalid: 'LINE 身分驗證失敗，請關閉後重新從 LINE 開啟。', no_token: '沒有 LINE 身分。', dev_token_invalid: '測試身分過期，請重新取得。' };
   function errText(r) { return ERR_MSG[r && r.error] || ('載入失敗：' + ((r && (r.detail || r.error)) || '')); }
   function whoami() {
     return api('whoami').then(function (r) {
