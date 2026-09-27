@@ -288,7 +288,11 @@
     Array.prototype.forEach.call(w.querySelectorAll('[data-pn]'), function (inp) { inp.addEventListener('input', function () { var oi = A.openIssues[Number(inp.getAttribute('data-pn'))]; if (oi && A.proposals[oi.ref]) { A.proposals[oi.ref].note = inp.value; markDirty(); } }); });
   }
   function bindCoach(w) {
-    Array.prototype.forEach.call(w.querySelectorAll('img[data-coach]'), function (img) { if (img.dataset.loaded) return; img.dataset.loaded = '1'; T.api('photoData', { fileId: img.getAttribute('data-coach') }).then(function (r) { if (r && r.ok && r.dataUri) img.src = r.dataUri; else img.remove(); }).catch(function () { img.remove(); }); });
+    Array.prototype.forEach.call(w.querySelectorAll('img[data-coach]'), function (img) {   // 照片快取在 note 上：重畫不重抓（手機流量）
+      var fid = img.getAttribute('data-coach'); var n = (A.coachNotes || []).filter(function (x) { return x.photoId === fid; })[0];
+      if (n && n.dataUri) { img.src = n.dataUri; return; }
+      T.api('photoData', { fileId: fid }).then(function (r) { if (r && r.ok && r.dataUri) { img.src = r.dataUri; if (n) n.dataUri = r.dataUri; } else img.remove(); }).catch(function () { img.remove(); });
+    });
     Array.prototype.forEach.call(w.querySelectorAll('[data-cr]'), function (b) { b.addEventListener('click', function () {
       var a = b.getAttribute('data-cr').split('|'); var n = (A.coachNotes || [])[Number(a[0])]; if (!n) return;
       b.disabled = true;
