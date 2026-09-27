@@ -268,11 +268,13 @@
       return '<div class="oi"><div class="d">' + esc(oi.desc) + (oi.pendingProposal ? ' <span class="badge">先前已標：' + esc(oi.pendingProposal) + '</span>' : '') + '</div>'
         + '<div class="m">' + (daysAgo(oi.reportDate) ? '上次回報 ' + esc(daysAgo(oi.reportDate)) + '　' : '') + '區域：' + esc(oi.zoneName || '—') + '　狀態：' + esc(oi.effectiveStatus) + '</div>'
         + (oi.assignNote ? '<div class="assign">後台交辦：' + esc(oi.assignNote) + '</div>' : '')
+        + (oi.coachPhoto ? '<div class="assign"><img data-coach="' + esc(oi.coachPhoto) + '" alt="老闆標示的照片" style="max-width:100%;border-radius:8px;margin-top:6px;display:block"></div>' : '')
         + '<div class="acts"><button data-p="' + i + '|已處理" class="' + (sel === '已處理' ? 'on' : '') + '">已處理</button><button data-p="' + i + '|狀況一樣" class="grey' + (sel === '狀況一樣' ? ' on' : '') + '">狀況一樣</button><button data-p="' + i + '|需要換植" class="terra' + (sel === '需要換植' ? ' on' : '') + '">需要換植</button></div>'
         + (hint ? '<div class="hint ok">' + esc(hint) + '</div>' : '')
         + (sel ? '<input type="text" style="width:100%;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px" placeholder="備註（可空）" value="' + esc(A.proposals[oi.ref].note || '') + '" data-pn="' + i + '">' : '')
         + '</div>';
     }).join('') + '</div>';
+    Array.prototype.forEach.call(w.querySelectorAll('img[data-coach]'), function (img) { T.api('photoData', { fileId: img.getAttribute('data-coach') }).then(function (r) { if (r && r.ok && r.dataUri) img.src = r.dataUri; else img.remove(); }).catch(function () { img.remove(); }); });   // 老闆標示過的照片
     Array.prototype.forEach.call(w.querySelectorAll('[data-p]'), function (b) { b.addEventListener('click', function () { var a = b.getAttribute('data-p').split('|'); setProposal(Number(a[0]), a[1]); }); });
     Array.prototype.forEach.call(w.querySelectorAll('[data-pn]'), function (inp) { inp.addEventListener('input', function () { var oi = A.openIssues[Number(inp.getAttribute('data-pn'))]; if (oi && A.proposals[oi.ref]) { A.proposals[oi.ref].note = inp.value; markDirty(); } }); });
   }
