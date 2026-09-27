@@ -24,7 +24,8 @@
     else body.append('idToken', S.idToken || '');
     Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) body.append(k, String(params[k])); });
     return fetch(CFG.api + '?staff=1', { method: 'POST', body: body, redirect: 'follow', cache: 'no-store' })
-      .then(function (r) { return r.json(); });
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。'; return j; });   // 後端只回 server_error，白話統一在這裡換
   }
 
   function devSetup() {
