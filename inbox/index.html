@@ -335,6 +335,15 @@
     else p = Promise.reject(new Error('unknown ' + fn));
     p.then(function (r) { ok(r); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); if (fail) fail(e); });
   }
+  document.addEventListener('click', function (ev) {   // 切泡泡鈕：游標處插入獨立一行 ---（Wayne 2026-10-01）
+    var a = ev.target.closest && ev.target.closest('.splitBtn'); if (!a) return; ev.preventDefault();
+    var t = document.getElementById(a.getAttribute('data-for')); if (!t) return;
+    var v = t.value, st = (t.selectionStart != null ? t.selectionStart : v.length), en = (t.selectionEnd != null ? t.selectionEnd : st);
+    var before = v.slice(0, st), after = v.slice(en);
+    var ins = (before && !/\n$/.test(before) ? '\n' : '') + '---\n';
+    t.value = before + ins + after; var pos = (before + ins).length; t.focus(); t.setSelectionRange(pos, pos);
+    t.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; }
   function showApp() { document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
   document.getElementById('gateSend').onclick = function () {
@@ -688,7 +697,7 @@
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>小卡預覽（點開載入）</summary><div id="cardsBox" class="small muted">點開預覽</div></details>' : '');
     pb.innerHTML = '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
       + ((p.ownerQuestions || []).length ? '<div class="fbbox on" id="oqBox" style="margin-bottom:8px"><div class="small" style="margin-bottom:4px"><b>客服想問你</b>：答了就用你的答案重擬完整回覆（下面是目前的過渡稿，也可以直接核可）</div>' + p.ownerQuestions.map(function (q, i) { return '<div class="row"><span class="small" style="flex:1">' + (i + 1) + '. ' + esc(q) + '</span></div><input id="oqA' + i + '" placeholder="你的答案" style="width:100%;box-sizing:border-box;margin-bottom:6px">'; }).join('') + '<div class="row"><label class="small"><input type="checkbox" id="oqLearn"> 這些資訊以後也適用（學成常見問答）</label></div><div class="row"><button class="btn" id="oqSend">回答並重擬</button></div></div>' : '')
-      + '<textarea id="draft" rows="6">' + esc(p.text) + '</textarea>' + (String(p.text || '').indexOf('\n---') >= 0 ? '<div class="small muted">「---」一行＝客戶會收到下一則泡泡（同一次送出）；引用回覆會自動帶。</div>' : '') + ((p.quickReplies || []).length ? '<div class="small muted" style="margin-top:4px">客戶端快速回覆按鈕：' + p.quickReplies.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join(' ') + '</div>' : '')
+      + '<textarea id="draft" rows="6">' + esc(p.text) + '</textarea><div class="small muted" style="margin-top:4px"><a href="#" class="splitBtn" data-for="draft" style="color:#5F6E58;font-weight:600;text-decoration:none">＋ 切下一則泡泡</a>　游標處插入「---」一行＝客戶會收到下一則泡泡（同一次送出）' + (String(p.text || '').indexOf('\n---') >= 0 ? '；引用回覆會自動帶' : '') + '</div>' + ((p.quickReplies || []).length ? '<div class="small muted" style="margin-top:4px">客戶端快速回覆按鈕：' + p.quickReplies.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join(' ') + '</div>' : '')
       + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + modsHtml + cards
       + (p.images && p.images.length ? '<div class="att">' + p.images.map(function (u) { return STORAGE_OK.test(u) ? '<div class="it"><img src="' + esc(u) + '"></div>' : ''; }).join('') + '</div>' : '')
       + '<div class="att" id="att-draft"></div>'
@@ -746,7 +755,7 @@
     var mb = document.getElementById('manualBox');
     var sc = t.scheduled || [];
     mb.innerHTML = (sc.length ? '<div class="small muted" style="margin-top:8px">已排程 ' + sc.length + ' 則：' + sc.map(function (x) { return esc(x.at); }).join('、') + '（到「已排程」分頁可取消）</div>' : '')
-      + '<div class="compose"><textarea id="manualText" rows="2" placeholder="' + (t.manual ? '手動回覆中：在這裡打字直接發給客戶' : '自己回一句給客戶（會留在對話紀錄）') + '"></textarea>'
+      + '<div class="compose"><textarea id="manualText" rows="2" placeholder="' + (t.manual ? '手動回覆中：在這裡打字直接發給客戶' : '自己回一句給客戶（會留在對話紀錄）') + '"></textarea><div class="small muted" style="margin:2px 0 4px"><a href="#" class="splitBtn" data-for="manualText" style="color:#5F6E58;font-weight:600;text-decoration:none">＋ 切下一則泡泡</a></div>'
       + '<div class="att" id="att-compose"></div>'
       + '<div class="actions"><button class="btn main" id="manualSend"' + (t.extrasLoaded === false ? ' disabled' : '') + '>' + (t.extrasLoaded === false ? '確認稿件中' : '發送') + '</button><button class="btn ghost" id="manualWhen">預定時間</button><button class="btn ghost attbtn" id="manualAtt">附加照片／檔案</button></div>'
       + '<div class="when" id="manualWhenBox"><span>預定送出</span><input type="datetime-local" id="manualAt"><span class="muted">留空＝現在送</span></div>'
