@@ -291,6 +291,7 @@
     Array.prototype.forEach.call(w.querySelectorAll('img[data-coach]'), function (img) {   // 照片快取在 note 上：重畫不重抓（手機流量）
       var fid = img.getAttribute('data-coach'); var n = (A.coachNotes || []).filter(function (x) { return x.photoId === fid; })[0];
       if (n && n.dataUri) { img.src = n.dataUri; return; }
+      if (/^https?:\/\//.test(fid)) { img.src = fid; return; }   // 客訴轉交的客戶照片＝儲存桶公開網址
       T.api('photoData', { fileId: fid }).then(function (r) { if (r && r.ok && r.dataUri) { img.src = r.dataUri; if (n) n.dataUri = r.dataUri; } else img.remove(); }).catch(function () { img.remove(); });
     });
     Array.prototype.forEach.call(w.querySelectorAll('[data-cr]'), function (b) { b.addEventListener('click', function () {
