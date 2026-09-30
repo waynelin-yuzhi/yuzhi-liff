@@ -554,7 +554,13 @@
       if (!r || !r.ok) { document.getElementById('fwdMsg').textContent = '讀取失敗：' + friendlyErr((r && (r.detail || r.error)) || ''); return; }
       var sel = document.getElementById('fwdEmp'); sel.innerHTML = '<option value="">（選員工）</option>' + (r.employees || []).map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.id === r.employeeId ? ' selected' : '') + '>' + esc(e.name) + (e.nick ? '（' + esc(e.nick) + '）' : '') + (e.id === r.defaultEmployeeId ? '　現任負責人' : '') + '</option>'; }).join('');
       document.getElementById('fwdText').value = r.text || ''; document.getElementById('fwdGo').disabled = false;
-      if (!r.defaultEmployeeId) document.getElementById('fwdMsg').textContent = '這位客戶查不到現任負責人，請自己選。';
+      if (!r.defaultEmployeeId) document.getElementById('fwdMsg').textContent = '這位客戶查不到現任負責人，請自己選；選了之後客服會擬交代。';
+      sel.onchange = function () {   // 換人＝重擬（稱呼與口吻跟著人走）；Wayne 已改過的字不動
+        var ta = document.getElementById('fwdText'); if (!sel.value) return; if (ta.value && ta.value !== (ta.getAttribute('data-auto') || '')) return;
+        document.getElementById('fwdMsg').textContent = '客服擬稿中…';
+        run('csInboxStaffForward', [{ contactId: cur, employeeId: sel.value, msgText: msgText, photoUrls: phSel(), dryRun: true }], function (r2) { if (r2 && r2.ok && r2.text) { ta.value = r2.text; ta.setAttribute('data-auto', r2.text); } document.getElementById('fwdMsg').textContent = ''; });
+      };
+      document.getElementById('fwdText').setAttribute('data-auto', r.text || '');
     });
     document.getElementById('fwdGo').onclick = function () {
       var empId = document.getElementById('fwdEmp').value, text = document.getElementById('fwdText').value.trim();
