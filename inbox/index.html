@@ -724,6 +724,13 @@
     var mn = document.getElementById('modsNone'); if (mn) mn.onclick = function (ev) { ev.preventDefault(); document.querySelectorAll('#modsBox .modChk').forEach(function (c) { c.checked = false; }); };
     renderAtt('draft'); document.getElementById('btnAtt').onclick = function () { pickAtt('draft', 'pendMsg'); };
     document.getElementById('btnSend').onclick = function () { var at = whenVal(), edited = dirty, nightOk = false;
+      if (at) {   // 選了時間但已經到了（手機時間選擇器預設帶「現在」、按送出時早就過）：直接當現在送，不要讓後台退件卡在半路
+        var atMs = Date.parse(String(at).replace(' ', 'T'));
+        if (atMs && atMs < Date.now() + 2 * 60000) {
+          if (!confirm('預定時間 ' + at + ' 已經到了，改成現在送出？')) return;
+          at = ''; var saClr = document.getElementById('sendAt'); if (saClr) saClr.value = ''; var wbClr = document.getElementById('whenBox'); if (wbClr) wbClr.classList.remove('on');
+        }
+      }
       var hTp = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei', hour: 'numeric', hour12: false }));
       if (!at && (hTp >= 21 || hTp < 9)) {   // 21:00–09:00 靜默時段：要現在送得明講；排明早由 App 自己算時間帶 publishAt（後台守衛是備援）
         if (confirm('現在是靜默時段（21:00 到 09:00），客戶不該半夜收到。\n\n按「確定」排到明早 09:00 送出（建議）\n按「取消」我再問你要不要現在送')) {
@@ -740,6 +747,7 @@
       busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
       if (r.error === 'publishAt_past') {   // 流程不准斷在半路：就地給一鍵現在送，不要叫他回頭改時間
         pm.innerHTML = '這個預定時間已經過了。<a href="#" id="sendNow">改成現在送出</a>　或改一個未來的時間再按送出。';
+        try { pm.scrollIntoView({ block: 'center' }); } catch (eSv) {}
         var sn = document.getElementById('sendNow'); if (sn) sn.onclick = function (ev) { ev.preventDefault(); var w = document.getElementById('sendAt'); if (w) w.value = ''; var wb = document.getElementById('whenBox'); if (wb) wb.classList.remove('on'); document.getElementById('btnSend').click(); };
         return;
       }
