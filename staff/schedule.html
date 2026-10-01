@@ -139,7 +139,7 @@
     if (!past) {
       var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true); };
       $('draft').onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (rows.length && !confirm('重新照慣例排會蓋掉你調整過的班，確定？')) return; busy(this, '排班中'); T.api('schedDraft', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); MSG = '已排 ' + x.count + ' 場' + ((x.warn || []).length ? '。注意：' + x.warn.join('；') : ''); if (x.view && x.view.ok) { DATA = x.view; render(); } else load(YM, true); }).catch(fail); };
-      var sv = $('savenow'); if (sv) sv.onclick = function () { var self = this; busy(self, '儲存中'); var t0 = Date.now(); (function waitSaved() { if (busySaving() && Date.now() - t0 < 8000) return setTimeout(waitSaved, 300); self.disabled = false; self.textContent = '暫存'; var d = new Date(); MSG = (busySaving() ? '還在儲存中，再等幾秒就好。' : '已暫存 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + '，隨時回來繼續，不用急著送出核可。'); msg(MSG); })(); };
+      var sv = $('savenow'); if (sv) sv.onclick = function () { var self = this; busy(self, '儲存中'); var t0 = Date.now(), m0 = MSG; (function waitSaved() { if (busySaving() && Date.now() - t0 < 8000) return setTimeout(waitSaved, 300); self.disabled = false; self.textContent = '暫存'; if (MSG && MSG !== m0) { msg(MSG); return; } var d = new Date(); MSG = (busySaving() ? '還在儲存中，再等幾秒就好。' : '已暫存 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + '，隨時回來繼續，不用急著送出核可。'); msg(MSG); })(); };
       var sb = $('submit'); if (sb) sb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再送'); return; } var warnN = rows.filter(function (x) { return x.holiday && String(x.note || '').indexOf('照排') < 0; }).length; var forceH = false; if (warnN) { if (!confirm('還有 ' + warnN + ' 個班在假日。客戶確認假日照常要做才按確定；否則按取消回去移班。')) return; forceH = true; } if (!confirm('送出 ' + YM + ' 的班表給 Wayne 核可？')) return; busy(this, '送出中'); T.api('schedSubmit', { ym: YM, forceHolidays: forceH ? '1' : '' }).then(function (x) { if (!x.ok) return fail(x); msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true); }).catch(fail); };
       var wb = $('withdraw'); if (wb) wb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('撤回這個月的送件、回到草稿重排？')) return; busy(this, '撤回中'); T.api('schedWithdraw', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); msg('已撤回，回到草稿'); load(YM, true); }).catch(fail); };
       document.querySelectorAll('.chip[data-k]').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); if (c.dataset.dragged) { delete c.dataset.dragged; return; } var k = c.getAttribute('data-k').split('|'); openSheet(rows.filter(function (x) { return x.siteCode === k[0] && x.date === k[1] && x.slot === k[2]; })[0]); }; });
@@ -257,7 +257,7 @@
     var idx = -1; if (!p.add) for (var i = 0; i < out.length; i++) if (out[i].siteCode === p.siteCode && out[i].date === p.date && out[i].slot === p.slot) { idx = i; break; }
     if (p.remove) { if (idx >= 0) out.splice(idx, 1); return out; }
     var site = (DATA.mySites || []).filter(function (s) { return s.siteCode === p.siteCode; })[0] || {}; var hh = DATA.holidays[p.newDate]; var no = Number(p.newOrder) || 0; var r;
-    if (idx < 0) { r = { date: p.newDate, slot: p.newSlot, order: 99, siteCode: p.siteCode, siteName: site.shortName || p.siteCode, shortName: site.shortName || p.siteCode, startTime: site.fixedStart || '', source: '手動', note: '', fixedStart: site.fixedStart || '', noDays: site.noDays || [] }; out.push(r); if (no) r.order = no - 0.5; }
+    if (idx < 0) { r = { date: p.newDate, slot: p.newSlot, order: 99, siteCode: p.siteCode, siteName: p.siteName || site.shortName || p.siteCode, shortName: p.siteName || site.shortName || p.siteCode, startTime: site.fixedStart || '', source: '手動', note: '', fixedStart: site.fixedStart || '', noDays: site.noDays || [] }; out.push(r); if (no) r.order = no - 0.5; }
     else { r = out[idx]; var back = r.date === p.newDate && r.slot === p.newSlot && no > r.order; r.date = p.newDate; r.slot = p.newSlot; r.source = '手動'; r.note = ''; if (no) r.order = back ? no + 0.5 : no - 0.5; else r.order = 99; }
     r.holiday = (hh && hh.kind !== '補班') ? hh.name : '';
     var groups = {}; out.forEach(function (x) { var k = x.date + '|' + x.slot; (groups[k] = groups[k] || []).push(x); });
@@ -291,7 +291,7 @@
     $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效')) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; doMove(x, rq, false, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = '送出申請中…'; } }); };
   }
   function openAdd(ds, pre) {
-    var sites = DATA.mySites || []; if (!sites.length) return;
+    var sites = DATA.mySites || [];
     var hh = DATA.holidays[ds];
     var h = '<div class="small" style="margin-bottom:8px"><b>' + esc(md(ds)) + '（' + WD[wdOf(ds) - 1] + '）</b> 加一個班' + (hh && hh.kind !== '補班' ? '<br><span style="color:#8C3B25">這天是 ' + esc(hh.name) + '</span>' : '') + '</div>'
       + '<div class="fld"><label>客戶</label><select id="ad-site">' + sites.map(function (s) { return '<option value="' + esc(s.siteCode) + '"' + (s.siteCode === pre ? ' selected' : '') + '>' + esc(s.shortName) + '</option>'; }).join('') + '<option value="__manual__">其他客戶／案場（自己輸入）</option></select></div>'
@@ -301,6 +301,7 @@
     $('sheet').innerHTML = h; $('sheet').classList.add('on'); $('mask').classList.add('on');
     $('ad-close').onclick = closeSheet;
     $('ad-site').onchange = function () { $('ad-name-box').style.display = this.value === '__manual__' ? '' : 'none'; if (this.value === '__manual__') $('ad-name').focus(); };
+    if (!sites.length) { $('ad-site').value = '__manual__'; $('ad-name-box').style.display = ''; }
     $('ad-save').onclick = function () {
       var isManual = $('ad-site').value === '__manual__';
       var mName = isManual ? String($('ad-name').value || '').trim() : '';
