@@ -637,6 +637,10 @@
   }
   function renderDossier(t) {
     document.getElementById('dossier').innerHTML = dossierHtml(t);
+    (function () {   // 引擎快照還沒拿到綁定、後台檔案已有客戶（綁定剛完成）：標頭照後台顯示，別再寫「未綁」
+      var dc = t.dossier && t.dossier.client; var pill = document.getElementById('pillBind');
+      if (!t.clientId && dc && dc.clientId && pill) { pill.textContent = dc.clientId; pill.className = 'pill'; pill.title = '後台已綁定、引擎同步中'; }
+    })();
     var bs = document.getElementById('bindSearch');
     if (bs) bs.onclick = function () {
       var q = document.getElementById('bindQ').value.trim(); if (!q) return; document.getElementById('bindMsg').textContent = '搜尋中';
