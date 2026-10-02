@@ -362,17 +362,19 @@
     });
   };
   document.getElementById('leave').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
-  function refreshAll(fresh) { loadList(null, fresh); if (cur) openThread(cur); }
+  function refreshAll(fresh) { if (fresh) OV.stale = true; loadList(null, fresh); if (cur) openThread(cur); }
 
   var OVP = null;
   function loadList(cb, fresh) {
     if (!LIST.length) loadingBox('contacts', '載入聯絡人');
     stat('更新中', true);
     api({ inbox: { op: 'contacts', sinceHours: 336 } }).then(function (d) { if (d && d.ok === false) throw new Error(d.error || 'contacts'); LIST = d.contacts || []; mergeOverview(); renderList(); stat(''); loadClients(); if (cb) cb(); }).catch(function (e) { stat('失敗：' + friendlyErr(e.message)); });
-    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 45000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; if (o.clients) { Object.keys(o.clients).forEach(function (k) { rememberClient(k, o.clients[k]); }); saveClients(); } OV.failed = false; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } else { OV.failed = true; renderList(); } return OV; }).catch(function () { OV.failed = true; renderList(); return OV; });
+    if (fresh || !OV.loaded || (Date.now() - (OV.at || 0)) > 45000) OVP = api({ app: { op: 'overview', fresh: !!fresh } }).then(function (o) { if (o && o.ok !== false && !(o.generatedAt && OV.generatedAt && Number(o.generatedAt) < Number(OV.generatedAt))) { OV = o; OV.loaded = true; if (o.clients) { Object.keys(o.clients).forEach(function (k) { rememberClient(k, o.clients[k]); }); saveClients(); } OV.failed = false; OV.at = Date.now(); mergeOverview(); renderList(); if (cur) applyOvPending(cur); } else { OV.failed = true; OV.stale = false; renderList(); } return OV; }).catch(function () { OV.failed = true; OV.stale = false; renderList(); return OV; });
   }
   // 引擎清單只有對話狀態；待核可與排程從後台總覽疊上去（有稿或排程但近期沒對話的也要進清單）
+  var SCHED_GONE = {};   // 剛取消的排程墓碑：引擎的手動排程快取是背景更新，總覽回來前別讓它畫回來
   function mergeOverview() {
+    var now0 = Date.now(); OV.scheduled = (OV.scheduled || []).filter(function (x) { var g = SCHED_GONE[x.kind + ':' + (x.id || x.row || '')]; return !(g && now0 - g < 600000); });
     var pend = {}, sched = {}, schedName = {};
     (OV.pending || []).forEach(function (p) { pend[p.contactId] = p; });
     (OV.scheduled || []).forEach(function (x) { sched[x.contactId] = (sched[x.contactId] || 0) + 1; schedName[x.contactId] = x.name; });
@@ -386,10 +388,10 @@
   }
   var CLIENTS = (function () { try { return JSON.parse(localStorage.getItem('yz_clients') || '{}'); } catch (e) { return {}; } })();   // clientId→{short,type}：總覽、對話檔案、clients op 帶回來都記住（跨次保留）
   function rememberClient(cid, c) { if (!cid || !c) return; CLIENTS[cid] = { short: String(c.short || c.full || ''), type: String(c.type || '') }; }
-  function saveClients() { try { localStorage.setItem('yz_clients', JSON.stringify(CLIENTS)); localStorage.setItem('yz_clients_at', String(Date.now())); } catch (e) {} }
+  function saveClients(full) { try { localStorage.setItem('yz_clients', JSON.stringify(CLIENTS)); if (full) localStorage.setItem('yz_clients_at', String(Date.now())); } catch (e) {} }
   function loadClients() {   // 每 12 小時向後台拿一次完整對照（總覽多半走引擎本地鏡像、沒有這份）
     var at = Number(localStorage.getItem('yz_clients_at') || 0); if (Date.now() - at < 12 * 3600e3 && Object.keys(CLIENTS).length) return;
-    api({ app: { op: 'clients' } }).then(function (r) { if (r && r.ok && r.clients) { Object.keys(r.clients).forEach(function (k) { rememberClient(k, r.clients[k]); }); saveClients(); renderList(); } }).catch(function () {});
+    api({ app: { op: 'clients' } }).then(function (r) { if (r && r.ok && r.clients) { Object.keys(r.clients).forEach(function (k) { rememberClient(k, r.clients[k]); }); saveClients(true); renderList(); } }).catch(function () {});
   }
   function clientShort(cid) { var c = cid && ((OV.clients && OV.clients[cid]) || CLIENTS[cid]); return c ? String(c.short || '') : ''; }
   function clientTypeLabel(cid, dossierClient) { var c = cid && ((OV.clients && OV.clients[cid]) || CLIENTS[cid]); var t = (dossierClient && dossierClient.type) || (c && c.type) || ''; return t ? (/公司|企業|法人/.test(t) ? '企業' : '個人客戶') : ''; }
@@ -402,7 +404,7 @@
       var sc = OV.scheduled || [];
       box.innerHTML = sc.length ? sc.map(function (x) { return '<div class="sched"><span class="pill">' + esc(x.at) + '</span> <b style="cursor:pointer" data-open="' + esc(x.contactId) + '">' + esc(x.name) + '</b><div class="small muted" style="margin:3px 0">' + esc(x.text) + '</div><button class="btn link cancel" data-kind="' + esc(x.kind) + '" data-id="' + esc(x.id || '') + '" data-row="' + esc(x.row || '') + '" data-cid="' + esc(x.contactId) + '">取消排程</button></div>'; }).join('') : '<div class="small muted" style="padding:8px">（沒有已排程的訊息）</div>';
       box.querySelectorAll('[data-open]').forEach(function (el) { el.onclick = function () { openThread(el.getAttribute('data-open')); }; });
-      box.querySelectorAll('.cancel').forEach(function (b) { b.onclick = function () { if (!confirm('取消這則排程？')) return; busy(b, true, '取消中'); run('csInboxCancelScheduled', [{ kind: b.getAttribute('data-kind'), id: b.getAttribute('data-id'), row: Number(b.getAttribute('data-row')) || 0, contactId: b.getAttribute('data-cid') }], function () { refreshAll(true); }); }; });
+      box.querySelectorAll('.cancel').forEach(function (b) { b.onclick = function () { if (!confirm('取消這則排程？')) return; busy(b, true, '取消中'); run('csInboxCancelScheduled', [{ kind: b.getAttribute('data-kind'), id: b.getAttribute('data-id'), row: Number(b.getAttribute('data-row')) || 0, contactId: b.getAttribute('data-cid') }], function (r) { if (r && r.ok) { var k0 = b.getAttribute('data-kind'), id0 = b.getAttribute('data-id') || '', row0 = b.getAttribute('data-row') || ''; SCHED_GONE[k0 + ':' + (id0 || row0)] = Date.now(); OV.scheduled = (OV.scheduled || []).filter(function (x) { return !(x.kind === k0 && (id0 ? String(x.id || '') === id0 : String(x.row || '') === row0)); }); mergeOverview(); renderList(); } refreshAll(true); }); }; });
       return;
     }
     var rows = LIST.filter(function (c) { return TAB === 'staff' ? c.isEmp : (TAB === 'all' ? !c.isEmp : (!c.isEmp && (c.pending || c.awaitingReply || c.manual))); });
@@ -431,8 +433,9 @@
     box.querySelectorAll('.ct').forEach(function (el) { el.onclick = function () { openThread(el.getAttribute('data-cid')); }; });
   }
 
-  var OPEN_GEN = 0;
+  var OPEN_GEN = 0, FORCE_DOSSIER = {};
   function ovPendingFor(cid) {   // 總覽裡就有稿的內容，不必等後台補件
+    if (OV.stale) return null;
     var ovp = (OV.pending || []).filter(function (p) { return p.contactId === cid; }).slice(-1)[0];
     if (!ovp || !ovp.text) return null;
     return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [] };
@@ -499,13 +502,14 @@
         if (ovp2) { t.pending = ovp2; t.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); t.extrasLoaded = true; try { var snapP = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snapP); } catch (eP) {} }
       }
       if (ovFresh && !hasPend && !hasSched && t.dossierFromEngine && !memberIds.length) { try { t.pending = null; t.scheduled = []; t.extrasLoaded = true; var snap0 = snapInputs(); renderPending(t); renderCompose(t); restoreInputs(snap0); } catch (eS) {} }   // 先畫「沒稿」，但不 return：總覽現在是鏡像，漏推時靠下面這支補件補回來
-      api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine, skipCards: true } }).then(function (x) {
+      api({ app: { op: 'extras', contactId: cid, memberIds: memberIds, noDossier: !!t.dossierFromEngine && !FORCE_DOSSIER[cid], skipCards: true } }).then(function (x) {
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
+      delete FORCE_DOSSIER[cid];
       var snap = snapInputs();   // 要在換掉 t.pending 之前拍：不然 draftId 會記成新稿，舊稿內文被還原進新稿的框
       var pendSame = !!(t.pending && x.pending && t.pending.id === x.pending.id);
       var textGrew = pendSame && String(x.pending.text || '').length > String(t.pending.text || '').length;   // 總覽版的稿被截到 4000 字，補件版才是完整的
-      var modsNew = pendSame && ((x.pending.mods || []).length > 0) && !((t.pending.mods || []).length);   // 補件版帶附掛清單、總覽版沒有 → 重畫出勾選框
+      var modsSig = function (p) { return ((p && p.mods) || []).map(function (m) { return m.key; }).join('|'); }; var modsNew = pendSame && modsSig(x.pending) !== modsSig(t.pending);   // 補件版的附掛清單和畫面上的不同 → 重畫出勾選框
       if (!pendSame) t.pending = x.pending || null; else if (x.pending) t.pending = x.pending;
       t.scheduled = x.scheduled || []; t.extrasLoaded = true;
       if (x.members) (t.members || []).forEach(function (u) { var m = x.members[u.userId]; if (!m) return; u.lineName = m.lineName || u.lineName; u.name = m.name || u.name; u.role = m.role || u.role; });
@@ -657,14 +661,14 @@
       run('csInboxClientSearch', [q], function (r) {
         document.getElementById('bindMsg').textContent = r.ok ? '' : ('失敗：' + r.error); var cs = r.candidates || [];
         document.getElementById('bindCands').innerHTML = cs.length ? cs.map(function (c) { return '<button class="btn ghost small" style="margin:4px 4px 0 0" data-bind="' + esc(c.clientId) + '">' + esc(c.short || c.full) + '（' + esc(c.clientId) + '）</button>'; }).join('') : '<span class="small muted">查無，可先在客戶頁建檔</span>';
-        document.querySelectorAll('#bindCands [data-bind]').forEach(function (b) { b.onclick = function () { if (!confirm('把這位聯絡人綁到 ' + b.textContent + '？')) return; run('csInboxBind', [{ contactId: cur, clientId: b.getAttribute('data-bind') }], function (rr) { if (rr.ok) refreshAll(true); else document.getElementById('bindMsg').textContent = '綁定失敗：' + (rr.detail || rr.error); }); }; });
+        document.querySelectorAll('#bindCands [data-bind]').forEach(function (b) { b.onclick = function () { if (!confirm('把這位聯絡人綁到 ' + b.textContent + '？')) return; var cidB = cur; run('csInboxBind', [{ contactId: cidB, clientId: b.getAttribute('data-bind') }], function (rr) { if (rr.ok) { rememberClient(rr.clientId, { short: rr.client, type: (CLIENTS[rr.clientId] || {}).type }); saveClients(); FORCE_DOSSIER[cidB] = true; refreshAll(true); } else document.getElementById('bindMsg').textContent = '綁定失敗：' + (rr.detail || rr.error); }); }; });
       });
     };
     document.querySelectorAll('#docStrip [data-doc]').forEach(function (b) { b.onclick = function () {
       var kind = b.getAttribute('data-doc'), no = b.getAttribute('data-no') || '', label = b.textContent;
       if (!confirm(label + (no ? ' ' + no : '') + '？會先變成一張待核可稿，你看過再送。')) return;
       busy(b, true, '投稿中'); var dm = document.getElementById('docMsg');
-      run('csInboxDocSend', [{ contactId: cur, kind: kind, no: no }], function (r) { busy(b, false); if (dm) dm.textContent = r.ok ? (r.attached ? ('已附掛到待核可稿 ' + r.id) : ('已投核可：' + r.id + '，稿會出現在上面')) : ('失敗：' + (r.detail || friendlyErr(r.error))); if (r.ok) setTimeout(function () { openThread(cur, true); }, 1200); }, function () { busy(b, false); if (dm) dm.textContent = '後台回應太慢，稍後重新整理看有沒有投進去'; });
+      run('csInboxDocSend', [{ contactId: cur, kind: kind, no: no }], function (r) { busy(b, false); if (dm) dm.textContent = r.ok ? (r.attached ? ('已附掛到待核可稿 ' + r.id) : ('已投核可：' + r.id + '，稿會出現在上面')) : ('失敗：' + (r.detail || friendlyErr(r.error))); if (r.ok) { OV.at = 0; loadList(null, true); openThread(cur, true); } }, function () { busy(b, false); if (dm) dm.textContent = '後台回應太慢，稍後重新整理看有沒有投進去'; });
     }; });
     document.querySelectorAll('[data-fu]').forEach(function (b) { b.onclick = function () { var mode = b.getAttribute('data-fu'), cidF = cur; if (mode === 'off' && !confirm('這位以後都不自動跟進？（你還是可以手動主動聯繫）')) return; busy(b, true, '設定中'); var say = function (m) { var e = document.getElementById('fuMsg'); if (e) e.textContent = m; }; api({ inbox: { op: 'followupSet', contactId: cidF, mode: mode } }).then(function (r) { busy(b, false); if (!r || r.ok === false) { say('失敗：' + friendlyErr((r && r.error) || '?')); return; } if (cur !== cidF) return; t.followup = r.followup; t.tags = r.tags || []; var snap = snapInputs(); renderThread(t); renderDossier(t); restoreInputs(snap); var d = document.querySelector('#dossier details'); if (d) d.open = true; loadList(null, true); }).catch(function (e) { busy(b, false); say('失敗：' + friendlyErr(e.message)); }); }; });
     document.getElementById('roleSave').onclick = function () { busy(this, true, '儲存中'); run('csInboxRole', [{ contactId: cur, role: document.getElementById('roleSel').value, note: document.getElementById('roleNote').value }], function (r) { document.getElementById('roleMsg').textContent = r.ok ? '已設為 ' + r.role : ('失敗：' + (r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 600); }); };

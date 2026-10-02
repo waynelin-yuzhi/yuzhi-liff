@@ -143,6 +143,7 @@
       ST.busy = false;
       if (r && r.ok) {
         ST.last = { action: r.action, clientId: r.clientId, siteName: r.siteName, at: r.at, status: r.status };
+        var c = T.cacheGet('checkin'); if (c) { c.last = ST.last; T.cacheSet('checkin', c); } try { localStorage.removeItem('staff_c_home'); } catch (e0) {}
         ST.noBreak = false; ST.noBreakReason = '';
         $('app').innerHTML = '<div class="card"><div class="done"><div class="ck">✓</div><div class="big">' + esc(r.action) + '　' + esc(r.at) + '</div>'
           + '<div class="note" style="margin-top:6px">' + esc(r.siteName) + '　' + esc(r.status) + (r.duration != null ? '　停留 ' + r.duration + ' 分' : '') + (ST.lastRemark ? '<br>備註：' + esc(ST.lastRemark) : '') + (r.test ? '　（測試、不進薪資）' : '') + '</div></div></div>'
