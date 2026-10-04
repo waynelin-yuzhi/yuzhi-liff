@@ -38,7 +38,7 @@
 .chip.punch{white-space:normal;line-height:1.15}
 .cal .day .chip{white-space:normal;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;line-height:12px;max-height:30px;padding:2px 3px;font-size:10px}
   .chip.manual { border: 1px dashed #8A8A84; background: #FAF7EF; }
-.chip.ext{background:#F6F3EC;border-color:#CFC7B4;color:#6B6557}
+.chip.ext{background:#F6F3EC;border-color:#CFC7B4;color:#6B6557;pointer-events:none}
 .hd{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .chip.wch{box-shadow:inset 3px 0 0 #B85C40}
 </style>
@@ -62,7 +62,8 @@
   var AS = String(T.qs.get('emp') || '').toUpperCase();   // 老闆在排班總覽代看／代改某位員工（Wayne 2026-10-04）
   function api(fn, p) { if (AS) { p = Object.assign({}, p || {}); p.asEmp = AS; } return T.api(fn, p); }
   var RLABEL = AS ? '原因（記在改班紀錄，可不填）' : '原因（Wayne 會看到）';
-  var VIEW = 'week'; try { VIEW = localStorage.getItem('sched_view') || 'week'; } catch (e0) {} var WEEK = '';   // 預設本週（原「我的班表」頁已併進來）
+  var VIEW = 'week'; try { VIEW = localStorage.getItem('sched_view') || 'week'; } catch (e0) {} if (!T.qs.get('ym')) VIEW = 'week'; var WEEK = '';   // 員工進來一律先看本週（原「我的班表」頁已併進來）；帶 ym 進來（老闆審核／排下個月）才看存的檢視
+  if (AS) VIEW = 'month';   // 老闆審核看整月
   function busySaving() { return INFLIGHT || QUEUE.length > 0; }
   function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function addYm(ym, n) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)) - 1 + n; var d = new Date(y, m, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
@@ -158,8 +159,8 @@
     }
     $('app').innerHTML = h; if (MSG) msg(MSG);
     var gotoWeek = function (n) { var w = addD(WEEK, 7 * n); WEEK = w; if (weekInMonth(w)) { render(); return; } var ymW = (n > 0 ? w : addD(w, 6)).slice(0, 7); load(ymW, true); };
-    var gn = $('go-next'); if (gn) gn.onclick = function () { VIEW = 'month'; try { localStorage.setItem('sched_view', 'month'); } catch (e2) {} load(nextYm); };
-    var gc = $('go-cur'); if (gc) gc.onclick = function () { VIEW = 'week'; WEEK = ''; try { localStorage.setItem('sched_view', 'week'); } catch (e3) {} load(thisYm()); };
+    var gn = $('go-next'); if (gn) gn.onclick = function () { VIEW = 'month'; load(nextYm); };   // 不寫進 localStorage：下次開啟仍先看本週
+    var gc = $('go-cur'); if (gc) gc.onclick = function () { VIEW = 'week'; WEEK = ''; load(thisYm()); };
     $('prev').onclick = function () { if (weekMode) gotoWeek(-1); else load(addYm(YM, -1)); }; $('next').onclick = function () { if (weekMode) gotoWeek(1); else load(addYm(YM, 1)); };
     document.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { VIEW = b.getAttribute('data-view'); try { localStorage.setItem('sched_view', VIEW); } catch (e1) {} if (VIEW === 'week' && (!WEEK || !weekInMonth(WEEK))) WEEK = defaultWeek(); render(); }; });
     if (!past) {
