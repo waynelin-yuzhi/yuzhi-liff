@@ -40,6 +40,7 @@
   var WD = ['一', '二', '三', '四', '五', '六', '日'], COLORS = ['#5F6F52', '#8C6A3F', '#4C6E8A', '#8A4C6E', '#6E8A4C', '#4C8A7E', '#A0522D', '#6B6B6B'];
   var YM = T.qs.get('ym') || '', MSG = '', FILTER = String(T.qs.get('emp') || '').toUpperCase(), LAST = null;
   var VIEW = 'month'; try { VIEW = localStorage.getItem('adm_view') || 'month'; } catch (e0) {} var WEEK = '';   // 週檢視（Wayne 2026-10-04）
+  if (T.qs.get('today') === '1') { var tdN = new Date(); YM = tdN.getFullYear() + '-' + String(tdN.getMonth() + 1).padStart(2, '0'); VIEW = 'week'; }   // 老闆選單「今天」格：本月本週
   function addD(ds, n) { var d = new Date(ds + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function mondayOf(ds) { return addD(ds, -(wdOf(ds) - 1)); }
   function weekInMonth(w) { for (var i = 0; i < 7; i++) if (addD(w, i).slice(0, 7) === YM) return true; return false; }
