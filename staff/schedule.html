@@ -207,7 +207,7 @@
     var rec = null; try { rec = JSON.parse(localStorage.getItem(pkey()) || 'null'); } catch (e) {}
     if (!rec || !rec.moves || !rec.moves.length) return Promise.resolve(false);
     var batchId = rec.batchId || ('b' + Date.now().toString(36)); rec.batchId = batchId; try { localStorage.setItem(pkey(), JSON.stringify(rec)); } catch (e2) {}
-    return api('schedMoveBatch', { batchId: batchId, moves: JSON.stringify(rec.moves), noView: '1' }).then(function (r) { if (r && r.ok) { try { localStorage.removeItem(pkey()); } catch (e3) {} return true; } return false; }).catch(function () { return false; });
+    return api('schedMoveBatch', { batchId: batchId, moves: JSON.stringify(rec.moves), noView: '1' }).then(function (r) { if (r && (r.ok || r.error === 'approved_batch')) { try { localStorage.removeItem(pkey()); } catch (e3) {} return !!r.ok; } return false; }).catch(function () { return false; });
   }
   window.addEventListener('pagehide', flushOnLeave);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushOnLeave(); else if (LEFT) { LEFT = false; setTimeout(function () { resumePending().then(function () { refresh(); }); }, 1500); } else refresh(); });
