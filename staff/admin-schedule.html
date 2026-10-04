@@ -35,7 +35,7 @@
   var T = window.STAFF, esc = T.esc, $ = T.$;
   $('pgv').textContent = T.CFG.version || ''; $('home-lnk').href = T.href('index.html');
   var WD = ['一', '二', '三', '四', '五', '六', '日'], COLORS = ['#5F6F52', '#8C6A3F', '#4C6E8A', '#8A4C6E', '#6E8A4C', '#4C8A7E', '#A0522D', '#6B6B6B'];
-  var YM = T.qs.get('ym') || '', MSG = '';
+  var YM = T.qs.get('ym') || '', MSG = '', FILTER = String(T.qs.get('emp') || '').toUpperCase(), LAST = null;   // FILTER＝只看某位員工（Wayne 2026-10-04）
   function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function addYm(ym, n) { var d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function wdOf(ds) { var w = new Date(ds + 'T00:00:00').getDay(); return w === 0 ? 7 : w; }
@@ -47,20 +47,25 @@
   function stChip(s) { return '<span class="st ' + (s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : '')) + '">' + esc(s || '未建立') + '</span>'; }
   function load(ym, keep) {
     if (!keep) MSG = ''; YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
-    T.api('schedOverview', { ym: ym }).then(function (r) { if (!r || !r.ok) { T.showErr(r && r.error === 'forbidden' ? '這頁只給 Wayne 看。' : T.errText(r)); return; } render(r); }).catch(function () { T.showErr('載入失敗，請重試'); });
+    T.api('schedOverview', { ym: ym }).then(function (r) { if (!r || !r.ok) { T.showErr(r && r.error === 'forbidden' ? '這頁只給 Wayne 看。' : T.errText(r)); return; } LAST = r; render(r); }).catch(function () { T.showErr('載入失敗，請重試'); });
   }
   function render(r) {
-    var emps = Object.keys(r.emps || {}); var color = {}; emps.forEach(function (e, i) { color[e] = COLORS[i % COLORS.length]; });
-    var byDate = {}; (r.rows || []).forEach(function (x) { (byDate[x.date] = byDate[x.date] || []).push(x); });
+    var allEmps = Object.keys(r.emps || {}); var color = {}; allEmps.forEach(function (e, i) { color[e] = COLORS[i % COLORS.length]; });
+    if (FILTER && allEmps.indexOf(FILTER) < 0) FILTER = '';
+    var emps = FILTER ? [FILTER] : allEmps; var mine = function (x) { return !FILTER || x.empId === FILTER; };
+    var byDate = {}; (r.rows || []).filter(mine).forEach(function (x) { (byDate[x.date] = byDate[x.date] || []).push(x); });
     var stMap = {}; (r.status || []).forEach(function (s) { stMap[s.empId] = s; });
-    var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">全員排班</div></div></div>';
+    var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">' + (FILTER ? esc(r.emps[FILTER] || FILTER) + ' 的排班' : '全員排班') + '</div></div></div>';
     h += '<div class="two" style="margin-bottom:10px"><button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button></div>';
+    if (allEmps.length > 1) h += '<div class="seg" style="flex-wrap:wrap;margin-bottom:10px"><button data-f=""' + (FILTER ? '' : ' class="on"') + '>全部</button>' + allEmps.map(function (e) { return '<button data-f="' + esc(e) + '"' + (FILTER === e ? ' class="on"' : '') + '><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:4px;background:' + color[e] + '"></span>' + esc(r.emps[e]) + '</button>'; }).join('') + '</div>';
     h += '<div class="card" style="padding:10px 12px">';
     if (!emps.length) h += '<div class="note">這個月還沒有人排班。</div>';
     emps.forEach(function (e) {
       var s = stMap[e] || {}; var n = (r.rows || []).filter(function (x) { return x.empId === e; }).length;
       h += '<div class="emp"><span class="dot" style="background:' + color[e] + '"></span><span class="small" style="flex:1"><b>' + esc(r.emps[e]) + '</b>　' + n + ' 場　' + stChip(s.status) + (s.apId ? ' <span class="muted">' + esc(s.apId) + '</span>' : '') + '</span>'
-        + (s.status === '待核可' ? '<button class="btn sm" data-approve="' + esc(e) + '">核可</button>' : '') + '</div>';
+        + (s.status === '待核可' ? '<button class="btn sm" data-approve="' + esc(e) + '">核可</button><button class="btn secondary sm" data-rj="' + esc(e) + '">退回</button>' : '') + '</div>';
+      if (r.ym >= String(r.today || '').slice(0, 7)) h += '<div class="small" style="margin:-4px 0 6px 18px"><a class="lnk" href="' + T.href('schedule.html', { ym: r.ym, emp: e }) + '">' + (s.status === '待核可' ? '看月曆審核／調整' : '看月曆／調整') + ' ›</a></div>';
+      if (s.status === '待核可') h += '<div class="fld" id="rjb-' + esc(e) + '" style="display:none;margin:0 0 8px 18px"><label>退回原因（員工會收到）</label><textarea rows="2" placeholder="例：保樂力加改週一、10/10 國慶不要排"></textarea><button class="btn secondary sm" style="margin-top:6px" data-rjgo="' + esc(e) + '">確定退回</button></div>';
       var cv = (r.coverage || {})[e] || []; if (cv.length) h += '<div class="small muted" style="margin:-4px 0 6px 18px">還沒排：' + cv.map(function (c) { return esc(c.shortName) + ' ' + c.actual + '/' + c.expected; }).join('、') + '</div>';
       var man = {}; (r.rows || []).forEach(function (x) { if (x.empId === e && /^M-/.test(x.siteCode)) { (man[x.siteCode] = man[x.siteCode] || { name: x.siteName || x.shortName || x.siteCode, n: 0 }).n++; } });
       Object.keys(man).forEach(function (mc) {   // 員工自填的案場：老闆挑正式案場併入（代碼、名稱、固定時間一起換；已核可的月份順便擬那家的通知）
@@ -69,12 +74,12 @@
       });
     });
     h += '<div class="small muted" id="msg" style="margin-top:6px"></div></div>';
-    var chg = r.changes || [];
+    var chg = (r.changes || []).filter(mine);
     if (chg.length) { h += '<div class="card" style="padding:10px 12px"><div class="small"><b>變更申請 ' + chg.length + ' 件</b></div>'; chg.forEach(function (c) { h += '<div class="emp"><span class="small" style="flex:1"><b>' + esc(c.empName || c.empId) + '</b>　' + esc(c.desc) + '<br><span class="muted">原因：' + esc(c.reason) + '　' + esc(c.apId) + '</span></span><button class="btn sm" data-chg="' + esc(c.reqId) + '">核可</button><button class="btn secondary sm" data-chgno="' + esc(c.reqId) + '">退回</button></div><div class="fld" id="rj-' + esc(c.reqId) + '" style="display:none"><label>退回原因（員工會看到）</label><textarea rows="2" placeholder="例：那天客戶不方便"></textarea><button class="btn secondary sm" style="margin-top:6px" data-chgno2="' + esc(c.reqId) + '">確定退回</button></div>'; }); h += '</div>'; }
     if (r.today && r.today.slice(0, 7) !== r.ym) h += '<div class="card" style="padding:10px 12px"><div class="small muted">今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡在 ' + esc(r.today.slice(0, 7).replace('-', ' / ')) + '，按「‹ 上個月」看。</div></div>';
     if (r.today && r.today.slice(0, 7) === r.ym) {
       h += '<div class="card" style="padding:10px 12px"><div class="small"><b>今天 ' + esc(r.today.slice(5).replace('-', '/')) + ' 的班與打卡</b></div>';
-      var todays = byDate[r.today] || [];
+      var todays = byDate[r.today] || [];   // byDate 已依篩選過濾
       if (!todays.length) h += '<div class="small muted">今天沒有排班。</div>';
       todays.forEach(function (x) { var ps = (r.punchesToday || {})[x.empId] || []; var hit = ps.filter(function (p) { return p.siteCode === x.siteCode; }); h += '<div class="pun">' + esc(r.emps[x.empId] || x.empId) + '・' + esc(x.shortName) + '（' + esc(x.slot) + x.order + '）：' + (hit.length ? '<span class="yes">已打卡 ' + hit.map(function (p) { return p.time + ' ' + (p.action || '').split('｜')[0]; }).join('、') + '</span>' : '<span class="no">未打卡</span>') + '</div>'; });
       h += '</div>';
@@ -82,12 +87,15 @@
     h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
     var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
     days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:' + (x.slot === '下午' ? '#EEF2F8' : '#fff') + '" title="' + (/^M-/.test(x.siteCode) ? '（自填）' : '') + esc(r.emps[x.empId] || x.empId) + ' ' + esc(x.shortName) + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; }); h += '</div>'; });
-    h += '</div><div class="small muted" style="margin:6px 2px 0">顏色＝員工（見上方名單）；小數字＝當天第幾站；淡藍底＝下午班。</div>';
+    h += '</div><div class="small muted" style="margin:6px 2px 0">' + (FILTER ? '' : '顏色＝員工（見上方名單）；') + '小數字＝當天第幾站；淡藍底＝下午班。</div>';
     h += '</div></div>';
     $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
     document.querySelectorAll('[data-merge]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-merge').split('|'); var sel = document.querySelector('[data-merge-sel="' + b.getAttribute('data-merge') + '"]'); var target = sel && sel.value; if (!target) return; if (!confirm('把這個自填案場併入「' + sel.options[sel.selectedIndex].text + '」？')) return; b.disabled = true; b.textContent = '併入中';
       T.api('schedMergeManual', { ym: YM, empId: k[0], manualCode: k[1], siteCode: target }).then(function (x) { if (!x || !x.ok) { b.disabled = false; b.textContent = '併入'; $('msg').textContent = '失敗：' + ((x && (x.detail || x.error)) || '後台沒回應'); return; } MSG = '已併入 ' + x.shortName + '（' + x.merged + ' 場）' + ((x.skipped || []).length ? '；' + x.skipped.join('、') + ' 那邊同時段已有班、沒併（自填列留著，請改天或移除）' : '') + (x.notified ? '、客戶通知已擬進核可中心' : (x.notifyWhy ? '；通知沒擬成：' + x.notifyWhy : '')); load(YM, true); }); }; });
+    document.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { FILTER = b.getAttribute('data-f'); MSG = ''; try { history.replaceState(null, '', T.href('admin-schedule.html', FILTER ? { ym: YM, emp: FILTER } : { ym: YM })); } catch (eH) {} render(LAST); }; });
+    document.querySelectorAll('[data-rj]').forEach(function (b) { b.onclick = function () { var box = $('rjb-' + b.getAttribute('data-rj')); if (box) { box.style.display = box.style.display === 'none' ? '' : 'none'; if (box.style.display === '') box.querySelector('textarea').focus(); } }; });
+    document.querySelectorAll('[data-rjgo]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-rjgo'); var ta = b.parentNode.querySelector('textarea'); var why = String((ta && ta.value) || '').trim(); if (!why) { ta && ta.focus(); return; } b.disabled = true; b.textContent = '退回中'; T.api('schedReject', { ym: YM, empId: e, reason: why }).then(function (x) { MSG = x && x.ok ? ('已退回 ' + (r.emps[e] || e) + ' 的班表' + (x.notified ? '，已用 LINE 通知' : '（他沒有綁 LINE，請另外告知）')) : ('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
     document.querySelectorAll('[data-approve]').forEach(function (b) { b.onclick = function () { var e = b.getAttribute('data-approve'); if (!confirm('核可 ' + (r.emps[e] || e) + ' 的 ' + YM + ' 班表？核可後系統會擬各客戶的養護日期通知進核可中心。')) return; b.disabled = true; b.textContent = '核可中'; T.api('schedApprove', { ym: YM, empId: e }).then(function (x) { MSG = x.ok ? ('已核可 ' + x.apId + '。' + (x.execMsg ? x.execMsg : (x.notifiedAt ? '客戶通知已擬進核可中心' : '注意：客戶通知沒有跑，請查系統事件'))) : ('失敗：' + (x.detail || x.error)); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
     document.querySelectorAll('[data-chgno]').forEach(function (b) { b.onclick = function () { var box = $('rj-' + b.getAttribute('data-chgno')); if (box) box.style.display = box.style.display === 'none' ? '' : 'none'; }; });
     document.querySelectorAll('[data-chg],[data-chgno2]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-chg') || b.getAttribute('data-chgno2'); var rej = !!b.getAttribute('data-chgno2'); var why = ''; if (rej) { var ta = b.parentNode.querySelector('textarea'); why = String((ta && ta.value) || '').trim(); if (!why) { ta && ta.focus(); return; } } else if (!confirm('核可這筆變更？核可後班表更新，系統會擬改期通知給客戶進核可中心。')) return; var row = b.closest('.card'); if (row) row.querySelectorAll('button').forEach(function (x) { x.disabled = true; }); b.textContent = rej ? '退回中' : '核可中'; T.api('schedChangeDecide', { reqId: id, decision: rej ? 'reject' : 'approve', reason: why }).then(function (x) { MSG = x.ok ? ((rej ? '已退回 ' : '已核可 ') + id + (x.result ? '：' + x.result : '')) : ('失敗：' + (x.detail || x.error)); load(YM, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true); }); }; });
