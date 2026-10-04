@@ -51,13 +51,13 @@
   }
   function render(r) {
     var allEmps = Object.keys(r.emps || {}); var color = {}; allEmps.forEach(function (e, i) { color[e] = COLORS[i % COLORS.length]; });
-    if (FILTER && allEmps.indexOf(FILTER) < 0) FILTER = '';
-    var emps = FILTER ? [FILTER] : allEmps; var mine = function (x) { return !FILTER || x.empId === FILTER; };
+    var F = (FILTER && allEmps.indexOf(FILTER) >= 0) ? FILTER : '';   // 這個月沒有那位員工的資料就暫時看全部，FILTER 保留，切回別月照樣篩
+    var emps = F ? [F] : allEmps; var mine = function (x) { return !F || x.empId === F; };
     var byDate = {}; (r.rows || []).filter(mine).forEach(function (x) { (byDate[x.date] = byDate[x.date] || []).push(x); });
     var stMap = {}; (r.status || []).forEach(function (s) { stMap[s.empId] = s; });
-    var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">' + (FILTER ? esc(r.emps[FILTER] || FILTER) + ' 的排班' : '全員排班') + '</div></div></div>';
+    var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">' + (F ? esc(r.emps[F] || F) + ' 的排班' : '全員排班') + '</div></div></div>';
     h += '<div class="two" style="margin-bottom:10px"><button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button></div>';
-    if (allEmps.length > 1) h += '<div class="seg" style="flex-wrap:wrap;margin-bottom:10px"><button data-f=""' + (FILTER ? '' : ' class="on"') + '>全部</button>' + allEmps.map(function (e) { return '<button data-f="' + esc(e) + '"' + (FILTER === e ? ' class="on"' : '') + '><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:4px;background:' + color[e] + '"></span>' + esc(r.emps[e]) + '</button>'; }).join('') + '</div>';
+    if (allEmps.length > 1) h += '<div class="seg" style="flex-wrap:wrap;margin-bottom:10px"><button data-f=""' + (F ? '' : ' class="on"') + '>全部</button>' + allEmps.map(function (e) { return '<button data-f="' + esc(e) + '"' + (F === e ? ' class="on"' : '') + '><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:4px;background:' + color[e] + '"></span>' + esc(r.emps[e]) + '</button>'; }).join('') + '</div>';
     h += '<div class="card" style="padding:10px 12px">';
     if (!emps.length) h += '<div class="note">這個月還沒有人排班。</div>';
     emps.forEach(function (e) {
@@ -87,7 +87,7 @@
     h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
     var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
     days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:' + (x.slot === '下午' ? '#EEF2F8' : '#fff') + '" title="' + (/^M-/.test(x.siteCode) ? '（自填）' : '') + esc(r.emps[x.empId] || x.empId) + ' ' + esc(x.shortName) + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; }); h += '</div>'; });
-    h += '</div><div class="small muted" style="margin:6px 2px 0">' + (FILTER ? '' : '顏色＝員工（見上方名單）；') + '小數字＝當天第幾站；淡藍底＝下午班。</div>';
+    h += '</div><div class="small muted" style="margin:6px 2px 0">' + (F ? '' : '顏色＝員工（見上方名單）；') + '小數字＝當天第幾站；淡藍底＝下午班。</div>';
     h += '</div></div>';
     $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
     $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };

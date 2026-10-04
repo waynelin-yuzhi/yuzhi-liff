@@ -221,7 +221,7 @@
       api('schedMove', job.p).then(function (r) {
         if (r.ok) {
           if (LEFT) { done(); return; }   // 離開時已用 beacon 整批送過：不用這個回應畫圖，回來時會背景更新
-          if (!job.opt) closeSheet(); if (r.requested) MSG = '已送出變更申請（' + r.apId + '），Wayne 核可後生效'; if (r.bossApplied) MSG = '已生效（' + r.apId + '），客戶改期通知已擬進核可中心';
+          if (!job.opt) closeSheet(); if (r.requested) MSG = '已送出變更申請（' + r.apId + '），Wayne 核可後生效'; if (r.bossApplied) MSG = '已生效：' + (r.result || '班表已更新');
           if (!QUEUE.length) { if (r.view && r.view.ok && r.view.ym === YM) { if (MSG || r.view.status !== DATA.status || rowsSig(r.view.rows) !== rowsSig(DATA.rows) || covSig(r.view.coverage) !== covSig(DATA.coverage)) { DATA = r.view; render(); } else DATA = r.view; } else REFRESH_PENDING = true; }
           done(); return;
         }
@@ -234,6 +234,7 @@
         REFRESH_PENDING = true;
         done();
       }).catch(function () {
+        if (!job.opt) { giveUp('後台回應太慢，已重新讀取班表；請確認剛才的改動有沒有生效'); return; }   // 已核可的改動會當場套用＋擬通知：重送可能做兩次或回「找不到」誤導
         if (tries < 3) { setTimeout(attempt, 2500 * tries); return; }   // 沒回應（含後台轉址 404）：再試兩次；最後去後台確認
         giveUp('後台沒回應，畫面改為後台目前的班表');
       });
@@ -302,10 +303,10 @@
     var save = function (force) {
       var p = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, newDate: $('sh-date').value, newSlot: $('sh-slot').value, newOrder: $('sh-order').value };
       if (approved) { var rs = String(($('sh-reason') || {}).value || '').trim(); if (!rs && !AS) { $('sh-msg').textContent = '請寫原因'; return; } p.reason = rs; }
-      doMove(x, p, force, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = approved ? '送出申請中…' : '儲存中…'; } });
+      doMove(x, p, force, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = approved ? (AS ? '套用中…' : '送出申請中…') : '儲存中…'; } });
     };
     $('sh-save').onclick = function () { save(false); };
-    $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2 && !AS) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效')) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; doMove(x, rq, false, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = '送出申請中…'; } }); };
+    $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2 && !AS) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm(AS ? ('這個月不跑 ' + x.shortName + '？會立即生效') : ('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效'))) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; doMove(x, rq, false, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = AS ? '套用中…' : '送出申請中…'; } }); };
   }
   function openAdd(ds, pre) {
     var sites = DATA.mySites || [];
@@ -327,7 +328,7 @@
       var p = { ym: YM, siteCode: site.siteCode, date: ds, newDate: ds, newSlot: $('ad-slot').value, newOrder: $('ad-order').value, add: '1' };
       if (isManual) p.siteName = mName;
       if (DATA.status === '已核可') { var rs = String(($('ad-reason') || {}).value || '').trim(); if (!rs && !AS) { $('ad-msg').textContent = '請寫原因'; return; } p.reason = rs; }
-      doMove({ siteCode: site.siteCode, date: ds, slot: p.newSlot, shortName: site.shortName || site.siteCode, noDays: site.noDays || [], fixedStart: site.fixedStart || '' }, p, false, { err: function (t) { $('ad-msg').textContent = t; }, busy: function () { $('ad-msg').textContent = '送出申請中…'; } });
+      doMove({ siteCode: site.siteCode, date: ds, slot: p.newSlot, shortName: site.shortName || site.siteCode, noDays: site.noDays || [], fixedStart: site.fixedStart || '' }, p, false, { err: function (t) { $('ad-msg').textContent = t; }, busy: function () { $('ad-msg').textContent = DATA.status === '已核可' ? (AS ? '套用中…' : '送出申請中…') : '儲存中…'; } });
     };
   }
   function bestDateFor(wd) {   // 「還沒排到」點名字：挑這家慣例星期最近的一天（避開假日、週末），沒有就最近的工作日
