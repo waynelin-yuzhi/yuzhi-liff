@@ -68,7 +68,7 @@
       if (s.status === '待核可') h += '<div class="fld" id="rjb-' + esc(e) + '" style="display:none;margin:0 0 8px 18px"><label>退回原因（員工會收到）</label><textarea rows="2" placeholder="例：保樂力加改週一、10/10 國慶不要排"></textarea><button class="btn secondary sm" style="margin-top:6px" data-rjgo="' + esc(e) + '">確定退回</button></div>';
       var lc = {}; (r.rows || []).forEach(function (x) { if (x.empId !== e) return; var k = x.date + '|' + x.slot; lc[k] = (lc[k] || 0) + 1; });
       var ov = Object.keys(lc).filter(function (k) { return lc[k] > 3; }).sort().map(function (k) { var q = k.split('|'); return q[0].slice(5).replace('-', '/') + ' ' + q[1] + ' ' + lc[k] + ' 站'; });
-      if (ov.length && s.status !== '已核可') h += '<div class="small" style="margin:-4px 0 6px 18px;color:#8C3B25">請確認時段：' + ov.join('、') + '（一個半天通常不超過 3 站）</div>';
+      if (ov.length && s.status !== '已核可') h += '<div class="small" style="margin:-4px 0 6px 18px;color:#8C3B25">請確認時段：' + esc(ov.join('、')) + '（一個半天通常不超過 3 站）</div>';
       var cv = (r.coverage || {})[e] || []; if (cv.length) h += '<div class="small muted" style="margin:-4px 0 6px 18px">還沒排：' + cv.map(function (c) { return esc(c.shortName) + ' ' + c.actual + '/' + c.expected; }).join('、') + '</div>';
       var man = {}; (r.rows || []).forEach(function (x) { if (x.empId === e && /^M-/.test(x.siteCode)) { (man[x.siteCode] = man[x.siteCode] || { name: x.siteName || x.shortName || x.siteCode, n: 0 }).n++; } });
       Object.keys(man).forEach(function (mc) {   // 員工自填的案場：老闆挑正式案場併入（代碼、名稱、固定時間一起換；已核可的月份順便擬那家的通知）
