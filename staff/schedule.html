@@ -38,6 +38,7 @@
 .chip.punch{white-space:normal;line-height:1.15}
 .cal .day .chip{white-space:normal;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;line-height:12px;max-height:30px;padding:2px 3px;font-size:10px}
   .chip.manual { border: 1px dashed #8A8A84; background: #FAF7EF; }
+.chip.wch{box-shadow:inset 3px 0 0 #B85C40}
 </style>
 </head>
 <body>
@@ -117,10 +118,10 @@
         var hh = hol[ds], isHol = hh && hh.kind !== '補班', inMonth = ds.slice(0, 7) === ym;
         h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + (inMonth ? '' : ' out') + '"' + (inMonth ? ' data-d="' + ds + '"' : '') + '><div class="dn">' + md(ds) + '<br><span class="muted">週' + WD[wdOf(ds) - 1] + '</span>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : '') + '</div><div class="chips">';
         if (!inMonth) h += '<span class="small muted">（' + Number(ds.slice(5, 7)) + ' 月，切到那個月再排）</span>';
-        else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + (/^M-/.test(x.siteCode) ? ' manual' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (/^M-/.test(x.siteCode) ? '（自填）' : '') + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + (x.startTime ? ' ' + esc(x.startTime) : '') + '</span>'; });
+        else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + (x.source === 'Wayne 調整' ? ' wch' : '') + (/^M-/.test(x.siteCode) ? ' manual' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (/^M-/.test(x.siteCode) ? '（自填）' : '') + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + (x.startTime ? ' ' + esc(x.startTime) : '') + '</span>'; });
         h += '</div></div>';
       })(addD(WEEK, wi)); }
-      h += '</div><div class="legend">小數字＝當天第幾站；淡藍底＝下午班。長按一個班可以拖到別天，或拖到另一個班上改順序。點空白處加班。</div></div>';
+      h += '</div><div class="legend">小數字＝當天第幾站；淡藍底＝下午班。長按一個班可以拖到別天，或拖到另一個班上改順序。點空白處加班。紅色左邊條＝Wayne 調整過。</div></div>';
     } else {
     h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
     var days = daysOf(ym), first = wdOf(days[0]);
@@ -129,10 +130,10 @@
       var hh = hol[ds], isHol = hh && hh.kind !== '補班';
       h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '" data-d="' + ds + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : '');
       if (past) { (r.punches[ds] || []).forEach(function (p) { h += '<span class="chip punch"><i>' + esc(p.time) + '</i><br>' + esc(shortLabel(p.siteName)) + '</span>'; }); }
-      else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + (/^M-/.test(x.siteCode) ? ' manual' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (/^M-/.test(x.siteCode) ? '（自填）' : '') + (x.startTime ? ' ' + esc(x.startTime) : '') + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; });
+      else (byDate[ds] || []).forEach(function (x) { h += '<span class="chip' + (x.slot === '下午' ? ' pm' : '') + ((x.holiday && String(x.note || '').indexOf('照排') < 0) || /不可排/.test(x.note || '') ? ' warn' : '') + (x.pendingChange ? ' req' : '') + (x.source === 'Wayne 調整' ? ' wch' : '') + (/^M-/.test(x.siteCode) ? ' manual' : '') + '" data-k="' + esc(x.siteCode) + '|' + esc(x.date) + '|' + esc(x.slot) + '" title="' + esc(x.shortName) + (/^M-/.test(x.siteCode) ? '（自填）' : '') + (x.startTime ? ' ' + esc(x.startTime) : '') + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; });
       h += '</div>';
     });
-    h += '</div><div class="legend">小數字＝當天第幾站；淡藍底＝下午班。長按一個班可以拖到別天，或拖到另一個班上改順序。橘底＝假日；橘框的班要移。</div></div>';
+    h += '</div><div class="legend">小數字＝當天第幾站；淡藍底＝下午班。長按一個班可以拖到別天，或拖到另一個班上改順序。橘底＝假日；橘框的班要移。紅色左邊條＝Wayne 調整過。</div></div>';
     }
     if (!past && (r.mySites || []).length) {   // 只提醒有客戶限制的、和沒固定星期要自己加的；其他不列（Wayne：整排規則太亂沒幫助）
       var lim = r.mySites.filter(function (s) { return s.fixedStart || (s.noDays && s.noDays.length) || s.slot; });
@@ -275,8 +276,8 @@
     var idx = -1; if (!p.add) for (var i = 0; i < out.length; i++) if (out[i].siteCode === p.siteCode && out[i].date === p.date && out[i].slot === p.slot) { idx = i; break; }
     if (p.remove) { if (idx >= 0) out.splice(idx, 1); return out; }
     var site = (DATA.mySites || []).filter(function (s) { return s.siteCode === p.siteCode; })[0] || {}; var hh = DATA.holidays[p.newDate]; var no = Number(p.newOrder) || 0; var r;
-    if (idx < 0) { r = { date: p.newDate, slot: p.newSlot, order: 99, siteCode: p.siteCode, siteName: p.siteName || site.shortName || p.siteCode, shortName: p.siteName || site.shortName || p.siteCode, startTime: site.fixedStart || '', source: '手動', note: '', fixedStart: site.fixedStart || '', noDays: site.noDays || [] }; out.push(r); if (no) r.order = no - 0.5; }
-    else { r = out[idx]; var back = r.date === p.newDate && r.slot === p.newSlot && no > r.order; r.date = p.newDate; r.slot = p.newSlot; r.source = '手動'; r.note = ''; if (no) r.order = back ? no + 0.5 : no - 0.5; else r.order = 99; }
+    if (idx < 0) { r = { date: p.newDate, slot: p.newSlot, order: 99, siteCode: p.siteCode, siteName: p.siteName || site.shortName || p.siteCode, shortName: p.siteName || site.shortName || p.siteCode, startTime: site.fixedStart || '', source: AS ? 'Wayne 調整' : '手動', note: '', fixedStart: site.fixedStart || '', noDays: site.noDays || [] }; out.push(r); if (no) r.order = no - 0.5; }
+    else { r = out[idx]; var back = r.date === p.newDate && r.slot === p.newSlot && no > r.order; r.date = p.newDate; r.slot = p.newSlot; r.source = AS ? 'Wayne 調整' : '手動'; r.note = ''; if (no) r.order = back ? no + 0.5 : no - 0.5; else r.order = 99; }
     r.holiday = (hh && hh.kind !== '補班') ? hh.name : '';
     var groups = {}; out.forEach(function (x) { var k = x.date + '|' + x.slot; (groups[k] = groups[k] || []).push(x); });
     Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return ((b.fixedStart ? 1 : 0) - (a.fixedStart ? 1 : 0)) || (a.order - b.order); }).forEach(function (x, i) { x.order = i + 1; }); });
