@@ -22,6 +22,8 @@
 .chip i{font-style:normal;font-size:8px;opacity:.7;margin-right:1px}
 .cal .day .chip{white-space:normal;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;line-height:12px;max-height:30px;padding:2px 3px;font-size:10px}
   .chip.manual { border: 1px dashed #8A8A84; background: #FAF7EF; }
+.wkday{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px;background:#fff}.wkday.hol{background:#FFF1E6}.wkday.today{box-shadow:inset 0 0 0 1px #5F6F52}.wkday.out{background:transparent;border-style:dashed}
+.wkday .dn{font-size:13px;color:#3E3A30;margin-bottom:2px}.wkrow{display:flex;align-items:center;gap:8px;padding:3px 0}.wkrow i{font-style:normal;font-size:11px;color:#8A8A84}
 </style>
 </head>
 <body>
@@ -35,7 +37,12 @@
   var T = window.STAFF, esc = T.esc, $ = T.$;
   $('pgv').textContent = T.CFG.version || ''; $('home-lnk').href = T.href('index.html');
   var WD = ['一', '二', '三', '四', '五', '六', '日'], COLORS = ['#5F6F52', '#8C6A3F', '#4C6E8A', '#8A4C6E', '#6E8A4C', '#4C8A7E', '#A0522D', '#6B6B6B'];
-  var YM = T.qs.get('ym') || '', MSG = '', FILTER = String(T.qs.get('emp') || '').toUpperCase(), LAST = null;   // FILTER＝只看某位員工（Wayne 2026-10-04）
+  var YM = T.qs.get('ym') || '', MSG = '', FILTER = String(T.qs.get('emp') || '').toUpperCase(), LAST = null;
+  var VIEW = 'month'; try { VIEW = localStorage.getItem('adm_view') || 'month'; } catch (e0) {} var WEEK = '';   // 週檢視（Wayne 2026-10-04）
+  function addD(ds, n) { var d = new Date(ds + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function mondayOf(ds) { return addD(ds, -(wdOf(ds) - 1)); }
+  function weekInMonth(w) { for (var i = 0; i < 7; i++) if (addD(w, i).slice(0, 7) === YM) return true; return false; }
+  function defaultWeek(r) { var days = daysOf(r.ym); var t = r.today || ''; if (t && t.slice(0, 7) === r.ym) return mondayOf(t); var w = wdOf(days[0]); return w >= 5 ? addD(days[0], 8 - w) : mondayOf(days[0]); }   // FILTER＝只看某位員工（Wayne 2026-10-04）
   function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function addYm(ym, n) { var d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function wdOf(ds) { var w = new Date(ds + 'T00:00:00').getDay(); return w === 0 ? 7 : w; }
@@ -56,7 +63,9 @@
     var byDate = {}; (r.rows || []).filter(mine).forEach(function (x) { (byDate[x.date] = byDate[x.date] || []).push(x); });
     var stMap = {}; (r.status || []).forEach(function (s) { stMap[s.empId] = s; });
     var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">' + (F ? esc(r.emps[F] || F) + ' 的排班' : '全員排班') + '</div></div></div>';
-    h += '<div class="two" style="margin-bottom:10px"><button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button></div>';
+    var weekMode = VIEW === 'week'; if (weekMode && (!WEEK || !weekInMonth(WEEK))) WEEK = defaultWeek(r);
+    h += '<div class="two" style="margin-bottom:10px">' + (weekMode ? '<button class="btn secondary sm" id="prev">‹ 上週</button><button class="btn secondary sm" id="next">下週 ›</button>' : '<button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button>') + '</div>';
+    h += '<div class="seg" style="margin-bottom:10px"><button data-view="month"' + (weekMode ? '' : ' class="on"') + '>月檢視</button><button data-view="week"' + (weekMode ? ' class="on"' : '') + '>週檢視</button></div>';
     if (allEmps.length > 1) h += '<div class="seg" style="flex-wrap:wrap;margin-bottom:10px"><button data-f=""' + (F ? '' : ' class="on"') + '>全部</button>' + allEmps.map(function (e) { return '<button data-f="' + esc(e) + '"' + (F === e ? ' class="on"' : '') + '><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:4px;background:' + color[e] + '"></span>' + esc(r.emps[e]) + '</button>'; }).join('') + '</div>';
     h += '<div class="card" style="padding:10px 12px">';
     if (!emps.length) h += '<div class="note">這個月還沒有人排班。</div>';
@@ -87,13 +96,30 @@
       todays.forEach(function (x) { var ps = (r.punchesToday || {})[x.empId] || []; var hit = ps.filter(function (p) { return p.siteCode === x.siteCode; }); h += '<div class="pun">' + esc(r.emps[x.empId] || x.empId) + '・' + esc(x.shortName) + '（' + esc(x.slot) + x.order + '）：' + (hit.length ? '<span class="yes">已打卡 ' + hit.map(function (p) { return p.time + ' ' + (p.action || '').split('｜')[0]; }).join('、') + '</span>' : '<span class="no">未打卡</span>') + '</div>'; });
       h += '</div>';
     }
+    if (weekMode) {
+      h += '<div class="card" style="padding:8px">';
+      for (var wi = 0; wi < 7; wi++) { (function (ds) {
+        var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班', inMonth = ds.slice(0, 7) === r.ym;
+        h += '<div class="wkday' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + (inMonth ? '' : ' out') + '"><div class="dn">' + esc(ds.slice(5).replace('-', '/')) + ' <span class="muted">週' + WD[wdOf(ds) - 1] + '</span>' + (hh ? ' <span class="hn">' + esc(hh.name) + '</span>' : '') + '</div>';
+        if (!inMonth) h += '<div class="small muted">（' + Number(ds.slice(5, 7)) + ' 月，切到那個月看）</div>';
+        else { var list = (byDate[ds] || []).slice().sort(function (a, b) { return a.slot === b.slot ? (a.empId === b.empId ? a.order - b.order : (a.empId < b.empId ? -1 : 1)) : (a.slot === '上午' ? -1 : 1); });
+          if (!list.length) h += '<div class="small muted">沒有排班</div>';
+          var lastSlot = ''; list.forEach(function (x) { if (x.slot !== lastSlot) { h += '<div class="small muted" style="margin-top:4px">' + esc(x.slot) + '</div>'; lastSlot = x.slot; }
+            h += '<div class="wkrow"><span class="dot" style="background:' + color[x.empId] + '"></span><span class="small"><b>' + esc(r.emps[x.empId] || x.empId) + '</b>　<i>' + x.order + '</i> ' + esc(x.shortName) + (x.source === 'Wayne 調整' ? ' <span class="hn">（你調整過）</span>' : '') + (/^M-/.test(x.siteCode) ? ' <span class="muted">（自填）</span>' : '') + '</span></div>'; }); }
+        h += '</div>';
+      })(addD(WEEK, wi)); }
+      h += '<div class="small muted" style="margin:6px 2px 0">小數字＝當天第幾站。</div></div></div>';
+    } else {
     h += '<div class="card" style="padding:8px"><div class="cal">' + WD.map(function (w) { return '<div class="wd">' + w + '</div>'; }).join('');
     var days = daysOf(r.ym), first = wdOf(days[0]); for (var i = 1; i < first; i++) h += '<div class="day out"></div>';
     days.forEach(function (ds) { var hh = (r.holidays || {})[ds], isHol = hh && hh.kind !== '補班'; h += '<div class="day' + (isHol ? ' hol' : '') + (ds === r.today ? ' today' : '') + '"><div class="dn">' + Number(ds.slice(8)) + '</div>' + (hh ? '<div class="hn">' + esc(hh.name) + '</div>' : ''); (byDate[ds] || []).sort(function (a, b) { return a.empId === b.empId ? (a.slot === b.slot ? a.order - b.order : (a.slot === '上午' ? -1 : 1)) : (a.empId < b.empId ? -1 : 1); }).forEach(function (x) { h += '<span class="chip" style="border-color:' + color[x.empId] + ';color:' + color[x.empId] + ';background:' + (x.slot === '下午' ? '#EEF2F8' : '#fff') + (x.source === 'Wayne 調整' ? ';box-shadow:inset 3px 0 0 #B85C40' : '') + '" title="' + (/^M-/.test(x.siteCode) ? '（自填）' : '') + esc(r.emps[x.empId] || x.empId) + ' ' + esc(x.shortName) + '"><i>' + x.order + '</i>' + esc(shortLabel(x.shortName)) + '</span>'; }); h += '</div>'; });
     h += '</div><div class="small muted" style="margin:6px 2px 0">' + (F ? '' : '顏色＝員工（見上方名單）；') + '小數字＝當天第幾站；淡藍底＝下午班；紅色左邊條＝你調整過。</div>';
     h += '</div></div>';
+    }
     $('app').innerHTML = h; if (MSG) $('msg').textContent = MSG;
-    $('prev').onclick = function () { load(addYm(YM, -1)); }; $('next').onclick = function () { load(addYm(YM, 1)); };
+    var gotoWeek = function (n) { var w = addD(WEEK, 7 * n); WEEK = w; if (weekInMonth(w)) { render(LAST); return; } load((n > 0 ? w : addD(w, 6)).slice(0, 7), true); };
+    $('prev').onclick = function () { if (weekMode) gotoWeek(-1); else load(addYm(YM, -1)); }; $('next').onclick = function () { if (weekMode) gotoWeek(1); else load(addYm(YM, 1)); };
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { VIEW = b.getAttribute('data-view'); try { localStorage.setItem('adm_view', VIEW); } catch (e1) {} if (VIEW === 'week' && (!WEEK || !weekInMonth(WEEK))) WEEK = defaultWeek(LAST); render(LAST); }; });
     document.querySelectorAll('[data-merge]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-merge').split('|'); var sel = document.querySelector('[data-merge-sel="' + b.getAttribute('data-merge') + '"]'); var target = sel && sel.value; if (!target) return; if (!confirm('把這個自填案場併入「' + sel.options[sel.selectedIndex].text + '」？')) return; b.disabled = true; b.textContent = '併入中';
       T.api('schedMergeManual', { ym: YM, empId: k[0], manualCode: k[1], siteCode: target }).then(function (x) { if (!x || !x.ok) { b.disabled = false; b.textContent = '併入'; $('msg').textContent = '失敗：' + ((x && (x.detail || x.error)) || '後台沒回應'); return; } MSG = '已併入 ' + x.shortName + '（' + x.merged + ' 場）' + ((x.skipped || []).length ? '；' + x.skipped.join('、') + ' 那邊同時段已有班、沒併（自填列留著，請改天或移除）' : '') + (x.notified ? '、客戶通知已擬進核可中心' : (x.notifyWhy ? '；通知沒擬成：' + x.notifyWhy : '')); load(YM, true); }); }; });
     document.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { FILTER = b.getAttribute('data-f'); MSG = ''; try { history.replaceState(null, '', T.href('admin-schedule.html', FILTER ? { ym: YM, emp: FILTER } : { ym: YM })); } catch (eH) {} render(LAST); }; });
