@@ -38,7 +38,7 @@
 .chip.punch{white-space:normal;line-height:1.15}
 .cal .day .chip{white-space:normal;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;line-height:12px;max-height:30px;padding:2px 3px;font-size:10px}
   .chip.manual { border: 1px dashed #8A8A84; background: #FAF7EF; }
-.chip.ext{background:#F6F3EC;border-color:#CFC7B4;color:#6B6557;pointer-events:none}
+.chip.ext{background:#F6F3EC;border-color:#CFC7B4;color:#6B6557}
 .hd{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .chip.wch{box-shadow:inset 3px 0 0 #B85C40}
 </style>
@@ -179,6 +179,7 @@
       var bj = $('b-reject'); if (bj) bj.onclick = function () { var box = $('b-rj'); box.style.display = box.style.display === 'none' ? '' : 'none'; if (box.style.display === '') $('b-rj-why').focus(); };
       var bg = $('b-rj-go'); if (bg) bg.onclick = function () { var why = String($('b-rj-why').value || '').trim(); if (!why) { $('b-rj-why').focus(); return; } if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } busy(bg, '退回中'); T.api('schedReject', { ym: YM, empId: AS, reason: why }).then(function (x) { if (!x || !x.ok) { bg.disabled = false; bg.textContent = '送出退回'; msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); return; } MSG = '已退回' + (x.notified ? '，已用 LINE 通知員工' : (x.queued ? '，LINE 通知會在明早 9 點後送出（夜間靜默）' : '（員工沒有綁 LINE，請另外告知）')); load(YM, true); }).catch(function () { bg.disabled = false; bg.textContent = '送出退回'; msg('後台沒回應，重新整理看狀態'); }); };
       document.querySelectorAll('.chip[data-k]').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); if (c.dataset.dragged) { delete c.dataset.dragged; return; } var k = c.getAttribute('data-k').split('|'); openSheet(rows.filter(function (x) { return x.siteCode === k[0] && x.date === k[1] && x.slot === k[2]; })[0]); }; });
+      document.querySelectorAll('.chip.ext').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); msg(c.getAttribute('title') === '代班' ? '這是代班場次，由授權表管理、這裡不能改' : '這是改期進來的場次，這裡不能改'); }; });   // 點灰框不開加班表單
       document.querySelectorAll('.day[data-d]').forEach(function (d) { d.onclick = function () { openAdd(d.getAttribute('data-d')); }; });
       bindDrag();
       var fh = $('fixhol'); if (fh) fh.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } busy(fh, '處理中'); INFLIGHT = true; api('schedFixHolidays', { ym: YM }).then(function (x) { INFLIGHT = false; pump(); if (!x.ok) return fail(x); MSG = (x.moved.length ? '已改期：' + x.moved.join('、') : '') + (x.dropped.length ? (x.moved.length ? '；' : '') + '這次不排：' + x.dropped.join('、') : '') || '沒有需要處理的假日班'; if (x.view && x.view.ok && x.view.ym === YM) { DATA = x.view; render(); } else refresh(); }).catch(function () { INFLIGHT = false; pump(); fail(null); }); };
