@@ -94,7 +94,7 @@
       var holN = rows.filter(function (x) { return x.holiday && String(x.note || '').indexOf('照排') < 0; }).length;
       var ovl = overload(rows);
       h += '<div class="card" style="padding:10px 12px">';
-      if (ovl.length && !approved) h += '<div class="note" style="color:#8C3B25;background:#FFE9DC">' + (AS ? '請確認：' : '確認一下：') + ovl.map(function (o) { return o.label; }).join('、') + '。一個半天通常不會超過 3 站，是不是有幾站應該是下午？點那個班可以改時段。</div>';
+      if (ovl.length && !approved) h += '<div class="note" style="color:#8C3B25;background:#FFE9DC">' + (AS ? '請確認：' : '確認一下：') + ovl.map(function (o) { return esc(o.label); }).join('、') + '。一個半天通常不會超過 3 站，是不是有幾站應該是下午？點那個班可以改時段。</div>';
       if (AS) {
         var nmA = esc((r.actingFor && r.actingFor.name) || AS);
         if (r.status === '待核可') h += '<div class="note">' + nmA + ' 送出等你核可。可以直接在月曆上調整（點班改、長按拖），改完再核可；員工會看到改過的班表。</div><div class="two" style="margin-top:8px"><button class="btn sm" id="b-approve">核可</button><button class="btn secondary sm" id="b-reject">退回</button></div><div id="b-rj" style="display:none;margin-top:8px"><div class="fld"><label>退回原因（員工會收到）</label><textarea id="b-rj-why" rows="2" placeholder="例：保樂力加改週一、10/10 國慶不要排"></textarea></div><button class="btn sm" id="b-rj-go">送出退回</button></div>';
