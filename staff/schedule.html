@@ -194,7 +194,7 @@
     QUEUE.push({ x: x, p: p, force: force, ui: ui, opt: opt, snap: snap }); persistQueue(); pump();
   }
   function pkey() { return 'sched_pending_' + ((ME && ME.emp && ME.emp.empId) || (ME && ME.empId) || 'me') + (AS ? '_as_' + AS : ''); }
-  function pendingList() { return (INFLIGHT_JOB ? [INFLIGHT_JOB.p] : []).concat(QUEUE.map(function (j) { return j.p; })); }
+  function pendingList() { return (INFLIGHT_JOB && INFLIGHT_JOB.opt ? [INFLIGHT_JOB.p] : []).concat(QUEUE.filter(function (j) { return j.opt; }).map(function (j) { return j.p; })); }   // 只補送草稿類改動；已核可的改動會當場套用＋擬通知，離開頁面時不重送
   function persistQueue() { try { var list = pendingList(); if (list.length) localStorage.setItem(pkey(), JSON.stringify({ moves: list, at: Date.now() })); else localStorage.removeItem(pkey()); } catch (e) {} }
   function flushOnLeave() {   // 離開／切到背景：還沒送出的改動一次用 sendBeacon 送去，並留在 localStorage，重開頁面再確認一次（batchId 冪等）
     var list = pendingList(); if (!list.length) return;
@@ -215,7 +215,7 @@
     if (INFLIGHT || !QUEUE.length) { if (!busySaving() && REFRESH_PENDING) { REFRESH_PENDING = false; refresh(); } return; }
     var job = QUEUE.shift(); INFLIGHT = true; INFLIGHT_JOB = job; persistQueue(); var tries = 0;
     var done = function () { INFLIGHT = false; INFLIGHT_JOB = null; persistQueue(); pump(); };
-    var giveUp = function (text) { QUEUE.length = 0; MSG = text; INFLIGHT = false; INFLIGHT_JOB = null; persistQueue(); REFRESH_PENDING = false; refresh(); };   // 有一筆沒存到：後面排隊的一起取消，畫面改為後台目前的班表
+    var giveUp = function (text) { if (!job.opt) closeSheet(); QUEUE.length = 0; MSG = text; INFLIGHT = false; INFLIGHT_JOB = null; persistQueue(); REFRESH_PENDING = false; refresh(); };   // 有一筆沒存到：後面排隊的一起取消，畫面改為後台目前的班表
     var attempt = function () {
       tries++;
       api('schedMove', job.p).then(function (r) {
@@ -234,7 +234,7 @@
         REFRESH_PENDING = true;
         done();
       }).catch(function () {
-        if (!job.opt) { giveUp('後台回應太慢，已重新讀取班表；請確認剛才的改動有沒有生效'); return; }   // 已核可的改動會當場套用＋擬通知：重送可能做兩次或回「找不到」誤導
+        if (!job.opt) { giveUp(AS ? '後台回應太慢，已重新讀取班表；請確認剛才的改動有沒有生效' : '後台回應太慢，已重新讀取；請到下方「變更申請」確認有沒有送出'); return; }   // 已核可的改動會當場套用＋擬通知：重送可能做兩次或回「找不到」誤導
         if (tries < 3) { setTimeout(attempt, 2500 * tries); return; }   // 沒回應（含後台轉址 404）：再試兩次；最後去後台確認
         giveUp('後台沒回應，畫面改為後台目前的班表');
       });
