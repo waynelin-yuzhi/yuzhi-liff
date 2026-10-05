@@ -681,9 +681,10 @@
     return (addL.length ? '<div class="small" id="addBox" style="margin:0 0 8px;padding:8px 10px;border:1px solid #5F6E58;border-radius:8px;background:#EEF1EA"><b>客戶剛補充' + (addL.length > 1 ? '（' + addL.length + ' 段）' : '') + '</b>' + addL.map(function (a) { return '<div style="margin-top:4px;white-space:pre-wrap">' + (a.basedOn ? '<span class="muted">' + esc(String(a.basedOn).slice(0, 60)) + '</span><br>' : '') + '客服建議加這段：' + esc(a.text || '') + '</div>'; }).join('') + '<div class="row" style="margin-top:6px"><button class="btn link" id="addPaste">' + (addL.length > 1 ? '全部貼進稿裡' : '貼進稿裡') + '</button><button class="btn link" id="addDrop">忽略</button></div></div>' : '')
       + (p.reminder && p.reminder.date ? '<div class="small" id="remBox" style="margin:0 0 8px;padding:8px 10px;border:1px solid #D8D3C6;border-radius:8px;background:#FBF9F3"><label style="cursor:pointer"><input type="checkbox" id="remKeep" checked style="accent-color:#5F6E58;vertical-align:-2px;margin-right:6px">送出後順便建提醒：<b>' + esc(p.reminder.date) + '</b> ' + esc(p.reminder.title) + '（' + esc(p.reminder.kind) + '）</label></div>' : '');
   }
+  var ADD_DROPPED = {};   // 剛忽略／貼入的補段時間：後台還沒清完時心跳帶回同一段不重畫（第三輪審查 A-1）
   function bindAddArea(p) {
     var addL = (p.addendumList && p.addendumList.length) ? p.addendumList : (p.addendum && p.addendum.text ? [p.addendum] : []);
-    var addClear = function () { var ab = document.getElementById('addBox'); if (ab) ab.remove(); try { p.addendum = null; p.addendumList = []; if (THREAD && THREAD.pending) { THREAD.pending.addendum = null; THREAD.pending.addendumList = []; } (OV.pending || []).forEach(function (x) { if (x.id === p.id) { x.addendum = null; x.addendumList = []; } }); } catch (eAc) {} run('csInboxAddendumDrop', [{ apId: p.id, contactId: cur }], function () {}, function () {}); };
+    var addClear = function () { var ab = document.getElementById('addBox'); if (ab) ab.remove(); try { ADD_DROPPED[p.id] = String((p.addendum || {}).at || ''); p.addendum = null; p.addendumList = []; if (THREAD && THREAD.pending) { THREAD.pending.addendum = null; THREAD.pending.addendumList = []; } (OV.pending || []).forEach(function (x) { if (x.id === p.id) { x.addendum = null; x.addendumList = []; } }); } catch (eAc) {} run('csInboxAddendumDrop', [{ apId: p.id, contactId: cur }], function () {}, function () {}); };
     var addP = document.getElementById('addPaste'); if (addP) addP.onclick = function () { var ta0 = document.getElementById('draft'); var sep = ta0.value.trim() ? '\n---\n' : ''; ta0.value = ta0.value.replace(/\s+$/, '') + sep + addL.map(function (a) { return String(a.text || ''); }).join('\n---\n'); ta0.oninput(); addClear(); };
     var addD = document.getElementById('addDrop'); if (addD) addD.onclick = addClear;
   }
@@ -953,7 +954,7 @@
           if (ch.heldApId && THREAD.pending && THREAD.pending.id === ch.heldApId) {   // 心跳帶回持有稿的補段：打字中也要局部補畫（否則送出時客戶那句補充就消失了）
             var tp = THREAD.pending, nAt = ch.addendum ? String(ch.addendum.at || '') : '', oAt = tp.addendum ? String(tp.addendum.at || '') : '';
             var remNew = !!(ch.reminder && ch.reminder.date && !(tp.reminder && tp.reminder.date));
-            if ((ch.addendum && nAt !== oAt) || remNew) {
+            if ((ch.addendum && nAt !== oAt && nAt !== ADD_DROPPED[tp.id]) || remNew) {
               tp.addendum = ch.addendum || null; tp.addendumList = ch.addendumList || []; if (remNew) tp.reminder = ch.reminder;
               (OV.pending || []).forEach(function (x) { if (x.id === tp.id) { x.addendum = tp.addendum; x.addendumList = tp.addendumList; if (remNew) x.reminder = tp.reminder; } });
               renderAddArea(tp);
