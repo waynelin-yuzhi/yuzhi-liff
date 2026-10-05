@@ -771,7 +771,7 @@
         if (!myTxt) { pm.textContent = '客服換了新稿（' + r.supersededBy + '），這則已作廢；下面會換成新稿。'; setTimeout(function () { refreshAll(true); }, 1500); return; }
         if (!confirm('客服在你編輯時換了新稿（' + r.supersededBy + '）。\n\n按「確定」＝用你改好的文字直接送給客戶、撤掉客服的新稿\n按「取消」＝保留你的文字，先看新稿')) { pm.textContent = '你的文字還在框裡；新稿 ' + r.supersededBy + ' 在下方。'; return; }
         busy(sendBtn, true, '送出中');
-        run('csInboxReply', [{ contactId: cur, text: myTxt, force: true, forceApId: r.supersededBy, publishAt: at, nightOk: nightOk, attachments: ATT.draft }], function (r2) {
+        run('csInboxReply', [{ contactId: cur, text: myTxt, force: true, forceApId: r.supersededBy, scheduleAt: at, attachments: ATT.draft }], function (r2) {
           busy(sendBtn, false);
           if (r2.ok) { ATT.draft = []; dirty = false; pm.textContent = '已用你改的文字送出，客服新稿已撤。'; setTimeout(function () { refreshAll(true); }, 1500); }
           else pm.textContent = '送出失敗：' + friendlyErr(r2.detail || r2.error) + '。你的文字還在框裡。';
