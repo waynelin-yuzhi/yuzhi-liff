@@ -676,6 +676,24 @@
     document.getElementById('memSave').onclick = function () { busy(this, true, '存'); run('csInboxMemoryNote', [{ contactId: cur, note: document.getElementById('memNote').value }], function (r) { if (r.ok) openThread(cur); }); };
     document.querySelectorAll('#dossier [data-uid]').forEach(function (row) { row.querySelector('.mSave').onclick = function () { busy(this, true, '存'); run('csInboxMember', [{ contactId: cur, userId: row.getAttribute('data-uid'), name: row.querySelector('.mName').value, role: row.querySelector('.mRole').value }], function (r) { if (r.ok) openThread(cur); }); }; });
   }
+  function addAreaHtml(p) {   // 補段框＋提醒框獨立成一塊：老闆打字中不整頁重畫，輪詢只局部補這塊（第二輪審查 High A／E／F）
+    var addL = (p.addendumList && p.addendumList.length) ? p.addendumList : (p.addendum && p.addendum.text ? [p.addendum] : []);
+    return (addL.length ? '<div class="small" id="addBox" style="margin:0 0 8px;padding:8px 10px;border:1px solid #5F6E58;border-radius:8px;background:#EEF1EA"><b>客戶剛補充' + (addL.length > 1 ? '（' + addL.length + ' 段）' : '') + '</b>' + addL.map(function (a) { return '<div style="margin-top:4px;white-space:pre-wrap">' + (a.basedOn ? '<span class="muted">' + esc(String(a.basedOn).slice(0, 60)) + '</span><br>' : '') + '客服建議加這段：' + esc(a.text || '') + '</div>'; }).join('') + '<div class="row" style="margin-top:6px"><button class="btn link" id="addPaste">' + (addL.length > 1 ? '全部貼進稿裡' : '貼進稿裡') + '</button><button class="btn link" id="addDrop">忽略</button></div></div>' : '')
+      + (p.reminder && p.reminder.date ? '<div class="small" id="remBox" style="margin:0 0 8px;padding:8px 10px;border:1px solid #D8D3C6;border-radius:8px;background:#FBF9F3"><label style="cursor:pointer"><input type="checkbox" id="remKeep" checked style="accent-color:#5F6E58;vertical-align:-2px;margin-right:6px">送出後順便建提醒：<b>' + esc(p.reminder.date) + '</b> ' + esc(p.reminder.title) + '（' + esc(p.reminder.kind) + '）</label></div>' : '');
+  }
+  function bindAddArea(p) {
+    var addL = (p.addendumList && p.addendumList.length) ? p.addendumList : (p.addendum && p.addendum.text ? [p.addendum] : []);
+    var addClear = function () { var ab = document.getElementById('addBox'); if (ab) ab.remove(); try { p.addendum = null; p.addendumList = []; if (THREAD && THREAD.pending) { THREAD.pending.addendum = null; THREAD.pending.addendumList = []; } (OV.pending || []).forEach(function (x) { if (x.id === p.id) { x.addendum = null; x.addendumList = []; } }); } catch (eAc) {} run('csInboxAddendumDrop', [{ apId: p.id, contactId: cur }], function () {}, function () {}); };
+    var addP = document.getElementById('addPaste'); if (addP) addP.onclick = function () { var ta0 = document.getElementById('draft'); var sep = ta0.value.trim() ? '\n---\n' : ''; ta0.value = ta0.value.replace(/\s+$/, '') + sep + addL.map(function (a) { return String(a.text || ''); }).join('\n---\n'); ta0.oninput(); addClear(); };
+    var addD = document.getElementById('addDrop'); if (addD) addD.onclick = addClear;
+  }
+  function renderAddArea(p) {   // 只換補段／提醒那一塊，不碰 textarea 與焦點（已勾掉的提醒框不重畫）
+    var area = document.getElementById('addArea'); if (!area) return;
+    var rk = document.getElementById('remKeep'), remUnchecked = !!(rk && !rk.checked);
+    area.innerHTML = addAreaHtml(p);
+    if (remUnchecked) { var rk2 = document.getElementById('remKeep'); if (rk2) rk2.checked = false; }
+    bindAddArea(p);
+  }
   function renderPending(t) {
     var p = t.pending, pb = document.getElementById('pendBox');
     var qo = t.queue || [], lj = t.lastJob || null;
@@ -715,8 +733,7 @@
     var modsHtml = (p.mods || []).length ? '<div class="small" id="modsBox" style="margin:8px 0 2px"><div style="display:flex;justify-content:space-between;align-items:center"><b>會一起發的附掛 ' + p.mods.length + ' 項</b><a href="#" id="modsNone" class="muted">這次全部不附</a></div>' + p.mods.map(function (m) { return '<label style="display:block;margin:3px 0"><input type="checkbox" class="modChk" value="' + esc(m.key) + '" checked> ' + esc(m.title || m.key) + '</label>'; }).join('') + '<div class="muted" style="font-size:11px">沒勾的不會發給客戶；只發文字就全部取消。</div></div>' : '';
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>小卡預覽（點開載入）</summary><div id="cardsBox" class="small muted">點開預覽</div></details>' : '');
     pb.innerHTML = '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
-      + (p.addendum && p.addendum.text ? '<div class="small" id="addBox" style="margin:0 0 8px;padding:8px 10px;border:1px solid #5F6E58;border-radius:8px;background:#EEF1EA"><b>客戶剛補充</b>' + (p.addendum.basedOn ? '：' + esc(String(p.addendum.basedOn).slice(0, 60)) : '') + '<div style="margin-top:4px;white-space:pre-wrap">客服建議加這段：' + esc(p.addendum.text) + '</div><div class="row" style="margin-top:6px"><button class="btn link" id="addPaste">貼進稿裡</button><button class="btn link" id="addDrop">忽略</button></div></div>' : '')
-      + (p.reminder && p.reminder.date ? '<div class="small" style="margin:0 0 8px;padding:8px 10px;border:1px solid #D8D3C6;border-radius:8px;background:#FBF9F3"><label style="cursor:pointer"><input type="checkbox" id="remKeep" checked style="accent-color:#5F6E58;vertical-align:-2px;margin-right:6px">送出後順便建提醒：<b>' + esc(p.reminder.date) + '</b> ' + esc(p.reminder.title) + '（' + esc(p.reminder.kind) + '）</label></div>' : '')
+      + '<div id="addArea">' + addAreaHtml(p) + '</div>'
       + ((p.ownerQuestions || []).length ? '<div class="fbbox on" id="oqBox" style="margin-bottom:8px"><div class="small" style="margin-bottom:4px"><b>客服想問你</b>：答了就用你的答案重擬完整回覆（下面是目前的過渡稿，也可以直接核可）</div>' + p.ownerQuestions.map(function (q, i) { return '<div class="row"><span class="small" style="flex:1">' + (i + 1) + '. ' + esc(q) + '</span></div><input id="oqA' + i + '" placeholder="你的答案" style="width:100%;box-sizing:border-box;margin-bottom:6px">'; }).join('') + '<div class="row"><label class="small"><input type="checkbox" id="oqLearn"> 這些資訊以後也適用（學成常見問答）</label></div><div class="row"><button class="btn" id="oqSend">回答並重擬</button></div></div>' : '')
       + '<textarea id="draft" rows="6">' + esc(p.text) + '</textarea><div class="small muted" style="margin-top:4px"><a href="#" class="splitBtn" data-for="draft" style="color:#5F6E58;font-weight:600;text-decoration:none">＋ 切下一則泡泡</a>　游標處插入「---」一行＝客戶會收到下一則泡泡（同一次送出）' + (String(p.text || '').indexOf('\n---') >= 0 ? '；引用回覆會自動帶' : '') + '</div>' + ((p.quickReplies || []).length ? '<div class="small muted" style="margin-top:4px">客戶端快速回覆按鈕：' + p.quickReplies.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join(' ') + '</div>' : '')
       + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + modsHtml + cards
@@ -734,9 +751,7 @@
       + '<div class="row"><button class="btn" id="fbSend">送出意見並重擬</button><button class="btn ghost small" id="fbCancel">取消</button></div></div>' + selfBoxHtml('', true) + '</div>';
     var cl = document.getElementById('cardsLazy');
     if (cl) cl.ontoggle = function () { if (!cl.open || cl.getAttribute('data-loaded')) return; cl.setAttribute('data-loaded', '1'); var cb0 = document.getElementById('cardsBox'); if (cb0) cb0.innerHTML = '<span class="spin"></span>載入中…小卡預覽要向後台取，後台慢的時候會等比較久。預覽只是給你看的，載不出來不影響送出。'; var cfail = function (m) { var b = document.getElementById('cardsBox'); if (!b) return; cl.removeAttribute('data-loaded'); b.innerHTML = esc(m) + ' <a href="#" id="cardsRetry">再試一次</a>'; var rt = document.getElementById('cardsRetry'); if (rt) rt.onclick = function (ev) { ev.preventDefault(); cl.ontoggle(); }; }; api({ app: { op: 'cardsPreview', apId: p.id } }).then(function (r) { var box = document.getElementById('cardsBox'); if (!box) return; if (!r || !r.ok) { cfail('小卡預覽讀取失敗（' + friendlyErr((r && (r.detail || r.error)) || '後台沒回應') + '）。'); return; } p.cards = r.cards || []; box.innerHTML = p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') || '（沒有可預覽的小卡）'; }).catch(function (e) { cfail('小卡預覽讀取失敗（' + friendlyErr(e && e.message) + '）。'); }); };
-    var addClear = function () { var ab = document.getElementById('addBox'); if (ab) ab.remove(); try { p.addendum = null; if (THREAD && THREAD.pending) THREAD.pending.addendum = null; (OV.pending || []).forEach(function (x) { if (x.id === p.id) x.addendum = null; }); } catch (eAc) {} run('csInboxAddendumDrop', [{ apId: p.id, contactId: cur }], function () {}, function () {}); };
-    var addP = document.getElementById('addPaste'); if (addP) addP.onclick = function () { var ta0 = document.getElementById('draft'); var sep = ta0.value.trim() ? '\n---\n' : ''; ta0.value = ta0.value.replace(/\s+$/, '') + sep + String(p.addendum.text || ''); ta0.oninput(); addClear(); };
-    var addD = document.getElementById('addDrop'); if (addD) addD.onclick = addClear;
+    bindAddArea(p);
     var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = dirty ? '修改後送出' : '送出'; try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} };
     try {   // 上一份稿改到一半被換掉：本機還留著他的字，給一鍵貼回（2026-10-05 臻實案後加）
       var savedD = JSON.parse(localStorage.getItem('yz_draft:' + cur) || 'null');
@@ -769,7 +784,7 @@
         else if (confirm('確定現在就送給客戶？')) nightOk = true;
         else return;
       }
-      if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft, nightOk: nightOk, keepMods: modKeep(), keepReminder: (function () { var rk = document.getElementById('remKeep'); return rk ? !!rk.checked : true; })() }], function (r) {
+      if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft, nightOk: nightOk, keepMods: modKeep(), keepReminder: (function () { var rk = document.getElementById('remKeep'); return rk ? !!rk.checked : false; })() }], function (r) {
       var pm = document.getElementById('pendMsg');
       if (r.ok) { ATT.draft = []; try { localStorage.removeItem('yz_draft:' + cur); } catch (eL1) {} pm.textContent = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); dirty = false; setTimeout(function () { refreshAll(true); }, r.quietGuard ? 2500 : 1200); return; }
       busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
@@ -935,6 +950,15 @@
         var overviewDue = (Date.now() - (OV.at || 0)) > 45000;
         var afterList = function () {
           if (!cid0 || cur !== cid0 || !THREAD) return;
+          if (ch.heldApId && THREAD.pending && THREAD.pending.id === ch.heldApId) {   // 心跳帶回持有稿的補段：打字中也要局部補畫（否則送出時客戶那句補充就消失了）
+            var tp = THREAD.pending, nAt = ch.addendum ? String(ch.addendum.at || '') : '', oAt = tp.addendum ? String(tp.addendum.at || '') : '';
+            var remNew = !!(ch.reminder && ch.reminder.date && !(tp.reminder && tp.reminder.date));
+            if ((ch.addendum && nAt !== oAt) || remNew) {
+              tp.addendum = ch.addendum || null; tp.addendumList = ch.addendumList || []; if (remNew) tp.reminder = ch.reminder;
+              (OV.pending || []).forEach(function (x) { if (x.id === tp.id) { x.addendum = tp.addendum; x.addendumList = tp.addendumList; if (remNew) x.reminder = tp.reminder; } });
+              renderAddArea(tp);
+            }
+          }
           if (userBusy()) return;
           var threadChanged = String(ch.threadTs || '') !== String(THREAD.lastMsgTs || '') || Number(ch.threadCount || 0) !== Number(THREAD.msgTotal || 0);
           var qsigNow = (THREAD.queue || []).map(function (q) { return q.id + ':' + q.state + ':' + q.tries; }).join(','); var queueChanged = String(ch.queueSig || '') !== qsigNow;
