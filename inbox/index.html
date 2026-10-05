@@ -731,7 +731,15 @@
       + '<div class="row"><button class="btn" id="fbSend">送出意見並重擬</button><button class="btn ghost small" id="fbCancel">取消</button></div></div>' + selfBoxHtml('', true) + '</div>';
     var cl = document.getElementById('cardsLazy');
     if (cl) cl.ontoggle = function () { if (!cl.open || cl.getAttribute('data-loaded')) return; cl.setAttribute('data-loaded', '1'); var cb0 = document.getElementById('cardsBox'); if (cb0) cb0.innerHTML = '<span class="spin"></span>載入中…小卡預覽要向後台取，後台慢的時候會等比較久。預覽只是給你看的，載不出來不影響送出。'; var cfail = function (m) { var b = document.getElementById('cardsBox'); if (!b) return; cl.removeAttribute('data-loaded'); b.innerHTML = esc(m) + ' <a href="#" id="cardsRetry">再試一次</a>'; var rt = document.getElementById('cardsRetry'); if (rt) rt.onclick = function (ev) { ev.preventDefault(); cl.ontoggle(); }; }; api({ app: { op: 'cardsPreview', apId: p.id } }).then(function (r) { var box = document.getElementById('cardsBox'); if (!box) return; if (!r || !r.ok) { cfail('小卡預覽讀取失敗（' + friendlyErr((r && (r.detail || r.error)) || '後台沒回應') + '）。'); return; } p.cards = r.cards || []; box.innerHTML = p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') || '（沒有可預覽的小卡）'; }).catch(function (e) { cfail('小卡預覽讀取失敗（' + friendlyErr(e && e.message) + '）。'); }); };
-    var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = dirty ? '修改後送出' : '送出'; };
+    var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = dirty ? '修改後送出' : '送出'; try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} };
+    try {   // 上一份稿改到一半被換掉：本機還留著他的字，給一鍵貼回（2026-10-05 臻實案後加）
+      var savedD = JSON.parse(localStorage.getItem('yz_draft:' + cur) || 'null');
+      if (savedD && savedD.text && savedD.ap !== p.id && Date.now() - Number(savedD.at || 0) < 6 * 3600000 && savedD.text !== p.text) {
+        var pmR0 = document.getElementById('pendMsg'); pmR0.innerHTML = '上一份稿（' + esc(savedD.ap) + '）你改到一半的文字還在這支手機裡：<a href="#" id="restoreDraft">貼回來</a>　<a href="#" id="dropDraft">不用了</a>';
+        document.getElementById('restoreDraft').onclick = function (ev) { ev.preventDefault(); ta.value = savedD.text; ta.oninput(); pmR0.textContent = '已貼回你上次改的文字，確認後按「修改後送出」。'; };
+        document.getElementById('dropDraft').onclick = function (ev) { ev.preventDefault(); try { localStorage.removeItem('yz_draft:' + cur); } catch (eD) {} pmR0.textContent = ''; };
+      }
+    } catch (eRs) {}
     var whenVal = function () { var v = document.getElementById('sendAt').value; return v ? v.replace('T', ' ') : ''; };
     document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
     var modKeep = function () { var box = document.getElementById('modsBox'); if (!box) return undefined; return Array.prototype.map.call(box.querySelectorAll('.modChk:checked'), function (c) { return c.value; }); };
@@ -757,7 +765,7 @@
       }
       if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft, nightOk: nightOk, keepMods: modKeep() }], function (r) {
       var pm = document.getElementById('pendMsg');
-      if (r.ok) { ATT.draft = []; pm.textContent = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); dirty = false; setTimeout(function () { refreshAll(true); }, r.quietGuard ? 2500 : 1200); return; }
+      if (r.ok) { ATT.draft = []; try { localStorage.removeItem('yz_draft:' + cur); } catch (eL1) {} pm.textContent = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); dirty = false; setTimeout(function () { refreshAll(true); }, r.quietGuard ? 2500 : 1200); return; }
       busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
       if (r.error === 'publishAt_past') {   // 流程不准斷在半路：就地給一鍵現在送，不要叫他回頭改時間
         pm.innerHTML = '這個預定時間已經過了。<a href="#" id="sendNow">改成現在送出</a>　或改一個未來的時間再按送出。';
@@ -775,7 +783,7 @@
           busy(sendBtn, true, '送出中');
           run('csInboxReply', [{ contactId: cur, text: myTxt, force: true, forceApId: forceApId, forceScheduled: !!forceSched, scheduleAt: mAt2, nightOk: !!nightOk2, attachments: ATT.draft }], function (r2) {
             busy(sendBtn, false);
-            if (r2.ok) { ATT.draft = []; dirty = false; pm.textContent = (r2.scheduled ? '已排程 ' + (r2.sendAt || mAt2) + ' 送出你改的文字' : '已用你改的文字送出') + '，客服新稿已撤。'; setTimeout(function () { refreshAll(true); }, 1500); return; }
+            if (r2.ok) { ATT.draft = []; dirty = false; try { localStorage.removeItem('yz_draft:' + cur); } catch (eL2) {} pm.textContent = (r2.scheduled ? '已排程 ' + (r2.sendAt || mAt2) + ' 送出你改的文字' : '已用你改的文字送出') + '，客服新稿已撤。'; setTimeout(function () { refreshAll(true); }, 1500); return; }
             if (r2.error === 'pending_exists' && r2.apId) { if (confirm('客服又換了一份新稿（' + r2.apId + '）。一樣用你的文字送出並撤掉它？')) sendMine(r2.apId, forceSched, mAt2, nightOk2); else pm.textContent = '你的文字還在框裡；新稿 ' + r2.apId + ' 在下方。'; return; }
             if (r2.error === 'scheduled_exists') { if (confirm('這位已有排程中的訊息。仍要送出你的文字？')) sendMine(forceApId, true, mAt2, nightOk2); else pm.textContent = '未送出，你的文字還在框裡。'; return; }
             if (r2.error === 'quiet_hours') { if (confirm('現在是靜默時段。按「確定」排到 ' + r2.suggestAt + ' 送；按「取消」我再問要不要現在送')) sendMine(forceApId, forceSched, r2.suggestAt, false); else if (confirm('確定現在就送給客戶？')) sendMine(forceApId, forceSched, '', true); else pm.textContent = '未送出，你的文字還在框裡。'; return; }
