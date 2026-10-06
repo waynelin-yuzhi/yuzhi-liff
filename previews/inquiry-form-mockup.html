@@ -48,7 +48,7 @@
   <div class="brand">YUZHI PLANT DESIGN</div>
   <span class="mock">介面草案・按得動、不會真的送出</span>
   <h1>需求表單</h1>
-  <p class="lead" id="lead">填幾項已知的資料就好，大約兩分鐘。我們看過之後會先回覆方向與費用範圍，再與您確認下一步。</p>
+  <p class="lead" id="lead">填好聯絡方式與地址，約一分鐘。細節我們到現場看，不用先填一堆資料。</p>
 
   <form id="f" onsubmit="return false">
   <div class="card" id="stepType">
@@ -75,95 +75,45 @@
     <div class="hint" id="addrHint">訂閱式與景觀會依地址判斷服務區域與場勘費。</div>
     <label>統一編號<span class="opt">選填，需要開公司發票再填</span></label>
     <input type="text" id="vat" inputmode="numeric" placeholder="8 碼">
-    <label>Email<span class="opt">選填，提案與報價檔會寄到這裡</span></label>
-    <input type="email" id="email" placeholder="name@company.com">
   </div>
 
   <!-- 分支一：訂閱式 -->
   <div class="card br" id="br-sub">
-    <div class="sec">空間與需求</div>
-    <label>室內大約坪數<span class="req">＊</span></label>
-    <input type="text" id="sub_area" inputmode="numeric" placeholder="不確定就填大概，例：30">
-    <label>預計擺放位置<span class="req">＊</span><span class="opt">可複選</span></label>
-    <div class="chips" data-multi="sub_pos">
-      <span class="chip">入口</span><span class="chip">櫃檯</span><span class="chip">會議室</span><span class="chip">辦公區</span><span class="chip">茶水間</span><span class="chip">主管室</span><span class="chip">其他</span>
+    <div class="sec">約場勘</div>
+    <label>方便場勘的時段<span class="req">＊</span><span class="opt">可複選</span></label>
+    <div class="chips" data-multi="sub_slot">
+      <span class="chip">平日上午</span><span class="chip">平日下午</span><span class="chip">需另約</span>
     </div>
-    <label>空間照片<span class="opt">選填，最多 8 張</span></label>
+    <label>空間照片<span class="opt">選填</span></label>
     <div class="photos"><div class="ph">＋ 拍照或<br>選擇照片</div></div>
-    <div class="hint">每個位置一到兩張，看得到窗戶位置更好。</div>
-    <label>採光<span class="opt">選填</span></label>
-    <div class="chips" data-single="sub_light">
-      <span class="chip">靠窗明亮</span><span class="chip">有窗但偏暗</span><span class="chip">幾乎無自然光</span><span class="chip">不確定</span>
-    </div>
-    <label>希望開始時間<span class="opt">選填</span></label>
-    <div class="chips" data-single="sub_when">
-      <span class="chip">一個月內</span><span class="chip">一到三個月</span><span class="chip">還在評估</span>
-    </div>
-    <label>預算範圍（每月）<span class="opt">選填</span></label>
-    <div class="chips" data-single="sub_budget">
-      <span class="chip">5,000 以下</span><span class="chip">5,000–10,000</span><span class="chip">10,000–20,000</span><span class="chip">20,000 以上</span><span class="chip">先不填</span>
-    </div>
-    <label>其他想說的<span class="opt">選填</span></label>
-    <textarea id="sub_note" placeholder="例：同事有花粉過敏、不要有土、需要高一點的植栽"></textarea>
+    <div class="hint">手邊有就傳一兩張，沒有也沒關係，現場會看。坪數、位置、數量都到現場再記錄。</div>
   </div>
 
   <!-- 分支二：景觀設計 -->
   <div class="card br" id="br-design">
-    <div class="sec">空間與需求</div>
-    <label>空間類型<span class="req">＊</span><span class="opt">可複選</span></label>
-    <div class="chips" data-multi="de_space">
-      <span class="chip">陽台</span><span class="chip">露台</span><span class="chip">庭院</span><span class="chip">入口門面</span><span class="chip">室內</span><span class="chip">其他</span>
+    <div class="sec">約場勘</div>
+    <label>方便場勘的時段<span class="req">＊</span><span class="opt">可複選</span></label>
+    <div class="chips" data-multi="de_slot">
+      <span class="chip">平日上午</span><span class="chip">平日下午</span><span class="chip">需另約</span>
     </div>
-    <label>面積<span class="req">＊</span></label>
-    <input type="text" id="de_area" placeholder="大約幾坪，或長 × 寬，例：3m × 1.2m">
-    <label>現況照片<span class="req">＊</span><span class="opt">最多 8 張</span></label>
+    <label>現況照片<span class="opt">選填</span></label>
     <div class="photos"><div class="ph">＋ 拍照或<br>選擇照片</div></div>
-    <div class="hint">整體一張、角落各一張；設計師沒有照片無法先判斷。</div>
-    <label>想要的方向<span class="opt">選填，可複選</span></label>
-    <div class="chips" data-multi="de_style">
-      <span class="chip">綠意放鬆</span><span class="chip">日式極簡</span><span class="chip">熱帶叢林</span><span class="chip">好照顧為主</span><span class="chip">不確定，想聽建議</span>
-    </div>
-    <label>有沒有要保留的植栽或設施<span class="opt">選填</span></label>
-    <input type="text" id="de_keep" placeholder="例：既有花槽、水龍頭位置、鐵架">
-    <label>希望完成時間<span class="opt">選填</span></label>
-    <div class="chips" data-single="de_when">
-      <span class="chip">一個月內</span><span class="chip">一到三個月</span><span class="chip">有活動或開幕日</span><span class="chip">還在評估</span>
-    </div>
-    <label>預算範圍（整案）<span class="opt">選填</span></label>
-    <div class="chips" data-single="de_budget">
-      <span class="chip">3 萬以下</span><span class="chip">3–10 萬</span><span class="chip">10–30 萬</span><span class="chip">30 萬以上</span><span class="chip">先不填</span>
-    </div>
-    <label>其他想說的<span class="opt">選填</span></label>
-    <textarea id="de_note"></textarea>
+    <div class="hint">手邊有就傳一兩張，讓設計師先有概念；沒有也沒關係。</div>
   </div>
 
   <!-- 分支三：零售 -->
   <div class="card br" id="br-retail">
     <div class="sec">想買什麼</div>
-    <label>想買的是<span class="req">＊</span><span class="opt">可複選</span></label>
-    <div class="chips" data-multi="re_what">
-      <span class="chip">植栽</span><span class="chip">盆器</span><span class="chip">植栽加盆器整組</span><span class="chip">禮品或送禮用</span>
-    </div>
-    <label>品項或尺寸<span class="req">＊</span></label>
-    <textarea id="re_item" placeholder="例：琴葉榕 150 公分一棵、白色圓盆 40 公分兩個；不確定可寫想放的位置"></textarea>
-    <label>擺放位置照片<span class="opt">選填，最多 4 張</span></label>
-    <div class="photos"><div class="ph">＋ 拍照或<br>選擇照片</div></div>
-    <label>數量<span class="req">＊</span></label>
-    <input type="text" id="re_qty" inputmode="numeric" placeholder="例：3">
+    <label>想買什麼<span class="req">＊</span></label>
+    <textarea id="re_item" placeholder="一句話就好，例：琴葉榕 150 公分一棵、白色圓盆 40 公分兩個；不確定可寫想放的位置"></textarea>
     <label>配送或自取<span class="req">＊</span></label>
     <div class="chips" data-single="re_ship">
       <span class="chip">配送到府</span><span class="chip">自取</span><span class="chip">不確定</span>
     </div>
-    <label>需要日期<span class="opt">選填，有送禮或活動日期請填</span></label>
-    <input type="date" id="re_date">
-    <label>預算範圍<span class="opt">選填</span></label>
-    <div class="chips" data-single="re_budget">
-      <span class="chip">5,000 以下</span><span class="chip">5,000–20,000</span><span class="chip">20,000 以上</span><span class="chip">先不填</span>
-    </div>
   </div>
 
   <button class="btn" id="send">送出</button>
-  <div class="foot">送出後資料只用於這次服務評估，不會另作他用。<br>連結有效 7 天，送出後即失效。</div>
+  <div class="foot">送出後資料只用於這次服務評估，不會另作他用。<br>連結有效 7 天，送出後即失效。坪數、位置、數量等細節到現場再記錄。</div>
   </div>
   </form>
 
@@ -177,13 +127,13 @@
 
 <script>
 var TYPE='', LEAD={
-  sub:'植栽與盆器由我們規劃提供並配送擺設，每週或隔週固定到場養護，狀況不佳的植栽由我們評估更換。先填幾項已知的資料，我們會先回覆規劃方向與費用範圍，再與您約現場勘查。',
-  design:'陽台、庭院、入口或室內的植栽佈置與景觀設計，含一次性佈置與後續養護建議。先填幾項已知的資料，設計師會先看過再與您約場勘。',
-  retail:'想買植栽、盆器或整組搭配，不含定期養護。填幾項資料，我們會回覆可提供的品項與價格。'
+  sub:'植栽與盆器由我們規劃提供並配送擺設，每週或隔週固定到場養護，狀況不佳的植栽由我們評估更換。填好地址與方便的時間，我們就安排設計師到現場看空間、整理配置提案。',
+  design:'陽台、庭院、入口或室內的植栽佈置與景觀設計，含一次性佈置與後續養護建議。填好地址與方便的時間，設計師到現場看過再提案。',
+  retail:'想買植栽、盆器或整組搭配，不含定期養護。寫一下想買什麼，我們回覆品項與價格。'
 };
 var DONE={
-  sub:'我們會在一個工作天內回覆初步規劃方向與費用範圍，之後再與您約現場勘查時間。',
-  design:'設計師看過照片後會先回覆可行方向，再與您約現場勘查。場勘提案費依地區計算，後續合作可全額折抵。',
+  sub:'我們會在一個工作天內跟您確認場勘時間；費用範圍與配置提案會在場勘後整理給您。',
+  design:'我們會在一個工作天內跟您確認場勘時間。場勘提案費依地區計算，後續合作可全額折抵。',
   retail:'我們會在一個工作天內回覆可提供的品項、價格與配送安排。'
 };
 document.querySelectorAll('.type').forEach(function(t){
@@ -207,9 +157,9 @@ function picked(name){ var g=document.querySelector('[data-multi="'+name+'"],[da
 function v(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
 document.getElementById('send').onclick=function(){
   var parts;
-  if(TYPE==='sub') parts=['訂閱式', (v('sub_area')||'？')+' 坪', picked('sub_pos')||'位置未填', picked('sub_light')||'採光未填', picked('sub_when')||'時間未填', (picked('sub_budget')?'預算 '+picked('sub_budget'):'預算未填'), '照片 0 張'];
-  else if(TYPE==='design') parts=['景觀設計', picked('de_space')||'空間未填', v('de_area')||'面積未填', picked('de_style')||'方向未填', picked('de_when')||'時間未填', (picked('de_budget')?'預算 '+picked('de_budget'):'預算未填'), '照片 0 張'];
-  else parts=['零售', picked('re_what')||'品類未填', v('re_item')||'品項未填', (v('re_qty')||'？')+' 件', picked('re_ship')||'配送未填', v('re_date')||'日期未填', (picked('re_budget')?'預算 '+picked('re_budget'):'預算未填')];
+  if(TYPE==='sub') parts=['訂閱式', v('addr')||'地址未填', picked('sub_slot')||'時段未填', '照片 0 張'];
+  else if(TYPE==='design') parts=['景觀設計', v('addr')||'地址未填', picked('de_slot')||'時段未填', '照片 0 張'];
+  else parts=['零售', v('re_item')||'品項未填', picked('re_ship')||'配送未填'];
   document.getElementById('doneMsg').textContent=DONE[TYPE];
   document.getElementById('sum').textContent='【需求】'+parts.join('｜');
   document.getElementById('f').classList.add('hide'); document.getElementById('done').classList.remove('hide');
