@@ -411,7 +411,7 @@
     var rows = LIST.filter(function (c) { return TAB === 'staff' ? c.isEmp : (TAB === 'all' ? !c.isEmp : (!c.isEmp && (c.pending || c.awaitingReply || c.manual))); });
     if (TAB === 'todo') rows.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || String(b.lastTs || '').localeCompare(String(a.lastTs || '')); });
     if (TAB === 'todo' && (OV.other || []).length) {   // 非客服的待核可（銀行對帳、守望者提醒…）不在這個清單裡，至少讓他知道有
-      batch.innerHTML = '<div class="fbbox on" style="margin:0 0 8px"><div class="small"><b>另有 ' + OV.other.length + ' 件待核可不在這裡</b>（銀行對帳、系統提醒這類不是客服稿）：<br>' + OV.other.slice(0, 5).map(function (o) { return '・' + esc(o.id) + ' ' + esc(o.title) + '（' + esc(String(o.ts).substring(5, 16)) + '）'; }).join('<br>') + '<br>請從 LINE 的核可卡處理。</div></div>';
+      batch.innerHTML = '<details class="small" style="margin:0 0 8px;padding:6px 10px;border:1px solid #E5E0D3;border-radius:8px;background:#FBF9F3"><summary style="cursor:pointer;color:#8a8275">另有 ' + OV.other.length + ' 件非客服的待核可（LINE 核可卡處理）</summary><div style="margin-top:6px">' + OV.other.slice(0, 8).map(function (o) { return '・' + esc(o.id) + ' ' + esc(o.title) + '（' + esc(String(o.ts).substring(5, 16)) + '）'; }).join('<br>') + '</div></details>';   // 收合成一行，點開才列（Wayne 2026-10-07：黃色區塊太佔空間）
     }
     if (TAB === 'todo') {
       var withAt = (OV.pending || []).filter(function (p) { return p.publishAt && Date.parse(String(p.publishAt).replace(' ', 'T') + ':00') > Date.now() + 60000; });   // 建議時間已經過的不能批次送，照舊路會立刻發給客戶
