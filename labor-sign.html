@@ -114,7 +114,7 @@ function render(d) {
     + '<button class="btn" id="go">確認簽收</button></div>';
   function bindGrid() {
     ['front', 'back'].forEach(function (w) {
-      document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { idPick(w); });
+      document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function (ev) { if (ev.target && ev.target.tagName === 'INPUT') return; idPick(w); });
       document.getElementById('al_' + w).addEventListener('click', function () { document.getElementById('g_' + w).click(); });
       document.getElementById('f_' + w).addEventListener('change', function () { fileProc(w, this); });
       document.getElementById('g_' + w).addEventListener('change', function () { fileProc(w, this); });

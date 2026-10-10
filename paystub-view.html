@@ -290,7 +290,7 @@ function closeZoom() {
 /* ── 身分證影本：點格子開系統相機、或從相簿選；管線同 labor-sign ── */
 function bindIdSlots() {
   ['front', 'back'].forEach(function (w) {
-    document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function () { idPick(w); });
+    document.querySelector('.idslot[data-side="' + w + '"]').addEventListener('click', function (ev) { if (ev.target && ev.target.tagName === 'INPUT') return; idPick(w); });
     document.getElementById('al_' + w).addEventListener('click', function () { document.getElementById('g_' + w).click(); });
     document.getElementById('f_' + w).addEventListener('change', function () { fileProc(w, this); });
     document.getElementById('g_' + w).addEventListener('change', function () { fileProc(w, this); });

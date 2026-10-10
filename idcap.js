@@ -314,18 +314,24 @@
     S = null;
   }
   /* 點格子：能開即時相機就開，不能（LINE 內建瀏覽器、權限被拒）就交給頁面的系統相機 input */
+  var PENDING = false, DENIED = false;
   function pick(side, opts) {
+    if (S || PENDING) return;
     var inLine = (navigator.userAgent || '').indexOf('Line/') >= 0;
-    if (inLine || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { if (opts.fallback) opts.fallback(); return; }
+    /* 拒絕過相機權限：直接在這次點擊裡開系統相機（不在使用者點擊內觸發，iOS 常常打不開） */
+    if (DENIED || inLine || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { if (opts.fallback) opts.fallback(); return; }
     buildUI();
+    PENDING = true;
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
       .then(function (stream) {
+        PENDING = false;
+        if (S) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
         S = { on: true, stream: stream, opts: opts, okRun: 0, busy: false, side: side };
         UI.v.srcObject = stream; UI.el.style.display = 'block'; document.body.style.overflow = 'hidden';
         UI.win.style.borderColor = RED; UI.msg.textContent = '請把證件四邊對齊框線';
         UI.v.onloadedmetadata = function () { S && (S.timer = setTimeout(tick, 400)); };
       })
-      .catch(function () { if (opts.fallback) opts.fallback(); });
+      .catch(function () { PENDING = false; DENIED = true; if (opts.fallback) opts.fallback(); });
   }
 
   window.YzIdCap = { pick: pick, fromFile: fromFile, fromImage: fromImage, detect: detect, quality: quality, makeCopy: makeCopy, crop: crop };
