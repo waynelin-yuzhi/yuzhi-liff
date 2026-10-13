@@ -26,7 +26,7 @@
     <p id="msg"></p>
   </div>
   <div class="muted">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240</div>
-  <div class="muted" style="margin-top:4px;">share v7 · pages</div>
+  <div class="muted" style="margin-top:4px;">share v8 · pages</div>
 </div>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
@@ -137,16 +137,19 @@ function wantsBooking() {
 }
 function bookingEnter() {
   show('正在開啟預約頁…', '');
-  if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
-  var at = liff.getAccessToken();
-  if (!at) { show('無法取得 LINE 身分', '請重新點一次選單', [{ label: '重試', fn: bookingEnter, ghost: true }]); return; }
-  var body = new FormData(); body.append('op', 'liffEnter'); body.append('at', at);
+  if (!liff.isLoggedIn()) {
+    if (/[?&]code=/.test(location.search)) { show('LINE 登入沒有完成', '請關閉後重新點一次選單'); return; }
+    liff.login({ redirectUri: location.href }); return;
+  }
+  var at = liff.getAccessToken(); var it = ''; try { it = liff.getIDToken() || ''; } catch (eI) {}
+  if (!at && !it) { show('無法取得 LINE 身分', '請重新點一次選單', [{ label: '重試', fn: bookingEnter, ghost: true }]); return; }
+  var body = new FormData(); body.append('op', 'liffEnter'); body.append('at', at || ''); body.append('it', it);
   fetch(API + '?page=care-booking&respond=json', { method: 'POST', body: body, redirect: 'follow' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (!d || d.status !== 'success' || !d.url) { show('預約頁開啟失敗', (d && d.msg) || '請稍後再試', [{ label: '重試', fn: bookingEnter, ghost: true }]); return; }
       var ctx = null; try { ctx = liff.getContext(); } catch (e) {}
-      if (ctx && ctx.viewType === 'full') { location.replace(d.url); return; }
+      if (!liff.isInClient() || (ctx && ctx.viewType === 'full')) { location.replace(d.url); return; }
       liff.openWindow({ url: d.url, external: true });
       setTimeout(function () { try { liff.closeWindow(); } catch (e) {} }, 800);
     })
