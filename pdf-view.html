@@ -28,6 +28,8 @@
 /* pdf-view v1：由我們的後端取 PDF 內容（JSON base64），PDF.js 逐頁畫出，不經 Drive、不需對外開權限 */
 var q = new URLSearchParams(location.search);
 var SRC = q.get('src') || '';
+var PDF = q.get('pdf') || '';   // 直接給 PDF 網址（同站檔案）；src＝後端 JSON base64
+var TITLE = q.get('t') || '';
 var inLine = /Line\//i.test(navigator.userAgent);
 var bytes = null, fileName = 'document.pdf';
 function setMsg(t) { var m = document.getElementById('msg'); if (m) m.textContent = t; }
@@ -57,13 +59,20 @@ function download() {
   setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 2000);
 }
 document.getElementById('dl').onclick = download;
-if (!SRC) { setMsg('缺少文件參數'); }
+if (PDF) {
+  fileName = (TITLE || 'document') + '.pdf'; document.getElementById('ttl').textContent = TITLE || '文件'; if (TITLE) document.title = TITLE + '｜植間設計';
+  fetch(PDF).then(function (r) { return r.arrayBuffer(); }).then(function (ab) {
+    bytes = new Uint8Array(ab);
+    return render(bytes.slice(0)).then(function () { document.getElementById('dl').disabled = false; });
+  }).catch(function () { setMsg('文件讀取失敗，請稍後再試'); });
+}
+else if (!SRC) { setMsg('缺少文件參數'); }
 else {
   fetch(SRC, { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d) {
     if (!d || !d.ok || !d.b64) { setMsg((d && d.msg) || '文件讀取失敗，請稍後再試'); return; }
     fileName = d.name || fileName; document.getElementById('ttl').textContent = d.title || d.name || '文件'; document.title = (d.title || '文件') + '｜植間設計';
     bytes = b64ToBytes(d.b64);
-    return render(bytes).then(function () { document.getElementById('dl').disabled = false; });
+    return render(bytes.slice(0)).then(function () { document.getElementById('dl').disabled = false; });
   }).catch(function () { setMsg('文件讀取失敗，請稍後再試'); });
 }
 </script>
