@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=860">
+<meta name="robots" content="noindex">
+<title>報價單 ｜ 植間設計</title>
+<style>
+body{margin:0;background:#EAE6DA;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#26251F}
+.bar{max-width:210mm;margin:0 auto;display:flex;justify-content:flex-end;align-items:center;gap:14px;padding:12px 4px;font-size:12px;color:#6B675E}
+.bar.signed{justify-content:space-between;color:#5F6E58}
+.bar a{color:#5F6E58;border:1px solid #5F6E58;text-decoration:none;font-size:12px;padding:6px 16px;border-radius:4px;background:#fff}
+.sheet{max-width:210mm;margin:0 auto 40px;box-shadow:0 2px 18px rgba(27,26,23,.12)}
+.msg{padding:64px 24px;text-align:center;color:#5A5750;font-size:14px}
+.ld{padding:48px 24px;text-align:center;color:#A09A8C;font-size:12px;letter-spacing:.2em}
+iframe.pdf{display:block;width:100%;max-width:900px;margin:0 auto 30px;height:86vh;border:0;background:#fff;box-shadow:0 2px 18px rgba(27,26,23,.12)}
+.ft{margin:26px auto 12px;text-align:center;font-size:10.5px;color:#A09A8C;line-height:1.8}
+</style>
+</head>
+<body>
+<div id="app"><div class="ld">載入中</div></div>
+<script src="quote-doc-render.js?v=1"></script>
+<script>
+(function () {
+  var GW = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+  var GAS = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+  var qs = new URLSearchParams(location.search), h = String(qs.get('h') || '').trim();
+  var app = document.getElementById('app');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function setTitle(t) { document.title = (t || '報價單') + ' ｜ 植間設計'; }
+  function showMsg(t) { app.innerHTML = '<div class="msg">' + esc(t) + '</div>'; }
+  function docView(id) { return 'https://waynelin-yuzhi.github.io/yuzhi-liff/doc-view.html?id=' + encodeURIComponent(id); }
+  function legacy(r) {   // 舊件無 JSON：退回 GAS 原頁（Drive 預覽版）
+    location.replace(GAS + '?page=quote-view&h=' + encodeURIComponent(h));
+  }
+  function render(r) {
+    setTitle(r.title);
+    if (r.expired) return showMsg(r.message || '連結已過期、請聯絡植間設計取得最新版本');
+    if (r.legacy) return legacy(r);
+    var signed = r.signed || null;
+    if (signed && !signed.sigUri) {   // 已簽但簽名圖取不回：直接嵌已簽 PDF（與 GAS 同行為）
+      app.innerHTML = '<div class="bar signed"><span>已於 ' + esc(signed.at) + ' 由 ' + esc(signed.signer) + ' 簽回同意</span><a href="' + docView(signed.signedPdfId) + '" target="_blank">下載已簽 PDF</a></div>'
+        + '<iframe class="pdf" src="https://drive.google.com/file/d/' + esc(signed.signedPdfId) + '/preview" allow="autoplay"></iframe>'
+        + '<div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240</div>';
+      return;
+    }
+    QUOTE_DEFAULT_STAMP_URI = String(r.stampDefault || '');
+    var opts = {};
+    if (r.validUntilOverride) opts.validUntil = r.validUntilOverride;
+    if (signed) opts.signature = { uri: signed.sigUri, name: signed.signer, at: signed.at };
+    var docHtml = _quoteDocHtml_(r.doc || {}, opts);
+    var styleM = docHtml.match(/<style>([\s\S]*?)<\/style>/);
+    var docCss = styleM ? styleM[1] : '';
+    var docBody = docHtml.replace(/^[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*$/, '');
+    var st = document.createElement('style'); st.textContent = docCss; document.head.appendChild(st);
+    var direct = 'https://drive.google.com/file/d/' + esc(r.pdfId) + '/view';
+    app.innerHTML = (signed ? '<div class="bar signed">已於 ' + esc(signed.at) + ' 由 ' + esc(signed.signer) + ' 簽回同意<a href="' + docView(signed.signedPdfId) + '" target="_blank">下載已簽版</a></div>' : '')
+      + '<div class="bar"><a href="' + direct + '" target="_blank">下載 PDF</a></div>'
+      + '<div class="sheet">' + docBody + '</div>';
+    var bk = document.getElementById('bkacct'); if (bk) bk.onclick = function () { try { navigator.clipboard.writeText(bk.textContent); } catch (e) {} };
+  }
+  if (!h) return showMsg('連結無效、請確認連結是否完整');
+  fetch(GW + '?action=quoteView&h=' + encodeURIComponent(h), { cache: 'no-store' }).then(function (res) { return res.json(); }).then(function (r) {
+    if (!r || r.ok !== true) return showMsg((r && r.message) || '連結無效、請確認連結是否完整');
+    render(r);
+  }).catch(function () { legacy(); });
+})();
+</script>
+</body>
+</html>
