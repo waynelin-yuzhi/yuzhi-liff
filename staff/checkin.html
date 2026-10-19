@@ -184,7 +184,7 @@
     if (!S.dev && S.idToken && !preClient) {
       fetch(ENGINE_INIT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: S.idToken }), cache: 'no-store' })
         .then(function (res) { return res.json(); })
-        .then(function (r) { if (gasApplied || !r || !r.ok) return; var keep = ST.me && ST.me.items; r.items = keep || []; applyInit(r, false); })
+        .then(function (r) { if (gasApplied || !r || !r.ok) return; var keep = (ST.me && ST.me.today === r.today) ? ST.me.items : null; r.items = keep || []; applyInit(r, false); })   // 今天的班只沿用同一天的快取、舊的不當真
         .catch(function () {});
     }
     return T.api('checkinInit', preClient ? { clientId: preClient } : {});
