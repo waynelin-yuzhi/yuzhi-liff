@@ -97,8 +97,10 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
   function renderSchedules(items) {
     var rows = items.filter(function (r) { return hit([r.short, r.title, r.item, r.scheduleId, r.status]); });
     var act = rows.filter(function (r) { return r.status === 'active'; });
-    var monthly = act.reduce(function (s, r) { return s + (r.freq === 'monthly' ? r.amountInc : 0); }, 0);
-    $('stats').innerHTML = '<div class="stat"><div class="v">' + act.length + '</div><div class="l">進行中</div></div><div class="stat"><div class="v">' + (rows.length - act.length) + '</div><div class="l">暫停／停止</div></div><div class="stat"><div class="v">' + esc(money(monthly)) + '</div><div class="l">每月例行含稅</div></div>';
+    var now = new Date(), ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'), mStart = ym + '-01', mEnd = ym + '-31', mo = String(now.getMonth() + 1);
+    var due = act.filter(function (r) { var ms = String(r.months || '').split(',').map(function (x) { return x.trim(); }); return ms.indexOf(mo) >= 0 && (!r.start || r.start <= mEnd) && (!r.end || r.end >= mStart); });   // 本月應開＝進行中、開票月份含本月、合約起迄涵蓋本月（同 GAS dueIn）
+    var dueSum = due.reduce(function (s, r) { return s + r.amountInc; }, 0);
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + act.length + '</div><div class="l">進行中</div></div><div class="stat"><div class="v">' + (rows.length - act.length) + '</div><div class="l">暫停／停止</div></div><div class="stat"><div class="v">' + esc(money(dueSum)) + '</div><div class="l">本月應開含稅（' + due.length + ' 筆）</div></div>';
     if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有收款排程</div>'; return; }
     rows.sort(function (a, b) { return (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || String(a.short).localeCompare(String(b.short), 'zh-Hant'); });
     $('list').innerHTML = rows.map(function (r) {
@@ -108,11 +110,15 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
   }
   function renderPayments(items) {
     var rows = items.filter(function (r) { return hit([r.client, r.item, r.arId, r.payId, r.paidDate]); });
-    var live = rows.filter(function (r) { return !r.voided; }); var sum = live.reduce(function (s, r) { return s + r.amount; }, 0);
-    $('stats').innerHTML = '<div class="stat"><div class="v">' + live.length + '</div><div class="l">筆數（最近 ' + items.length + '）</div></div><div class="stat"><div class="v">' + esc(money(sum)) + '</div><div class="l">合計</div></div><div class="stat"><div class="v">' + (rows.length - live.length) + '</div><div class="l">作廢</div></div>';
+    var NONCASH = { '折讓': 1, '匯費自扣': 1, '沖銷': 1 };
+    var live = rows.filter(function (r) { return !r.voided; });
+    var cash = live.filter(function (r) { return !NONCASH[r.entryType] && r.checkStatus !== '暫掛'; }); var sum = cash.reduce(function (s, r) { return s + r.amount; }, 0);
+    var other = live.length - cash.length;
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + cash.length + '</div><div class="l">實收筆數（最近 ' + items.length + '）</div></div><div class="stat"><div class="v">' + esc(money(sum)) + '</div><div class="l">實收合計</div></div><div class="stat"><div class="v">' + other + '</div><div class="l">折讓／匯費／暫掛</div></div>';
     if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有收款紀錄</div>'; return; }
     $('list').innerHTML = rows.map(function (r) {
-      return '<div class="ln"><span>' + esc(r.paidDate) + '　' + esc(r.client || r.arId) + (r.item ? '　<span class="m">' + esc(r.item) + '</span>' : '') + (r.voided ? '<span class="chip mute">作廢</span>' : '') + (r.checkStatus ? '<span class="chip warn">' + esc(r.checkStatus) + '</span>' : '') + '</span><span class="m">' + esc(r.arId) + '　' + esc(money(r.amount)) + '</span></div>';
+      var kind = (r.entryType && r.entryType !== '收款') ? '<span class="chip mute">' + esc(r.entryType) + '</span>' : (r.method ? '<span class="chip mute">' + esc(r.method) + '</span>' : '');
+      return '<div class="ln"><span>' + esc(r.paidDate) + '　' + esc(r.client || r.arId) + (r.item ? '　<span class="m">' + esc(r.item) + '</span>' : '') + kind + (r.voided ? '<span class="chip mute">作廢</span>' : '') + (r.checkStatus ? '<span class="chip warn">' + esc(r.checkStatus) + '</span>' : '') + '</span><span class="m">' + esc(r.arId) + '　' + esc(money(r.amount)) + '</span></div>';
     }).join('');
   }
   function render() {
