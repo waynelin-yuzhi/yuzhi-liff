@@ -204,20 +204,34 @@
   function daysAgo(ds) { if (!ds) return ''; var d = new Date(ds + 'T00:00:00'); var n = Math.round((Date.now() - d.getTime()) / 86400000); if (isNaN(n)) return ''; return n <= 0 ? '今天' : (n + ' 天前'); }
 
   // ── 時間自動帶入 ──
+  var timesSeq = 0;
   function loadTimes() {
     if (!A.st.clientId || !A.st.reportDate) return;
     var el = $('time-hint'); if (el) { el.textContent = '查打卡紀錄…'; el.className = 'hint'; }
-    T.api('checkinTimes', { clientId: A.st.clientId, date: A.st.reportDate }).then(function (r) {
+    var seq = ++timesSeq, key = A.st.clientId + '|' + A.st.reportDate, gasDone = false;
+    function apply(r, fromEngine) {
+      if (seq !== timesSeq || key !== A.st.clientId + '|' + A.st.reportDate) return;   // 使用者已換客戶或日期
+      if (fromEngine && gasDone) return;
       var el2 = $('time-hint'); if (!el2) return;
-      if (!(r && r.ok)) { el2.textContent = ''; return; }
-      if (!r.data) { el2.textContent = '該日沒有這家的打卡紀錄，請手動填'; el2.className = 'hint warn'; return; }
-      var sE = !A.st.startTime, eE = !A.st.endTime;
+      if (!(r && r.ok)) { if (!fromEngine) el2.textContent = ''; return; }
+      if (!r.data) { if (!fromEngine) { el2.textContent = '該日沒有這家的打卡紀錄，請手動填'; el2.className = 'hint warn'; } return; }   // 引擎鏡像最長落後 5 分：沒資料不下結論、等 GAS
+      var sE = !A.st.startTime || A.st.timesFromCheckin, eE = !A.st.endTime || A.st.timesFromCheckin;
       if (sE && r.data.startTime) { A.st.startTime = r.data.startTime; var si = $('f-start'); if (si) si.value = A.st.startTime; }
       if (eE && r.data.endTime) { A.st.endTime = r.data.endTime; var ei = $('f-end'); if (ei) ei.value = A.st.endTime; }
       var msg = r.data.startTime && r.data.endTime ? '來自打卡：' + r.data.startTime + '–' + r.data.endTime : (r.data.startTime ? '來自打卡：' + r.data.startTime + '（尚未打離開）' : '來自打卡：—–' + r.data.endTime);
       if (!sE || !eE) msg += '（保留你手填的）';
       el2.textContent = msg; el2.className = 'hint ok'; A.st.timesFromCheckin = sE && eE; snapshot();
-    });
+    }
+    engineCall('staffCheckinTimes', { clientId: A.st.clientId, date: A.st.reportDate }).then(function (r) { apply(r, true); });
+    T.api('checkinTimes', { clientId: A.st.clientId, date: A.st.reportDate }).then(function (r) { gasDone = true; apply(r, false); });
+  }
+  // 引擎（零金鑰、LINE idToken 即身分）：開頁資料與打卡時間先出，GAS 結果隨後覆蓋（第 7 塊：員工頁讀取搬引擎）
+  var ENGINE = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+  function engineCall(action, params) {
+    var S = T.S || (window.STAFF && window.STAFF.S) || {};
+    if (S.dev || !S.idToken) return Promise.resolve(null);
+    var body = Object.assign({ idToken: S.idToken }, params || {});
+    return fetch(ENGINE + '?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store' }).then(function (res) { return res.json(); }).catch(function () { return null; });
   }
 
   // ── 渲染 ──
@@ -516,12 +530,21 @@
   if (T.qs.get('dev') === '1') window.__staffReport = { A: A, addDataUri: function (zi, ba, dataUri) { var z = A.st.zones[zi], key = ba === 'before' ? 'pendingBefore' : 'pendingAfter'; var ph = { id: uid(), dataUri: dataUri, status: 'uploading', url: '' }; z[key].push(ph); photoPut(ph); renderThumbs(zi, ba); markDirty(); uploadOne(ph, zi, ba); return ph.id; }, render: render, queueAll: queueAll, photoAll: photoAll };
   // ── 啟動 ──
   A.st = initial();
-  T.init({ skipWhoami: true }).then(function () { return T.api('careInit'); }).then(function (r) {
-    if (!(r && r.ok)) { T.showErr(T.errText(r)); return; }
-    A.me = r; A.sites = r.sites || []; A.promoted = r.promotedTypes || [];
+  var gasApplied = false, booted = false;
+  function applyInit(r, fromEngine) {
+    if (fromEngine && gasApplied) return Promise.resolve();
+    A.me = r; A.sites = r.sites || []; if (!fromEngine) A.promoted = r.promotedTypes || [];
+    if (fromEngine && r.reports && A.list === null) A.list = r.reports;   // 我的報告清單先有（切到清單頁時 GAS 會再補最新）
     var todayIds = {}; (r.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
     A.sites.forEach(function (s) { s.today = !!todayIds[s.id]; });
     A.sites.sort(function (a, b) { return (b.today - a.today) || (b.assigned - a.assigned) || String(a.name).localeCompare(String(b.name)); });
+    if (booted) {   // 第二份結果（GAS）：只補案場清單與今天標記、不動使用者已在填的表單
+      if (A.st.clientId && !A.st.clientName && siteById(A.st.clientId)) A.st.clientName = siteById(A.st.clientId).shortName || '';
+      if (!A.dirty && !A.st.clientId && !A.editing) { if (r.draft) A.serverDraft = r.draft; if ((r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; } }
+      if (A.view === 'form' && !A.dirty) render();
+      return Promise.resolve();
+    }
+    booted = true;
     return restoreLocal().then(function (hadLocal) {
       if (!hadLocal) {
         A.st = initial();
@@ -533,5 +556,13 @@
       if (hadLocal) uploadUnsent();
       resumeQueue();
     });
+  }
+  T.init({ skipWhoami: true }).then(function () {
+    engineCall('staffInit', { reports: true }).then(function (r) { if (r && r.ok && !gasApplied) applyInit(r, true); });
+    return T.api('careInit');
+  }).then(function (r) {
+    gasApplied = true;
+    if (!(r && r.ok)) { if (!booted) T.showErr(T.errText(r)); return; }
+    return applyInit(r, false);
   }).catch(function (e) { console.log(e); });
 })();
