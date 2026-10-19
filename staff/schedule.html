@@ -84,16 +84,16 @@
   function stChip(s) { var cls = s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : ''); return '<span class="st ' + cls + '">' + esc(s || '未建立') + '</span>'; }
   // 引擎先畫（班表列＋狀態＋假日＋我的案場＋慣例，約 1 秒、partial）；GAS schedMonth 隨後帶代班／未排／變更申請與核可狀態校正後覆蓋。partial 期間不開放操作（第 7 塊）
   var ENGINE_SCHED = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api?action=staffSchedMonth';
-  function load(ym, keep) {
+  function load(ym, keep, gasOnly) {   // gasOnly＝動作後的重載：鏡像最長落後 5 分，別先畫出動作前的狀態
     if (!keep) MSG = ''; YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
     var S0 = T.S || (window.STAFF && window.STAFF.S) || {}, gasBack = false;
-    if (!AS && !S0.dev && S0.idToken && ym >= thisYm()) {
+    if (!gasOnly && !AS && !S0.dev && S0.idToken && ym >= thisYm()) {
       fetch(ENGINE_SCHED, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: S0.idToken, ym: ym }), cache: 'no-store' })
         .then(function (res) { return res.json(); })
         .then(function (r) { if (gasBack || YM !== ym || !r || !r.ok) return; DATA = r; render(); })
         .catch(function () {});
     }
-    api('schedMonth', { ym: ym }).then(function (r) { gasBack = true; if (!r || !r.ok) { T.showErr(T.errText(r)); return; } if (YM !== ym) return; DATA = r; render(); }).catch(function () { gasBack = true; if (!DATA || DATA.partial) T.showErr('載入失敗，請重試'); });
+    api('schedMonth', { ym: ym }).then(function (r) { gasBack = true; if (YM !== ym) return; if (!r || !r.ok) { $('app').classList.remove('partial'); T.showErr(T.errText(r)); return; } DATA = r; render(); }).catch(function () { gasBack = true; if (YM === ym) { $('app').classList.remove('partial'); T.showErr('載入失敗，請重試'); } });
   }
   function render() {
     var r = DATA, ym = r.ym, past = r.mode === 'past', rows = r.rows || [], hol = r.holidays || {};
@@ -177,17 +177,17 @@
     $('prev').onclick = function () { if (weekMode) gotoWeek(-1); else load(addYm(YM, -1)); }; $('next').onclick = function () { if (weekMode) gotoWeek(1); else load(addYm(YM, 1)); };
     document.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { VIEW = b.getAttribute('data-view'); try { localStorage.setItem('sched_view', VIEW); } catch (e1) {} if (VIEW === 'week' && (!WEEK || !weekInMonth(WEEK))) WEEK = defaultWeek(); render(); }; });
     if (!past) {
-      var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true); };
-      var dr = $('draft'); if (dr) dr.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (rows.length && !confirm('重新照慣例排會蓋掉你調整過的班，確定？')) return; busy(this, '排班中'); api('schedDraft', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); MSG = '已排 ' + x.count + ' 場' + ((x.warn || []).length ? '。注意：' + x.warn.join('；') : ''); if (x.view && x.view.ok && x.view.ym === YM) { DATA = x.view; render(); } else load(YM, true); }).catch(fail); };
+      var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true, true); };
+      var dr = $('draft'); if (dr) dr.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (rows.length && !confirm('重新照慣例排會蓋掉你調整過的班，確定？')) return; busy(this, '排班中'); api('schedDraft', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); MSG = '已排 ' + x.count + ' 場' + ((x.warn || []).length ? '。注意：' + x.warn.join('；') : ''); if (x.view && x.view.ok && x.view.ym === YM) { DATA = x.view; render(); } else load(YM, true, true); }).catch(fail); };
       var sv = $('savenow'); if (sv) sv.onclick = function () { var self = this; busy(self, '儲存中'); var t0 = Date.now(), m0 = MSG; (function waitSaved() { if (busySaving() && Date.now() - t0 < 8000) return setTimeout(waitSaved, 300); self.disabled = false; self.textContent = '暫存'; if (MSG && MSG !== m0) { msg(MSG); return; } var d = new Date(); MSG = (busySaving() ? '還在儲存中，再等幾秒就好。' : '已暫存 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + '，隨時回來繼續，不用急著送出核可。'); msg(MSG); })(); };
       var sb = $('submit'); if (sb) sb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再送'); return; } openReview(); };
-      var wb = $('withdraw'); if (wb) wb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('撤回這個月的送件、回到草稿重排？')) return; busy(this, '撤回中'); api('schedWithdraw', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); msg('已撤回，回到草稿'); load(YM, true); }).catch(fail); };
-      var ba = $('b-approve'); if (ba) ba.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('核可這份班表？核可後系統會自動把養護日期通知各客戶（排下個工作日 10:30 送出）。')) return; busy(ba, '核可中'); T.api('schedApprove', { ym: YM, empId: AS }).then(function (x) { if (!x || !x.ok) { ba.disabled = false; ba.textContent = '核可'; msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); return; } MSG = '已核可。' + (x.execMsg || ''); load(YM, true); }).catch(function () { msg('後台回應慢，正在確認…'); confirmApproved(0); }); };
+      var wb = $('withdraw'); if (wb) wb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('撤回這個月的送件、回到草稿重排？')) return; busy(this, '撤回中'); api('schedWithdraw', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); msg('已撤回，回到草稿'); load(YM, true, true); }).catch(fail); };
+      var ba = $('b-approve'); if (ba) ba.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('核可這份班表？核可後系統會自動把養護日期通知各客戶（排下個工作日 10:30 送出）。')) return; busy(ba, '核可中'); T.api('schedApprove', { ym: YM, empId: AS }).then(function (x) { if (!x || !x.ok) { ba.disabled = false; ba.textContent = '核可'; msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); return; } MSG = '已核可。' + (x.execMsg || ''); load(YM, true, true); }).catch(function () { msg('後台回應慢，正在確認…'); confirmApproved(0); }); };
       function confirmApproved(tries) {   // 核可請求逾時：回頭查狀態，最多等 90 秒；不再丟「後台沒回應」讓人猜
-        api('schedMonth', { ym: YM }).then(function (r) { if (r && r.ok && r.status === '已核可') { MSG = '已核可。客戶通知會在 15 分內自動排好。'; load(YM, true); return; } if (tries < 6) return setTimeout(function () { confirmApproved(tries + 1); }, 15000); msg('還沒看到核可完成，請重新整理看狀態'); load(YM, true); }).catch(function () { if (tries < 6) setTimeout(function () { confirmApproved(tries + 1); }, 15000); else load(YM, true); });
+        api('schedMonth', { ym: YM }).then(function (r) { if (r && r.ok && r.status === '已核可') { MSG = '已核可。客戶通知會在 15 分內自動排好。'; load(YM, true, true); return; } if (tries < 6) return setTimeout(function () { confirmApproved(tries + 1); }, 15000); msg('還沒看到核可完成，請重新整理看狀態'); load(YM, true, true); }).catch(function () { if (tries < 6) setTimeout(function () { confirmApproved(tries + 1); }, 15000); else load(YM, true, true); });
       }
       var bj = $('b-reject'); if (bj) bj.onclick = function () { var box = $('b-rj'); box.style.display = box.style.display === 'none' ? '' : 'none'; if (box.style.display === '') $('b-rj-why').focus(); };
-      var bg = $('b-rj-go'); if (bg) bg.onclick = function () { var why = String($('b-rj-why').value || '').trim(); if (!why) { $('b-rj-why').focus(); return; } if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } busy(bg, '退回中'); T.api('schedReject', { ym: YM, empId: AS, reason: why }).then(function (x) { if (!x || !x.ok) { bg.disabled = false; bg.textContent = '送出退回'; msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); return; } MSG = '已退回' + (x.notified ? '，已用 LINE 通知員工' : (x.queued ? '，LINE 通知會在明早 9 點後送出（夜間靜默）' : '（員工沒有綁 LINE，請另外告知）')); load(YM, true); }).catch(function () { bg.disabled = false; bg.textContent = '送出退回'; msg('後台沒回應，重新整理看狀態'); }); };
+      var bg = $('b-rj-go'); if (bg) bg.onclick = function () { var why = String($('b-rj-why').value || '').trim(); if (!why) { $('b-rj-why').focus(); return; } if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } busy(bg, '退回中'); T.api('schedReject', { ym: YM, empId: AS, reason: why }).then(function (x) { if (!x || !x.ok) { bg.disabled = false; bg.textContent = '送出退回'; msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); return; } MSG = '已退回' + (x.notified ? '，已用 LINE 通知員工' : (x.queued ? '，LINE 通知會在明早 9 點後送出（夜間靜默）' : '（員工沒有綁 LINE，請另外告知）')); load(YM, true, true); }).catch(function () { bg.disabled = false; bg.textContent = '送出退回'; msg('後台沒回應，重新整理看狀態'); }); };
       document.querySelectorAll('.chip[data-k]').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); if (c.dataset.dragged) { delete c.dataset.dragged; return; } var k = c.getAttribute('data-k').split('|'); openSheet(rows.filter(function (x) { return x.siteCode === k[0] && x.date === k[1] && x.slot === k[2]; })[0]); }; });
       document.querySelectorAll('.chip.ext').forEach(function (c) { c.onclick = function (ev) { ev.stopPropagation(); msg(c.getAttribute('title') === '代班' ? '這是代班場次，由授權表管理、這裡不能改' : '這是改期進來的場次，這裡不能改'); }; });   // 點灰框不開加班表單
       document.querySelectorAll('.day[data-d]').forEach(function (d) { d.onclick = function () { openAdd(d.getAttribute('data-d')); }; });
@@ -332,7 +332,7 @@
     submitBtn(true, '檢查中');
     var done = function () { submitBtn(false, '送出核可'); };
     api('schedSubmit', { ym: YM, check: '1' }).then(function (x) {
-      if (!x.ok) { done(); msg('失敗：' + (x.detail || x.error)); if (x.error === 'invalid' || x.error === 'too_early' || x.error === 'approved_locked' || x.error === 'already_submitted') load(YM, true); return; }
+      if (!x.ok) { done(); msg('失敗：' + (x.detail || x.error)); if (x.error === 'invalid' || x.error === 'too_early' || x.error === 'approved_locked' || x.error === 'already_submitted') load(YM, true, true); return; }
       var w = x.warnings || { owner: [], overload: [], habit: [] };
       if (!x.count && !x.holidayN) { done(); if (!confirm('送出 ' + YM + ' 的班表給 Wayne 核可？')) return; return doSubmitFinal(false); }
       renderReview(w, x.holidayN || 0);
@@ -362,11 +362,11 @@
   }
   function doSubmitFinal(ack) {
     submitBtn(true, '送出中');
-    var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true); };
+    var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true, true); };
     api('schedSubmit', { ym: YM, ack: ack ? '1' : '', forceHolidays: ack ? '1' : '' }).then(function (x) {
       if (!x.ok && (x.error === 'owner_changed' || x.error === 'overload' || x.error === 'habit_mismatch')) { submitBtn(false, '送出核可'); msg('班表剛有變動，再按一次送出看清單'); return; }
       if (!x.ok) return fail(x);
-      msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true);
+      msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true, true);
     }).catch(fail);
   }
   function openSheet(x) {
