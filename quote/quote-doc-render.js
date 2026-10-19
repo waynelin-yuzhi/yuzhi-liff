@@ -50,7 +50,8 @@ function _quoteDocHtml_(data, opts) {
   var cust = data.customer || {};
   // 效期一律換算成實際日期（呼叫端沒給就用 報價日+validityDays 自算）——避免小卡顯示日期、文件顯示天數
   if (!isStatement && !opts.validUntil && data.date && data.validityDays) {
-    var _vd = new Date(String(data.date).replace(/\//g, '-') + 'T00:00:00+08:00');
+    // 日期可能是 2026/10/5（月日不補零）：WebKit 對 ISO 字串嚴格、不補零會 Invalid Date（Safari／LINE 內建瀏覽器）
+    var _vd = new Date(String(data.date).replace(/\//g, '-').replace(/-(\d)(?=-|$)/g, '-0$1') + 'T00:00:00+08:00');
     if (!isNaN(_vd.getTime())) {
       _vd.setDate(_vd.getDate() + Number(data.validityDays));
       opts.validUntil = Utilities.formatDate(_vd, 'Asia/Taipei', 'yyyy/M/d');
