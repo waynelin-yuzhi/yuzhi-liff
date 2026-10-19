@@ -104,7 +104,12 @@ form.busy button{opacity:.5;pointer-events:none;}
   function render(it) {
     var pl = it.payload || {}, res = it.result || {}, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
     var title = it.title || '', id = it.id, from = it.from;
-    if (pl.reviewUrl && status === '待核可') { location.replace(pl.reviewUrl); return; }
+    if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
+      var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
+      if (ru && ru.protocol === 'https:' && ['waynelin-yuzhi.github.io', 'script.google.com'].indexOf(ru.hostname) >= 0) { location.replace(ru.href); return; }
+      app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬審核頁處理。</div><a class="btn-home" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>';
+      return;
+    }
     if (skipMode && status === '待核可' && !isPub) {
       app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="meta">' + esc(id) + ' · 來源 ' + esc(from) + '</div>'
         + '<div class="note" style="margin:12px 0;">' + (pl.lineReplyTo ? '你自己回過這位客戶了？' : '這件你已經自己處理了？') + '按一下就收掉、不會發送。</div>'
