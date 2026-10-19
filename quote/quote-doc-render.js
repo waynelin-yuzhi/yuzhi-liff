@@ -30,6 +30,11 @@ function _qdocEsc_(s) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
   });
 }
+// 圖片來源只認 https 與 data:image（JSON 裡的品項照／章／簽名都是 data URI）；其他一律不畫、免得內容被塞進屬性
+function _qdocImg_(u) {
+  u = String(u || '');
+  return /^(https:\/\/|data:image\/(png|jpeg|jpg|gif|webp);base64,)/i.test(u) ? _qdocEsc_(u) : '';
+}
 function _qdocMoney_(n) {
   n = Math.round(Number(n) || 0);
   return 'NT$ ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -136,7 +141,8 @@ function _quoteDocHtml_(data, opts) {
       if (a && a !== _prevArea) band = '<tr class="area-band"><td colspan="5"><span class="ab">' + esc(a) + '</span></td></tr>';
       _prevArea = a || _prevArea;
     }
-    var img = (it.image && !(it.sharePhotoWithPrev && i > 0)) ? '<img class="ph" src="' + it.image + '">' : '';
+    var imgSrc = (it.image && !(it.sharePhotoWithPrev && i > 0)) ? _qdocImg_(it.image) : '';
+    var img = imgSrc ? '<img class="ph" src="' + imgSrc + '">' : '';
     var specLine = [it.spec, (!areaBandOn && it.area) ? ('用途：' + it.area) : ''].filter(Boolean).map(esc).join('<br>');
     var cells;
     if (isRental) {
@@ -193,13 +199,13 @@ function _quoteDocHtml_(data, opts) {
   if (!_stampUri) {
     try { _stampUri = (typeof _quoteDefaultStampDataUrl_ === 'function') ? _quoteDefaultStampDataUrl_() : ''; } catch (e) { _stampUri = ''; }
   }
-  var stampImg = _stampUri ? '<img class="stamp" src="' + _stampUri + '">' : '';
+  var stampImg = _qdocImg_(_stampUri) ? '<img class="stamp" src="' + _qdocImg_(_stampUri) + '">' : '';
   var signBlock = '<div class="sign-row">'
     + '<div class="sign-cell"><div class="sign-label">植間設計股份有限公司</div>'
     +   '<div class="sign-line">' + stampImg + '</div>'
     +   '<div class="sign-meta">統一編號 90877240</div></div>'
     + '<div class="sign-cell"><div class="sign-label">客戶簽署' + (isStatement ? '（確認請款）' : '（確認同意本報價）') + '</div>'
-    +   '<div class="sign-line">' + (sig ? '<img class="sig-img" src="' + sig.uri + '">' : '') + '</div>'
+    +   '<div class="sign-line">' + (sig && _qdocImg_(sig.uri) ? '<img class="sig-img" src="' + _qdocImg_(sig.uri) + '">' : '') + '</div>'
     +   '<div class="sign-meta">' + (sig ? esc(sig.name) + '　' + esc(sig.at) : '簽署人／日期') + '</div></div>'
     + '</div>';
 
@@ -236,7 +242,7 @@ function _quoteDocHtml_(data, opts) {
 
   // ── 備註條件 ──
   var notes = [];
-  if (!isStatement && opts.validUntil) notes.push('本報價單有效期限至 ' + opts.validUntil + ' 止' + (opts.validUntilExtended ? '（經延長調整）' : (data.validityDays ? '（自報價日起 ' + Number(data.validityDays) + ' 日）' : '')) + '。');
+  if (!isStatement && opts.validUntil) notes.push('本報價單有效期限至 ' + String(opts.validUntil) + ' 止' + (opts.validUntilExtended ? '（經延長調整）' : (data.validityDays ? '（自報價日起 ' + Number(data.validityDays) + ' 日）' : '')) + '。');
   else if (!isStatement && data.validityDays) notes.push('本報價單自報價日起 ' + Number(data.validityDays) + ' 日內有效。');
   if (isStatement && data.payDueDays) notes.push('請於收到本請款單 ' + Number(data.payDueDays) + ' 日內完成付款。');
   if (mode === 'rental' && data.rentalDays) {
@@ -359,7 +365,7 @@ function _quoteDocHtml_(data, opts) {
           '<div class="row"><div class="k">租賃期間</div><div class="v">'
           + (data.rentalStart ? esc(String(data.rentalStart).replace(/-/g, '/')) + '〜' + esc(String(data.rentalEnd || '').replace(/-/g, '/')) + '<br>' : '')
           + '共 ' + Number(data.rentalDays || 1) + ' 天</div></div>' : '')
-    +   (!isStatement && opts.validUntil ? '<div class="row"><div class="k">有效期限</div><div class="v">至 ' + opts.validUntil + '</div></div>'
+    +   (!isStatement && opts.validUntil ? '<div class="row"><div class="k">有效期限</div><div class="v">至 ' + esc(opts.validUntil) + '</div></div>'
         : (!isStatement && data.validityDays ? '<div class="row"><div class="k">有效期限</div><div class="v">' + Number(data.validityDays) + ' 日</div></div>' : ''))
     +   (isStatement && data.payDueDays ? '<div class="row"><div class="k">付款期限</div><div class="v">' + Number(data.payDueDays) + ' 日</div></div>' : '')
     + '</div></div>'
