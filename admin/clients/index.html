@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>客戶管理 ｜ 植間後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--page-bg:#EFEEE9;--card:#fff;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--page-bg);color:var(--ink);line-height:1.6;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px;flex:1}
+.top a.btn,.top button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:none}
+main{max-width:860px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--sage);margin-bottom:8px;text-transform:uppercase}
+.note{font-size:13px;color:var(--ink-60)}
+input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px;background:#fff}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filters button{padding:5px 11px;border:1px solid var(--ink-20);border-radius:99px;background:#fff;font-size:12px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.filters button.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--ink-20);cursor:pointer}
+.row:first-child{border-top:none}
+.row .id{font-size:11px;color:var(--ink-60);width:44px;flex-shrink:0;letter-spacing:.04em}
+.row .n{flex:1;min-width:0}
+.row .name{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .name small{font-weight:400;color:var(--ink-60);margin-left:6px;font-size:12px}
+.row .meta{font-size:12px;color:var(--ink-60);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 8px}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em}
+.chip.ok{background:var(--sage-tint);color:var(--sage-deep)}
+.chip.warn{background:var(--amber-tint);color:var(--amber)}
+.chip.bad{background:var(--terra-tint);color:var(--terra)}
+.chip.mute{background:#EEE;color:var(--ink-60)}
+.kv{display:grid;grid-template-columns:88px 1fr;gap:6px 10px;font-size:14px}
+.kv .k{color:var(--ink-60)}
+.list a{color:var(--sage)}
+.item{padding:8px 0;border-top:1px solid var(--ink-20);font-size:13px}
+.item:first-child{border-top:none}
+.item .t{font-weight:500;font-size:14px}
+.item .m{color:var(--ink-60);font-size:12px}
+.back{display:inline-block;margin-bottom:10px;color:var(--sage);font-size:13px;cursor:pointer}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
+.acts a{font-size:12px;color:var(--sage);border:1px solid var(--sage);border-radius:6px;padding:6px 10px;text-decoration:none}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
+.ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">植間後台｜客戶管理</span><a class="btn" id="gasLink" href="#" target="_blank">後台編輯</a><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入後台</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+  <div id="app" style="display:none">
+    <div id="listView">
+      <input type="search" id="q" placeholder="搜尋簡稱、抬頭、統編、案場代碼">
+      <div class="filters" id="filters"></div>
+      <div class="note" id="meta" style="margin-bottom:6px"></div>
+      <div class="card" id="list"><div class="ld">載入中</div></div>
+    </div>
+    <div id="detailView" style="display:none"></div>
+  </div>
+  <div class="foot">此頁由引擎鏡像出資料（最長落後 5 分）；新增、編輯、綁定、發訊息等操作在「後台編輯」原頁。<br>植間設計股份有限公司</div>
+</main>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api', gas: 'https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  var D = { list: null, filter: 'all', q: '', cur: '', seq: 0 };
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  function api(payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      return fetch(CFG.engine + '?action=adminClients', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function cls(r) { if (!r.hasCentralActual) return 'missing'; if (r.nfcCode && r.billingName) return 'match'; return 'central'; }
+  var LABEL = { match: '訂閱式客戶', central: '一般客戶', missing: '資料尚未完整' };
+  function pass(r) {
+    var c = cls(r);
+    if (D.filter === 'noline') { if (r.hasLine) return false; } else if (D.filter !== 'all' && c !== D.filter) return false;
+    if (D.q) { var hay = [r.short, r.full, r.vat, r.nfcCode, r.nfcName, r.billingName, r.arName, r.clientId].join(' ').toLowerCase(); if (hay.indexOf(D.q) < 0) return false; }
+    return true;
+  }
+  function renderFilters() {
+    var all = D.list || []; var k = { all: all.length, match: 0, central: 0, missing: 0, noline: 0 };
+    all.forEach(function (r) { k[cls(r)]++; if (!r.hasLine) k.noline++; });
+    var fs = [['all', '全部'], ['match', LABEL.match], ['central', LABEL.central], ['missing', LABEL.missing], ['noline', '未綁 LINE']];
+    $('filters').innerHTML = fs.map(function (f) { return '<button data-f="' + f[0] + '" class="' + (D.filter === f[0] ? 'on' : '') + '">' + f[1] + ' ' + k[f[0]] + '</button>'; }).join('');
+    Array.prototype.forEach.call($('filters').querySelectorAll('button'), function (b) { b.onclick = function () { D.filter = b.getAttribute('data-f'); renderList(); }; });
+  }
+  function renderList() {
+    renderFilters();
+    var rows = (D.list || []).filter(pass);
+    $('meta').textContent = '顯示 ' + rows.length + ' / ' + (D.list || []).length + ' 筆';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有符合條件的客戶</div>'; return; }
+    $('list').innerHTML = rows.map(function (r) {
+      var c = cls(r); var name = r.short || r.full || r.billingName || r.arName || '(未命名)'; var full = (r.full && r.full !== name) ? r.full : '';
+      var chips = '<span class="chip ' + (c === 'match' ? 'ok' : c === 'central' ? 'mute' : 'bad') + '">' + LABEL[c] + '</span>';
+      if (r.nfcCode) chips += '<span class="chip mute">案場 ' + esc(r.nfcCode) + '</span>';
+      if (r.arCount > 0) chips += '<span class="chip mute">發票 ' + r.arCount + ' 張</span>';
+      chips += r.hasLine ? '<span class="chip ok">LINE</span>' : '<span class="chip warn">未綁 LINE</span>';
+      return '<div class="row" data-id="' + esc(r.clientId) + '"><div class="id">' + esc(r.clientId) + '</div><div class="n"><div class="name">' + esc(name) + (full ? '<small>' + esc(full) + '</small>' : '') + '</div><div class="meta">' + chips + (r.vat && r.vat !== '/' ? '<span>統編 ' + esc(r.vat) + '</span>' : '') + '</div></div></div>';
+    }).join('');
+    Array.prototype.forEach.call($('list').querySelectorAll('.row'), function (el) { el.onclick = function () { openDetail(el.getAttribute('data-id')); }; });
+  }
+  function loadList() {
+    api({ op: 'list' }).then(function (d) { if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; } D.list = d.data || []; renderList(); })
+      .catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  function openDetail(cid) {
+    D.cur = cid; var seq = ++D.seq; history.replaceState(null, '', '?cid=' + encodeURIComponent(cid));
+    $('listView').style.display = 'none'; $('detailView').style.display = 'block';
+    $('detailView').innerHTML = '<span class="back" id="back">‹ 回清單</span><div class="card"><div class="ld">載入 ' + esc(cid) + '…</div></div>';
+    $('back').onclick = backToList;
+    api({ op: 'detail', clientId: cid }).then(function (d) {
+      if (seq !== D.seq) return;
+      if (!d || !d.ok) { $('detailView').innerHTML = '<span class="back" id="back">‹ 回清單</span><div class="card"><div class="ld">讀取失敗：' + esc((d && (d.detail || d.error)) || '') + '</div></div>'; $('back').onclick = backToList; return; }
+      renderDetail(d);
+    }).catch(function (e) { if (seq !== D.seq) return; $('detailView').innerHTML = '<span class="back" id="back">‹ 回清單</span><div class="card"><div class="ld">' + esc(e.message || '連線失敗') + '</div></div>'; $('back').onclick = backToList; });
+  }
+  function backToList() { D.cur = ''; D.seq++; history.replaceState(null, '', location.pathname); $('detailView').style.display = 'none'; $('listView').style.display = 'block'; if (D.list === null) loadList(); }
+  function kv(k, v) { return v ? '<div class="k">' + esc(k) + '</div><div>' + esc(v) + '</div>' : ''; }
+  function renderDetail(d) {
+    var c = d.detail || {}; var h = '<span class="back" id="back">‹ 回清單</span>';
+    h += '<div class="card"><h2>' + esc(c.clientId) + '</h2><div style="font-size:18px;font-weight:500;margin-bottom:6px">' + esc(c.short || c.full || '') + (c.full && c.full !== c.short ? ' <span class="note">' + esc(c.full) + '</span>' : '') + '</div>'
+      + '<div class="kv">' + kv('類型', c.type) + kv('統編', c.vat && c.vat !== '/' ? c.vat : '') + kv('產業', c.industry) + kv('聯絡人', c.contact) + kv('電話', c.phone) + kv('發票地址', c.invoiceAddr) + kv('案場地址', c.siteAddr) + kv('合約備註', c.contractNote) + kv('LINE', c.lineBound ? '已綁定' : '未綁定') + '</div>'
+      + '<div class="acts"><a href="' + CFG.gas + '?page=clients" target="_blank">後台編輯</a></div></div>';
+    var sites = c.sites || [];
+    h += '<div class="card"><h2>案場 ' + sites.length + '</h2>' + (sites.length ? sites.map(function (s) { return '<div class="item"><div class="t">' + esc(s.nfcCode) + '　' + esc(s.siteName) + '</div><div class="m">' + esc(s.addr || '') + (s.assignedEmpName ? '　負責：' + esc(s.assignedEmpName) : '') + '</div>' + (s.careNote ? '<div class="m">注意：' + esc(s.careNote) + '</div>' : '') + '</div>'; }).join('') : '<div class="note">尚無案場</div>') + '</div>';
+    var cts = c.contacts || [];
+    h += '<div class="card"><h2>聯絡人 ' + cts.length + '</h2>' + (cts.length ? cts.map(function (x) { return '<div class="item"><div class="t">' + esc(x.name) + (x.isPrimary ? ' <span class="chip ok">主要</span>' : '') + (x.title ? ' <span class="note">' + esc(x.title) + '</span>' : '') + '</div><div class="m">' + esc([x.phone, x.email].filter(Boolean).join('　')) + '</div></div>'; }).join('') : '<div class="note">尚無聯絡人</div>') + '</div>';
+    var qs = d.quotes || [];
+    h += '<div class="card list"><h2>報價 ' + qs.length + '</h2>' + (qs.length ? qs.map(function (q) { return '<div class="item"><div class="t">' + esc(q.quoteNo || q.date) + '　' + esc(q.subtitle || q.type || '') + ' <span class="chip ' + (q.signedAt ? 'ok' : 'mute') + '">' + esc(q.status) + '</span></div><div class="m">' + esc(q.date) + '　NT$ ' + Number(q.total || 0).toLocaleString() + (q.shareUrl ? '　<a href="' + esc(q.shareUrl) + '" target="_blank">檢視</a>' : '') + '</div></div>'; }).join('') : '<div class="note">尚無報價</div>') + '</div>';
+    var cs = d.contracts || [];
+    h += '<div class="card"><h2>合約 ' + cs.length + '</h2>' + (cs.length ? cs.map(function (x) { return '<div class="item"><div class="t">' + esc(x.contractNo) + '　' + esc(x.typeName || '') + ' <span class="chip mute">' + esc(x.status || '') + '</span></div><div class="m">' + esc(x.createdAt || '') + (x.signedAt ? '　簽回 ' + esc(x.signedAt) : '') + '</div></div>'; }).join('') : '<div class="note">尚無合約</div>') + '</div>';
+    var ps = d.proposals || [];
+    h += '<div class="card list"><h2>提案 ' + ps.length + '</h2>' + (ps.length ? ps.map(function (p) { return '<div class="item"><div class="t">' + esc(p.title || p.proposalId) + ' <span class="chip mute">' + esc(p.status || '') + '</span></div><div class="m">' + esc(p.ts || '') + (p.viewUrl ? '　<a href="' + esc(p.viewUrl) + '" target="_blank">檢視</a>' : '') + '</div></div>'; }).join('') : '<div class="note">尚無提案</div>') + '</div>';
+    var ns = d.notes || [];
+    h += '<div class="card"><h2>備註 ' + ns.length + '</h2>' + (ns.length ? ns.map(function (n) { return '<div class="item"><div>' + esc(n.note) + '</div><div class="m">' + esc(n.ts || '') + (n.byWho ? '　' + esc(n.byWho) : '') + (n.tags ? '　' + esc(n.tags) : '') + '</div></div>'; }).join('') : '<div class="note">尚無備註</div>') + '</div>';
+    $('detailView').innerHTML = h; $('back').onclick = backToList;
+  }
+  $('q').addEventListener('input', function () { D.q = this.value.trim().toLowerCase(); if (D.list) renderList(); });
+  $('gasLink').href = CFG.gas + '?page=clients';
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); boot(); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
+  function boot() { var cid = new URLSearchParams(location.search).get('cid'); loadList(); if (cid && /^C\d+$/.test(cid)) openDetail(cid); }
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
+})();
+</script>
+</body>
+</html>
