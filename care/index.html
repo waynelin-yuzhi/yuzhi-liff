@@ -413,13 +413,14 @@
     $('report-area').innerHTML = '<div class="loading"><span class="spinner"></span>正在載入報告…</div>';
     fetchJson(GW + '?action=careView&h=' + encodeURIComponent(h), 20000).then(res => {
       if (!res || res.status !== 'success') {
-        if (!res || res.error === 'db_error' || res.error === 'bad_link') return fallbackGas();   // 引擎資料有問題：退回 GAS 原頁
+        if (!res || res.error === 'db_error' || res.error === 'bad_link' || res.error === 'not_found') return fallbackGas();   // 引擎沒資料或還沒鏡像到：退回 GAS 原頁（GAS 是正本、自己會判無效連結）
         $('report-area').className = 'empty-state';
         $('report-area').innerHTML = '<h2>無法開啟</h2><p>' + escapeHtml(res.msg || '此連結已停用或不存在。') + '</p>';
         return;
       }
       renderReport(res.data);
       $('btn-print').disabled = false;
+      fetchJson(GAS + '?page=care-photos&h=' + encodeURIComponent(h) + '&touch=1', 30000).catch(() => {});   // 記一次存取（住公開連結表）
     }).catch(() => fallbackGas());
   }
   function fallbackGas() { location.replace(GAS + '?page=care-view&h=' + encodeURIComponent(PUBLIC_HASH)); }
@@ -672,17 +673,17 @@
       }
       if (!fids.length) { loadNextBatch(); return; }
       photosFetch(fids, 400).then(function(res) {
-        var rs = (res && res.results) || [];
-        for (var k = 0; k < rs.length; k++) {
-          var m = meta[k];
-          var r = rs[k];
-          if (m && r && r.dataUri) applyBatchResult(m.cell, m.img, m.bg, r.dataUri);
-          else if (m) markFailed(m.cell);
-        }
+        var byId = {};
+        ((res && res.results) || []).forEach(function(r) { if (r && r.fileId) byId[r.fileId] = r; });
+        meta.forEach(function(m) {
+          var r = byId[m.img.dataset.fileId];
+          if (r && r.dataUri) applyBatchResult(m.cell, m.img, m.bg, r.dataUri);
+          else markFailed(m.cell);
+        });
         loadNextBatch();
       }).catch(function() { meta.forEach(function(m) { markFailed(m.cell); }); loadNextBatch(); });
     }
-    loadNextBatch();
+    loadNextBatch(); loadNextBatch(); loadNextBatch();   // 三批同時在路上（GAS 每批約 8 秒）
   }
 
   function retryPhoto(fid, btn) {
