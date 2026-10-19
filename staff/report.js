@@ -502,7 +502,7 @@
   function renderList() {
     if (A.list === null || A.listFromEngine) {
       if (A.list === null) $('app').innerHTML = '<div class="card"><div class="note">載入中…</div></div>';
-      if (!A.listLoading) { A.listLoading = true; var seq = A.listSeq = (A.listSeq || 0) + 1; T.api('reportsMine', { limit: 100 }).then(function (r) { if (seq !== A.listSeq) return; A.listLoading = false; if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }); }
+      if (!A.listLoading) { A.listLoading = true; var seq = A.listSeq = (A.listSeq || 0) + 1; T.api('reportsMine', { limit: 100 }).then(function (r) { if (seq !== A.listSeq) return; A.listLoading = false; if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }).catch(function () { if (seq !== A.listSeq) return; A.listLoading = false; if (A.list === null) { $('app').innerHTML = '<div class="card"><div class="note">清單載入失敗，再點一次「我的報告」重試</div></div>'; } }); }
       if (A.list === null) return;
     }
     if (!A.list.length) { $('app').innerHTML = '<div class="card"><div class="note">還沒有報告紀錄。</div></div>'; return; }
