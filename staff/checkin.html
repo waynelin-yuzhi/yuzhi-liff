@@ -176,9 +176,20 @@
   var cached = T.cacheGet('checkin');
   if (cached && (!preClient || cached.sites.some(function (s) { return s.id === preClient; }))) applyInit(cached, true);
   else $('app').innerHTML = '<div class="card"><div class="note">確認身分、載入案場…</div></div>';
+  // 引擎先出（案場清單＋最近打卡，約 1 秒）；GAS 的 checkinInit 隨後補「今天要跑」與最終版（第 7 塊：員工頁讀取搬引擎）
+  var ENGINE_INIT = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api?action=staffInit';
+  var gasApplied = false;
   T.init({ skipWhoami: true }).then(function () {
+    var S = T.S || (window.STAFF && window.STAFF.S) || {};
+    if (!S.dev && S.idToken && !preClient) {
+      fetch(ENGINE_INIT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: S.idToken }), cache: 'no-store' })
+        .then(function (res) { return res.json(); })
+        .then(function (r) { if (gasApplied || !r || !r.ok) return; var keep = ST.me && ST.me.items; r.items = keep || []; applyInit(r, false); })
+        .catch(function () {});
+    }
     return T.api('checkinInit', preClient ? { clientId: preClient } : {});
   }).then(function (r) {
+    gasApplied = true;
     if (!r || !r.ok) { if (!cached) T.showErr(T.errText(r)); else { ST.stale = false; render(); } return; }
     T.cacheSet('checkin', r);
     applyInit(r, false);
