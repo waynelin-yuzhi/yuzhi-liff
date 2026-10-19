@@ -169,12 +169,7 @@
       var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true); };
       var dr = $('draft'); if (dr) dr.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (rows.length && !confirm('重新照慣例排會蓋掉你調整過的班，確定？')) return; busy(this, '排班中'); api('schedDraft', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); MSG = '已排 ' + x.count + ' 場' + ((x.warn || []).length ? '。注意：' + x.warn.join('；') : ''); if (x.view && x.view.ok && x.view.ym === YM) { DATA = x.view; render(); } else load(YM, true); }).catch(fail); };
       var sv = $('savenow'); if (sv) sv.onclick = function () { var self = this; busy(self, '儲存中'); var t0 = Date.now(), m0 = MSG; (function waitSaved() { if (busySaving() && Date.now() - t0 < 8000) return setTimeout(waitSaved, 300); self.disabled = false; self.textContent = '暫存'; if (MSG && MSG !== m0) { msg(MSG); return; } var d = new Date(); MSG = (busySaving() ? '還在儲存中，再等幾秒就好。' : '已暫存 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + '，隨時回來繼續，不用急著送出核可。'); msg(MSG); })(); };
-      var sb = $('submit'); if (sb) sb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再送'); return; } var warnN = rows.filter(function (x) { return x.holiday && String(x.note || '').indexOf('照排') < 0; }).length; var forceH = false; if (warnN) { if (!confirm('還有 ' + warnN + ' 個班在假日。客戶確認假日照常要做才按確定；否則按取消回去移班。')) return; forceH = true; } if (!confirm('送出 ' + YM + ' 的班表給 Wayne 核可？')) return; busy(this, '送出中'); var sbSelf = this; var doSubmit = function (forceL, forceO, forceB) { api('schedSubmit', { ym: YM, forceHabit: forceB ? '1' : '', forceHolidays: forceH ? '1' : '', forceLoad: forceL ? '1' : '', forceOwner: forceO ? '1' : '' }).then(function (x) {
-          if (!x.ok && x.error === 'overload' && !forceL) { if (confirm('這幾天同一個半天排了 4 站以上：\n' + (x.days || []).join('\n') + '\n\n通常會有幾站是下午。確定時段都對、照這樣送出嗎？\n（按取消回去改時段）')) return doSubmit(true, forceO, forceB); sbSelf.disabled = false; sbSelf.textContent = '送出核可'; msg('請點那幾個班改成下午，再送出'); return; }
-          if (!x.ok && x.error === 'habit_mismatch' && !forceB) { if (confirm('這幾個班的時段跟這家客戶平常到的時間不一樣：\n' + (x.items || []).join('\n') + '\n\n客戶通知會照你排的時段寫。確定照這樣送出嗎？\n（按取消回去改時段）')) return doSubmit(forceL, forceO, true); sbSelf.disabled = false; sbSelf.textContent = '送出核可'; msg('請點那幾個班改時段，再送出'); return; }
-          if (!x.ok && x.error === 'owner_changed' && !forceO) { if (confirm('這幾個案場目前登記的負責人不是你：\n' + (x.sites || []).join('\n') + '\n\n是你要去跑的（例如代班），按確定照樣送出；不確定的話按取消，先問 Wayne。')) return doSubmit(forceL, true, forceB); sbSelf.disabled = false; sbSelf.textContent = '送出核可'; msg('先跟 Wayne 確認這幾個案場，再送出'); return; }
-          if (!x.ok) return fail(x); msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true); }).catch(fail); };
-        doSubmit(false, false); };
+      var sb = $('submit'); if (sb) sb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再送'); return; } openReview(this); };
       var wb = $('withdraw'); if (wb) wb.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('撤回這個月的送件、回到草稿重排？')) return; busy(this, '撤回中'); api('schedWithdraw', { ym: YM }).then(function (x) { if (!x.ok) return fail(x); msg('已撤回，回到草稿'); load(YM, true); }).catch(fail); };
       var ba = $('b-approve'); if (ba) ba.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } if (!confirm('核可這份班表？核可後系統會自動把養護日期通知各客戶（排下個工作日 10:30 送出）。')) return; busy(ba, '核可中'); T.api('schedApprove', { ym: YM, empId: AS }).then(function (x) { if (!x || !x.ok) { ba.disabled = false; ba.textContent = '核可'; msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應')); return; } MSG = '已核可。' + (x.execMsg || ''); load(YM, true); }).catch(function () { msg('後台回應慢，正在確認…'); confirmApproved(0); }); };
       function confirmApproved(tries) {   // 核可請求逾時：回頭查狀態，最多等 90 秒；不再丟「後台沒回應」讓人猜
@@ -312,6 +307,54 @@
   function busy(b, t) { b.disabled = true; b.textContent = t; }
   function closeSheet() { $('sheet').classList.remove('on'); $('mask').classList.remove('on'); }
   $('mask').onclick = closeSheet;
+  // 送出前的提醒清單（Wayne 2026-10-19：三類軟提醒一次看完、每項旁邊給改時段捷徑；只提醒不擋）
+  function quickSlot(siteCode, date, slot, order, newSlot, after) {
+    var x = (DATA.rows || []).filter(function (r) { return r.siteCode === siteCode && r.date === date && r.slot === slot; })[0];
+    if (!x) { after(); return; }
+    doMove(x, { ym: YM, siteCode: siteCode, date: date, slot: slot, newDate: date, newSlot: newSlot, newOrder: order || 1 }, false, { err: function (t) { msg(t); after(); }, busy: function () {} });
+    var t0 = Date.now(); (function waitQ() { if (busySaving() && Date.now() - t0 < 8000) return setTimeout(waitQ, 250); after(); })();
+  }
+  function openReview(btn) {
+    busy(btn, '檢查中');
+    var done = function () { btn.disabled = false; btn.textContent = '送出核可'; };
+    api('schedSubmit', { ym: YM, check: '1' }).then(function (x) {
+      if (!x.ok) { done(); msg('失敗：' + (x.detail || x.error)); if (x.error === 'invalid' || x.error === 'too_early' || x.error === 'approved_locked' || x.error === 'already_submitted') load(YM, true); return; }
+      var w = x.warnings || { owner: [], overload: [], habit: [] };
+      if (!x.count && !x.holidayN) { done(); if (!confirm('送出 ' + YM + ' 的班表給 Wayne 核可？')) return; return doSubmitFinal(btn, false); }
+      renderReview(w, x.holidayN || 0, btn);
+    }).catch(function () { done(); msg('後台沒回應，請重試'); });
+  }
+  function renderReview(w, holidayN, btn) {
+    var other = function (s) { return s === '上午' ? '下午' : '上午'; };
+    var h = '<div class="small" style="margin-bottom:8px"><b>送出前看一下</b>　<span class="muted">系統只是提醒，確定沒問題就送出</span></div>';
+    if (holidayN) h += '<div class="small" style="margin:6px 0;color:#8C3B25">還有 ' + holidayN + ' 個班在假日。送出＝客戶已確認假日照常。</div>';
+    if (w.habit && w.habit.length) {
+      h += '<div class="small" style="margin-top:10px"><b>時段跟這家平常到的時間不一樣</b></div>';
+      w.habit.forEach(function (it, i) { h += '<div class="small" style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="flex:1">' + esc(it.label) + '</span><button class="btn sm" data-fix="h' + i + '">改成' + esc(it.habitSlot) + '</button></div>'; });
+    }
+    if (w.overload && w.overload.length) {
+      h += '<div class="small" style="margin-top:10px"><b>同一個半天排了 4 站以上</b>　<span class="muted">通常有幾站是另一個半天</span></div>';
+      w.overload.forEach(function (d, i) { h += '<div class="small" style="margin:6px 0"><b>' + esc(d.label) + '</b></div>' + d.stations.map(function (s, j) { return '<div class="small" style="display:flex;align-items:center;gap:8px;margin:3px 0 3px 10px"><span style="flex:1">第 ' + s.order + ' 站 ' + esc(s.shortName) + (s.fixedStart ? '（指定 ' + esc(s.fixedStart) + '）' : '') + '</span>' + (s.fixedStart ? '' : '<button class="btn secondary sm" data-fix="o' + i + '_' + j + '">改成' + esc(other(d.slot)) + '</button>') + '</div>'; }).join(''); });
+    }
+    if (w.owner && w.owner.length) h += '<div class="small" style="margin-top:10px"><b>這幾個案場目前登記的負責人不是你</b><br>' + esc(w.owner.join('、')) + '<br><span class="muted">是你要去跑的（例如代班）就照送；不確定先問 Wayne。</span></div>';
+    h += '<div class="two" style="margin-top:14px"><button class="btn" id="rv-send">確認照排，送出核可</button><button class="btn secondary" id="rv-close">回去改</button></div>';
+    $('sheet').innerHTML = h; $('sheet').classList.add('on'); $('mask').classList.add('on');
+    var again = function () { api('schedSubmit', { ym: YM, check: '1' }).then(function (x) { if (!x.ok) { closeSheet(); msg('失敗：' + (x.detail || x.error)); btn.disabled = false; btn.textContent = '送出核可'; return; } if (!x.count && !x.holidayN) { closeSheet(); msg('提醒都處理完了，再按一次送出'); btn.disabled = false; btn.textContent = '送出核可'; return; } renderReview(x.warnings, x.holidayN || 0, btn); }); };
+    document.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-fix'); b.disabled = true; b.textContent = '改中…';
+      if (k.charAt(0) === 'h') { var it = w.habit[Number(k.substring(1))]; quickSlot(it.siteCode, it.date, it.slot, it.order, it.habitSlot, again); }
+      else { var q = k.substring(1).split('_'); var d = w.overload[Number(q[0])], s = d.stations[Number(q[1])]; quickSlot(s.siteCode, d.date, d.slot, s.order, other(d.slot), again); } }; });
+    $('rv-close').onclick = function () { closeSheet(); btn.disabled = false; btn.textContent = '送出核可'; };
+    $('rv-send').onclick = function () { closeSheet(); doSubmitFinal(btn, true); };
+  }
+  function doSubmitFinal(btn, ack) {
+    busy(btn, '送出中');
+    var fail = function (x) { msg('失敗：' + ((x && (x.detail || x.error)) || '後台沒回應，請重試')); load(YM, true); };
+    api('schedSubmit', { ym: YM, ack: ack ? '1' : '', forceHolidays: ack ? '1' : '' }).then(function (x) {
+      if (!x.ok && (x.error === 'owner_changed' || x.error === 'overload' || x.error === 'habit_mismatch')) { btn.disabled = false; btn.textContent = '送出核可'; msg('班表剛有變動，再按一次送出看清單'); return; }
+      if (!x.ok) return fail(x);
+      msg('已送出（' + x.apId + '），等 Wayne 核可'); load(YM, true);
+    }).catch(fail);
+  }
   function openSheet(x) {
     if (!x) return; var approved = DATA.status === '已核可', locked = !!x.pendingChange;
     var days = daysOf(YM);
