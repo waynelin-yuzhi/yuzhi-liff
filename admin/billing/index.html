@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>收款總覽 ｜ 植間後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--page-bg:#EFEEE9;--card:#fff;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--page-bg);color:var(--ink);line-height:1.6;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px;flex:1}
+.top a.btn,.top button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:none}
+main{max-width:860px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--sage);margin-bottom:8px}
+.note{font-size:13px;color:var(--ink-60)}
+input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px;background:#fff}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button{flex:1;padding:8px;border:1px solid var(--ink-20);border-radius:8px;background:#fff;font-size:13px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.tabs button.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--ink-20);border-radius:10px;padding:10px 6px;text-align:center}
+.stat .v{font-size:20px;font-weight:500;color:var(--sage)}
+.stat .l{font-size:11px;color:var(--ink-60);letter-spacing:.04em}
+.grp{padding:10px 0;border-top:1px solid var(--ink-20)}
+.grp:first-child{border-top:none}
+.grp .h{display:flex;justify-content:space-between;align-items:baseline;font-weight:500;font-size:15px}
+.grp .h .sum{color:var(--terra);font-size:14px}
+.ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;color:var(--ink)}
+.ln .m{color:var(--ink-60);font-size:12px}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em;margin-left:6px}
+.chip.ok{background:var(--sage-tint);color:var(--sage-deep)}
+.chip.warn{background:var(--amber-tint);color:var(--amber)}
+.chip.bad{background:var(--terra-tint);color:var(--terra)}
+.chip.mute{background:#EEE;color:var(--ink-60)}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
+.ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">植間後台｜收款總覽</span><a class="btn" id="gasLink" href="#" target="_blank">開票／銷帳</a><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入後台</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+  <div id="app" style="display:none">
+    <div class="tabs"><button data-t="open" class="on">未收應收</button><button data-t="schedules">收款排程</button><button data-t="payments">收款紀錄</button></div>
+    <input type="search" id="q" placeholder="搜尋客戶、項目、編號">
+    <div class="stats" id="stats"></div>
+    <div class="card" id="list"><div class="ld">載入中</div></div>
+  </div>
+  <div class="foot">此頁只讀（引擎鏡像、最長落後 5 分）；開票、銷帳、改排程一律在「開票／銷帳」原頁。<br>植間設計股份有限公司</div>
+</main>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api', gas: 'https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function money(n) { return 'NT$ ' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+  var D = { tab: 'open', data: {}, q: '', seq: 0 };
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  function api(payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      return fetch(CFG.engine + '?action=adminBilling', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function hit(parts) { if (!D.q) return true; return parts.join(' ').toLowerCase().indexOf(D.q) >= 0; }
+  function statusCls(st) { return st === '已收款' || st === '已沖銷' ? 'ok' : st === '部分收款' || st === '票據在途' ? 'warn' : st === '已開票' ? 'bad' : 'mute'; }
+  function renderOpen(items) {
+    var rows = items.filter(function (r) { return hit([r.client, r.full, r.itemDesc, r.ar_id, r.month]); });
+    var total = 0, cnt = rows.length, clients = {};
+    rows.forEach(function (r) { total += r.outstanding; (clients[r.client] = clients[r.client] || []).push(r); });
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + cnt + '</div><div class="l">未收筆數</div></div><div class="stat"><div class="v">' + Object.keys(clients).length + '</div><div class="l">客戶數</div></div><div class="stat"><div class="v">' + esc(money(total)) + '</div><div class="l">未收合計</div></div>';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有未收應收</div>'; return; }
+    var names = Object.keys(clients).sort(function (a, b) { return clients[b].reduce(function (s, r) { return s + r.outstanding; }, 0) - clients[a].reduce(function (s, r) { return s + r.outstanding; }, 0); });
+    $('list').innerHTML = names.map(function (n) {
+      var rs = clients[n]; var sum = rs.reduce(function (s, r) { return s + r.outstanding; }, 0);
+      return '<div class="grp"><div class="h"><span>' + esc(n || '(未命名)') + '</span><span class="sum">' + esc(money(sum)) + '</span></div>' + rs.map(function (r) {
+        return '<div class="ln"><span>' + esc(r.invoiceDate || r.month) + '　' + esc(r.itemDesc || '') + '<span class="chip ' + statusCls(r.payStatus) + '">' + esc(r.payStatus) + '</span></span><span class="m">' + esc(r.ar_id) + '　' + esc(money(r.outstanding)) + (r.collected ? '（已收 ' + esc(money(r.collected)) + '）' : '') + '</span></div>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  function renderSchedules(items) {
+    var rows = items.filter(function (r) { return hit([r.short, r.title, r.item, r.scheduleId, r.status]); });
+    var act = rows.filter(function (r) { return r.status === 'active'; });
+    var monthly = act.reduce(function (s, r) { return s + (r.freq === 'monthly' ? r.amountInc : 0); }, 0);
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + act.length + '</div><div class="l">進行中</div></div><div class="stat"><div class="v">' + (rows.length - act.length) + '</div><div class="l">暫停／停止</div></div><div class="stat"><div class="v">' + esc(money(monthly)) + '</div><div class="l">每月例行含稅</div></div>';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有收款排程</div>'; return; }
+    rows.sort(function (a, b) { return (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || String(a.short).localeCompare(String(b.short), 'zh-Hant'); });
+    $('list').innerHTML = rows.map(function (r) {
+      var st = r.status === 'active' ? '<span class="chip ok">進行中</span>' : r.status === 'paused' ? '<span class="chip warn">暫停</span>' : '<span class="chip mute">' + esc(r.status || '') + '</span>';
+      return '<div class="grp"><div class="h"><span>' + esc(r.short || r.title) + st + '</span><span class="sum" style="color:var(--sage)">' + esc(money(r.amountInc)) + '／期</span></div><div class="ln"><span>' + esc(r.item) + (r.site ? '　' + esc(r.site) : '') + '</span><span class="m">' + esc(r.freq) + '　月份 ' + esc(r.months) + '</span></div><div class="ln"><span class="m">' + esc(r.scheduleId) + '　' + esc(r.start) + ' 至 ' + esc(r.end) + '　' + esc(r.docType) + '</span></div></div>';
+    }).join('');
+  }
+  function renderPayments(items) {
+    var rows = items.filter(function (r) { return hit([r.client, r.item, r.arId, r.payId, r.paidDate]); });
+    var live = rows.filter(function (r) { return !r.voided; }); var sum = live.reduce(function (s, r) { return s + r.amount; }, 0);
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + live.length + '</div><div class="l">筆數（最近 ' + items.length + '）</div></div><div class="stat"><div class="v">' + esc(money(sum)) + '</div><div class="l">合計</div></div><div class="stat"><div class="v">' + (rows.length - live.length) + '</div><div class="l">作廢</div></div>';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有收款紀錄</div>'; return; }
+    $('list').innerHTML = rows.map(function (r) {
+      return '<div class="ln"><span>' + esc(r.paidDate) + '　' + esc(r.client || r.arId) + (r.item ? '　<span class="m">' + esc(r.item) + '</span>' : '') + (r.voided ? '<span class="chip mute">作廢</span>' : '') + (r.checkStatus ? '<span class="chip warn">' + esc(r.checkStatus) + '</span>' : '') + '</span><span class="m">' + esc(r.arId) + '　' + esc(money(r.amount)) + '</span></div>';
+    }).join('');
+  }
+  function render() {
+    var d = D.data[D.tab]; if (!d) return;
+    if (D.tab === 'open') renderOpen(d); else if (D.tab === 'schedules') renderSchedules(d); else renderPayments(d);
+  }
+  function load(tab) {
+    D.tab = tab; var seq = ++D.seq;
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) { b.className = b.getAttribute('data-t') === tab ? 'on' : ''; });
+    if (D.data[tab]) { render(); return; }
+    $('stats').innerHTML = ''; $('list').innerHTML = '<div class="ld">載入中</div>';
+    api({ op: tab, limit: 100 }).then(function (d) {
+      if (seq !== D.seq) return;
+      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
+      D.data[tab] = d.items || []; render();
+    }).catch(function (e) { if (seq !== D.seq) return; $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) { b.onclick = function () { load(b.getAttribute('data-t')); }; });
+  $('q').addEventListener('input', function () { D.q = this.value.trim().toLowerCase(); render(); });
+  $('gasLink').href = CFG.gas + '?page=billing-schedule';
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); load('open'); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); load('open'); } else showGate(); });
+})();
+</script>
+</body>
+</html>
