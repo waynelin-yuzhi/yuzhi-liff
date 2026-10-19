@@ -147,7 +147,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         if (pl.lineReplyTo) { var reqAtC = pl.publishAt || ''; html += '<div class="schedbox"><div class="schedlabel">指定發送時間（留空＝核可後立即發送）' + (reqAtC ? '<span class="schedhint">投稿方建議 ' + esc(reqAtC) + '（已預填、可改可清）</span>' : '') + '</div><input type="datetime-local" name="publishAt" value="' + esc(reqAtC ? reqAtC.replace(' ', 'T') : '') + '"></div>'; }
       }
       html += '<div id="ph-attach" class="ph loading">附掛項目載入中…</div>';
-      html += '<button class="btn-main" type="submit" name="decision" value="approve" data-confirm="' + esc(confirmMsg) + '">' + (isPub ? '核可並發佈' : '核可') + '</button>';
+      html += '<button class="btn-main" type="submit" name="decision" value="approve" id="btnApprove" disabled data-confirm="' + esc(confirmMsg) + '">' + (isPub ? '核可並發佈' : '核可') + '<span id="approveHint" style="display:block;font-size:11px;font-weight:400;letter-spacing:0;opacity:.85;">附掛項目載入後才能核可</span></button>';
       if (!isPub) html += '<div id="ph-cal" class="ph"></div>';
       if (!isPub && !pl.reviewUrl) html += pl.lineReplyTo
         ? '<button class="btn-tune" type="submit" name="decision" value="skip" data-confirm="確認你已自己回覆過這位客戶？此件將不發送、收件匣標為已處理。">已自行回覆、略過此件<span>系統擬稿前你已在 LINE 回過的情況用；客戶有新訊息會再進巡邏</span></button>'
@@ -179,13 +179,17 @@ form.busy button{opacity:.5;pointer-events:none;}
     loadExtras(status);
   }
 
+  var lastBtn = null;
+  document.addEventListener('click', function (ev) { var t = ev.target && ev.target.closest ? ev.target.closest('button') : null; if (t && t.type === 'submit') lastBtn = t; }, true);   // 舊 iOS Safari 沒有 ev.submitter、按鈕也不會拿到焦點
+  window.addEventListener('pageshow', function () { Array.prototype.forEach.call(document.querySelectorAll('form.busy'), function (f) { f.classList.remove('busy'); }); });   // 從 GAS 結果頁按返回（bfcache）時解鎖
   function wire() {
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) {
       f.addEventListener('submit', function (ev) {
-        var btn = ev.submitter || document.activeElement, c = btn && btn.getAttribute && btn.getAttribute('data-confirm');
+        var btn = ev.submitter || lastBtn, c = btn && btn.getAttribute && btn.getAttribute('data-confirm');
+        if (btn && btn.disabled) { ev.preventDefault(); return; }
         if (c && !confirm(c)) { ev.preventDefault(); return; }
         if (f.classList.contains('busy')) { ev.preventDefault(); return; }
-        setTimeout(function () { f.classList.add('busy'); }, 0);
+        setTimeout(function () { f.classList.add('busy'); setTimeout(function () { f.classList.remove('busy'); }, 15000); }, 0);
       });
     });
   }
@@ -200,11 +204,13 @@ form.busy button{opacity:.5;pointer-events:none;}
         put('ph-stage', fr.stage); put('ph-conv', fr.conv); put('ph-media', fr.media); put('ph-attach', fr.attach); put('ph-cal', fr.calendar);
         if (fr.previewImages && fr.previewImages.length) put('ph-preview', fr.previewImages.map(function (pi) { return '<span class="pimg">' + (pi.src ? '<img src="' + esc(pi.src) + '">' : '<i></i>') + esc(pi.label) + '</span>'; }).join(''));
         var fp = document.getElementById('fp'); if (fp && j.fp) fp.value = j.fp;
+        var ba = document.getElementById('btnApprove'), bh = document.getElementById('approveHint'); if (ba) ba.disabled = false; if (bh) bh.parentNode.removeChild(bh);
         if (j.status && j.status !== status) { var n = document.createElement('div'); n.className = 'stale-banner'; n.innerHTML = '<span>這件的狀態剛變成「' + esc(j.status) + '」</span><span class="stale-hint">重新整理看最新內容。</span>'; app.insertBefore(n, app.firstChild); }
         var ver = document.getElementById('ver'); if (ver && j.serverVersion) ver.textContent = 'Pages · ' + j.serverVersion;
       })
       .catch(function () {
-        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = '<div class="note">附掛項目這次沒載到；附件與對話請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>看（核可仍可照常送出）。</div>'; } });
+        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
+        var bh = document.getElementById('approveHint'); if (bh) bh.textContent = '附掛項目沒載到、這裡不能核可';
       });
   }
 
