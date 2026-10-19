@@ -215,11 +215,12 @@
       var el2 = $('time-hint'); if (!el2) return;
       if (!(r && r.ok)) { if (!fromEngine) el2.textContent = ''; return; }
       if (!r.data) { if (!fromEngine) { el2.textContent = '該日沒有這家的打卡紀錄，請手動填'; el2.className = 'hint warn'; } return; }   // 引擎鏡像最長落後 5 分：沒資料不下結論、等 GAS
-      var sE = !A.st.startTime || A.st.timesFromCheckin, eE = !A.st.endTime || A.st.timesFromCheckin;
+      var sE = !A.st.startTime || !!A.st.startFromCheckin, eE = !A.st.endTime || !!A.st.endFromCheckin;
       if (sE && r.data.startTime) { A.st.startTime = r.data.startTime; var si = $('f-start'); if (si) si.value = A.st.startTime; }
       if (eE && r.data.endTime) { A.st.endTime = r.data.endTime; var ei = $('f-end'); if (ei) ei.value = A.st.endTime; }
       var msg = r.data.startTime && r.data.endTime ? '來自打卡：' + r.data.startTime + '–' + r.data.endTime : (r.data.startTime ? '來自打卡：' + r.data.startTime + '（尚未打離開）' : '來自打卡：—–' + r.data.endTime);
       if (!sE || !eE) msg += '（保留你手填的）';
+      A.st.startFromCheckin = sE && !!r.data.startTime; A.st.endFromCheckin = eE && !!r.data.endTime;
       el2.textContent = msg; el2.className = 'hint ok'; A.st.timesFromCheckin = sE && eE; snapshot();
     }
     engineCall('staffCheckinTimes', { clientId: A.st.clientId, date: A.st.reportDate }).then(function (r) { apply(r, true); });
@@ -268,8 +269,8 @@
     // 綁定
     var sel = $('f-client'); sel.addEventListener('change', function () { st.clientId = sel.value; var o = siteById(sel.value); st.clientName = o ? (o.shortName || o.name) : ''; A.proposals = {}; markDirty(); render(); if (st.clientId) { loadOpenIssues(st.clientId); loadTimes(); } });
     $('f-date').addEventListener('change', function () { st.reportDate = this.value; markDirty(); loadTimes(); });
-    $('f-start').addEventListener('change', function () { st.startTime = this.value; st.timesFromCheckin = false; markDirty(); });
-    $('f-end').addEventListener('change', function () { st.endTime = this.value; st.timesFromCheckin = false; markDirty(); });
+    $('f-start').addEventListener('change', function () { st.startTime = this.value; st.timesFromCheckin = false; st.startFromCheckin = false; markDirty(); });
+    $('f-end').addEventListener('change', function () { st.endTime = this.value; st.timesFromCheckin = false; st.endFromCheckin = false; markDirty(); });
     $('f-notes').addEventListener('input', function () { st.notes = this.value; markDirty(); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-task]'), function (b) { b.addEventListener('click', function () { var t = b.getAttribute('data-task'); var i = st.tasks.indexOf(t); if (i >= 0) st.tasks.splice(i, 1); else st.tasks.push(t); b.classList.toggle('on'); markDirty(); }); });
     $('add-zone').addEventListener('click', function () { st.zones.push(newZone(st.zones.length + 1)); renderZones(); markDirty(); });
@@ -466,7 +467,7 @@
           rec.photos.forEach(function (ph) { var z = rec.payload.zones.filter(function (zz) { return zz.seq === ph.zoneSeq; })[0]; if (!z) return; var key = ph.ba === 'before' ? 'beforePhotos' : 'afterPhotos'; z[key] = z[key] || []; z[key].push(ph.url); });
           var saved = false;
           try { var rs = await T.api('reportSave', { payloadJson: JSON.stringify(rec.payload) }); saved = !!(rs && rs.ok); if (!saved && rs && rs.error) console.log('reportSave', rs); } catch (e) {}
-          if (saved) { qUploaded = true; await queueDel(rec.id); rec.photos.forEach(function (ph) { photoDel(ph.pid); }); if (A.view === 'list') { A.list = null; renderList(); } }
+          if (saved) { qUploaded = true; await queueDel(rec.id); rec.photos.forEach(function (ph) { photoDel(ph.pid); }); A.list = null; A.listFromEngine = false; if (A.view === 'list') renderList(); }
           else { rec.status = 'failed'; await queuePut(rec); }
           renderQueueBar();
         }
@@ -498,10 +499,10 @@
 
   // ── 我的報告 ──
   function renderList() {
-    if (A.list === null) {
-      $('app').innerHTML = '<div class="card"><div class="note">載入中…</div></div>';
-      T.api('reportsMine', { limit: 100 }).then(function (r) { A.list = (r && r.ok && r.list) || []; if (A.view === 'list') renderList(); });
-      return;
+    if (A.list === null || A.listFromEngine) {
+      if (A.list === null) $('app').innerHTML = '<div class="card"><div class="note">載入中…</div></div>';
+      if (!A.listLoading) { A.listLoading = true; T.api('reportsMine', { limit: 100 }).then(function (r) { A.listLoading = false; if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }); }
+      if (A.list === null) return;
     }
     if (!A.list.length) { $('app').innerHTML = '<div class="card"><div class="note">還沒有報告紀錄。</div></div>'; return; }
     $('app').innerHTML = '<div class="card">' + A.list.map(function (r) { return '<div class="list-item" data-open="' + esc(r.reportId) + '"><div class="t">' + esc(r.clientName || '(未指定客戶)') + ' <span class="chip">' + esc(r.status || '') + '</span></div><div class="m">' + esc(r.reportDate) + '　' + esc(r.startTime || '') + '–' + esc(r.endTime || '') + (r.tasks ? '　' + esc(r.tasks) : '') + '</div></div>'; }).join('') + '</div><div class="note" style="text-align:center">點一筆可以修改後重新送出</div>';
@@ -534,14 +535,20 @@
   function applyInit(r, fromEngine) {
     if (fromEngine && gasApplied) return Promise.resolve();
     A.me = r; A.sites = r.sites || []; if (!fromEngine) A.promoted = r.promotedTypes || [];
-    if (fromEngine && r.reports && A.list === null) A.list = r.reports;   // 我的報告清單先有（切到清單頁時 GAS 會再補最新）
+    if (fromEngine && r.reports && A.list === null) { A.list = r.reports; A.listFromEngine = true; }   // 我的報告清單先有；進清單頁時仍向 GAS 補最新（鏡像最長落後 5 分）
     var todayIds = {}; (r.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
     A.sites.forEach(function (s) { s.today = !!todayIds[s.id]; });
     A.sites.sort(function (a, b) { return (b.today - a.today) || (b.assigned - a.assigned) || String(a.name).localeCompare(String(b.name)); });
-    if (booted) {   // 第二份結果（GAS）：只補案場清單與今天標記、不動使用者已在填的表單
+    if (booted) {   // 第二份結果（GAS）：只補案場清單與今天標記、不整頁重畫、不動使用者已在填的表單
       if (A.st.clientId && !A.st.clientName && siteById(A.st.clientId)) A.st.clientName = siteById(A.st.clientId).shortName || '';
-      if (!A.dirty && !A.st.clientId && !A.editing) { if (r.draft) A.serverDraft = r.draft; if ((r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; } }
-      if (A.view === 'form' && !A.dirty) render();
+      var needRender = false;
+      if (!A.dirty && !A.editing && !A.serverDraft && r.draft) { A.serverDraft = r.draft; needRender = true; }
+      if (!A.dirty && !A.st.clientId && !A.editing && (r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; needRender = true; }
+      if (A.view === 'form') {
+        var busy = document.activeElement && document.activeElement !== document.body && $('app') && $('app').contains(document.activeElement);
+        if (needRender && !busy) render();
+        else { var sel = $('f-client'); if (sel) { var cur = sel.value; sel.innerHTML = '<option value="">選擇客戶…</option>' + A.sites.map(function (s2) { return '<option value="' + esc(s2.id) + '"' + (cur === s2.id ? ' selected' : '') + '>' + esc(s2.shortName || s2.name) + (s2.today ? '（今天）' : '') + '</option>'; }).join(''); } }
+      }
       return Promise.resolve();
     }
     booted = true;
