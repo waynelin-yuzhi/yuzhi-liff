@@ -68,6 +68,7 @@
   }
   function restoreLocal() {
     var snap = null; try { snap = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+    A.restoredLocal = !!(snap && snap.st);
     if (!snap || !snap.st) return Promise.resolve(false);
     A.st = snap.st; A.proposals = snap.proposals || {}; A.editing = !!snap.editing;
     A.st.zones.forEach(function (z) { z.pendingBefore = z.pendingBefore || []; z.pendingAfter = z.pendingAfter || []; z.beforePhotos = z.beforePhotos || []; z.afterPhotos = z.afterPhotos || []; z.issues = z.issues || []; });
@@ -501,7 +502,7 @@
   function renderList() {
     if (A.list === null || A.listFromEngine) {
       if (A.list === null) $('app').innerHTML = '<div class="card"><div class="note">載入中…</div></div>';
-      if (!A.listLoading) { A.listLoading = true; var seq = A.listSeq = (A.listSeq || 0) + 1; T.api('reportsMine', { limit: 100 }).then(function (r) { A.listLoading = false; if (seq !== A.listSeq) { if (A.view === 'list') renderList(); return; } if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }); }
+      if (!A.listLoading) { A.listLoading = true; var seq = A.listSeq = (A.listSeq || 0) + 1; T.api('reportsMine', { limit: 100 }).then(function (r) { if (seq !== A.listSeq) return; A.listLoading = false; if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }); }
       if (A.list === null) return;
     }
     if (!A.list.length) { $('app').innerHTML = '<div class="card"><div class="note">還沒有報告紀錄。</div></div>'; return; }
