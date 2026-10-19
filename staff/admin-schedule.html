@@ -101,8 +101,10 @@
       // 一站一列：狀態點＋站名＋排定時段＋實際到離（打卡依時間排、抵達與離開配成一趟；跑在非排定半天的標「排上午」）
       var siteNm = {}; (r.sites || []).forEach(function (s0) { siteNm[s0.siteCode] = s0.shortName; });
       var byEmpT = {}; todays.forEach(function (x) { (byEmpT[x.empId] = byEmpT[x.empId] || []).push(x); });
-      var multiT = Object.keys(byEmpT).length > 1;
-      Object.keys(byEmpT).forEach(function (e) {
+      // 今天沒排班但有打卡的人（代班、臨時加站）也列進來
+      Object.keys(r.punchesToday || {}).forEach(function (e) { if (!byEmpT[e] && (!F || e === F) && (r.punchesToday[e] || []).length) byEmpT[e] = []; });
+      var empsT = Object.keys(byEmpT); var multiT = empsT.length > 1;
+      empsT.forEach(function (e) {
         var ps = ((r.punchesToday || {})[e] || []).slice().sort(function (a, b) { return a.time < b.time ? -1 : (a.time > b.time ? 1 : 0); });
         var isOut = function (p) { return /離|出/.test((p.action || '').split('｜')[0]); };
         var visitsOf = function (hit) { var vs = [], cur = null; hit.forEach(function (p) { if (isOut(p)) { if (cur && !cur.out) cur.out = p.time; else vs.push({ in: '', out: p.time }); cur = null; } else { cur = { in: p.time, out: '' }; vs.push(cur); } }); return vs; };
