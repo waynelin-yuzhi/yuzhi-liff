@@ -87,10 +87,10 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   function load(ym) {
     D.ym = ym; $('gasLink').href = CFG.gas + '?page=care'; $('list').innerHTML = '<div class="ld">載入中</div>';
     api('adminCareStatuses', { ym: ym }).then(function (d) {
-      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
       if (ym !== D.ym) return;
+      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
       D.data = d; D.months = d.months || []; fillMonths(D.months); render();
-    }).catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+    }).catch(function (e) { if (ym !== D.ym) return; $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
   }
   function counts(list) {
     return { all: list.length, reported: list.filter(function (c) { return c.hasReport; }).length, unreported: list.filter(function (c) { return !c.hasReport; }).length,
