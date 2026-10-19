@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<title>養護報告 ｜ 植間設計</title>
+
+<meta name="robots" content="noindex">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-40:rgba(27,26,23,.4);--ink-20:rgba(27,26,23,.18);--paper:#F2EDE3;--page-bg:#EFEEE9;--card:#FFFFFF;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font-sans:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",system-ui,sans-serif}
+</style>
+
+<style>
+  :root {
+    --bg: var(--page-bg);
+    --paper: var(--card);
+    --paper-warm: var(--paper);
+    --green: var(--sage);
+    --green-dark: var(--sage-deep);
+    --green-light: var(--sage-tint);
+    --khaki: var(--amber);
+    --amber-bg: var(--amber-tint);
+    --red: var(--terra);
+    --red-bg: var(--terra-tint);
+    --text: var(--ink);
+    --light: var(--ink-60);
+    --border: var(--ink-20);
+    --gray-100: #F5F4F1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--page-bg);
+    color: var(--ink);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ---------- 上方工具列（套苔綠 hf-header 風格） ---------- */
+  .toolbar {
+    background: var(--sage);
+    color: #fff;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    font-family: var(--font-sans);
+  }
+  .toolbar .brand { font-weight: 500; letter-spacing: 0.06em; margin-right: 12px; }
+  .toolbar .brand a { color: #fff; text-decoration: none; opacity: 0.7; }
+  .toolbar .brand a:hover { opacity: 1; }
+  .toolbar select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #3a3835;
+    color: #fff;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+  .toolbar select option { background: #2a2926; }
+  .toolbar .mode-toggle {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; margin-left: 12px;
+  }
+  .toolbar .mode-toggle label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .toolbar .mode-toggle input { accent-color: var(--green); }
+  .toolbar .actions { margin-left: auto; display: flex; gap: 6px; }
+  .toolbar button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    background: var(--green);
+    color: #fff;
+    transition: background 0.15s;
+  }
+  .toolbar button:hover { background: var(--green-dark); }
+  .toolbar button:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+
+  /* ---------- 主容器 ---------- */
+  main { padding: 30px 20px 80px; }
+  .report {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+  }
+  .empty-state {
+    max-width: 720px; margin: 80px auto; text-align: center;
+    color: var(--light); font-size: 14px; padding: 40px;
+    background: var(--paper); border-radius: 16px; border: 1px solid var(--border);
+  }
+  .empty-state h2 { font-size: 18px; color: var(--text); font-weight: 500; margin-bottom: 12px; letter-spacing: 0.04em; }
+
+  /* ---------- 封面 v2 ---------- */
+  .cover {
+    padding: 48px 48px 40px;
+    background: linear-gradient(170deg, #FAFCFB 0%, #EEF3EF 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .cover-brand-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; letter-spacing: 0.32em; color: var(--green);
+    margin-bottom: 8px;
+  }
+  .cover-brand-zh { letter-spacing: 0.12em; color: var(--green-dark); }
+  .cover-brand-divider { opacity: 0.4; }
+  .cover-doc-type {
+    font-size: 11px; letter-spacing: 0.28em; color: var(--light);
+    text-transform: uppercase;
+  }
+  .cover-line {
+    height: 1px; opacity: 0.3; margin: 28px 0 32px;
+    background: linear-gradient(90deg, var(--green) 0%, transparent 100%);
+  }
+  .cover-grid {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 24px; align-items: end; margin-bottom: 36px;
+  }
+  .cover-eyebrow {
+    font-size: 11px; letter-spacing: 0.16em; color: var(--green);
+    margin-bottom: 8px; font-weight: 500;
+  }
+  .cover-client {
+    font-size: 22px; font-weight: 500; color: var(--text);
+    letter-spacing: 0.04em; line-height: 1.4;
+  }
+  .cover-period {
+    display: flex; align-items: baseline; gap: 6px;
+    color: var(--green-dark);
+    font-family: 'Georgia', 'Noto Serif TC', serif;
+  }
+  .cover-period-year {
+    font-size: 13px; letter-spacing: 0.32em; color: var(--light);
+    align-self: flex-end; padding-bottom: 8px;
+  }
+  .cover-period-sep {
+    width: 1px; height: 36px; background: var(--border);
+    align-self: flex-end; margin: 0 4px 12px;
+  }
+  .cover-period-month {
+    font-size: 56px; font-weight: 300; line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .cover-bottom {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 20px; border-top: 1px solid var(--border);
+    font-size: 11px; letter-spacing: 0.06em; color: var(--light);
+  }
+  .cover-person-name { font-weight: 500; color: var(--text); margin-left: 6px; }
+  .cover-report-date { opacity: 0.6; }
+
+  /* ---------- section ---------- */
+  .section { padding: 28px 36px; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: none; }
+  .section-title { font-size: 11px; letter-spacing: 0.16em; color: var(--green); font-weight: 500; margin-bottom: 16px; text-transform: uppercase; }
+
+  /* ---------- 客戶資訊 ---------- */
+  .info-row { display: grid; grid-template-columns: 80px 1fr; gap: 10px; font-size: 14px; margin-bottom: 8px; }
+  .info-label { color: var(--light); }
+  .info-value { color: var(--text); }
+
+  /* ---------- 概況 ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: var(--gray-100); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-value { font-size: 22px; font-weight: 500; color: var(--green); margin-bottom: 4px; }
+  .stat-label { font-size: 11px; color: var(--light); letter-spacing: 0.06em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--green-light); color: var(--green-dark); border-radius: 99px; padding: 4px 11px; font-size: 12px; }
+  .chip-count { opacity: 0.6; margin-left: 2px; font-size: 11px; }
+
+  /* ---------- 養護紀錄 ---------- */
+  .visit { background: var(--paper-warm); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; border: 1px solid var(--border); }
+  .visit:last-child { margin-bottom: 0; }
+  .visit-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .visit-no { background: var(--green); color: #fff; border-radius: 99px; padding: 1px 9px; font-size: 11px; letter-spacing: 0.04em; }
+  .visit-date { font-weight: 500; color: var(--text); font-size: 14px; }
+  .visit-time { color: var(--light); font-size: 13px; }
+  .visit-person { color: var(--light); font-size: 12px; margin-left: auto; }
+  .visit-tasks { margin: 8px 0 12px; }
+  .visit-note { background: #fff; border-left: 3px solid var(--green); padding: 8px 12px; font-size: 13px; color: var(--text); margin-bottom: 12px; border-radius: 0 6px 6px 0; }
+  .zone { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .zone:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+  .zone-name { font-size: 13px; color: var(--green-dark); font-weight: 500; margin-bottom: 8px; }
+  .zone-name::before { content: '▸ '; color: var(--green); }
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+  .photos.has-multi { grid-template-columns: 1fr; }
+  .photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .photo { aspect-ratio: 4/3; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; letter-spacing: 0.06em; position: relative; overflow: hidden; background: linear-gradient(135deg, #c8c4b8, #b0aca0); }
+  .photo.placeholder.before { background: linear-gradient(135deg, #c8c4b8, #b0aca0); }
+  .photo.placeholder.after { background: linear-gradient(135deg, var(--green), var(--green-dark)); }
+  /* 背景：同張照片放大模糊填滿、避免直橫混合留白突兀 */
+  .photo .photo-bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: blur(22px) brightness(0.85) saturate(1.15);
+    transform: scale(1.15);
+    z-index: 1;
+    pointer-events: none;
+  }
+  /* 前景：完整顯示、不裁切 */
+  .photo .photo-fg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    z-index: 2;
+  }
+  .photo .photo-status {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; color: #fff; font-size: 11px; letter-spacing: 0.06em;
+    background: rgba(60,60,55,0.65);
+    backdrop-filter: blur(2px);
+  }
+  .photo.loaded .photo-status { display: none; }
+  .photo.failed .photo-status { background: rgba(150,60,50,0.7); }
+  .photo-retry { margin-top: 4px; padding: 4px 12px; border: 1px solid #fff; border-radius: 4px; background: transparent; color: #fff; font-size: 11px; cursor: pointer; }
+  .photo .spinner-photo {
+    width: 22px; height: 22px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin-photo 0.8s linear infinite;
+  }
+  @keyframes spin-photo { to { transform: rotate(360deg); } }
+
+  /* 全域照片載入進度條 */
+  .photo-progress {
+    max-width: 720px; margin: 0 auto 12px;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; color: var(--text);
+  }
+  .photo-progress-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border); border-top-color: var(--green);
+    border-radius: 50%; animation: spin-photo 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  .photo-progress-text { flex: 1; }
+  .photo-progress-bar { width: 120px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .photo-progress-fill { height: 100%; background: var(--green); width: 0; transition: width 0.3s; }
+  .photo-progress.done .photo-progress-spinner { display: none; }
+  .photo-progress.done { background: var(--green-light); }
+  .photo-label { position: absolute; top: 6px; left: 8px; background: rgba(255,255,255,0.92); color: var(--text); padding: 2px 8px; border-radius: 3px; font-size: 11px; letter-spacing: 0.04em; font-weight: 500; z-index: 3; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  .zone-caption { font-size: 12px; color: var(--light); line-height: 1.6; margin-top: 4px; }
+
+  /* ---------- 異常追蹤 ---------- */
+  .issues { display: grid; gap: 8px; }
+  .issue { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 11px 14px; border-radius: 8px; font-size: 13px; }
+  .issue.handled { background: var(--green-light); color: var(--green-dark); }
+  .issue.pending { background: var(--amber-bg); color: var(--amber); }
+  .issue.replace { background: var(--red-bg); color: var(--red); }
+  .issue-meta { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+  .issue-status { background: rgba(0,0,0,0.06); border-radius: 99px; padding: 2px 9px; font-size: 11px; letter-spacing: 0.04em; }
+  /* 區域異常就近顯示（照片下方）*/
+  .zone-issues { display: grid; gap: 6px; margin-top: 6px; }
+  .zone-issue { font-size: 12px; padding: 7px 12px; }
+  .zone-issue .issue-status { font-size: 10px; padding: 2px 7px; }
+  /* 項目3：有異常的區域照片極細邊框（顏色動態由 issueStatusClass 決定）*/
+  .photo.border-replace { outline: 1.5px solid var(--terra); }
+  .photo.border-pending { outline: 1.5px solid var(--amber); }
+  .photo.border-handled { outline: 1.5px solid var(--sage); }
+
+  /* ---------- 月觀察 ---------- */
+  .observation {
+    font-size:13px; color:var(--text); line-height:1.9;
+    background:var(--paper-warm); padding:16px 18px;
+    border-radius:8px; border-left:3px solid var(--green);
+  }
+  .observation-empty { color: var(--light); font-style: italic; }
+
+  /* ---------- 頁尾 ---------- */
+  footer { padding: 24px 36px; background: var(--paper-warm); text-align: center; color: var(--light); font-size: 11px; letter-spacing: 0.04em; border-top: 1px solid var(--border); }
+  footer strong { color: var(--green); font-weight: 500; letter-spacing: 0.1em; }
+
+  /* ---------- 模式切換 ---------- */
+  body.customer .admin-only { display: none !important; }
+  body.customer .admin-name { display: none; }
+  body.admin .customer-name { display: none; }
+  body.customer .issue.replace { background: #F0EBE3; color: #8C6E4A; }
+  body.customer .issue.replace .issue-status { background: rgba(140,110,74,0.15); }
+  body.customer .zone-issue.replace { background: #F0EBE3; color: #8C6E4A; }
+  body.customer .zone-issue.replace .issue-status { background: rgba(140,110,74,0.15); }
+
+  /* ---------- 載入中 / 訊息 ---------- */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #555; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading { color: var(--light); padding: 12px 0; font-size: 13px; }
+
+  @media print {
+    body {
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      /* 印刷對淡色對比較差，整體加深灰字 */
+      --light: #5A5750 !important;
+      --text: #1A1A18 !important;
+    }
+    .toolbar { display: none !important; }
+    .photo-progress { display: none !important; }
+    .photo-status { display: none !important; }
+    main { padding: 0; }
+    .report { box-shadow: none; border: none; max-width: 100%; }
+
+    /* 客戶模式 + 列印：強制顯示客戶版人員稱呼（!important 蓋過 body.admin / body.customer 規則） */
+    .admin-only { display: none !important; }
+    .admin-name { display: none !important; }
+    .customer-name { display: inline !important; }
+    .issue.replace { background: #F0EBE3 !important; color: #8C6E4A !important; }
+
+    /* 封面強制獨立一頁（!important 蓋過任何 inline / cascade） */
+    .cover {
+      page-break-after: always !important;
+      break-after: page !important;
+      min-height: 240mm;  /* A4 - margins，撐到頁底 */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .force-break-after {
+      page-break-after: always !important;
+      break-after: page !important;
+      height: 0;
+    }
+
+    /* 切頁規則：避免孤兒標題與圖片切半 */
+    .section { page-break-inside: auto; }
+    .section-title, .visit-head, .visit-tasks, .visit-note, .zone-name {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+    .zone, .photos, .photo-row, .issue, .zone-issue {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    /* visit-intro = head + tasks + note + 第一個 zone，整組不切 */
+    .visit-intro {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .visit { page-break-inside: auto; }
+    .observation { page-break-inside: avoid !important; break-inside: avoid !important; }
+
+    /* 確保色塊（chips、status）印出來 */
+    .chip, .issue, .zone-issue, .stat-card, .cover-period-month, .cover-period-year,
+    .visit-no, .visit-note, .observation, .photo-label {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @page { size: A4; margin: 14mm 16mm; }
+  }
+</style>
+</head>
+<body class="customer">
+
+<div class="toolbar">
+  <span class="brand">YUZHIPLANT｜植間設計</span>
+  <div class="actions">
+    <button id="btn-print" onclick="prepareAndPrint()" disabled title="列印對話框內請取消「頁首與頁尾」以獲得最佳排版"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:-2px; margin-right:4px;"><polyline points="6 9 6 3 18 3 18 9"/><rect x="3" y="9" width="18" height="9"/><rect x="6" y="14" width="12" height="7"/></svg>列印 / PDF</button>
+  </div>
+</div>
+
+<main>
+  <div id="report-area" class="empty-state">
+    <h2>養護報告</h2>
+    <p>正在載入報告資料…</p>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let currentReportData = null;
+
+  const GW = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+  const GAS = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+  const PUBLIC_HASH = String(new URLSearchParams(location.search).get('h') || '').trim();
+  function fetchJson(url, ms) {
+    const ctl = ('AbortController' in window) ? new AbortController() : null;
+    const t = ctl ? setTimeout(() => ctl.abort(), ms || 20000) : null;
+    return fetch(url, { signal: ctl ? ctl.signal : undefined }).then(r => r.json()).finally(() => { if (t) clearTimeout(t); });
+  }
+  // 照片仍由 GAS 讀 Drive（hash 守門、一次最多 8 張）
+  function photosFetch(fids, sz) {
+    return fetchJson(GAS + '?page=care-photos&h=' + encodeURIComponent(PUBLIC_HASH) + '&ids=' + encodeURIComponent(fids.join(',')) + '&sz=' + sz, 60000);
+  }
+
+  // ─── 初始化：用注入的 hash 載入報告（客戶端唯一入口） ───
+  function init() {
+    const h = PUBLIC_HASH;
+    if (!h) {
+      $('report-area').className = 'empty-state';
+      $('report-area').innerHTML = '<h2>連結無效</h2><p>請使用養護專員提供的完整連結進入。</p>';
+      return;
+    }
+    $('report-area').className = 'loading';
+    $('report-area').innerHTML = '<div class="loading"><span class="spinner"></span>正在載入報告…</div>';
+    fetchJson(GW + '?action=careView&h=' + encodeURIComponent(h), 20000).then(res => {
+      if (!res || res.status !== 'success') {
+        if (!res || res.error === 'db_error' || res.error === 'bad_link') return fallbackGas();   // 引擎資料有問題：退回 GAS 原頁
+        $('report-area').className = 'empty-state';
+        $('report-area').innerHTML = '<h2>無法開啟</h2><p>' + escapeHtml(res.msg || '此連結已停用或不存在。') + '</p>';
+        return;
+      }
+      renderReport(res.data);
+      $('btn-print').disabled = false;
+    }).catch(() => fallbackGas());
+  }
+  function fallbackGas() { location.replace(GAS + '?page=care-view&h=' + encodeURIComponent(PUBLIC_HASH)); }
+
+  // 從 Drive URL 抽 fileId
+  function extractFileId(url) {
+    if (!url) return '';
+    const m1 = String(url).match(/[?&]id=([^&]+)/);
+    if (m1) return m1[1];
+    const m2 = String(url).match(/\/file\/d\/([^/]+)/);
+    if (m2) return m2[1];
+    return '';
+  }
+
+  // <img> 載入失敗時自動 fallback 後端 base64（Shared Drive 權限失敗時用得到）
+  function onPhotoError(img) {
+    if (img.dataset.fallback === '1') return;
+    img.dataset.fallback = '1';
+    const fid = img.dataset.fileId;
+    if (!fid) return;
+    img.style.opacity = '0.4';
+    photosFetch([fid], 700).then(res => {
+      const r = res && res.results && res.results[0];
+      if (r && r.dataUri) { img.src = r.dataUri; img.style.opacity = '1'; }
+    }).catch(() => { img.style.opacity = '0.4'; });
+  }
+  window.onPhotoError = onPhotoError;
+
+  // 列印前：等所有 lazy 照片都載入完
+  function ensureAllImagesLoaded() {
+    return new Promise(resolve => {
+      let timeout = setTimeout(resolve, 120000);
+      const check = () => {
+        const pending = document.querySelectorAll('img.lazy-pending');
+        if (pending.length === 0) { clearTimeout(timeout); resolve(); return; }
+        setTimeout(check, 250);
+      };
+      check();
+    });
+  }
+
+  async function prepareAndPrint() {
+    const btn = $('btn-print');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>準備中…';
+    try {
+      await ensureAllImagesLoaded();
+      if (currentReportData) {
+        const cname = (currentReportData.client.name || '').replace(/[\\/:*?"<>|]/g, '_');
+        const ym = (currentReportData.yearMonth || '').replace('-', '');
+        document.title = `${ym}_${cname}_養護報告`;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+    setTimeout(() => window.print(), 100);
+  }
+  window.prepareAndPrint = prepareAndPrint;
+
+  // ─── render 主邏輯 ───
+  function renderReport(d) {
+    currentReportData = d;
+    const area = $('report-area');
+    area.className = '';
+    if (!d.reports || d.reports.length === 0) {
+      area.className = 'empty-state';
+      area.innerHTML = '<h2>該月無養護回報資料</h2><p>客戶 ' + escapeHtml(d.client.name) + ' 在 ' + d.yearMonth + ' 沒有任何回報。</p>';
+      return;
+    }
+
+    const ym = d.yearMonth.split('-');
+    const periodLabel = ym[0] + ' / ' + ym[1];
+
+    // 員工名稱：公開連結後端已把 fullName 覆蓋成 displayName，所以這裡 hasAdminName
+    // 只有在 admin 預覽（careGetReport 直接呼叫）時才可能 fullName != displayName
+    const hasAdminName = d.employees.some(e => e.fullName && e.fullName !== e.displayName);
+    const adminPersons = hasAdminName ? (d.employees.map(e => e.fullName).join('、') || '—') : '';
+    const customerPersons = d.employees.map(e => e.displayName).join('、') || '—';
+
+    // 月觀察：拼接所有 visit notes（排序後）
+    const notes = d.reports.map(r => r.notes).filter(s => s && s.trim());
+    const observationHtml = notes.length
+      ? notes.map(n => escapeHtml(n)).join('<br>')
+      : '<span class="observation-empty">本月暫無養護師備註。</span>';
+
+    let html = '<div class="report">';
+
+    // 封面 v2
+    const todayStr = new Date().toLocaleDateString('zh-TW').replace(/\//g, '.');
+    html += `
+      <section class="cover">
+        <div class="cover-brand-row">
+          <span>YUZHIPLANT</span>
+          <span class="cover-brand-divider">／</span>
+          <span class="cover-brand-zh">植間設計</span>
+        </div>
+        <div class="cover-doc-type">Monthly Care Report</div>
+        <div class="cover-line"></div>
+        <div class="cover-grid">
+          <div class="cover-grid-left">
+            <div class="cover-eyebrow">月度養護報告</div>
+            <div class="cover-client">${escapeHtml(d.client.name)}</div>
+          </div>
+          <div class="cover-period">
+            <span class="cover-period-year">${escapeHtml(ym[0])}</span>
+            <span class="cover-period-sep"></span>
+            <span class="cover-period-month">${escapeHtml(ym[1])}</span>
+          </div>
+        </div>
+        <div class="cover-bottom">
+          <div>${hasAdminName ? `<span class="admin-name">養護人員<span class="cover-person-name">${escapeHtml(adminPersons)}</span></span>` : ''}<span class="${hasAdminName ? 'customer-name ' : ''}cover-person-name">${escapeHtml(customerPersons)}</span></div>
+          <div class="cover-report-date">${todayStr} 製</div>
+        </div>
+      </section>
+      <div class="force-break-after"></div>`;
+
+    // 客戶資訊
+    html += `
+      <section class="section">
+        <div class="section-title">客戶資訊</div>
+        <div class="info-row admin-only"><span class="info-label">客戶代碼</span><span class="info-value">${escapeHtml(d.client.id)}</span></div>
+        <div class="info-row"><span class="info-label">名稱</span><span class="info-value">${escapeHtml(d.client.name)}</span></div>
+        <div class="info-row"><span class="info-label">地址</span><span class="info-value">${escapeHtml(d.client.address || '—')}</span></div>
+        <div class="info-row"><span class="info-label">養護週期</span><span class="info-value">${escapeHtml(d.client.cycle || '—')}</span></div>
+      </section>`;
+
+    // 本月概況
+    const taskChips = Object.entries(d.stats.taskCounts).map(([t, c]) =>
+      `<span class="chip">${escapeHtml(t)}<span class="chip-count">×${c}</span></span>`).join('');
+    html += `
+      <section class="section">
+        <div class="section-title">本月概況</div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-value">${d.stats.visitCount}</div><div class="stat-label">養護次數</div></div>
+          <div class="stat-card admin-only"><div class="stat-value">${d.stats.totalHours} hr</div><div class="stat-label">累計時數</div></div>
+          <div class="stat-card"><div class="stat-value">${d.stats.issueCount}</div><div class="stat-label">異常追蹤項</div></div>
+        </div>
+        ${taskChips ? `<div style="margin-top:14px;"><div style="font-size:11px; color:var(--light); margin-bottom:6px; letter-spacing:0.06em;">養護項目</div><div class="chips">${taskChips}</div></div>` : ''}
+      </section>`;
+
+    // 本月觀察
+    html += `
+      <section class="section">
+        <div class="section-title">本月觀察</div>
+        <div class="observation">${observationHtml}</div>
+      </section>`;
+
+    // 本月補充說明（Wayne 後台存的月度說明；2026-08-04 前漏渲染——後台看得到、客戶版沒有）
+    if (d.monthNote) {
+      html += `
+      <section class="section">
+        <div class="section-title">本月補充說明</div>
+        <div class="observation">${escapeHtml(d.monthNote)}</div>
+      </section>`;
+    }
+
+    // 養護紀錄
+    html += `<section class="section"><div class="section-title">本月養護紀錄</div>`;
+    d.reports.forEach((r, idx) => {
+      const empObj = d.employees.find(e => e.id === r.empId);
+      const displayName = empObj ? empObj.displayName : r.empId;
+      // fullName 只有 admin 預覽時才真的不同於 displayName（公開連結後端已覆蓋）
+      const fullName = (empObj && empObj.fullName !== empObj.displayName) ? empObj.fullName : null;
+      const tasks = (r.tasks || []).map(t => `<span class="chip">${escapeHtml(t)}</span>`).join('');
+      const allZones = r.zones || [];
+      const firstZone = allZones.length ? renderZone(allZones[0]) : '';
+      const restZones = allZones.slice(1).map(z => renderZone(z)).join('');
+      // visit-intro 含 head/tasks/note + 第一個 zone，整組不切頁（避免標題孤兒）
+      html += `
+        <div class="visit">
+          <div class="visit-intro">
+            <div class="visit-head">
+              <span class="visit-no">${String(idx + 1).padStart(2, '0')}</span>
+              <span class="visit-date">${escapeHtml(r.reportDate)}（${r.dayOfWeek}）</span>
+              <span class="visit-time">${escapeHtml(r.startTime)} – ${escapeHtml(r.endTime)}</span>
+              <span class="visit-person">${fullName ? `<span class="admin-name">${escapeHtml(fullName)}</span>` : ''}<span class="${fullName ? 'customer-name' : ''}">${escapeHtml(displayName)}</span></span>
+            </div>
+            ${tasks ? `<div class="visit-tasks"><div class="chips">${tasks}</div></div>` : ''}
+            ${r.notes ? `<div class="visit-note">${escapeHtml(r.notes)}</div>` : ''}
+            ${firstZone}
+          </div>
+          ${restZones}
+        </div>`;
+    });
+    html += '</section>';
+
+    // 異常追蹤總表
+    if (d.stats.issues && d.stats.issues.length) {
+      html += '<section class="section"><div class="section-title">異常追蹤總表</div><div class="issues">';
+      d.stats.issues.forEach(iss => {
+        const klass = issueStatusClass(iss.status);
+        const statusLabel = iss.status || '待確認';
+        let metaText = (iss.zone ? iss.zone + ' ｜ ' : '') + iss.date + ' 紀錄';
+        if (iss.autoResolved) metaText += ' ｜ 系統自動歸類為已處理';
+        html += `
+          <div class="issue ${klass}">
+            <div>
+              <div>${escapeHtml(iss.desc)}${iss.autoResolved ? ' <span class="admin-only" style="font-size:11px; opacity:0.7;">（原狀態：' + escapeHtml(iss.origStatus) + '）</span>' : ''}</div>
+              <div class="issue-meta">${escapeHtml(metaText)}</div>
+            </div>
+            <span class="issue-status">${escapeHtml(statusLabel)}</span>
+          </div>`;
+      });
+      html += '</div></section>';
+    }
+
+    // 頁尾
+    html += `
+      <footer>
+        <div style="margin-bottom:8px;"><strong>YUZHIPLANT｜植間設計</strong></div>
+        <div>本月養護工作摘要。如有疑問請聯繫 waynelin@yuzhiplant.com</div>
+        <div style="margin-top:6px;">報告產生於 ${new Date().toLocaleDateString('zh-TW')}</div>
+      </footer>`;
+
+    html += '</div>'; // .report
+    area.innerHTML = html;
+    loadAllLazyImages();
+  }
+
+  // 序列載入（穩定版、避免 GAS sandbox escape bug）
+  function loadAllLazyImages() {
+    var cells = Array.prototype.slice.call(document.querySelectorAll('.photo.lazy-pending'));
+    if (!cells.length) return;
+    var BATCH = 5;
+    var i = 0;
+    function applyBatchResult(cell, img, bg, dataUri) {
+      img.onload = function() { cell.classList.remove('lazy-pending'); cell.classList.add('loaded'); };
+      img.src = dataUri;
+      if (bg) bg.src = dataUri;
+    }
+    function markFailed(cell) {
+      var fid = (cell.querySelector('img.photo-fg') || {}).dataset ? cell.querySelector('img.photo-fg').dataset.fileId : '';
+      cell.classList.add('failed');
+      var st = cell.querySelector('.photo-status');
+      if (st) st.innerHTML = '<div>照片載入失敗</div><button type="button" class="photo-retry" onclick="retryPhoto(this.dataset.fid, this)" data-fid="' + escapeHtml(fid) + '">重試</button>';
+    }
+    function loadNextBatch() {
+      if (i >= cells.length) return;
+      var fids = [];
+      var meta = [];
+      for (var j = 0; j < BATCH && i < cells.length; j++) {
+        var cell = cells[i++];
+        var img = cell.querySelector('img.photo-fg') || cell.querySelector('img.lazy-img') || cell.querySelector('img');
+        var fid = img && img.dataset.fileId;
+        if (!fid) continue;
+        fids.push(fid);
+        meta.push({ cell: cell, img: img, bg: cell.querySelector('img.photo-bg') });
+      }
+      if (!fids.length) { loadNextBatch(); return; }
+      photosFetch(fids, 400).then(function(res) {
+        var rs = (res && res.results) || [];
+        for (var k = 0; k < rs.length; k++) {
+          var m = meta[k];
+          var r = rs[k];
+          if (m && r && r.dataUri) applyBatchResult(m.cell, m.img, m.bg, r.dataUri);
+          else if (m) markFailed(m.cell);
+        }
+        loadNextBatch();
+      }).catch(function() { meta.forEach(function(m) { markFailed(m.cell); }); loadNextBatch(); });
+    }
+    loadNextBatch();
+  }
+
+  function retryPhoto(fid, btn) {
+    const cell = btn.closest('.photo');
+    cell.classList.remove('failed');
+    cell.classList.add('lazy-pending');
+    const status = cell.querySelector('.photo-status');
+    if (status) status.innerHTML = '<div class="spinner-photo"></div><span class="photo-status-text">重試中…</span>';
+    photosFetch([fid], 800).then(res => {
+      const r = res && res.results && res.results[0];
+      if (r && r.dataUri) {
+        const fg = cell.querySelector('img.photo-fg');
+        const bg = cell.querySelector('img.photo-bg');
+        if (fg) {
+          fg.onload = function() { cell.classList.remove('lazy-pending'); cell.classList.add('loaded'); };
+          fg.src = r.dataUri;
+        }
+        if (bg) bg.src = r.dataUri;
+      } else {
+        cell.classList.add('failed');
+        status.innerHTML = '<div>仍無法載入</div>';
+      }
+    }).catch(() => { cell.classList.add('failed'); status.innerHTML = '<div>仍無法載入</div>'; });
+  }
+  window.retryPhoto = retryPhoto;
+
+  function renderZone(z) {
+    // 照片與文字都空白的區域不顯示
+    const zoneTotal = (z.beforePhotos || []).length + (z.afterPhotos || []).length;
+    const zoneIssues = (z.issues || []).filter(iss => iss && iss.desc);
+    if (zoneTotal === 0 && !(z.caption || '').trim() && !zoneIssues.length) return '';
+    // 照片邊框 class（最嚴重異常狀態色）
+    const borderCls = zoneIssues.length ? ('border-' + worstIssueClass(zoneIssues)) : '';
+    // 雙層 img：背景模糊填滿、前景完整顯示（不裁切橫直照片）
+    const imgTag = (url, label) => {
+      const fid = extractFileId(url);
+      return `<div class="photo lazy-pending${borderCls ? ' ' + borderCls : ''}"><img alt="" class="photo-bg lazy-img-bg" data-file-id="${escapeHtml(fid)}" aria-hidden="true"><div class="photo-label">${label}</div><img alt="" class="photo-fg lazy-img" data-file-id="${escapeHtml(fid)}"><div class="photo-status"><div class="spinner-photo"></div><span class="photo-status-text">載入中…</span></div></div>`;
+    };
+    const before = (z.beforePhotos || []).map(url => imgTag(url, '養護前')).join('');
+    const after = (z.afterPhotos || []).map(url => imgTag(url, '養護後')).join('');
+    let photosHtml = '';
+    const totalCount = (z.beforePhotos || []).length + (z.afterPhotos || []).length;
+    if (totalCount === 0) {
+      photosHtml = '';
+    } else if ((z.beforePhotos || []).length <= 1 && (z.afterPhotos || []).length <= 1) {
+      const beforeBlock = (z.beforePhotos || []).length ?
+        imgTag(z.beforePhotos[0], '養護前') :
+        `<div class="photo placeholder before${borderCls ? ' ' + borderCls : ''}"><div class="photo-label">養護前</div>—</div>`;
+      const afterBlock = (z.afterPhotos || []).length ?
+        imgTag(z.afterPhotos[0], '養護後') :
+        `<div class="photo placeholder after${borderCls ? ' ' + borderCls : ''}"><div class="photo-label">養護後</div>—</div>`;
+      photosHtml = `<div class="photos">${beforeBlock}${afterBlock}</div>`;
+    } else {
+      photosHtml = `<div class="photos has-multi"><div class="photo-row">${before}</div><div class="photo-row">${after}</div></div>`;
+    }
+    // 區域異常就近顯示（照片下方、按狀態套 CSS class，吃 issueStatusClass 單一規範）
+    const issuesHtml = zoneIssues.length ? `<div class="zone-issues">${
+      zoneIssues.map(iss => {
+        const klass = issueStatusClass(iss.status);
+        return `<div class="issue zone-issue${klass ? ' ' + klass : ''}"><div>${escapeHtml(iss.desc)}</div><span class="issue-status">${escapeHtml(iss.status || '待確認')}</span></div>`;
+      }).join('')
+    }</div>` : '';
+    return `
+      <div class="zone">
+        <div class="zone-name">${escapeHtml(z.name || '未命名區域')}</div>
+        ${photosHtml}
+        ${z.caption ? `<div class="zone-caption">${escapeHtml(z.caption)}</div>` : ''}
+        ${issuesHtml}
+      </div>`;
+  }
+
+  // 單一真相：狀態 → CSS class（與 PDF _cslIssueStatusColor_ 同邏輯、YUZHI design token）
+  // replace = terra 陶紅；pending = amber 琥珀；handled = sage 苔綠
+  function issueStatusClass(status) {
+    const s = String(status || '');
+    if (s.indexOf('需換') >= 0 || s.indexOf('待採購') >= 0 || s.indexOf('採購中') >= 0) return 'replace';
+    if (s.indexOf('觀察') >= 0 || s.indexOf('追蹤') >= 0 || s.indexOf('已採購') >= 0 || s.indexOf('換植中') >= 0) return 'pending';
+    if (s.indexOf('已處理') >= 0 || s.indexOf('已換完') >= 0 || s.indexOf('已改善') >= 0 || s.indexOf('完成') >= 0) return 'handled';
+    return '';
+  }
+  // 一組異常中取最嚴重 class（replace > pending > handled > ''）
+  function worstIssueClass(issues) {
+    const RANK = { replace: 3, pending: 2, handled: 1, '': 0 };
+    let best = '', bestR = 0;
+    (issues || []).forEach(function(iss) {
+      const c = issueStatusClass(iss.status);
+      if ((RANK[c] || 0) > bestR) { bestR = RANK[c] || 0; best = c; }
+    });
+    return best;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Drive 的 /uc?export=view URL 在外部嵌入會被擋（2024 改版）。
+  // 轉成 thumbnail URL 才能直接 <img src=...> 顯示。
+  function toThumbUrl(url) {
+    if (!url) return url;
+    const m = String(url).match(/[?&]id=([^&]+)/);
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200';
+    const m2 = String(url).match(/\/file\/d\/([^/]+)/);
+    if (m2) return 'https://drive.google.com/thumbnail?id=' + m2[1] + '&sz=w1200';
+    return url;
+  }
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+<div style="margin:26px auto 12px;text-align:center;font-size:10.5px;color:#A09A8C;letter-spacing:.04em;line-height:1.8;padding:0 16px;">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240</div>
+</body>
+</html>
