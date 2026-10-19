@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>植間設計｜核可</title>
+<style>
+body{margin:0;background:#F2EDE3;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",sans-serif;color:#2E332C;}
+.wrap{max-width:560px;margin:0 auto;padding:18px 14px 40px;}
+.brand{display:flex;align-items:baseline;gap:8px;padding:6px 4px 14px;}
+.brand b{font-size:15px;letter-spacing:2px;color:#5F6E58;}
+.brand span{font-size:11px;color:#8A8F86;letter-spacing:1px;}
+.card{background:#FFFFFF;border:1px solid #E3DCCB;border-radius:14px;padding:18px 16px;box-shadow:0 1px 6px rgba(95,110,88,.07);}
+.chip{display:inline-block;font-size:12px;padding:3px 10px;border-radius:999px;letter-spacing:1px;}
+.chip-wait{background:#F6EEDB;color:#B98A2F;}.chip-run{background:#E4EBF4;color:#4A6FA5;}.chip-done{background:#E8F0EA;color:#5F6E58;}.chip-no{background:#F4E7E5;color:#A5524A;}
+.title{font-size:19px;font-weight:700;margin:10px 0 4px;line-height:1.4;}
+.meta{font-size:12.5px;color:#8A8F86;margin-bottom:12px;}
+.videobox{background:#000;border-radius:10px;overflow:hidden;margin:12px 0;}
+.videobox video{display:block;width:100%;max-height:62vh;}
+.textbox{white-space:pre-wrap;word-break:break-word;background:#FAF7F0;border:1px solid #EDE6D6;border-radius:10px;padding:12px 13px;font-size:14.5px;line-height:1.7;margin:12px 0;}
+.txt-btn{display:block;margin:8px 0;padding:12px;background:#5F6E58;color:#FFFCF5;text-align:center;border-radius:8px;text-decoration:none;font-size:14.5px;}
+.plats{margin:4px 0 2px;}
+.plats span{display:inline-block;font-size:12px;color:#5F6E58;border:1px solid #C9D2C5;border-radius:999px;padding:2px 10px;margin-right:6px;}
+.btn-main{display:block;width:100%;box-sizing:border-box;background:#5F6E58;color:#fff;border:0;border-radius:10px;padding:14px 0;font-size:16px;font-weight:600;letter-spacing:2px;margin:16px 0 10px;cursor:pointer;font-family:inherit;}
+.btn-ghost{display:block;width:100%;box-sizing:border-box;background:transparent;color:#A5524A;border:1px solid #D9C4C0;border-radius:10px;padding:12px 0;font-size:14.5px;letter-spacing:2px;cursor:pointer;font-family:inherit;}
+details{margin-top:14px;}summary{font-size:13.5px;color:#8A8F86;cursor:pointer;padding:4px 0;}
+textarea{width:100%;box-sizing:border-box;border:1px solid #E3DCCB;border-radius:10px;padding:10px;font-size:14px;font-family:inherit;min-height:72px;margin:8px 0 2px;background:#FAF7F0;}
+select{font-family:inherit;font-size:14px;padding:8px;border:1px solid #E3DCCB;border-radius:8px;background:#FAF7F0;margin-top:8px;}
+.schedbox{margin:14px 0 2px;padding:12px 13px;background:#FAF7F0;border:1px solid #EDE6D6;border-radius:10px;}
+.editbox{margin:14px 0 2px;}
+.btn-tune{display:block;width:100%;box-sizing:border-box;background:transparent;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;color:#5F6E58;border:1px solid #C9D2C5;border-radius:10px;padding:11px 0 9px;font-size:14.5px;letter-spacing:1px;margin:2px 0 12px;}
+.btn-tune span{display:block;font-size:11px;color:#8A8F86;letter-spacing:0;margin-top:2px;}
+.vtabs{margin:12px 0;}.vtabs input{display:none;}.vtabs .vlabs{display:flex;gap:4px;}
+.vtabs .vlabs label{display:inline-block;padding:8px 18px;border:1px solid #C9D2C5;border-bottom:0;border-radius:10px 10px 0 0;color:#5F6E58;font-size:14px;cursor:pointer;background:#FAF7F0;}
+.vpane{display:none;background:#000;border-radius:0 10px 10px 10px;overflow:hidden;}.vpane video{display:block;width:100%;max-height:62vh;}
+#vt0:checked~#vp0,#vt1:checked~#vp1,#vt2:checked~#vp2,#vt3:checked~#vp3{display:block;}
+#vt0:checked~.vlabs label[for=vt0],#vt1:checked~.vlabs label[for=vt1],#vt2:checked~.vlabs label[for=vt2],#vt3:checked~.vlabs label[for=vt3]{background:#5F6E58;color:#FFFFFF;border-color:#5F6E58;}
+.covrow{display:flex;align-items:center;gap:10px;margin:10px 0 2px;}
+.covrow img{width:54px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #E3DCCB;}
+.covrow span{font-size:12.5px;color:#8A8F86;}
+.covrow .covwrap{position:relative;display:inline-block;flex:none;width:96px;font-size:0;color:inherit;}
+.covrow .covwrap img{width:96px;height:128px;}
+.covrow .covwrap .covttl{position:absolute;left:6%;right:6%;bottom:12%;display:block;text-align:center;color:#fff;font-weight:600;font-size:11px;line-height:1.35;text-shadow:0 1px 4px rgba(0,0,0,.75),0 0 12px rgba(0,0,0,.4);word-break:break-word;pointer-events:none;}
+.editbox input[type=text]{width:100%;box-sizing:border-box;border:1px solid #D8D2C2;border-radius:8px;padding:9px 10px;font-size:14.5px;background:#FFFDF8;font-family:inherit;}
+.schedlabel{font-size:13px;color:#8A8F86;margin-bottom:8px;}
+.stale-banner{margin:10px 0 6px;padding:10px 12px;background:#F5DDD2;color:#8A3B24;border-radius:8px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:2px;}
+.stale-hint{font-size:12px;color:#A35A3E;}
+.conv{margin:8px 0 12px;border:1px solid #E5DFD0;border-radius:8px;overflow:hidden;background:#FFFDF8;}
+.conv-h{font-size:11px;letter-spacing:.12em;color:#8A8F86;padding:6px 10px;background:#F4F1E7;}
+.conv-row{display:flex;gap:8px;padding:6px 10px;font-size:13px;border-top:1px dashed #EDE7D8;align-items:baseline;}
+.conv-row.in .conv-who{color:#5F6E58;font-weight:600;} .conv-row.out .conv-who{color:#8A8F86;}
+.conv-ts{font-family:ui-monospace,monospace;font-size:10.5px;color:#A8A59A;min-width:78px;}
+.conv-who{min-width:32px;font-size:12px;} .conv-tx{flex:1;color:#3A3A33;white-space:pre-wrap;word-break:break-word;}
+.schedhint{display:block;color:#B98A2F;margin-top:2px;}
+.schedbox input{box-sizing:border-box;width:100%;border:1px solid #E3DCCB;border-radius:8px;padding:9px 10px;font-size:15px;font-family:inherit;background:#FFFFFF;color:#2E332C;}
+.stg{margin:12px 0 14px;padding:12px 13px;background:#FAF7F0;border:1px solid #EDE6D6;border-radius:10px;}
+.stglab{font-size:11px;letter-spacing:1.5px;color:#8A8F86;margin-bottom:9px;}.stgrow{display:flex;gap:5px;}
+.stgi{flex:1;text-align:center;border:1px solid #E3DCCB;border-radius:8px;padding:7px 2px 6px;background:#FFFFFF;color:#B4B8AD;}
+.stgi b{display:block;font-size:13px;letter-spacing:1px;}.stgi span{display:block;font-size:11px;margin-top:1px;}
+.stgi.done{color:#8A9683;border-color:#D6DCD2;background:#F1F4EF;}.stgi.on{color:#FFFCF5;background:#5F6E58;border-color:#5F6E58;}
+.stgnow{font-size:13.5px;line-height:1.85;color:#2E332C;margin-top:11px;}.stgnow b{display:inline-block;min-width:74px;font-weight:600;color:#5F6E58;}
+.stgnext{font-size:12.5px;line-height:1.7;color:#8A8F86;margin-top:9px;padding-top:9px;border-top:1px dashed #E3DCCB;}
+.links a{display:block;color:#4A6FA5;font-size:14px;margin:6px 0;word-break:break-all;}
+.note{font-size:13px;color:#8A8F86;line-height:1.6;margin-top:12px;}
+.ctx{margin:10px 0;padding:10px 12px;background:#F4F1E7;border-radius:8px;font-size:13px;color:#8A8F86;line-height:1.6;}
+.brief{margin:10px 0;padding:10px 12px;background:#EEF2E6;border-radius:8px;white-space:pre-wrap;font-size:13px;color:#8A8F86;line-height:1.6;}
+.btn-home{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;background:#5F6E58;color:#FFFCF5;border-radius:10px;padding:13px 0;font-size:15px;font-weight:600;letter-spacing:2px;margin:16px 0 0;}
+.btn-home.ghost{background:transparent;color:#5F6E58;border:1px solid #C9D2C5;margin-top:8px;}
+.ft{text-align:center;font-size:11px;color:#A9AC9F;letter-spacing:1px;margin-top:22px;}
+.ft a{color:#A9AC9F;}
+.ph{min-height:0;}
+.ph.loading{position:relative;color:#B4B8AD;font-size:12px;padding:6px 0;}
+.pimg{display:inline-block;vertical-align:top;width:104px;margin:0 6px 8px 0;font-size:12px;color:#4A4A4A;}
+.pimg img,.pimg i{width:104px;height:104px;border-radius:8px;display:block;object-fit:cover;background:#EEF1EA;}
+form.busy button{opacity:.5;pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b>植間設計</b><span>核可中心</span></div>
+  <div id="app" class="card"><div class="note">載入中…</div></div>
+  <div class="ft">YUZHI PLANT DESIGN · <span id="ver">Pages</span> · <a id="gasLink" href="#" target="_top">舊版頁面</a></div>
+</div>
+<script>
+(function () {
+  var GW = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+  var GAS = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+  var INBOX = 'https://waynelin-yuzhi.github.io/yuzhi-liff/inbox/';
+  var TYPES = { reels: 'Reels 發佈', post: '圖文貼文', copy: '文案', generic: '一般' };
+  var q = new URLSearchParams(location.search), h = String(q.get('h') || '').trim(), skipMode = q.get('skip') === '1';
+  var app = document.getElementById('app');
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); };
+  var linkify = function (escaped) { var i = 0; return escaped.replace(/https?:\/\/[^\s<>"']+/g, function (u) { i++; return '<a class="txt-btn" target="_blank" rel="noopener" href="' + u + '">開啟連結 ' + i + '</a>'; }); };
+  var chip = function (st) { var cls = { '待核可': 'chip-wait', '已排程': 'chip-run', '發佈中': 'chip-run', '已發佈': 'chip-done', '已核可': 'chip-done', '已略過': 'chip-done', '已過期': 'chip-no', '退回': 'chip-no', '失敗': 'chip-no' }[st] || 'chip-wait'; return '<span class="chip ' + cls + '">' + esc(st) + '</span>'; };
+  var gasPage = GAS + '?page=approve&h=' + encodeURIComponent(h);
+  document.getElementById('gasLink').href = gasPage;
+  var msg = function (t, d) { app.innerHTML = '<div class="title">' + esc(t) + '</div><div class="note">' + esc(d) + '</div><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>'; };
+  if (!h || h.length < 20) { msg('連結無效', '找不到這筆核可件，或連結已失效。'); return; }
+
+  var hidden = function (n, v) { return '<input type="hidden" name="' + n + '" value="' + esc(v) + '">'; };
+  var formHead = function () { return '<form method="post" action="' + esc(GAS) + '" target="_top">' + hidden('approvalDecide', '1') + hidden('h', h) + '<input type="hidden" name="fp" id="fp" value="">'; };
+
+  function render(it) {
+    var pl = it.payload || {}, res = it.result || {}, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
+    var title = it.title || '', id = it.id, from = it.from;
+    if (pl.reviewUrl && status === '待核可') { location.replace(pl.reviewUrl); return; }
+    if (skipMode && status === '待核可' && !isPub) {
+      app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="meta">' + esc(id) + ' · 來源 ' + esc(from) + '</div>'
+        + '<div class="note" style="margin:12px 0;">' + (pl.lineReplyTo ? '你自己回過這位客戶了？' : '這件你已經自己處理了？') + '按一下就收掉、不會發送。</div>'
+        + formHead() + (pl.lineReplyTo ? '<textarea name="ownerText" rows="4" placeholder="貼上你在 LINE 回的原文（多則就一起貼），客服才看得懂整段對話。空著也能收掉。"></textarea>' : '')
+        + '<button class="btn-main" type="submit" name="decision" value="skip">' + (pl.lineReplyTo ? '對，我回過了' : '對，處理過了') + '</button></form>'
+        + '<a class="btn-tune" href="' + esc(location.pathname + '?h=' + encodeURIComponent(h)) + '">先看完整內容再決定</a>';
+      wire(); return;
+    }
+    var html = chip(status) + (pl.dryRun ? ' <span class="chip chip-wait">測試件</span>' : '');
+    html += '<div class="title">' + esc(title) + '</div>';
+    html += '<div class="meta">' + esc(id) + ' · ' + esc(TYPES[type] || type) + ' · 來源 ' + esc(from) + ' · ' + esc(it.ts || '') + '</div>';
+    html += '<div id="ph-stage" class="ph"></div>';
+    if (pl.context) html += '<div class="ctx"><b>客戶脈絡</b>：' + esc(pl.context) + '</div>';
+    if (pl.brief) html += '<div class="brief">' + esc(pl.brief) + '</div>';
+    if (pl.previewImages && pl.previewImages.length) html += '<div id="ph-preview" style="margin:8px 0;">' + pl.previewImages.map(function (pi) { return '<span class="pimg"><i></i>' + esc(pi.label) + '</span>'; }).join('') + '</div>';
+    if (pl.lineReplyTo && status === '待核可') html += '<div class="note" style="margin:6px 0 10px;"><a style="color:#5F6E58;font-size:14px;" href="' + esc(INBOX + '?cid=' + pl.lineReplyTo + '&t=' + Date.now() + '&openExternalBrowser=1') + '" target="_top">到對話收件匣處理這位（看整段對話、改稿、給意見、排程）</a></div>';
+    html += '<div id="ph-conv" class="ph' + (status === '待核可' && pl.lineReplyTo ? ' loading' : '') + '">' + (status === '待核可' && pl.lineReplyTo ? '最近對話載入中…' : '') + '</div>';
+    html += '<div id="ph-media" class="ph"></div>';
+    if (status !== '待核可') {
+      if (isPub) { if (pl.caption) html += '<div class="textbox">' + esc(pl.caption) + '</div>'; if (pl.firstComment) html += '<div class="note">首則留言：' + esc(pl.firstComment) + '</div>'; }
+      else if (pl.text) html += '<div class="textbox">' + linkify(esc(pl.text)) + '</div>';
+    }
+    if (status === '待核可') {
+      var confirmMsg = isPub ? '確定核可並發佈？（照頁面上的文案與排程時間）' : (pl.lineReplyTo ? '確定核可？定案文字會自動回覆給客戶。' : '確定核可？');
+      html += formHead();
+      if (isPub) {
+        if (pl.coverUrl) html += '<div class="editbox"><div class="schedlabel">封面標題（改字上方封面即時預覽；核可後系統通知植影所重燒新封面）</div><input type="text" name="coverTitle" maxlength="80" value="' + esc(pl.coverTitle || '') + '" oninput="var t=document.getElementById(\'covttl-' + esc(id) + '\');if(t)t.textContent=this.value;"></div>';
+        html += '<div class="editbox"><div class="schedlabel">文案（可直接修改、以此版本發佈）</div><textarea name="caption" style="min-height:110px;">' + esc(pl.caption || '') + '</textarea></div>';
+        html += '<div class="editbox"><div class="schedlabel">首則留言（發佈後自動留言、hashtag 放這裡版面乾淨；留空＝不留言）</div><textarea name="firstComment" style="min-height:64px;">' + esc(pl.firstComment || '') + '</textarea></div>';
+        var reqAt = pl.publishAt || '';
+        html += '<div class="schedbox"><div class="schedlabel">排程發佈時間（留空＝立即發佈）' + (pl.suggestAt ? '<span class="schedhint">投稿方建議：' + esc(pl.suggestAt) + '</span>' : '') + (reqAt ? '<span class="schedhint">投稿方請求排程 ' + esc(reqAt) + '（已預填、可改可清）</span>' : '') + '</div><input type="datetime-local" name="publishAt" value="' + esc(reqAt ? reqAt.replace(' ', 'T') : '') + '"></div>';
+      } else {
+        if (pl.fileLines && pl.fileLines.length) html += '<div class="editbox"><div class="schedlabel">附件連結（點開看內容）</div>' + pl.fileLines.map(function (l) { return '<div class="note">' + linkify(esc(l)) + '</div>'; }).join('') + '</div>';
+        html += '<div class="editbox"><div class="schedlabel">內容（可直接修改、核可以此版本為準）</div><textarea name="text" style="min-height:140px;">' + esc(pl.text || '') + '</textarea></div>';
+        if (pl.lineReplyTo) { var reqAtC = pl.publishAt || ''; html += '<div class="schedbox"><div class="schedlabel">指定發送時間（留空＝核可後立即發送）' + (reqAtC ? '<span class="schedhint">投稿方建議 ' + esc(reqAtC) + '（已預填、可改可清）</span>' : '') + '</div><input type="datetime-local" name="publishAt" value="' + esc(reqAtC ? reqAtC.replace(' ', 'T') : '') + '"></div>'; }
+      }
+      html += '<div id="ph-attach" class="ph loading">附掛項目載入中…</div>';
+      html += '<button class="btn-main" type="submit" name="decision" value="approve" data-confirm="' + esc(confirmMsg) + '">' + (isPub ? '核可並發佈' : '核可') + '</button>';
+      if (!isPub) html += '<div id="ph-cal" class="ph"></div>';
+      if (!isPub && !pl.reviewUrl) html += pl.lineReplyTo
+        ? '<button class="btn-tune" type="submit" name="decision" value="skip" data-confirm="確認你已自己回覆過這位客戶？此件將不發送、收件匣標為已處理。">已自行回覆、略過此件<span>系統擬稿前你已在 LINE 回過的情況用；客戶有新訊息會再進巡邏</span></button>'
+        : '<button class="btn-tune" type="submit" name="decision" value="skip" data-confirm="確認你已自己處理過這件？此件將不發送、直接歸檔。">已自行處理、歸檔此件<span>你已在 OA 自己發過／處理過的情況用；投稿方會收到通知</span></button>';
+      if (type === 'reels') html += '<button class="btn-tune" type="submit" name="decision" value="tune">儲存修改並開工作台<span>四步調整：分鏡／字幕／風格／發佈</span></button>';
+      if (pl.toolUrl) html += '<button class="btn-tune" type="submit" name="decision" value="tool">' + esc(pl.toolLabel || '開排刀台') + '<span>' + esc(pl.toolSubLabel || '調剪輯順序與每刀長度（調完送出、原件自動退回重出）') + '</span></button>';
+      html += '<details><summary>需要調整？退回給 ' + esc(from) + '</summary><select name="reasonKind"><option value="">退回類型</option><option>語氣</option><option>事實錯</option><option>不該回</option><option>金額</option></select><textarea name="reason" placeholder="退回原因（會回到協作板通知投稿方）"></textarea><button class="btn-ghost" type="submit" name="decision" value="reject" data-confirm="確定退回？">退回</button></details></form>';
+    } else if (status === '已排程') {
+      html += '<div class="note">已排程：<b>' + esc(it.publishAt || '') + '</b> 自動發佈（時間到系統自己跑、完成後 LINE 通知你）。</div>';
+      html += formHead() + hidden('decision', 'publishnow') + '<button class="btn-main" type="submit" data-confirm="改成現在立刻發佈？">改為立即發佈</button></form>';
+      html += formHead() + hidden('decision', 'reschedule') + '<div class="schedbox"><div class="schedlabel">改期到</div><input type="datetime-local" name="publishAt" value="' + esc(String(it.publishAt || '').replace(' ', 'T')) + '"></div><button class="btn-tune" type="submit" style="margin-top:10px;" data-confirm="確定改期？">改期（照上面時間重排）</button></form>';
+      html += formHead() + hidden('decision', 'cancel') + '<button class="btn-ghost" type="submit" data-confirm="確定取消排程？件會退回投稿方。">取消排程並退回</button></form>';
+    } else {
+      var links = '';
+      if (res.igPermalink) links += '<a href="' + esc(res.igPermalink) + '">IG 貼文：' + esc(res.igPermalink) + '</a>';
+      if (res.fbUrl) links += '<a href="' + esc(res.fbUrl) + '">FB 貼文：' + esc(res.fbUrl) + '</a>';
+      if (links) html += '<div class="links">' + links + '</div>';
+      if (res.fbError) html += '<div class="note">FB 未成功：' + esc(res.fbError) + '</div>';
+      if (res.error) html += '<div class="note">失敗原因：' + esc(res.error) + '</div>';
+      if (res.reason) html += '<div class="note">退回原因：' + esc(res.reason) + '</div>';
+      if (res.lineSent) html += '<div class="note">已發送給客戶 ' + esc(res.sentAt || '') + '</div>';
+      if (res.dryRun) html += '<div class="note">測試件（dryRun）：流程驗證用、未實際發佈。</div>';
+      if (it.decidedAt) html += '<div class="note">決定時間：' + esc(it.decidedAt) + '</div>';
+      html += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
+    }
+    app.innerHTML = html;
+    wire();
+    if (status === '發佈中') setTimeout(function () { location.reload(); }, 30000);
+    loadExtras(status);
+  }
+
+  function wire() {
+    Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) {
+      f.addEventListener('submit', function (ev) {
+        var btn = ev.submitter || document.activeElement, c = btn && btn.getAttribute && btn.getAttribute('data-confirm');
+        if (c && !confirm(c)) { ev.preventDefault(); return; }
+        if (f.classList.contains('busy')) { ev.preventDefault(); return; }
+        setTimeout(function () { f.classList.add('busy'); }, 0);
+      });
+    });
+  }
+
+  function put(id, html) { var el = document.getElementById(id); if (!el) return; el.classList.remove('loading'); el.innerHTML = html || ''; }
+  function loadExtras(status) {
+    fetch(GAS + '?page=approve&h=' + encodeURIComponent(h) + '&respond=json', { method: 'GET', redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || 'bad');
+        var fr = j.fragments || {};
+        put('ph-stage', fr.stage); put('ph-conv', fr.conv); put('ph-media', fr.media); put('ph-attach', fr.attach); put('ph-cal', fr.calendar);
+        if (fr.previewImages && fr.previewImages.length) put('ph-preview', fr.previewImages.map(function (pi) { return '<span class="pimg">' + (pi.src ? '<img src="' + esc(pi.src) + '">' : '<i></i>') + esc(pi.label) + '</span>'; }).join(''));
+        var fp = document.getElementById('fp'); if (fp && j.fp) fp.value = j.fp;
+        if (j.status && j.status !== status) { var n = document.createElement('div'); n.className = 'stale-banner'; n.innerHTML = '<span>這件的狀態剛變成「' + esc(j.status) + '」</span><span class="stale-hint">重新整理看最新內容。</span>'; app.insertBefore(n, app.firstChild); }
+        var ver = document.getElementById('ver'); if (ver && j.serverVersion) ver.textContent = 'Pages · ' + j.serverVersion;
+      })
+      .catch(function () {
+        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = '<div class="note">附掛項目這次沒載到；附件與對話請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>看（核可仍可照常送出）。</div>'; } });
+      });
+  }
+
+  fetch(GW + '?action=approvalView&h=' + encodeURIComponent(h), { method: 'GET' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (!j || !j.ok || !j.item) { msg(j && j.error === 'not_found' ? '連結無效' : '暫時載不到', j && j.error === 'not_found' ? '找不到這筆核可件，或連結已失效。' : '引擎沒回應，請用下方舊版頁面。'); return; } render(j.item); })
+    .catch(function () { msg('暫時載不到', '引擎沒回應，請用下方舊版頁面。'); });
+})();
+</script>
+</body>
+</html>
