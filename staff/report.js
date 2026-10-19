@@ -467,7 +467,7 @@
           rec.photos.forEach(function (ph) { var z = rec.payload.zones.filter(function (zz) { return zz.seq === ph.zoneSeq; })[0]; if (!z) return; var key = ph.ba === 'before' ? 'beforePhotos' : 'afterPhotos'; z[key] = z[key] || []; z[key].push(ph.url); });
           var saved = false;
           try { var rs = await T.api('reportSave', { payloadJson: JSON.stringify(rec.payload) }); saved = !!(rs && rs.ok); if (!saved && rs && rs.error) console.log('reportSave', rs); } catch (e) {}
-          if (saved) { qUploaded = true; await queueDel(rec.id); rec.photos.forEach(function (ph) { photoDel(ph.pid); }); A.list = null; A.listFromEngine = false; if (A.view === 'list') renderList(); }
+          if (saved) { qUploaded = true; await queueDel(rec.id); rec.photos.forEach(function (ph) { photoDel(ph.pid); }); A.list = null; A.listFromEngine = false; A.listSeq = (A.listSeq || 0) + 1; A.listLoading = false; if (A.view === 'list') renderList(); }
           else { rec.status = 'failed'; await queuePut(rec); }
           renderQueueBar();
         }
@@ -501,7 +501,7 @@
   function renderList() {
     if (A.list === null || A.listFromEngine) {
       if (A.list === null) $('app').innerHTML = '<div class="card"><div class="note">載入中…</div></div>';
-      if (!A.listLoading) { A.listLoading = true; T.api('reportsMine', { limit: 100 }).then(function (r) { A.listLoading = false; if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }); }
+      if (!A.listLoading) { A.listLoading = true; var seq = A.listSeq = (A.listSeq || 0) + 1; T.api('reportsMine', { limit: 100 }).then(function (r) { A.listLoading = false; if (seq !== A.listSeq) { if (A.view === 'list') renderList(); return; } if (r && r.ok && r.list) { A.list = r.list; A.listFromEngine = false; } else if (A.list === null) A.list = []; if (A.view === 'list') renderList(); }); }
       if (A.list === null) return;
     }
     if (!A.list.length) { $('app').innerHTML = '<div class="card"><div class="note">還沒有報告紀錄。</div></div>'; return; }
@@ -539,20 +539,10 @@
     var todayIds = {}; (r.items || []).forEach(function (it) { todayIds[it.siteCode] = 1; });
     A.sites.forEach(function (s) { s.today = !!todayIds[s.id]; });
     A.sites.sort(function (a, b) { return (b.today - a.today) || (b.assigned - a.assigned) || String(a.name).localeCompare(String(b.name)); });
-    if (booted) {   // 第二份結果（GAS）：只補案場清單與今天標記、不整頁重畫、不動使用者已在填的表單
-      if (A.st.clientId && !A.st.clientName && siteById(A.st.clientId)) A.st.clientName = siteById(A.st.clientId).shortName || '';
-      var needRender = false;
-      if (!A.dirty && !A.editing && !A.serverDraft && r.draft) { A.serverDraft = r.draft; needRender = true; }
-      if (!A.dirty && !A.st.clientId && !A.editing && (r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; needRender = true; }
-      if (A.view === 'form') {
-        var busy = document.activeElement && document.activeElement !== document.body && $('app') && $('app').contains(document.activeElement);
-        if (needRender && !busy) render();
-        else { var sel = $('f-client'); if (sel) { var cur = sel.value; sel.innerHTML = '<option value="">選擇客戶…</option>' + A.sites.map(function (s2) { return '<option value="' + esc(s2.id) + '"' + (cur === s2.id ? ' selected' : '') + '>' + esc(s2.shortName || s2.name) + (s2.today ? '（今天）' : '') + '</option>'; }).join(''); } }
-      }
-      return Promise.resolve();
-    }
+    if (booted) { applyGasSecond(r); return Promise.resolve(); }
     booted = true;
     return restoreLocal().then(function (hadLocal) {
+      A.restoredLocal = hadLocal;
       if (!hadLocal) {
         A.st = initial();
         if (r.draft) A.serverDraft = r.draft;
@@ -563,6 +553,27 @@
       if (hadLocal) uploadUnsent();
       resumeQueue();
     });
+  }
+  // 第二份結果（GAS）：只補案場清單與今天標記、不整頁重畫、不動使用者已在填的表單；使用者正在操作欄位時延後到離開欄位再套
+  function userBusy() { var a = document.activeElement; return !!(a && a !== document.body && $('app') && $('app').contains(a)); }
+  function applyGasSecond(r) {
+    if (A.st.clientId && !A.st.clientName && siteById(A.st.clientId)) A.st.clientName = siteById(A.st.clientId).shortName || '';
+    if (A.view === 'form' && userBusy()) {
+      if (!A.pendingGas) document.addEventListener('focusout', function onOut() { setTimeout(function () { if (!A.pendingGas) return; if (userBusy()) return; document.removeEventListener('focusout', onOut); var rr = A.pendingGas; A.pendingGas = null; applyGasSecond(rr); }, 150); });
+      A.pendingGas = r;
+      var sel0 = $('f-client'); if (sel0) rebuildClientOptions(sel0);
+      return;
+    }
+    var needRender = false;
+    if (!A.dirty && !A.editing && !A.restoredLocal && !A.serverDraft && r.draft) { A.serverDraft = r.draft; needRender = true; }   // 本機快照已還原的表單不提雲端草稿（恢復會清掉本機照片）
+    if (!A.dirty && !A.st.clientId && !A.editing && (r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; needRender = true; }
+    if (A.view !== 'form') return;
+    if (needRender) render();
+    else { var sel = $('f-client'); if (sel) rebuildClientOptions(sel); }
+  }
+  function rebuildClientOptions(sel) {
+    var cur = A.st.clientId || sel.value;
+    sel.innerHTML = '<option value="">選擇客戶…</option>' + A.sites.map(function (s2) { return '<option value="' + esc(s2.id) + '"' + (cur === s2.id ? ' selected' : '') + '>' + esc(s2.shortName || s2.name) + (s2.today ? '（今天）' : '') + '</option>'; }).join('');
   }
   T.init({ skipWhoami: true }).then(function () {
     engineCall('staffInit', { reports: true }).then(function (r) { if (r && r.ok && !gasApplied) applyInit(r, true); });
