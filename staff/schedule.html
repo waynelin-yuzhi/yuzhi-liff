@@ -42,6 +42,7 @@
 .chip.ext{background:#F6F3EC;border-color:#CFC7B4;color:#6B6557}
 .hd{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .chip.wch{box-shadow:inset 3px 0 0 #B85C40}
+#app.partial button,#app.partial .chip,#app.partial .day{pointer-events:none}#app.partial button{opacity:.6}#app.partial::before{content:'同步中…';display:block;font-size:11px;color:#A09A8C;letter-spacing:.2em;margin:0 0 6px}
 </style>
 </head>
 <body>
@@ -81,12 +82,22 @@
     return Object.keys(c).filter(function (k) { return c[k] > 3; }).sort().map(function (k) { var q = k.split('|'); return { date: q[0], slot: q[1], n: c[k], label: md(q[0]) + '（' + WD[wdOf(q[0]) - 1] + '）' + q[1] + ' ' + c[k] + ' 站' }; });
   }
   function stChip(s) { var cls = s === '待核可' ? 'wait' : (s === '已核可' ? 'ok' : ''); return '<span class="st ' + cls + '">' + esc(s || '未建立') + '</span>'; }
+  // 引擎先畫（班表列＋狀態＋假日＋我的案場＋慣例，約 1 秒、partial）；GAS schedMonth 隨後帶代班／未排／變更申請與核可狀態校正後覆蓋。partial 期間不開放操作（第 7 塊）
+  var ENGINE_SCHED = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api?action=staffSchedMonth';
   function load(ym, keep) {
     if (!keep) MSG = ''; YM = ym; $('app').innerHTML = '<div class="card"><div class="note"><span class="spin"></span>載入 ' + esc(ym) + '…</div></div>';
-    api('schedMonth', { ym: ym }).then(function (r) { if (!r || !r.ok) { T.showErr(T.errText(r)); return; } DATA = r; render(); }).catch(function () { T.showErr('載入失敗，請重試'); });
+    var S0 = T.S || (window.STAFF && window.STAFF.S) || {}, gasBack = false;
+    if (!AS && !S0.dev && S0.idToken && ym >= thisYm()) {
+      fetch(ENGINE_SCHED, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: S0.idToken, ym: ym }), cache: 'no-store' })
+        .then(function (res) { return res.json(); })
+        .then(function (r) { if (gasBack || YM !== ym || !r || !r.ok) return; DATA = r; render(); })
+        .catch(function () {});
+    }
+    api('schedMonth', { ym: ym }).then(function (r) { gasBack = true; if (!r || !r.ok) { T.showErr(T.errText(r)); return; } if (YM !== ym) return; DATA = r; render(); }).catch(function () { gasBack = true; if (!DATA || DATA.partial) T.showErr('載入失敗，請重試'); });
   }
   function render() {
     var r = DATA, ym = r.ym, past = r.mode === 'past', rows = r.rows || [], hol = r.holidays || {};
+    $('app').classList.toggle('partial', !!r.partial);
     var byDate = {}; rows.forEach(function (x) { (byDate[x.date] = byDate[x.date] || []).push(x); });
     var extraBy = {}; (r.extra || []).forEach(function (x) { (extraBy[x.date] = extraBy[x.date] || []).push(x); });
     var nextYm = addYm(thisYm(), 1), isCur = ym === thisYm(), far = !past && ym > nextYm;
