@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>養護總覽 ｜ 植間後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--paper:#F2EDE3;--page-bg:#EFEEE9;--card:#fff;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--page-bg);color:var(--ink);line-height:1.6;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px}
+.top select{margin-left:auto;padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font-size:14px;font-family:inherit}
+.top select option{color:var(--ink)}
+.top button,.top a.btn{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:none}
+main{max-width:760px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:14px;font-weight:500;letter-spacing:.06em;color:var(--sage);margin-bottom:8px}
+.note{font-size:13px;color:var(--ink-60)}
+input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--ink-20);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer}
+.stat.on{outline:2px solid var(--sage)}
+.stat .v{font-size:22px;font-weight:500;color:var(--sage)}
+.stat .l{font-size:11px;color:var(--ink-60);letter-spacing:.04em}
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--ink-20)}
+.row:first-child{border-top:none}
+.row .n{flex:1;min-width:0}
+.row .name{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .meta{font-size:12px;color:var(--ink-60);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 8px}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em}
+.chip.ok{background:var(--sage-tint);color:var(--sage-deep)}
+.chip.warn{background:var(--amber-tint);color:var(--amber)}
+.chip.bad{background:var(--terra-tint);color:var(--terra)}
+.chip.mute{background:#EEE;color:var(--ink-60)}
+.acts{display:flex;gap:6px;flex-shrink:0}
+.acts a{font-size:12px;color:var(--sage);border:1px solid var(--sage);border-radius:6px;padding:5px 8px;text-decoration:none;white-space:nowrap}
+.acts a.mute{color:var(--ink-60);border-color:var(--ink-20)}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
+.ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+@media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}.acts a{padding:5px 7px}}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">植間後台｜養護總覽</span><select id="ym"></select><a class="btn" id="gasLink" href="#" target="_blank">後台操作</a><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入後台</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+  <div id="app" style="display:none">
+    <div class="stats" id="stats"></div>
+    <div class="card" id="list"><div class="ld">載入中</div></div>
+    <div class="note" id="hint"></div>
+  </div>
+  <div class="foot">此頁由引擎鏡像出資料（最長落後 5 分）；推播、核可、產 PDF 等操作仍在後台原頁。<br>植間設計股份有限公司</div>
+</main>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api', gas: 'https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec', careView: 'https://waynelin-yuzhi.github.io/yuzhi-liff/care/' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  var D = { ym: '', data: null, filter: 'all', months: [] };
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  function api(action, payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      return fetch(CFG.engine + '?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function fillMonths(months) {
+    var sel = $('ym'); var cur = D.ym; var ms = months.slice(); if (ms.indexOf(thisYm()) < 0) ms.unshift(thisYm()); if (cur && ms.indexOf(cur) < 0) ms.unshift(cur);
+    sel.innerHTML = ms.map(function (m) { return '<option value="' + esc(m) + '"' + (m === cur ? ' selected' : '') + '>' + esc(m.replace('-', ' / ')) + '</option>'; }).join('');
+  }
+  function load(ym) {
+    D.ym = ym; $('gasLink').href = CFG.gas + '?page=care'; $('list').innerHTML = '<div class="ld">載入中</div>';
+    api('adminCareStatuses', { ym: ym }).then(function (d) {
+      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
+      if (ym !== D.ym) return;
+      D.data = d; D.months = d.months || []; fillMonths(D.months); render();
+    }).catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  function counts(list) {
+    return { all: list.length, reported: list.filter(function (c) { return c.hasReport; }).length, unreported: list.filter(function (c) { return !c.hasReport; }).length,
+      unpushed: list.filter(function (c) { return c.hasReport && !c.lastPushedAt; }).length, unbound: list.filter(function (c) { return !c.lineBound; }).length };
+  }
+  function pass(c) {
+    if (D.filter === 'reported') return c.hasReport; if (D.filter === 'unreported') return !c.hasReport;
+    if (D.filter === 'unpushed') return c.hasReport && !c.lastPushedAt; if (D.filter === 'unbound') return !c.lineBound; return true;
+  }
+  function render() {
+    var list = (D.data && D.data.list) || []; var k = counts(list);
+    var cards = [['all', k.all, '案場'], ['reported', k.reported, '已回報'], ['unpushed', k.unpushed, '已回報未推播'], ['unbound', k.unbound, '未綁 LINE']];
+    $('stats').innerHTML = cards.map(function (x) { return '<div class="stat' + (D.filter === x[0] ? ' on' : '') + '" data-f="' + x[0] + '"><div class="v">' + x[1] + '</div><div class="l">' + x[2] + '</div></div>'; }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.stat'), function (el) { el.onclick = function () { D.filter = el.getAttribute('data-f'); render(); }; });
+    var rows = list.filter(pass).sort(function (a, b) { return (Number(b.hasReport) - Number(a.hasReport)) || String(a.name).localeCompare(String(b.name), 'zh-Hant'); });
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">這個條件下沒有案場</div>'; return; }
+    $('list').innerHTML = rows.map(function (c) {
+      var chips = c.hasReport ? '<span class="chip ok">已回報</span>' : '<span class="chip mute">未回報</span>';
+      chips += c.lineBound ? '' : '<span class="chip bad">未綁 LINE</span>';
+      if (c.hasReport) chips += c.lastPushedAt ? '<span class="chip ok">已推播 ' + esc(c.lastPushedAt) + '</span>' : '<span class="chip warn">未推播</span>';
+      if (c.hasPdf) chips += '<span class="chip mute">PDF v' + esc(c.pdfVersion) + '</span>';
+      var acts = '';
+      if (c.hash) acts += '<a href="' + CFG.careView + '?h=' + esc(c.hash) + '" target="_blank">看報告</a>';
+      if (c.pdfUrl) acts += '<a class="mute" href="' + esc(c.pdfUrl) + '" target="_blank">PDF</a>';
+      return '<div class="row"><div class="n"><div class="name">' + esc(c.name) + ' <span class="note">' + esc(c.clientId) + '</span></div><div class="meta">' + chips + '</div></div><div class="acts">' + acts + '</div></div>';
+    }).join('');
+    $('hint').textContent = '推播、核可與產 PDF 請按右上「後台操作」；排程佇列狀態只在後台原頁看得到。';
+  }
+  $('ym').onchange = function () { load(this.value); };
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); boot(); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
+  function boot() { var q = new URLSearchParams(location.search).get('ym'); var ym = /^\d{4}-\d{2}$/.test(q || '') ? q : thisYm(); D.ym = ym; fillMonths([]); load(ym); }
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
+})();
+</script>
+</body>
+</html>
