@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>提案紀錄 ｜ 植間後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--page-bg:#EFEEE9;--card:#fff;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--page-bg);color:var(--ink);line-height:1.6;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px;flex:1}
+.top a.btn,.top button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:none}
+main{max-width:860px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--sage);margin-bottom:8px}
+.note{font-size:13px;color:var(--ink-60)}
+input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px;background:#fff}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filters button{padding:5px 11px;border:1px solid var(--ink-20);border-radius:99px;background:#fff;font-size:12px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.filters button.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--ink-20)}
+.row:first-child{border-top:none}
+.row .n{flex:1;min-width:0}
+.row .t{font-size:15px;font-weight:500}
+.row .m{font-size:12px;color:var(--ink-60);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 8px}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em}
+.chip.ok{background:var(--sage-tint);color:var(--sage-deep)}
+.chip.warn{background:var(--amber-tint);color:var(--amber)}
+.chip.bad{background:var(--terra-tint);color:var(--terra)}
+.chip.mute{background:#EEE;color:var(--ink-60)}
+.acts{display:flex;gap:6px;flex-shrink:0}
+.acts a,.acts button{font-size:12px;color:var(--sage);border:1px solid var(--sage);border-radius:6px;padding:5px 8px;text-decoration:none;background:#fff;font-family:inherit;cursor:pointer;white-space:nowrap}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
+.ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">植間後台｜提案紀錄</span><a class="btn" id="gasLink" href="#" target="_blank">後台操作</a><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入後台</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+  <div id="app" style="display:none">
+    <input type="search" id="q" placeholder="搜尋客戶、標題、編號、報價單號">
+    <div class="filters" id="filters"></div>
+    <div class="note" id="meta" style="margin-bottom:6px"></div>
+    <div class="card" id="list"><div class="ld">載入中</div></div>
+  </div>
+  <div class="foot">此頁由引擎鏡像出資料（最長落後 5 分）；改狀態、填報價單號、發送、更新 PDF 在「後台操作」原頁。<br>植間設計股份有限公司</div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api', gas: 'https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec' };
+  var STATUSES = ['草稿', '已發', '成交', '未成交'];
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(function () { t.classList.remove('show'); }, 1800); }
+  var D = { items: null, filter: 'all', q: '' };
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  function api(payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      return fetch(CFG.engine + '?action=adminProposals', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function chipCls(st) { return st === '成交' ? 'ok' : st === '已發' ? 'warn' : st === '未成交' ? 'bad' : 'mute'; }
+  function pass(p) {
+    if (D.filter !== 'all' && (p.status || '草稿') !== D.filter) return false;
+    if (D.q) { var hay = [p.client, p.title, p.proposalId, p.quoteNo, p.clientId].join(' ').toLowerCase(); if (hay.indexOf(D.q) < 0) return false; }
+    return true;
+  }
+  function render() {
+    var all = D.items || []; var k = { all: all.length }; STATUSES.forEach(function (s) { k[s] = all.filter(function (p) { return (p.status || '草稿') === s; }).length; });
+    $('filters').innerHTML = [['all', '全部']].concat(STATUSES.map(function (s) { return [s, s]; })).map(function (f) { return '<button data-f="' + esc(f[0]) + '" class="' + (D.filter === f[0] ? 'on' : '') + '">' + esc(f[1]) + ' ' + k[f[0]] + '</button>'; }).join('');
+    Array.prototype.forEach.call($('filters').querySelectorAll('button'), function (b) { b.onclick = function () { D.filter = b.getAttribute('data-f'); render(); }; });
+    var rows = all.filter(pass);
+    $('meta').textContent = '顯示 ' + rows.length + ' / ' + all.length + ' 筆';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">' + (all.length ? '沒有符合條件的提案' : '還沒有提案。做好第一份丟連結給總管。') + '</div>'; return; }
+    $('list').innerHTML = rows.map(function (p) {
+      var st = p.status || '草稿';
+      return '<div class="row"><div class="n"><div class="t">' + esc(p.title || '(無標題)') + ' <span class="chip ' + chipCls(st) + '">' + esc(st) + '</span></div>'
+        + '<div class="m"><span>' + esc(p.proposalId) + '</span><span>' + esc(p.client || '') + (p.clientId ? '（' + esc(p.clientId) + '）' : '<span class="chip warn">未綁客戶</span>') + '</span>' + (p.quoteNo ? '<span>報價 ' + esc(p.quoteNo) + '</span>' : '') + (p.ts ? '<span>' + esc(String(p.ts).slice(0, 16)) + '</span>' : '') + '</div></div>'
+        + '<div class="acts">' + (p.viewUrl ? '<a href="' + esc(p.viewUrl) + '" target="_blank">開啟</a><button data-url="' + esc(p.viewUrl) + '">複製連結</button>' : '') + '</div></div>';
+    }).join('');
+    Array.prototype.forEach.call($('list').querySelectorAll('button[data-url]'), function (b) { b.onclick = function () { var u = b.getAttribute('data-url'); navigator.clipboard.writeText(u).then(function () { toast('連結已複製'); }, function () { prompt('手動複製：', u); }); }; });
+  }
+  function load() {
+    api({}).then(function (d) { if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; } D.items = d.items || []; render(); })
+      .catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  $('q').addEventListener('input', function () { D.q = this.value.trim().toLowerCase(); if (D.items) render(); });
+  $('gasLink').href = CFG.gas + '?page=proposals';
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); load(); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); load(); } else showGate(); });
+})();
+</script>
+</body>
+</html>
