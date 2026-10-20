@@ -216,7 +216,7 @@ form.busy button{opacity:.5;pointer-events:none;}
       return;
     }
     SENT = true; lockAll(true);
-    var el = statusBox('ok', (j.title || label + '完成') + (st !== j.title ? '　' + st : ''), desc);
+    var el = statusBox('ok', (j.title || label + '完成') + ((j.title || '').indexOf(st) < 0 ? '　' + st : ''), desc);
     el.innerHTML += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
   }
