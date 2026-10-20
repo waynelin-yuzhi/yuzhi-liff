@@ -74,6 +74,11 @@ select{font-family:inherit;font-size:14px;padding:8px;border:1px solid #E3DCCB;b
 .pimg{display:inline-block;vertical-align:top;width:104px;margin:0 6px 8px 0;font-size:12px;color:#4A4A4A;}
 .pimg img,.pimg i{width:104px;height:104px;border-radius:8px;display:block;object-fit:cover;background:#EEF1EA;}
 form.busy button{opacity:.5;pointer-events:none;}
+.decide{border-radius:12px;padding:14px;margin:0 0 14px;border:1px solid #D9D2C2;background:#FFFCF5;}
+.decide .dtitle{font-size:17px;font-weight:700;margin-bottom:4px;}
+.decide.run{border-color:#C9A24A;background:#FFF8E6;}
+.decide.ok{border-color:#5F6E58;background:#EEF3EA;}
+.decide.warn{border-color:#B5583C;background:#FBEDE8;}
 </style>
 </head>
 <body>
@@ -102,7 +107,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   var formHead = function () { return '<form method="post" action="' + esc(GAS) + '" target="_top">' + hidden('approvalDecide', '1') + hidden('h', h) + '<input type="hidden" name="fp" id="fp" value="">'; };
 
   function render(it) {
-    var pl = it.payload || {}, res = it.result || {}, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
+    var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
     var title = it.title || '', id = it.id, from = it.from;
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
       var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
@@ -169,6 +174,8 @@ form.busy button{opacity:.5;pointer-events:none;}
       if (res.error) html += '<div class="note">失敗原因：' + esc(res.error) + '</div>';
       if (res.reason) html += '<div class="note">退回原因：' + esc(res.reason) + '</div>';
       if (res.lineSent) html += '<div class="note">已發送給客戶 ' + esc(res.sentAt || '') + '</div>';
+      if (res.execResult) html += '<div class="note"><b>執行結果</b>：' + esc(res.execResult) + '</div>';
+      if (res.lineSendError) html += '<div class="note">發送失敗：' + esc(res.lineSendError) + '</div>';
       if (res.dryRun) html += '<div class="note">測試件（dryRun）：流程驗證用、未實際發佈。</div>';
       if (it.decidedAt) html += '<div class="note">決定時間：' + esc(it.decidedAt) + '</div>';
       html += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
@@ -181,14 +188,66 @@ form.busy button{opacity:.5;pointer-events:none;}
 
   var lastBtn = null;
   document.addEventListener('click', function (ev) { var t = ev.target && ev.target.closest ? ev.target.closest('button') : null; if (t && t.type === 'submit') lastBtn = t; }, true);   // 舊 iOS Safari 沒有 ev.submitter、按鈕也不會拿到焦點
-  window.addEventListener('pageshow', function () { Array.prototype.forEach.call(document.querySelectorAll('form.busy'), function (f) { f.classList.remove('busy'); }); });   // 從 GAS 結果頁按返回（bfcache）時解鎖
+  window.addEventListener('pageshow', function () { if (SENT) return; Array.prototype.forEach.call(document.querySelectorAll('form.busy'), function (f) { f.classList.remove('busy'); }); });   // 從 GAS 結果頁按返回（bfcache）時解鎖
+  var FETCH_DECISIONS = { approve: 1, skip: 1, reject: 1, publishnow: 1, reschedule: 1, cancel: 1 };
+  var DECISION_LABEL = { approve: '核可', skip: '略過', reject: '退回', publishnow: '改為立即發佈', reschedule: '改期', cancel: '取消排程' };
+  var SENT = false;
+  function lockAll(on) { Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { if (on) f.classList.add('busy'); else f.classList.remove('busy'); }); }
+  function statusBox(cls, title, desc) {
+    var el = document.getElementById('decideBox');
+    if (!el) { el = document.createElement('div'); el.id = 'decideBox'; app.insertBefore(el, app.firstChild); }
+    el.className = 'decide ' + cls; el.innerHTML = '<div class="dtitle">' + esc(title) + '</div>' + (desc ? '<div class="note">' + esc(desc) + '</div>' : '');
+    try { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (eS) {}
+    return el;
+  }
+  function showDone(j, label) {
+    SENT = true; lockAll(true);
+    var st = j.status || ''; var done = j.done || (st && st !== '待核可');
+    var desc = (j.desc || '') + (j.execResult && (j.desc || '').indexOf(j.execResult.substring(0, 20)) < 0 ? '　' + j.execResult : '') + (j.hookText && (j.desc || '').indexOf(j.hookText.substring(0, 20)) < 0 ? '　' + j.hookText : '');
+    var el = statusBox(done ? 'ok' : 'warn', (j.title || (done ? label + '完成' : label + '已送出')) + (st ? '　' + st : ''), desc);
+    el.innerHTML += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
+    Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
+  }
+  function pollStatus(label, startedAt) {
+    fetch(GW + '?action=approvalView&h=' + encodeURIComponent(h), { method: 'GET' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var it = j && j.item;
+        if (it && it.status && it.status !== '待核可') { showDone({ status: it.status, done: true, title: label + '完成', desc: '狀態：' + it.status + (it.execResult ? '　' + it.execResult : '') }, label); return; }
+        if (Date.now() - startedAt > 180000) { SENT = false; lockAll(false); statusBox('warn', '沒收到回應', '狀態仍是待核可、不確定剛才有沒有送到。系統會擋重複執行（不會重複開票、重複發送），你可以重新整理確認，或再按一次。'); return; }
+        setTimeout(function () { pollStatus(label, startedAt); }, 5000);
+      })
+      .catch(function () { setTimeout(function () { pollStatus(label, startedAt); }, 5000); });
+  }
+  function formDecision(f, btn) { if (btn && btn.name === 'decision' && btn.value) return btn.value; var hd = f.querySelector('input[name=decision]'); return hd ? hd.value : ''; }
+  function submitViaFetch(f, btn) {
+    var decision = formDecision(f, btn), label = DECISION_LABEL[decision] || decision;
+    var body = new URLSearchParams(); Array.prototype.forEach.call(f.elements, function (el) { if (el.name && el.name !== 'decision' && !el.disabled && el.type !== 'submit' && el.type !== 'button') body.append(el.name, el.value); });
+    body.append('decision', decision); body.append('respond', 'json');
+    SENT = true; lockAll(true);
+    var t0 = Date.now(), box = statusBox('run', label + '送出中…', '正在執行。開立發票、發卡片這類動作要 20 到 60 秒，請留在這頁。');
+    var tick = setInterval(function () { var d = box.querySelector('.dtitle'); if (d) d.textContent = label + '處理中… ' + Math.round((Date.now() - t0) / 1000) + ' 秒'; }, 1000);
+    fetch(GAS, { method: 'POST', body: body, redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        clearInterval(tick);
+        if (!j || (!j.ok && !j.status)) throw new Error((j && j.error) || 'bad');
+        if (j.needsPage) { statusBox('warn', '這個動作要用整頁送出', '請改用舊版頁面操作。'); SENT = false; lockAll(false); return; }
+        showDone(j, label);
+      })
+      .catch(function () {
+        clearInterval(tick);
+        statusBox('run', label + '已送出、等後台回報…', '網路沒把結果帶回來，正在每 5 秒查一次狀態。');
+        pollStatus(label, t0);
+      });
+  }
   function wire() {
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) {
       f.addEventListener('submit', function (ev) {
         var btn = ev.submitter || lastBtn, c = btn && btn.getAttribute && btn.getAttribute('data-confirm');
-        if (btn && btn.disabled) { ev.preventDefault(); return; }
+        if (SENT || (btn && btn.disabled) || f.classList.contains('busy')) { ev.preventDefault(); return; }
         if (c && !confirm(c)) { ev.preventDefault(); return; }
-        if (f.classList.contains('busy')) { ev.preventDefault(); return; }
+        if (FETCH_DECISIONS[formDecision(f, btn)] && window.URLSearchParams) { ev.preventDefault(); submitViaFetch(f, btn); return; }
         setTimeout(function () { f.classList.add('busy'); setTimeout(function () { f.classList.remove('busy'); }, 15000); }, 0);
       });
     });
