@@ -204,7 +204,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     SENT = true; lockAll(true);
     var st = j.status || ''; var done = j.done || (st && st !== '待核可');
     var desc = (j.desc || '') + (j.execResult && (j.desc || '').indexOf(j.execResult.substring(0, 20)) < 0 ? '　' + j.execResult : '') + (j.hookText && (j.desc || '').indexOf(j.hookText.substring(0, 20)) < 0 ? '　' + j.hookText : '');
-    var el = statusBox(done ? 'ok' : 'warn', (j.title || (done ? label + '完成' : label + '已送出')) + (st ? '　' + st : ''), desc);
+    var el = statusBox(done ? 'ok' : 'warn', (j.title || (done ? label + '完成' : label + '已送出')) + (st && st !== j.title ? '　' + st : ''), desc);
     el.innerHTML += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
   }
@@ -225,7 +225,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     var body = new URLSearchParams(); Array.prototype.forEach.call(f.elements, function (el) { if (el.name && el.name !== 'decision' && !el.disabled && el.type !== 'submit' && el.type !== 'button') body.append(el.name, el.value); });
     body.append('decision', decision); body.append('respond', 'json');
     SENT = true; lockAll(true);
-    var t0 = Date.now(), box = statusBox('run', label + '送出中…', '正在執行。開立發票、發卡片這類動作要 20 到 60 秒，請留在這頁。');
+    var t0 = Date.now(), box = statusBox('run', label + '送出中…', decision === 'approve' ? '正在執行。開立發票、發卡片這類動作要 20 到 60 秒，請留在這頁。' : '正在送出，請留在這頁。');
     var tick = setInterval(function () { var d = box.querySelector('.dtitle'); if (d) d.textContent = label + '處理中… ' + Math.round((Date.now() - t0) / 1000) + ' 秒'; }, 1000);
     fetch(GAS, { method: 'POST', body: body, redirect: 'follow' })
       .then(function (r) { return r.json(); })
