@@ -111,7 +111,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     var acts = '';
     if (isPending) {
       acts += '<a href="' + esc(it.goUrl) + '" target="_blank">開核可頁</a>';
-      if (it.contactId) acts += '<a href="' + esc(CFG.inbox + '?cid=' + it.contactId + '&t=' + Date.now()) + '" target="_blank">收件匣</a>';
+      if (it.contactId) acts += '<a href="#" data-cid="' + esc(it.contactId) + '">收件匣</a>';
     } else acts += '<a href="' + esc(it.goUrl) + '" target="_blank">看結果</a>';
     var r = resultLine(it);
     return '<div class="row"><div class="n"><div class="t"><span class="chip ' + chipCls(it.status) + '">' + esc(it.status) + '</span> ' + esc(it.title || '(無標題)') + '</div>'
@@ -129,6 +129,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     $('meta').textContent = '待處理 ' + (D.pending || []).length + ' 件・最近 ' + (D.recent || []).length + ' 件';
     $('pending').innerHTML = p.length ? p.map(function (it) { return row(it, true); }).join('') : '<div class="ld">' + ((D.pending || []).length ? '沒有符合條件的件' : '目前沒有待處理件') + '</div>';
     $('recent').innerHTML = r.length ? r.map(function (it) { return row(it, false); }).join('') : '<div class="ld">沒有符合條件的件</div>';
+    Array.prototype.forEach.call($('pending').querySelectorAll('a[data-cid]'), function (a) { a.onclick = function (ev) { ev.preventDefault(); window.open(CFG.inbox + '?cid=' + encodeURIComponent(a.getAttribute('data-cid')) + '&t=' + Date.now(), '_blank'); }; });   // t 在點擊時算（收件匣只認 20 分內的 t）
   }
   function load() {
     api({}).then(function (d) { if (!d || !d.ok) { $('pending').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; $('recent').innerHTML = ''; return; } D.pending = d.pending || []; D.recent = d.recent || []; render(); })
