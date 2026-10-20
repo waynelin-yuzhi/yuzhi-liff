@@ -108,6 +108,7 @@ form.busy button{opacity:.5;pointer-events:none;}
 
   function render(it) {
     var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
+    LOADED_STATUS = status || '';
     var title = it.title || '', id = it.id, from = it.from;
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
       var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
@@ -191,7 +192,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   window.addEventListener('pageshow', function () { if (SENT) return; Array.prototype.forEach.call(document.querySelectorAll('form.busy'), function (f) { f.classList.remove('busy'); }); });   // 從 GAS 結果頁按返回（bfcache）時解鎖
   var FETCH_DECISIONS = { approve: 1, skip: 1, reject: 1, publishnow: 1, reschedule: 1, cancel: 1 };
   var DECISION_LABEL = { approve: '核可', skip: '略過', reject: '退回', publishnow: '改為立即發佈', reschedule: '改期', cancel: '取消排程' };
-  var SENT = false;
+  var SENT = false, LOADED_STATUS = '';
   function lockAll(on) { Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { if (on) f.classList.add('busy'); else f.classList.remove('busy'); }); }
   function statusBox(cls, title, desc) {
     var el = document.getElementById('decideBox');
@@ -201,10 +202,21 @@ form.busy button{opacity:.5;pointer-events:none;}
     return el;
   }
   function showDone(j, label) {
-    SENT = true; lockAll(true);
-    var st = j.status || ''; var done = j.done || (st && st !== '待核可');
+    var st = j.status || '', changed = !!st && st !== LOADED_STATUS;
     var desc = (j.desc || '') + (j.execResult && (j.desc || '').indexOf(j.execResult.substring(0, 20)) < 0 ? '　' + j.execResult : '') + (j.hookText && (j.desc || '').indexOf(j.hookText.substring(0, 20)) < 0 ? '　' + j.hookText : '');
-    var el = statusBox(done ? 'ok' : 'warn', (j.title || (done ? label + '完成' : label + '已送出')) + (st && st !== j.title ? '　' + st : ''), desc);
+    if (!j.ok) {   // 後台中途丟例外：狀態可能已變、客戶可能沒收到；原文照給、不說成功
+      var el0 = statusBox('warn', '執行中斷', (j.error || '後台沒回報原因') + (st ? '　目前狀態：' + st : '') + '　請到收件匣或核可中心確認，再決定要不要重送。');
+      el0.innerHTML += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
+      if (changed) { SENT = true; lockAll(true); Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; }); } else { SENT = false; lockAll(false); }
+      return;
+    }
+    if (!changed) {   // 狀態沒變（內容有更新請重新整理／改期失敗／已改期…）：訊息照顯示、表單留著可再操作
+      statusBox('', j.title || (label + '：後台已回覆'), desc);
+      SENT = false; lockAll(false);
+      return;
+    }
+    SENT = true; lockAll(true);
+    var el = statusBox('ok', (j.title || label + '完成') + (st !== j.title ? '　' + st : ''), desc);
     el.innerHTML += '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>';
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
   }
@@ -213,8 +225,8 @@ form.busy button{opacity:.5;pointer-events:none;}
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var it = j && j.item;
-        if (it && it.status && it.status !== '待核可') { showDone({ status: it.status, done: true, title: label + '完成', desc: '狀態：' + it.status + (it.execResult ? '　' + it.execResult : '') }, label); return; }
-        if (Date.now() - startedAt > 180000) { SENT = false; lockAll(false); statusBox('warn', '沒收到回應', '狀態仍是待核可、不確定剛才有沒有送到。系統會擋重複執行（不會重複開票、重複發送），你可以重新整理確認，或再按一次。'); return; }
+        if (it && it.status && it.status !== LOADED_STATUS) { showDone({ ok: true, status: it.status, title: label + '完成', desc: '狀態：' + it.status + (it.execResult ? '　' + it.execResult : '') }, label); return; }
+        if (Date.now() - startedAt > 180000) { SENT = false; lockAll(false); statusBox('warn', '沒收到回應', '狀態仍是「' + LOADED_STATUS + '」、不確定剛才有沒有送到。系統會擋重複執行（不會重複開票、重複發送），請重新整理確認後再決定要不要再按一次。'); return; }
         setTimeout(function () { pollStatus(label, startedAt); }, 5000);
       })
       .catch(function () { setTimeout(function () { pollStatus(label, startedAt); }, 5000); });
