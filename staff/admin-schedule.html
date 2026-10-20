@@ -26,6 +26,7 @@
   .chip.ok{background:#E3EFE1 !important;border-color:#C6DCC3 !important}
   .chip.miss{background:#FBEAE4 !important;border-color:#E6B8A8 !important;color:#8C3B25 !important}
   #app.missonly .cal .chip:not(.miss){display:none}
+  .wkrow.miss .small b{color:#8C3B25}
 .wkday{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px;background:#fff}.wkday.hol{background:#FFF1E6}.wkday.today{box-shadow:inset 0 0 0 1px #5F6F52}.wkday.out{background:transparent;border-style:dashed}
 .wkday .dn{font-size:13px;color:#3E3A30;margin-bottom:2px}.wkrow{display:flex;align-items:center;gap:8px;padding:3px 0}.wkrow i{font-style:normal;font-size:11px;color:#8A8A84}
 .wkrow .dot{width:10px;height:10px;border-radius:5px;flex:0 0 auto}.wkday .hn{font-size:11px;color:#9A4E1E}
@@ -83,7 +84,8 @@
     var h = '<div class="hd"><div><h1>' + esc(r.ym.replace('-', ' / ')) + '</h1><div class="sub">' + (F ? esc(r.emps[F] || F) + ' 的排班' : '全員排班') + '</div></div></div>';
     var weekMode = VIEW === 'week'; if (weekMode && (!WEEK || !weekInMonth(WEEK))) WEEK = defaultWeek(r);
     h += '<div class="two" style="margin-bottom:10px">' + (weekMode ? '<button class="btn secondary sm" id="prev">‹ 上週</button><button class="btn secondary sm" id="next">下週 ›</button>' : '<button class="btn secondary sm" id="prev">‹ 上個月</button><button class="btn secondary sm" id="next">下個月 ›</button>') + '</div>';
-    var totalMiss = (r.rows || []).filter(function (x) { if (!(x.date < r.today)) return false; var d = (r.done || {})[x.empId + '|' + x.date + '|' + String(x.siteCode || '').toUpperCase()]; var ev = (r.evidence || {})[x.empId] || 'punch'; return d && !(ev === 'report' ? d.r : d.p); }).length;
+    var stA = function (x) { if (!(x.date < r.today)) return ''; var d = (r.done || {})[x.empId + '|' + x.date + '|' + String(x.siteCode || '').toUpperCase()]; var ev = (r.evidence || {})[x.empId] || 'punch'; return !d ? '' : ((ev === 'report' ? d.r : d.p) ? ' ok' : ' miss'); };
+    var totalMiss = (r.rows || []).filter(mine).filter(function (x) { if (!(x.date < r.today)) return false; var d = (r.done || {})[x.empId + '|' + x.date + '|' + String(x.siteCode || '').toUpperCase()]; var ev = (r.evidence || {})[x.empId] || 'punch'; return d && !(ev === 'report' ? d.r : d.p); }).length;
     h += '<div class="seg" style="margin-bottom:10px"><button data-view="month"' + (weekMode ? '' : ' class="on"') + '>月檢視</button><button data-view="week"' + (weekMode ? ' class="on"' : '') + '>週檢視</button>' + (totalMiss || MISSONLY ? '<button id="missonly"' + (MISSONLY ? ' class="on"' : '') + '>' + (MISSONLY ? '顯示全部' : '只看缺的 ' + totalMiss) + '</button>' : '') + '</div>';
     if (allEmps.length > 1) h += '<div class="seg" style="flex-wrap:wrap;margin-bottom:10px"><button data-f=""' + (F ? '' : ' class="on"') + '>全部</button>' + allEmps.map(function (e) { return '<button data-f="' + esc(e) + '"' + (F === e ? ' class="on"' : '') + '><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:4px;background:' + color[e] + '"></span>' + esc(r.emps[e]) + '</button>'; }).join('') + '</div>';
     h += '<div class="card" style="padding:10px 12px">';
@@ -149,8 +151,9 @@
         if (!inMonth) h += '<div class="small muted">（' + Number(ds.slice(5, 7)) + ' 月，切到那個月看）</div>';
         else { var list = (byDate[ds] || []).slice().sort(function (a, b) { return a.slot === b.slot ? (a.empId === b.empId ? a.order - b.order : (a.empId < b.empId ? -1 : 1)) : (a.slot === '上午' ? -1 : 1); });
           if (!list.length) h += '<div class="small muted">沒有排班</div>';
+          if (MISSONLY) list = list.filter(function (x) { return stA(x) === ' miss'; });
           var lastSlot = ''; list.forEach(function (x) { if (x.slot !== lastSlot) { h += '<div class="small muted" style="margin-top:4px">' + esc(x.slot) + '</div>'; lastSlot = x.slot; }
-            h += '<div class="wkrow"><span class="dot" style="background:' + color[x.empId] + '"></span><span class="small"><b>' + esc(r.emps[x.empId] || x.empId) + '</b>　<i>' + x.order + '</i> ' + esc(x.shortName) + (x.source === 'Wayne 調整' ? ' <span class="hn">（你調整過）</span>' : '') + (/^M-/.test(x.siteCode) ? ' <span class="muted">（自填）</span>' : '') + '</span></div>'; }); }
+            var cW = stA(x); h += '<div class="wkrow' + cW + '"><span class="dot" style="background:' + color[x.empId] + '"></span><span class="small"><b>' + esc(r.emps[x.empId] || x.empId) + '</b>　<i>' + (cW === ' ok' ? '✓' : (cW === ' miss' ? '!' : x.order)) + '</i> ' + esc(x.shortName) + (cW === ' miss' ? ' <span style="color:#8C3B25">' + (((r.evidence || {})[x.empId] || 'punch') === 'report' ? '沒回報' : '沒打卡') + '</span>' : '') + (x.source === 'Wayne 調整' ? ' <span class="hn">（你調整過）</span>' : '') + (/^M-/.test(x.siteCode) ? ' <span class="muted">（自填）</span>' : '') + '</span></div>'; }); }
         h += '</div>';
       })(addD(WEEK, wi)); }
       h += '<div class="small muted" style="margin:6px 2px 0">小數字＝當天第幾站。</div></div></div>';

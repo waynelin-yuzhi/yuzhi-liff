@@ -238,9 +238,19 @@
   }
 
   // ── 渲染 ──
+  function switchBanner() {
+    if (!A.askSwitch) return '';
+    var site = siteById(A.askSwitch.client); var label = (A.askSwitch.date ? A.askSwitch.date.slice(5).replace('-', '/') + ' ' : '') + (site ? (site.shortName || site.name) : (A.askSwitch.client || ''));
+    return '<div class="card" style="border-color:#E6B8A8;padding:10px 12px"><div class="small"><b>班表要你補的是 ' + esc(label) + '</b>，但這裡有一份填到一半的草稿。</div><div class="two" style="margin-top:6px"><button class="btn sm" id="sw-yes">改成補 ' + esc(label) + '</button><button class="btn secondary sm" id="sw-no">先留這份草稿</button></div></div>';
+  }
+  function bindSwitch() {
+    var y = $('sw-yes'), n = $('sw-no'); if (!y) return;
+    y.onclick = function () { var a = A.askSwitch; A.askSwitch = null; clearSnapshot(); A.st = initial(); A.proposals = {}; A.editing = false; A.dirty = false; if (a.date) A.st.reportDate = a.date; var st = siteById(a.client); if (st) { A.st.clientId = a.client; A.st.clientName = st.shortName || st.name; } A.openIssuesLoadedFor = ''; render(); };
+    n.onclick = function () { A.askSwitch = null; render(); };
+  }
   function render() {
     if (A.view === 'list') { renderList(); return; }
-    var st = A.st, h = '';
+    var st = A.st, h = switchBanner();
     if (A.serverDraft && !A.serverDraftDismissed) {
       var t = new Date(A.serverDraft.updatedAt || 0);
       h += '<div class="card" style="border:1.5px solid var(--amber)"><div class="note" style="color:var(--body)">雲端有一份未完成的草稿' + (A.serverDraft.clientName ? '：' + esc(A.serverDraft.clientName) : '') + '（' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + '）</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" id="dr-restore">恢復</button><button class="btn sm secondary" id="dr-discard">丟棄</button><button class="btn sm secondary" id="dr-later">先不管</button></div></div>';
@@ -266,7 +276,7 @@
     h += '<div class="card"><h2>養護師備註</h2><textarea id="f-notes" placeholder="整體狀況、給後台的話…">' + esc(st.notes) + '</textarea></div>';
     // 送出
     h += '<div class="sticky"><div id="qbar"></div><button class="btn" id="submit"' + (A.submitting ? ' disabled' : '') + '>' + (A.editing && st.reportId ? '更新報告' : '送出報告') + '</button><div class="note" style="text-align:center;margin-top:6px" id="draft-status">' + esc(A.draftStatus) + '</div></div>';
-    $('app').innerHTML = h;
+    $('app').innerHTML = h; bindSwitch();
     renderZones(); renderOpen(); renderQueueBar();
     // 綁定
     var sel = $('f-client'); sel.addEventListener('change', function () { st.clientId = sel.value; var o = siteById(sel.value); st.clientName = o ? (o.shortName || o.name) : ''; A.proposals = {}; markDirty(); render(); if (st.clientId) { loadOpenIssues(st.clientId); loadTimes(); } });
@@ -551,7 +561,8 @@
         if (preDate) A.st.reportDate = preDate;
         if (preClient && siteById(preClient)) { A.st.clientId = preClient; A.st.clientName = siteById(preClient).shortName || siteById(preClient).name; }
         else if ((r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; }
-      } else if (preClient && !A.st.clientId && siteById(preClient)) { A.st.clientId = preClient; A.st.clientName = siteById(preClient).shortName || ''; }
+      } else if (preClient && !A.st.clientId && siteById(preClient)) { A.st.clientId = preClient; A.st.clientName = siteById(preClient).shortName || ''; if (preDate) A.st.reportDate = preDate; }
+      else if (hadLocal && (preClient || preDate) && (preClient !== A.st.clientId || (preDate && preDate !== A.st.reportDate))) A.askSwitch = { client: preClient, date: preDate };   // 有別的草稿：問要不要改成班表要補的那站
       render();
       if (hadLocal) uploadUnsent();
       resumeQueue();
