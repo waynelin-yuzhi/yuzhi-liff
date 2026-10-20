@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>薪資紀錄 ｜ 植間後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--page-bg:#EFEEE9;--card:#fff;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--page-bg);color:var(--ink);line-height:1.6;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px;flex:1}
+.top select{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font-size:14px;font-family:inherit}
+.top select option{color:var(--ink)}
+.top a.btn,.top button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:none}
+main{max-width:860px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--sage);margin-bottom:8px}
+.note{font-size:13px;color:var(--ink-60)}
+input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px;background:#fff}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.months{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.months button{padding:5px 10px;border:1px solid var(--ink-20);border-radius:99px;background:#fff;font-size:12px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.months button.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--ink-20);border-radius:10px;padding:10px 6px;text-align:center}
+.stat .v{font-size:20px;font-weight:500;color:var(--sage)}
+.stat .l{font-size:11px;color:var(--ink-60);letter-spacing:.04em}
+.row{padding:11px 0;border-top:1px solid var(--ink-20)}
+.row:first-child{border-top:none}
+.row .h{display:flex;justify-content:space-between;align-items:baseline}
+.row .h .n{font-size:15px;font-weight:500}
+.row .h .net{font-size:15px;color:var(--sage-deep);font-weight:500}
+.row .m{font-size:12px;color:var(--ink-60);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px}
+.row .m a{color:var(--sage)}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em}
+.chip.ok{background:var(--sage-tint);color:var(--sage-deep)}
+.chip.warn{background:var(--amber-tint);color:var(--amber)}
+.chip.bad{background:var(--terra-tint);color:var(--terra)}
+.chip.mute{background:#EEE;color:var(--ink-60)}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
+.ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 4px;border-bottom:1px solid var(--ink-20);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink-60);font-weight:500;font-size:11px;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">植間後台｜薪資紀錄</span><select id="year"></select><a class="btn" id="gasLink" href="#" target="_blank">結算／核發</a><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入後台</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+  <div id="app" style="display:none">
+    <div class="months" id="months"></div>
+    <div class="stats" id="stats"></div>
+    <div class="card" id="list"><div class="ld">載入中</div></div>
+    <div class="card" id="annual" style="display:none"></div>
+  </div>
+  <div class="foot">此頁只讀（已核發的薪資紀錄、引擎鏡像最長落後 5 分）；結算、核發、員工回報處理在「結算／核發」原頁。<br>植間設計股份有限公司</div>
+</main>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api', gas: 'https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function money(n) { return 'NT$ ' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+  var D = { year: 0, month: 0, rows: [], seq: 0 };
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  function api(payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      return fetch(CFG.engine + '?action=adminPayroll', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function statusChip(r) {
+    var st = r.status || ''; var cls = st === '已核發' || st === '已付' || st === '已匯款' ? 'ok' : st ? 'mute' : 'mute';
+    var h = st ? '<span class="chip ' + cls + '">' + esc(st) + '</span>' : '';
+    if (r.feedbackStatus === '員工回報問題') h += '<span class="chip bad">員工回報問題</span>'; else if (r.feedbackStatus === '已員工確認') h += '<span class="chip ok">員工已確認</span>'; else if (r.feedbackStatus === '待員工確認') h += '<span class="chip warn">待員工確認</span>';
+    if (r.signedAt) h += '<span class="chip ok">已簽收</span>';
+    return h;
+  }
+  function renderYear() {
+    var rows = D.rows; var months = {}; rows.forEach(function (r) { months[r.month] = (months[r.month] || 0) + 1; });
+    var ms = Object.keys(months).map(Number).sort(function (a, b) { return b - a; });
+    if (!D.month || !months[D.month]) D.month = ms[0] || 0;
+    $('months').innerHTML = ms.map(function (m) { return '<button data-m="' + m + '" class="' + (m === D.month ? 'on' : '') + '">' + m + ' 月 ' + months[m] + '</button>'; }).join('') + '<button data-m="0" class="' + (D.month === 0 ? 'on' : '') + '">年度總表</button>';
+    Array.prototype.forEach.call($('months').querySelectorAll('button'), function (b) { b.onclick = function () { D.month = Number(b.getAttribute('data-m')); renderYear(); }; });
+    if (D.month === 0) { renderAnnual(rows); return; }
+    $('annual').style.display = 'none'; $('list').style.display = 'block';
+    var mr = rows.filter(function (r) { return r.month === D.month; }).sort(function (a, b) { return String(a.employeeId).localeCompare(String(b.employeeId)); });
+    var gross = mr.reduce(function (s, r) { return s + r.grossPay; }, 0), net = mr.reduce(function (s, r) { return s + r.netPay; }, 0);
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + mr.length + '</div><div class="l">已核發人數</div></div><div class="stat"><div class="v">' + esc(money(gross)) + '</div><div class="l">應發合計（本薪＋加給）</div></div><div class="stat"><div class="v">' + esc(money(net)) + '</div><div class="l">實發合計</div></div>';
+    if (!mr.length) { $('list').innerHTML = '<div class="ld">這個月沒有已核發紀錄</div>'; return; }
+    $('list').innerHTML = mr.map(function (r) {
+      var ded = r.laborInsurance + r.healthInsurance + r.pensionVoluntary + r.incomeTax + r.leaveDeduction + r.otherDeduction;
+      return '<div class="row"><div class="h"><span class="n">' + esc(r.name || r.employeeId) + ' <span class="note">' + esc(r.employeeId) + '</span></span><span class="net">' + esc(money(r.netPay)) + '</span></div>'
+        + '<div class="m">' + statusChip(r) + '<span>本薪 ' + esc(money(r.baseSalary)) + '</span>' + (r.allowanceTotal ? '<span>加給 ' + esc(money(r.allowanceTotal)) + '</span>' : '') + (r.overtimePay ? '<span>加班 ' + esc(money(r.overtimePay)) + '</span>' : '') + '<span>扣項 ' + esc(money(ded)) + '</span>' + (r.paidAt ? '<span>核發 ' + esc(r.paidAt) + '</span>' : '') + (r.pdfUrl ? '<a href="' + esc(r.pdfUrl) + '" target="_blank">薪資單</a>' : '') + (r.signedPdfUrl ? '<a href="' + esc(r.signedPdfUrl) + '" target="_blank">簽收版</a>' : '') + '</div>'
+        + (r.feedbackMessage ? '<div class="m">員工回報：' + esc(r.feedbackMessage) + '</div>' : '') + (r.note ? '<div class="m">' + esc(r.note) + '</div>' : '') + '</div>';
+    }).join('');
+  }
+  function renderAnnual(rows) {
+    $('list').style.display = 'none'; $('annual').style.display = 'block';
+    var byEmp = {}; rows.forEach(function (r) { var k = r.employeeId; byEmp[k] = byEmp[k] || { name: r.name || k, months: {}, total: 0 }; byEmp[k].months[r.month] = r.netPay; byEmp[k].total += r.netPay; });
+    var emps = Object.keys(byEmp).sort(); var grand = emps.reduce(function (s, k) { return s + byEmp[k].total; }, 0);
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + emps.length + '</div><div class="l">員工數</div></div><div class="stat"><div class="v">' + rows.length + '</div><div class="l">核發筆數</div></div><div class="stat"><div class="v">' + esc(money(grand)) + '</div><div class="l">實發年度合計</div></div>';
+    var hdr = '<tr><th>員工</th>' + [1,2,3,4,5,6,7,8,9,10,11,12].map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>合計</th></tr>';
+    var body = emps.map(function (k) { var e = byEmp[k]; return '<tr><td>' + esc(e.name) + '</td>' + [1,2,3,4,5,6,7,8,9,10,11,12].map(function (m) { return '<td>' + (e.months[m] != null ? Math.round(e.months[m]).toLocaleString('en-US') : '') + '</td>'; }).join('') + '<td>' + Math.round(e.total).toLocaleString('en-US') + '</td></tr>'; }).join('');
+    $('annual').innerHTML = '<h2>' + D.year + ' 年度實發總表</h2><div style="overflow-x:auto"><table>' + hdr + body + '</table></div>';
+  }
+  function loadYear(y) {
+    D.year = y; var seq = ++D.seq; $('list').innerHTML = '<div class="ld">載入中</div>'; $('stats').innerHTML = ''; $('months').innerHTML = '';
+    api({ op: 'list', year: y }).then(function (d) {
+      if (seq !== D.seq) return;
+      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
+      D.rows = d.rows || []; if (!D.rows.length) { $('list').innerHTML = '<div class="ld">' + y + ' 年沒有已核發紀錄</div>'; return; } renderYear();
+    }).catch(function (e) { if (seq !== D.seq) return; $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  function boot() {
+    api({ op: 'years' }).then(function (d) {
+      var ys = (d && d.ok && d.years) || []; var cur = new Date().getFullYear(); if (ys.indexOf(cur) < 0) ys.unshift(cur);
+      $('year').innerHTML = ys.map(function (y) { return '<option value="' + y + '">' + y + ' 年</option>'; }).join('');
+      $('year').onchange = function () { D.month = 0; D.month = undefined; loadYear(Number(this.value)); };
+      loadYear(ys[0]);
+    }).catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  $('gasLink').href = CFG.gas + '?page=payroll';
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); boot(); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
+})();
+</script>
+</body>
+</html>
