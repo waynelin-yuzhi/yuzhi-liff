@@ -76,7 +76,7 @@ th{color:var(--ink-60);font-weight:500;font-size:11px;letter-spacing:.04em}
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function money(n) { return 'NT$ ' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
-  var D = { year: 0, month: 0, rows: [], seq: 0 };
+  var D = { year: 0, month: undefined, rows: [], seq: 0 };
   function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
   function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
   function api(payload) {
@@ -89,20 +89,21 @@ th{color:var(--ink-60);font-weight:500;font-size:11px;letter-spacing:.04em}
     var st = r.status || ''; var cls = st === '已核發' || st === '已付' || st === '已匯款' ? 'ok' : st ? 'mute' : 'mute';
     var h = st ? '<span class="chip ' + cls + '">' + esc(st) + '</span>' : '';
     if (r.feedbackStatus === '員工回報問題') h += '<span class="chip bad">員工回報問題</span>'; else if (r.feedbackStatus === '已員工確認') h += '<span class="chip ok">員工已確認</span>'; else if (r.feedbackStatus === '待員工確認') h += '<span class="chip warn">待員工確認</span>';
+    else if (r.feedbackStatus === '已處理') h += '<span class="chip mute">回報已處理</span>';
     if (r.signedAt) h += '<span class="chip ok">已簽收</span>';
     return h;
   }
   function renderYear() {
     var rows = D.rows; var months = {}; rows.forEach(function (r) { months[r.month] = (months[r.month] || 0) + 1; });
     var ms = Object.keys(months).map(Number).sort(function (a, b) { return b - a; });
-    if (!D.month || !months[D.month]) D.month = ms[0] || 0;
+    if (D.month === undefined || (D.month !== 0 && !months[D.month])) D.month = ms[0] || 0;   // undefined＝未選→最新月；0＝年度總表
     $('months').innerHTML = ms.map(function (m) { return '<button data-m="' + m + '" class="' + (m === D.month ? 'on' : '') + '">' + m + ' 月 ' + months[m] + '</button>'; }).join('') + '<button data-m="0" class="' + (D.month === 0 ? 'on' : '') + '">年度總表</button>';
     Array.prototype.forEach.call($('months').querySelectorAll('button'), function (b) { b.onclick = function () { D.month = Number(b.getAttribute('data-m')); renderYear(); }; });
     if (D.month === 0) { renderAnnual(rows); return; }
     $('annual').style.display = 'none'; $('list').style.display = 'block';
     var mr = rows.filter(function (r) { return r.month === D.month; }).sort(function (a, b) { return String(a.employeeId).localeCompare(String(b.employeeId)); });
     var gross = mr.reduce(function (s, r) { return s + r.grossPay; }, 0), net = mr.reduce(function (s, r) { return s + r.netPay; }, 0);
-    $('stats').innerHTML = '<div class="stat"><div class="v">' + mr.length + '</div><div class="l">已核發人數</div></div><div class="stat"><div class="v">' + esc(money(gross)) + '</div><div class="l">應發合計（本薪＋加給）</div></div><div class="stat"><div class="v">' + esc(money(net)) + '</div><div class="l">實發合計</div></div>';
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + mr.length + '</div><div class="l">已核發人數</div></div><div class="stat"><div class="v">' + esc(money(gross)) + '</div><div class="l">應發合計</div></div><div class="stat"><div class="v">' + esc(money(net)) + '</div><div class="l">實發合計</div></div>';
     if (!mr.length) { $('list').innerHTML = '<div class="ld">這個月沒有已核發紀錄</div>'; return; }
     $('list').innerHTML = mr.map(function (r) {
       var ded = r.laborInsurance + r.healthInsurance + r.pensionVoluntary + r.incomeTax + r.leaveDeduction + r.otherDeduction;
@@ -132,7 +133,7 @@ th{color:var(--ink-60);font-weight:500;font-size:11px;letter-spacing:.04em}
     api({ op: 'years' }).then(function (d) {
       var ys = (d && d.ok && d.years) || []; var cur = new Date().getFullYear(); if (ys.indexOf(cur) < 0) ys.unshift(cur);
       $('year').innerHTML = ys.map(function (y) { return '<option value="' + y + '">' + y + ' 年</option>'; }).join('');
-      $('year').onchange = function () { D.month = 0; D.month = undefined; loadYear(Number(this.value)); };
+      $('year').onchange = function () { D.month = undefined; loadYear(Number(this.value)); };
       loadYear(ys[0]);
     }).catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
   }
