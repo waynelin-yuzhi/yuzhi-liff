@@ -95,7 +95,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     $('filters').innerHTML = [['all', '全部']].concat(STATUSES.map(function (s) { return [s, s]; })).map(function (f) { return '<button data-f="' + esc(f[0]) + '" class="' + (D.filter === f[0] ? 'on' : '') + '">' + esc(f[1]) + ' ' + (k[f[0]] || 0) + '</button>'; }).join('');
     Array.prototype.forEach.call($('filters').querySelectorAll('button'), function (b) { b.onclick = function () { D.filter = b.getAttribute('data-f'); render(); }; });
     var rows = all.filter(pass);
-    $('meta').textContent = '顯示 ' + rows.length + ' / ' + all.length + ' 張';
+    $('meta').textContent = '顯示 ' + rows.length + ' / ' + all.length + ' 張' + (D.truncated ? '（只載最近 1000 張）' : '');
     if (!rows.length) { $('list').innerHTML = '<div class="ld">' + (all.length ? '沒有符合條件的報價單' : '還沒有報價單') + '</div>'; return; }
     $('list').innerHTML = rows.map(function (it) {
       var meta = [];
@@ -114,10 +114,10 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
         + '<div class="m">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('') + '</div></div>'
         + '<div class="acts">' + acts + '</div></div>';
     }).join('');
-    Array.prototype.forEach.call($('list').querySelectorAll('button[data-url]'), function (b) { b.onclick = function () { var u = b.getAttribute('data-url'); navigator.clipboard.writeText(u).then(function () { toast('連結已複製'); }, function () { prompt('手動複製：', u); }); }; });
+    Array.prototype.forEach.call($('list').querySelectorAll('button[data-url]'), function (b) { b.onclick = function () { var u = b.getAttribute('data-url'); if (!navigator.clipboard) { prompt('手動複製：', u); return; } navigator.clipboard.writeText(u).then(function () { toast('連結已複製'); }, function () { prompt('手動複製：', u); }); }; });
   }
   function load() {
-    api({}).then(function (d) { if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; } D.items = d.items || []; render(); })
+    api({ limit: 1000 }).then(function (d) { if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; } D.items = d.items || []; D.truncated = !!d.truncated; render(); })
       .catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
   }
   $('q').addEventListener('input', function () { D.q = this.value.trim().toLowerCase(); if (D.items) render(); });
