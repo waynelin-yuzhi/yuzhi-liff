@@ -13,6 +13,7 @@
   var PLANTS = ['龜背芋', '虎尾蘭', '琴葉榕', '天堂鳥', '黃金葛', '蔓綠絨', '火鶴', '粗肋草', '鹿角蕨', '竹芋', '金錢樹', '橡膠樹', '馬拉巴栗', '山蘇', '腎蕨', '袖珍椰子', '白鶴芋', '幸福樹', '雞蛋花', '棕竹'];
   var LS_KEY = 'staff_report_form';
   var preClient = (T.qs.get('client') || '').trim();
+  var preDate = /^\d{4}-\d{2}-\d{2}$/.test(T.qs.get('date') || '') ? T.qs.get('date') : '';   // 從班表「缺回報」點進來：日期帶好
 
   var A = { me: null, sites: [], promoted: [], view: 'form', st: null, dirty: false, draftTimer: null, draftStatus: '', serverDraft: null,
             openIssues: [], proposals: {}, siteInfoOpen: false, list: null, submitting: false, editing: false, up: {} };
@@ -547,6 +548,7 @@
       if (!hadLocal) {
         A.st = initial();
         if (r.draft) A.serverDraft = r.draft;
+        if (preDate) A.st.reportDate = preDate;
         if (preClient && siteById(preClient)) { A.st.clientId = preClient; A.st.clientName = siteById(preClient).shortName || siteById(preClient).name; }
         else if ((r.items || []).length === 1 && siteById(r.items[0].siteCode)) { A.st.clientId = r.items[0].siteCode; A.st.clientName = siteById(A.st.clientId).shortName; }
       } else if (preClient && !A.st.clientId && siteById(preClient)) { A.st.clientId = preClient; A.st.clientName = siteById(preClient).shortName || ''; }
