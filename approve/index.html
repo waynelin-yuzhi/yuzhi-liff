@@ -222,7 +222,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   function formDecision(f, btn) { if (btn && btn.name === 'decision' && btn.value) return btn.value; var hd = f.querySelector('input[name=decision]'); return hd ? hd.value : ''; }
   function submitViaFetch(f, btn) {
     var decision = formDecision(f, btn), label = DECISION_LABEL[decision] || decision;
-    var body = new URLSearchParams(); Array.prototype.forEach.call(f.elements, function (el) { if (el.name && el.name !== 'decision' && !el.disabled && el.type !== 'submit' && el.type !== 'button') body.append(el.name, el.value); });
+    var body = new URLSearchParams(); Array.prototype.forEach.call(f.elements, function (el) { if (!el.name || el.name === 'decision' || el.disabled || el.type === 'submit' || el.type === 'button') return; if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return; body.append(el.name, el.value); });
     body.append('decision', decision); body.append('respond', 'json');
     SENT = true; lockAll(true);
     var t0 = Date.now(), box = statusBox('run', label + '送出中…', decision === 'approve' ? '正在執行。開立發票、發卡片這類動作要 20 到 60 秒，請留在這頁。' : '正在送出，請留在這頁。');
