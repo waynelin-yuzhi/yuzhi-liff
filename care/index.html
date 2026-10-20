@@ -449,12 +449,21 @@
   }
   window.onPhotoError = onPhotoError;
 
+  // 桶內簽名網址載入失敗（過期／權限）→ 退回 GAS 讀 Drive
+  function onDirectError(img) {
+    const cell = img.closest('.photo'); if (!cell || cell.dataset.fallback === '1') return; cell.dataset.fallback = '1';
+    const fid = img.dataset.fileId; cell.classList.remove('direct-pending'); cell.classList.add('lazy-pending');
+    photosFetch([fid], 800).then(res => { const r = res && res.results && res.results[0]; const bg = cell.querySelector('img.photo-bg');
+      if (r && r.dataUri) { img.onload = function() { cell.classList.remove('lazy-pending'); cell.classList.add('loaded'); }; img.src = r.dataUri; if (bg) bg.src = r.dataUri; } else markFailedCell(cell, fid); }).catch(() => markFailedCell(cell, fid));
+  }
+  window.onDirectError = onDirectError;
+  function markFailedCell(cell, fid) { cell.classList.add('failed'); const st = cell.querySelector('.photo-status'); if (st) st.innerHTML = '<div>照片載入失敗</div><button type="button" class="photo-retry" onclick="retryPhoto(this.dataset.fid, this)" data-fid="' + escapeHtml(fid || '') + '">重試</button>'; }
   // 列印前：等所有 lazy 照片都載入完
   function ensureAllImagesLoaded() {
     return new Promise(resolve => {
       let timeout = setTimeout(resolve, 120000);
       const check = () => {
-        const pending = document.querySelectorAll('img.lazy-pending');
+        const pending = document.querySelectorAll('.photo.lazy-pending, .photo.direct-pending');
         if (pending.length === 0) { clearTimeout(timeout); resolve(); return; }
         setTimeout(check, 250);
       };
@@ -483,8 +492,9 @@
   window.prepareAndPrint = prepareAndPrint;
 
   // ─── render 主邏輯 ───
+  var PHOTO_URLS = {};
   function renderReport(d) {
-    currentReportData = d;
+    currentReportData = d; PHOTO_URLS = (d && d.photoUrls) || {};   // 已搬到 Supabase 桶的照片：簽名網址直接載（1 小時有效）；其餘走 GAS 讀 Drive
     const area = $('report-area');
     area.className = '';
     if (!d.reports || d.reports.length === 0) {
@@ -720,6 +730,8 @@
     // 雙層 img：背景模糊填滿、前景完整顯示（不裁切橫直照片）
     const imgTag = (url, label) => {
       const fid = extractFileId(url);
+      const direct = PHOTO_URLS[fid] || '';
+      if (direct) return `<div class="photo direct-pending${borderCls ? ' ' + borderCls : ''}"><img alt="" class="photo-bg" src="${escapeHtml(direct)}" aria-hidden="true"><div class="photo-label">${label}</div><img alt="" class="photo-fg" data-file-id="${escapeHtml(fid)}" src="${escapeHtml(direct)}" onload="this.closest('.photo').classList.remove('direct-pending');this.closest('.photo').classList.add('loaded')" onerror="onDirectError(this)"><div class="photo-status"><div class="spinner-photo"></div><span class="photo-status-text">載入中…</span></div></div>`;
       return `<div class="photo lazy-pending${borderCls ? ' ' + borderCls : ''}"><img alt="" class="photo-bg lazy-img-bg" data-file-id="${escapeHtml(fid)}" aria-hidden="true"><div class="photo-label">${label}</div><img alt="" class="photo-fg lazy-img" data-file-id="${escapeHtml(fid)}"><div class="photo-status"><div class="spinner-photo"></div><span class="photo-status-text">載入中…</span></div></div>`;
     };
     const before = (z.beforePhotos || []).map(url => imgTag(url, '養護前')).join('');
