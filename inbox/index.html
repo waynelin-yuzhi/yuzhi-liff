@@ -324,6 +324,7 @@
     }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error) stat('失敗：' + (d.detail || d.error)); return d; });
   }
   var ROLES = ['客戶', '會計事務所', '廠商', '合作夥伴', '其他'], MEMBER_ROLES = ['窗口', '主管', '會計', '採購', '其他'];
+  var KEEP_AT = {};   // 每位客戶你在送出框設過的預定時間：稿被重擬換新時帶回來（2026-10-20 Amy 實案：設了 08:00、給意見重擬後新稿沒帶、按送出變成立刻發）
   var OPS = { csInboxAddendumDrop: 'addendumDrop', csInboxDocSend: 'docSend', csInboxNoReply: 'noReply', csInboxStaffForward: 'staffForward', csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
   function run(fn, args, ok, fail) {
     var p;
@@ -765,6 +766,14 @@
     } catch (eRs) {}
     var whenVal = function () { var v = document.getElementById('sendAt').value; return v ? v.replace('T', ' ') : ''; };
     document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
+    (function () {   // 新稿沒有預定時間、但你先前為這位設過（還在未來）：帶回來並明講，不要默默變成現在送
+      var sa0 = document.getElementById('sendAt'), kept = KEEP_AT[cur];
+      if (sa0 && !p.publishAt && kept && Date.parse(kept.replace(' ', 'T')) > Date.now() + 2 * 60000) {
+        sa0.value = kept.replace(' ', 'T'); document.getElementById('whenBox').classList.add('on');
+        var pmK = document.getElementById('pendMsg'); if (pmK && !pmK.textContent) pmK.textContent = '已帶入你先前為這位設的預定時間 ' + kept + '；不要的話把時間清掉再送';
+      }
+      if (sa0) sa0.onchange = function () { var v = whenVal(); if (v) KEEP_AT[cur] = v; else delete KEEP_AT[cur]; };
+    })();
     var modKeep = function () { var box = document.getElementById('modsBox'); if (!box) return undefined; return Array.prototype.map.call(box.querySelectorAll('.modChk:checked'), function (c) { return c.value; }); };
     var mn = document.getElementById('modsNone'); if (mn) mn.onclick = function (ev) { ev.preventDefault(); document.querySelectorAll('#modsBox .modChk').forEach(function (c) { c.checked = false; }); };
     renderAtt('draft'); document.getElementById('btnAtt').onclick = function () { pickAtt('draft', 'pendMsg'); };
@@ -788,7 +797,7 @@
       }
       if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); document.getElementById('pendMsg').textContent = ''; var sendBtn = this; run('csInboxSend', [{ apId: p.id, contactId: cur, text: edited ? ta.value : null, publishAt: at, attachments: ATT.draft, nightOk: nightOk, keepMods: modKeep(), keepReminder: (function () { var rk = document.getElementById('remKeep'); return rk ? !!rk.checked : false; })() }], function (r) {
       var pm = document.getElementById('pendMsg');
-      if (r.ok) { ATT.draft = []; try { localStorage.removeItem('yz_draft:' + cur); } catch (eL1) {} pm.textContent = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); dirty = false; setTimeout(function () { refreshAll(true); }, r.quietGuard ? 2500 : 1200); return; }
+      if (r.ok) { ATT.draft = []; delete KEEP_AT[cur]; try { localStorage.removeItem('yz_draft:' + cur); } catch (eL1) {} pm.textContent = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); dirty = false; setTimeout(function () { refreshAll(true); }, r.quietGuard ? 2500 : 1200); return; }
       busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
       if (r.error === 'publishAt_past') {   // 流程不准斷在半路：就地給一鍵現在送，不要叫他回頭改時間
         pm.innerHTML = '這個預定時間已經過了。<a href="#" id="sendNow">改成現在送出</a>　或改一個未來的時間再按送出。';
