@@ -143,6 +143,12 @@
       }
       var cov = r.coverage || [];
       if (cov.length) h += '<div class="card" style="padding:10px 12px"><div class="small"><b>本月還沒排到的客戶</b>　<span class="muted">點名字加班</span></div><div style="margin-top:4px">' + cov.map(function (c) { return '<span class="chip" style="display:inline-block;margin:2px 4px 2px 0;cursor:pointer" data-cov="' + esc(c.siteCode) + '|' + (c.weekday || 0) + '">' + esc(c.shortName) + (c.selfArranged ? '（自己安排）' : '（' + c.actual + '/' + c.expected + '）') + '</span>'; }).join('') + '</div></div>';
+      var storm = r.stormHold || [];
+      if (storm.length) h += '<div class="card" style="padding:10px 12px;border-color:#E6B8A8"><div class="small"><b>颱風停班暫停，待改期 ' + storm.length + ' 班</b>　<span class="muted">點建議日期就' + (approved ? '送出改期申請' : '改過去') + '</span></div>' + storm.map(function (sH) {
+        return '<div class="small" style="margin-top:8px">' + esc(md(sH.date)) + '（週' + WD[wdOf(sH.date) - 1] + '）' + esc(sH.slot) + '　<b>' + esc(shortLabel(sH.shortName)) + '</b><div style="margin-top:4px">'
+          + ((sH.suggest || []).length ? sH.suggest.map(function (g) { return '<button class="btn secondary sm" style="margin:2px 4px 2px 0" data-storm="' + esc(sH.siteCode) + '|' + esc(sH.date) + '|' + esc(sH.slot) + '|' + esc(g.date) + '|' + esc(g.slot) + '">改到 ' + esc(md(g.date)) + '（週' + WD[wdOf(g.date) - 1] + '）' + esc(g.slot) + '</button><span class="muted" style="font-size:11px">' + esc(g.why) + '</span>'; }).join('<br>')
+            : '<span class="muted">這個月剩下的日子沒有合適的，點月曆上那個班自己挑日期</span>') + '</div></div>';
+      }).join('') + '</div>';
       var chg = r.changes || [];
       if (chg.length) h += '<div class="card" style="padding:10px 12px"><div class="small"><b>變更申請</b></div>' + chg.map(function (c) { return '<div class="small' + (c.status === '待核可' ? '' : ' muted') + '" style="margin-top:4px">' + stChip(c.status) + ' ' + esc(c.desc) + (c.reason ? '<br><span class="muted">原因：' + esc(c.reason) + '</span>' : '') + (c.result ? '<br><span class="muted">' + esc(c.result) + '</span>' : '') + '</div>'; }).join('') + '</div>';
     }
@@ -205,6 +211,12 @@
       document.querySelectorAll('.day[data-d]').forEach(function (d) { d.onclick = function () { openAdd(d.getAttribute('data-d')); }; });
       bindDrag();
       var fh = $('fixhol'); if (fh) fh.onclick = function () { if (busySaving()) { msg('還在儲存剛才的改動，等一下再按'); return; } busy(fh, '處理中'); INFLIGHT = true; api('schedFixHolidays', { ym: YM }).then(function (x) { INFLIGHT = false; pump(); if (!x.ok) return fail(x); MSG = (x.moved.length ? '已改期：' + x.moved.join('、') : '') + (x.dropped.length ? (x.moved.length ? '；' : '') + '這次不排：' + x.dropped.join('、') : '') || '沒有需要處理的假日班'; if (x.view && x.view.ok && x.view.ym === YM) { DATA = x.view; render(); } else refresh(); }).catch(function () { INFLIGHT = false; pump(); fail(null); }); };
+      document.querySelectorAll('[data-storm]').forEach(function (el) { el.onclick = function () {
+        var q = el.getAttribute('data-storm').split('|');
+        var x = (DATA.rows || []).filter(function (rw) { return rw.siteCode === q[0] && rw.date === q[1] && rw.slot === q[2]; })[0];
+        if (!x) { msg('找不到這個班，重新整理看看'); return; }
+        doMove(x, { ym: YM, siteCode: q[0], date: q[1], slot: q[2], newDate: q[3], newSlot: q[4], reason: '颱風停班改期' }, false, { busy: function () { busy(el, '送出中'); } });
+      }; });
       document.querySelectorAll('[data-cov]').forEach(function (el) { el.onclick = function () { var q = el.getAttribute('data-cov').split('|'); openAdd(bestDateFor(Number(q[1])), q[0]); }; });
     }
   }
