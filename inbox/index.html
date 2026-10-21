@@ -7,6 +7,9 @@
 <title>植間 - 對話收件匣</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
 <style>
+  /* 關掉手機瀏覽器的下拉重新整理：改稿時在框裡往上捲到頂再往下拉，會被當成整頁重新整理（2026-10-21 Wayne 回報） */
+  html,body{overscroll-behavior-y:contain}
+  textarea,#contacts,.chat{overscroll-behavior:contain}
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--brick:#8a4a30;--amber:#F3E9C9;--tint:#EEF2E6}
   *{margin:0;padding:0;box-sizing:border-box}
   html{overflow-x:clip}
