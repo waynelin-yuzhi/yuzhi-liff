@@ -66,7 +66,11 @@ a:hover { color: #3F4A39; }
   };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function pad(n) { return String(n).padStart(2, '0'); }
-  function fmt(n) { return (Number(n) || 0).toLocaleString('en-US'); }
+  function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+  function fmt(n) { return num(n).toLocaleString('en-US'); }
+  // 照片只收 https 與同站相對路徑；位置只收「數字% 數字%」：資料可能來自外部 JSON，style／src 不給串接空間
+  function safeUrl(u) { u = String(u || '').trim(); if (!u) return ''; if (/^https:\/\//i.test(u)) return u; if (/^[a-z][a-z0-9+.-]*:/i.test(u) || u.indexOf('//') === 0) return ''; return u; }
+  function safePos(v) { v = String(v || '').trim(); return /^\d{1,3}% \d{1,3}%$/.test(v) ? v : '50% 50%'; }
   function toDate(s) { var m = String(s || '').match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
   function dTxt(dt) { return dt ? dt.getFullYear() + '.' + pad(dt.getMonth() + 1) + '.' + pad(dt.getDate()) : ''; }
 
@@ -85,8 +89,8 @@ a:hover { color: #3F4A39; }
     function pl(k) { return pad(k) + ' / ' + pad(total); }
     var plans = d.plans || [];
     var multi = plans.length > 1;
-    var used = order.filter(function (s) { return plans.some(function (p) { return (p.rows || []).some(function (r) { return r.size === s && r.qty > 0; }); }); });
-    function qtyOf(p, s) { var r = (p.rows || []).filter(function (x) { return x.size === s; })[0]; return (r && r.qty) || 0; }
+    var used = order.filter(function (s) { return plans.some(function (p) { return (p.rows || []).some(function (r) { return r.size === s && num(r.qty) > 0; }); }); });
+    function qtyOf(p, s) { var r = (p.rows || []).filter(function (x) { return x.size === s; })[0]; return r ? num(r.qty) : 0; }
     var cols = '16cqw minmax(0,1fr) repeat(' + Math.max(plans.length, 1) + ', ' + (multi ? '19cqw' : '22cqw') + ')';
 
     function foot(n) { return '<div class="foot"><div class="v">' + esc(validLine) + '</div><div class="n">' + esc(n) + '</div></div>'; }
@@ -103,7 +107,7 @@ a:hover { color: #3F4A39; }
     // 01 封面
     html += '<section class="page cover" data-label="封面">'
       + '<div style="position:absolute;left:0;top:0;right:0;height:80cqw;overflow:hidden;display:flex;justify-content:center;">'
-      + (d.coverPhoto ? '<img id="coverImg" src="' + esc(d.coverPhoto) + '" alt="" style="height:100%;width:auto;max-width:100%;object-fit:cover;object-position:' + esc(d.coverFocus || '50% 50%') + ';display:block;opacity:' + OPT.coverOpacity + ';-webkit-mask-image:' + mask + ';mask-image:' + mask + ';-webkit-mask-composite:source-in;mask-composite:intersect;">' : '')
+      + (safeUrl(d.coverPhoto) ? '<img id="coverImg" src="' + esc(safeUrl(d.coverPhoto)) + '" alt="" style="height:100%;width:auto;max-width:100%;object-fit:cover;object-position:' + safePos(d.coverFocus) + ';display:block;opacity:' + OPT.coverOpacity + ';-webkit-mask-image:' + mask + ';mask-image:' + mask + ';-webkit-mask-composite:source-in;mask-composite:intersect;">' : '')
       + '</div>'
       + '<div style="position:absolute;left:8cqw;top:7cqw;background:#F6F4EC;padding:1.4cqw 2.2cqw;display:flex;align-items:baseline;gap:1.4cqw;">'
       + '<div style="font-size:2.4cqw;font-weight:500;letter-spacing:.2em;color:#3F4A39;">初估</div>'
@@ -129,16 +133,16 @@ a:hover { color: #3F4A39; }
         + chrome(p.name, '點位 ' + pad(i + 1) + ' ／ ' + pad(points.length))
         + '<div class="body">'
         + '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:2cqw;"><div class="h">【 現場照片 】</div><div style="font-size:1.7cqw;letter-spacing:.08em;color:#939D84;">客戶提供</div></div>'
-        + '<div class="ph" style="height:50cqw;margin-top:1.6cqw;">' + (p.sitePhoto ? '<img src="' + esc(p.sitePhoto) + '" alt="' + esc(p.name) + ' 現場" style="object-position:' + esc(p.focus || '50% 50%') + ';">' : '') + '</div>'
+        + '<div class="ph" style="height:50cqw;margin-top:1.6cqw;">' + (safeUrl(p.sitePhoto) ? '<img src="' + esc(safeUrl(p.sitePhoto)) + '" alt="' + esc(p.name) + ' 現場" style="object-position:' + safePos(p.focus) + ';">' : '') + '</div>'
         + '<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.6cqw 1.4cqw;margin-top:1.8cqw;font-size:2cqw;letter-spacing:.04em;line-height:1.5;">'
         + '<div style="display:flex;gap:.8cqw;"><span class="k">建議擺放</span><span style="color:#3F4A39;">' + esc(p.note) + '</span></div>'
         + '<div style="color:#E3E3DD;">｜</div>'
-        + '<div style="display:flex;gap:.8cqw;"><span class="k">建議尺寸</span><span style="color:#3F4A39;">' + esc(p.size + ' ' + sg.name + ' × ' + p.qty) + '</span></div></div>'
+        + '<div style="display:flex;gap:.8cqw;"><span class="k">建議尺寸</span><span style="color:#3F4A39;">' + esc(p.size + ' ' + sg.name + ' × ' + num(p.qty)) + '</span></div></div>'
         + '<div class="h rule" style="margin-top:4cqw;">【 候選品種（三選一或混搭） 】</div>'
         + '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5cqw;margin-top:2.2cqw;">'
         + cands.map(function (c, j) {
           return '<div style="display:flex;flex-direction:column;min-width:0;">'
-            + '<div class="ph" style="height:29cqw;">' + (c.photo ? '<img src="' + esc(c.photo) + '" alt="' + esc(c.name) + '">' : '') + '</div>'
+            + '<div class="ph" style="height:29cqw;">' + (safeUrl(c.photo) ? '<img src="' + esc(safeUrl(c.photo)) + '" alt="' + esc(c.name) + '">' : '') + '</div>'
             + '<div style="display:flex;align-items:baseline;gap:1cqw;margin-top:1.4cqw;"><div class="no" style="font-size:2cqw;">' + pad(j + 1) + '</div>'
             + '<div style="font-size:2.2cqw;font-weight:500;letter-spacing:.06em;color:#3F4A39;">' + esc(c.name) + '</div></div>'
             + '<div class="pretty" style="font-size:1.8cqw;line-height:1.55;letter-spacing:.02em;margin-top:.6cqw;">' + esc(c.reason) + '</div></div>';
@@ -157,10 +161,10 @@ a:hover { color: #3F4A39; }
       + '<div class="body"><div class="h rule">【 盆器風格 】</div>'
       + '<div class="pretty" style="font-size:2cqw;line-height:1.7;margin-top:1.8cqw;">盆器依空間調性與植栽尺寸搭配，款式與顏色於場勘後建議。</div>'
       + '<div style="display:flex;flex-direction:column;gap:3cqw;margin-top:3cqw;">'
-      + pots.map(function (s) {
+      + pots.filter(function (s) { return s && Array.isArray(s.imgs) && s.imgs.length; }).map(function (s) {
         var imgs = s.imgs.length > 1
-          ? '<div style="height:30cqw;display:grid;grid-template-columns:repeat(' + s.imgs.length + ',minmax(0,1fr));gap:.8cqw;overflow:hidden;">' + s.imgs.map(function (im) { return '<div class="ph" style="min-width:0;"><img src="' + esc(im[0]) + '" alt="' + esc(s.name) + ' 情境" style="object-position:' + esc(im[1]) + ';"></div>'; }).join('') + '</div>'
-          : '<div class="ph" style="height:30cqw;"><img src="' + esc(s.imgs[0][0]) + '" alt="' + esc(s.name) + '" style="object-position:' + esc(s.imgs[0][1]) + ';"></div>';
+          ? '<div style="height:30cqw;display:grid;grid-template-columns:repeat(' + s.imgs.length + ',minmax(0,1fr));gap:.8cqw;overflow:hidden;">' + s.imgs.map(function (im) { return '<div class="ph" style="min-width:0;"><img src="' + esc(safeUrl(im[0])) + '" alt="' + esc(s.name) + ' 情境" style="object-position:' + safePos(im[1]) + ';"></div>'; }).join('') + '</div>'
+          : '<div class="ph" style="height:30cqw;"><img src="' + esc(safeUrl(s.imgs[0][0])) + '" alt="' + esc(s.name) + '" style="object-position:' + safePos(s.imgs[0][1]) + ';"></div>';
         return '<div style="display:grid;grid-template-columns:28cqw minmax(0,1fr);gap:4cqw;align-items:start;">' + imgs
           + '<div style="display:flex;flex-direction:column;padding-top:1cqw;"><div class="no" style="font-size:2.4cqw;letter-spacing:.14em;">' + esc(s.no) + '</div>'
           + '<div style="font-size:3.2cqw;font-weight:500;letter-spacing:.06em;color:#3F4A39;margin-top:.6cqw;">' + esc(s.name) + '</div>'
@@ -184,12 +188,12 @@ a:hover { color: #3F4A39; }
         + '<div style="display:flex;align-items:baseline;gap:1cqw;padding:2cqw 0;"><div style="font-family:\'Cormorant Garamond\',serif;font-size:2.6cqw;font-weight:600;letter-spacing:.06em;color:#48513C;min-width:4cqw;">' + esc(s) + '</div>'
         + '<div style="font-size:2cqw;font-weight:500;color:#48513C;">' + esc(gg.name) + '</div></div>'
         + '<div style="font-size:2cqw;padding:2cqw 0;">' + esc(gg.height) + '</div>'
-        + plans.map(function (p) { var q = qtyOf(p, s); return '<div style="font-size:2cqw;padding:2cqw 0 2cqw 1.6cqw;color:#3F4A39;">' + (q ? q + ' 盆' : '—') + '</div>'; }).join('')
+        + plans.map(function (p) { var q = qtyOf(p, s); return '<div style="font-size:2cqw;padding:2cqw 0 2cqw 1.6cqw;color:#3F4A39;">' + (q ? esc(q) + ' 盆' : '—') + '</div>'; }).join('')
         + '</div>';
     }).join('');
     var totals = '<div style="display:grid;grid-template-columns:' + cols + ';align-items:baseline;border-bottom:1px solid #E3E3DD;">'
       + '<div style="font-size:2cqw;font-weight:500;color:#48513C;padding:2cqw 0;">合計</div><div></div>'
-      + plans.map(function (p) { var n = (p.rows || []).reduce(function (a, r) { return a + (r.qty || 0); }, 0); return '<div style="font-size:2cqw;font-weight:500;padding:2cqw 0 2cqw 1.6cqw;color:#3F4A39;">' + n + ' 盆</div>'; }).join('')
+      + plans.map(function (p) { var n = (p.rows || []).reduce(function (a, r) { return a + num(r.qty); }, 0); return '<div style="font-size:2cqw;font-weight:500;padding:2cqw 0 2cqw 1.6cqw;color:#3F4A39;">' + esc(n) + ' 盆</div>'; }).join('')
       + '</div>';
     var fees = '<div style="display:grid;grid-template-columns:' + cols + ';align-items:center;background:#F7F8F4;border:1px solid #E3E3DD;margin-top:3cqw;">'
       + '<div style="display:flex;flex-direction:column;gap:.6cqw;padding:3cqw 0 3cqw 2cqw;grid-column:span 2;"><div style="font-size:2.4cqw;font-weight:500;letter-spacing:.08em;color:#3F4A39;">每月月費</div><div style="font-size:1.7cqw;letter-spacing:.04em;">含稅（下方為未稅）</div></div>'
@@ -221,7 +225,7 @@ a:hover { color: #3F4A39; }
       + '<div class="pretty" style="font-size:2cqw;line-height:1.8;margin-top:2cqw;">含到場紀錄、處理項目、現場照片，每月初發送。</div>'
       + '<div class="pretty" style="font-size:2.2cqw;font-weight:500;line-height:1.7;color:#5F7D3A;margin-top:1.4cqw;">可直接作為內部核銷與呈報文件。</div></div>'
       + '<div style="aspect-ratio:210/297;background:#FFFFFF;border:1px solid #E3E3DD;overflow:hidden;position:relative;">'
-      + (d.reportThumb ? '<img src="' + esc(d.reportThumb) + '" alt="養護報告範例" style="width:100%;height:100%;object-fit:cover;display:block;">'
+      + (safeUrl(d.reportThumb) ? '<img src="' + esc(safeUrl(d.reportThumb)) + '" alt="養護報告範例" style="width:100%;height:100%;object-fit:cover;display:block;">'
         : '<div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,#F7F8F4 0,#F7F8F4 1.2cqw,#ECECEC 1.2cqw,#ECECEC 1.4cqw);display:flex;align-items:center;justify-content:center;"><div style="background:#FFFFFF;padding:.8cqw 1.2cqw;font-size:1.7cqw;text-align:center;">養護報告範例縮圖</div></div>')
       + '</div></div>'
       + '<div class="h rule" style="margin-top:5cqw;">【 服務流程 】</div>'
@@ -256,17 +260,26 @@ a:hover { color: #3F4A39; }
     }
     // 給列印／產 PDF 用：全部圖片載完（或失敗）＋字型就緒才標 ready
     var imgs = Array.prototype.slice.call(document.images);
-    Promise.all(imgs.map(function (im) { return im.complete ? 1 : new Promise(function (r) { im.addEventListener('load', r); im.addEventListener('error', r); }); }))
-      .then(function () { return document.fonts ? document.fonts.ready : 1; })
+    var settled = Promise.all(imgs.map(function (im) { return im.complete ? 1 : new Promise(function (r) { im.addEventListener('load', r); im.addEventListener('error', r); }); }))
+      .then(function () { return document.fonts ? document.fonts.ready : 1; });
+    Promise.race([settled, new Promise(function (r) { setTimeout(r, 25000); })])
       .then(function () { document.body.setAttribute('data-ready', '1'); });
   }
 
-  window.renderEstimate = render;
-  if (window.__YZ_QUOTE_DATA__) { render(window.__YZ_QUOTE_DATA__); return; }
-  var url = params.get('data') || 'sample.json';
-  fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(render)
-    .catch(function (e) { document.getElementById('doc').innerHTML = '<div style="padding:40px;font-size:15px;">初估資料載入失敗：' + esc(e.message) + '</div>'; document.body.setAttribute('data-ready', 'error'); });
+  function fail(e) { document.getElementById('doc').innerHTML = '<div style="padding:40px;font-size:15px;">初估資料載入失敗：' + esc(e && e.message) + '</div>'; document.body.setAttribute('data-ready', 'error'); }
+  function safeRender(d) { try { render(d); } catch (e) { fail(e); } }
+  window.renderEstimate = safeRender;
+  if (window.__YZ_QUOTE_DATA__) { safeRender(window.__YZ_QUOTE_DATA__); return; }
+  // 資料只收同站與植間 Supabase 儲存區：外部網址會讓任何人用植間網域產出假報價書
+  var url;
+  try {
+    url = new URL(params.get('data') || 'sample.json', location.href);
+    var okSrc = url.origin === location.origin || (url.origin === 'https://ytlakkxrbookftluulbo.supabase.co' && url.pathname.indexOf('/storage/') === 0);
+    if (!okSrc) throw new Error('資料來源不允許');
+  } catch (e) { fail(e); return; }
+  fetch(url.href).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(safeRender)
+    .catch(fail);
 })();
 </script>
 </body>
