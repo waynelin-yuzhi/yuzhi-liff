@@ -1,0 +1,27 @@
+{
+  "client": { "name": "範例公司（版型展示用）", "site": "台北市範例區範例路 1 號", "issuedAt": "2026-10-21", "validUntil": "2026-11-04" },
+  "coverPhoto": "https://lh3.googleusercontent.com/d/1ap_3F1gUt3rSz3uWP_7QrdFiXTkwR-ds=w1600",
+  "coverFocus": "50% 40%",
+  "points": [
+    { "name": "接待區", "note": "沙發旁牆角", "sitePhoto": "https://lh3.googleusercontent.com/d/1Tf0onEqomPOCWUic9ffPiwUIJtNkglZ5=w1200", "size": "L", "qty": 1,
+      "candidates": [
+        { "name": "黃椰子", "photo": "https://lh3.googleusercontent.com/d/1g4B_jg6e956WJSRKAfJ1F3OW_dM7KFG_=w800", "reason": "羽狀葉輕盈，柔化牆角" },
+        { "name": "圓葉刺軸櫚", "photo": "https://lh3.googleusercontent.com/d/1H8Dz3r6_2By-nYUhCyrmIH_Gg2xQOnLx=w800", "reason": "扇形葉有份量，造型感強" },
+        { "name": "富貴榕", "photo": "https://lh3.googleusercontent.com/d/141yeFm0prA1R0EC3sNZvFUl9HulDw6Ap=w800", "reason": "斑葉明亮，採光好的位置最適合" } ] },
+    { "name": "候客區", "note": "座椅右側", "sitePhoto": "https://lh3.googleusercontent.com/d/1FKrgwt2-NJhKLGGbcCWKUsyX4NxfoddO=w1200", "size": "M", "qty": 1,
+      "candidates": [
+        { "name": "橡膠樹", "photo": "https://lh3.googleusercontent.com/d/1FKrgwt2-NJhKLGGbcCWKUsyX4NxfoddO=w800", "reason": "葉面厚實好照顧，耐室內光" },
+        { "name": "龍血樹", "photo": "https://lh3.googleusercontent.com/d/1WAHoThk6euFtwPJxCX4pqync-c0aYC5s=w800", "reason": "線條俐落，現代空間的焦點" },
+        { "name": "黃椰子", "photo": "https://lh3.googleusercontent.com/d/1ap_3F1gUt3rSz3uWP_7QrdFiXTkwR-ds=w800", "reason": "高挑輕盈，不壓迫動線" } ] }
+  ],
+  "sizeGuide": [
+    { "size": "XS", "name": "桌面小型", "height": "檯面型，約 30 cm 以下" },
+    { "size": "S", "name": "桌面中型", "height": "約 40–60 cm" },
+    { "size": "M", "name": "落地中型", "height": "約 90–110 cm" },
+    { "size": "L", "name": "落地大型", "height": "約 130–160 cm" },
+    { "size": "XL", "name": "落地特大", "height": "約 170 cm 以上" } ],
+  "plans": [ { "label": "方案", "rows": [ { "size": "L", "qty": 1 }, { "size": "M", "qty": 1 } ], "monthlyEx": 6000, "monthlyInc": 6300 } ],
+  "minimumNote": "雙北地區每月低消 6,300 元（含稅）起",
+  "pricingNotes": [],
+  "reportThumb": ""
+}

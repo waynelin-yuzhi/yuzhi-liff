@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>初估報價書｜植間設計</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Cormorant+Garamond:wght@400;600&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: 'Noto Sans TC', sans-serif; font-weight: 300; color: #4C4C4C; background: #D9D7CF; }
+a { color: #5F7D3A; text-decoration: none; }
+a:hover { color: #3F4A39; }
+#doc { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 0 40px; }
+.page { position: relative; overflow: hidden; container-type: size; width: min(calc(100vw - 16px), 210mm); aspect-ratio: 210 / 297; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.cover, .closing { background: #F6F4EC; }
+.inner { background: #FAF9F3; }
+.side { position: absolute; left: 0; top: 0; bottom: 0; width: 13cqw; background: #939D84; display: flex; align-items: center; justify-content: center; gap: 2cqw; }
+.side .t { writing-mode: vertical-rl; font-size: 5cqw; font-weight: 500; letter-spacing: .1em; color: #FFFFFF; }
+.side .s { writing-mode: vertical-rl; font-size: 2cqw; font-weight: 300; letter-spacing: .1em; color: rgba(255,255,255,.86); }
+.logo-sm { position: absolute; right: 28cqw; top: 3cqw; width: 5cqw; height: 5cqw; object-fit: contain; mix-blend-mode: multiply; }
+.gs { position: absolute; right: 5cqw; top: 4.4cqw; font-family: 'Cormorant Garamond', serif; font-size: 1.9cqw; letter-spacing: .2em; color: #9A9A9A; }
+.body { position: absolute; left: 18cqw; right: 5cqw; top: 11cqw; display: flex; flex-direction: column; }
+.foot { position: absolute; left: 18cqw; right: 5cqw; bottom: 9cqw; display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid #E3E3DD; padding-top: 1.4cqw; }
+.cover .foot, .closing .foot { left: 8cqw; right: 7cqw; }
+.foot .v { font-size: 1.7cqw; letter-spacing: .08em; color: #4C4C4C; }
+.foot .n { font-family: 'Cormorant Garamond', serif; font-size: 2cqw; letter-spacing: .14em; color: #9A7B4A; }
+.legal { position: absolute; left: 13cqw; right: 0; bottom: 0; height: 7cqw; background: #9A9A9A; display: flex; align-items: center; justify-content: center; padding: 0 5cqw; font-size: 1.7cqw; line-height: 1.5; letter-spacing: .04em; color: #F2F2F2; text-align: center; }
+.cover .legal, .closing .legal { left: 0; padding: 0 6cqw; }
+.wm { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 4; display: flex; align-items: center; justify-content: center; }
+.wm > div { transform: rotate(-30deg); display: flex; flex-direction: column; gap: 24cqw; align-items: center; font-size: 6cqw; font-weight: 500; letter-spacing: .3em; color: #3F4A39; white-space: nowrap; }
+.h { font-size: 2.3cqw; font-weight: 500; letter-spacing: .08em; color: #3F4A39; }
+.h.rule { padding-bottom: 1.6cqw; border-bottom: 2px solid #939D84; }
+.ph { background: #EDEBE2; overflow: hidden; }
+.ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.k { color: #939D84; font-weight: 400; }
+.no { font-family: 'Cormorant Garamond', serif; color: #9A7B4A; }
+.gold { width: 7cqw; height: .35cqw; background: #E5B23B; }
+.pretty { text-wrap: pretty; }
+@media print {
+  body { background: none; }
+  #doc { display: block; padding: 0; }
+  .page { width: 210mm; height: 297mm; box-shadow: none; break-after: page; page-break-after: always; }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+}
+</style>
+</head>
+<body>
+<div id="doc"></div>
+<script>
+(function () {
+  'use strict';
+  var LOGO = 'yuzhi-logo.png';
+  var LEGAL = '本報價書版權歸本公司所有，僅供客戶內部參考，未經書面許可不得轉發、修改或提供給第三方，特別是同行競爭者。違者將追究法律責任。';
+  var WM = '植間初估｜以場勘為準';
+  var params = new URLSearchParams(location.search);
+  var OPT = {
+    showLegal: params.get('legal') !== '0',
+    showWatermark: params.get('wm') !== '0',
+    wmOpacity: Number(params.get('wmo')) || 0.05,
+    coverOpacity: Number(params.get('co')) || 0.85,
+    coverFade: params.get('fade') !== '0'
+  };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmt(n) { return (Number(n) || 0).toLocaleString('en-US'); }
+  function toDate(s) { var m = String(s || '').match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+  function dTxt(dt) { return dt ? dt.getFullYear() + '.' + pad(dt.getMonth() + 1) + '.' + pad(dt.getDate()) : ''; }
+
+  function render(d) {
+    d = d || {};
+    var client = d.client || {};
+    var issued = toDate(client.issuedAt);
+    var valid = toDate(client.validUntil);
+    if (!valid && issued) { valid = new Date(issued); valid.setDate(valid.getDate() + 14); }
+    var validLine = '初估｜' + dTxt(valid) + ' 前有效｜以場勘為準';
+    var guide = d.sizeGuide || [];
+    var order = ['XS', 'S', 'M', 'L', 'XL'];
+    function g(s) { for (var i = 0; i < guide.length; i++) if (guide[i].size === s) return guide[i]; return { size: s, name: '', height: '' }; }
+    var points = d.points || [];
+    var total = points.length + 5;
+    function pl(k) { return pad(k) + ' / ' + pad(total); }
+    var plans = d.plans || [];
+    var multi = plans.length > 1;
+    var used = order.filter(function (s) { return plans.some(function (p) { return (p.rows || []).some(function (r) { return r.size === s && r.qty > 0; }); }); });
+    function qtyOf(p, s) { var r = (p.rows || []).filter(function (x) { return x.size === s; })[0]; return (r && r.qty) || 0; }
+    var cols = '16cqw minmax(0,1fr) repeat(' + Math.max(plans.length, 1) + ', ' + (multi ? '19cqw' : '22cqw') + ')';
+
+    function foot(n) { return '<div class="foot"><div class="v">' + esc(validLine) + '</div><div class="n">' + esc(n) + '</div></div>'; }
+    function legal() { return OPT.showLegal ? '<div class="legal">' + LEGAL + '</div>' : ''; }
+    function wm() { return OPT.showWatermark ? '<div class="wm"><div style="opacity:' + OPT.wmOpacity + '"><div>' + WM + '</div><div>' + WM + '</div><div>' + WM + '</div></div></div>' : ''; }
+    function chrome(title, sub) {
+      return '<div class="side"><div class="t">' + esc(title) + '</div><div class="s">' + esc(sub) + '</div></div>'
+        + '<img class="logo-sm" src="' + LOGO + '" alt=""><div class="gs">Greenery Suggestion</div>';
+    }
+
+    var mask = OPT.coverFade ? 'linear-gradient(to right, transparent 0, #000 18%, #000 82%, transparent 100%), linear-gradient(to bottom, #000 70%, transparent 100%)' : 'none';
+    var html = '';
+
+    // 01 封面
+    html += '<section class="page cover" data-label="封面">'
+      + '<div style="position:absolute;left:0;top:0;right:0;height:80cqw;overflow:hidden;display:flex;justify-content:center;">'
+      + (d.coverPhoto ? '<img id="coverImg" src="' + esc(d.coverPhoto) + '" alt="" style="height:100%;width:auto;max-width:100%;object-fit:cover;object-position:' + esc(d.coverFocus || '50% 50%') + ';display:block;opacity:' + OPT.coverOpacity + ';-webkit-mask-image:' + mask + ';mask-image:' + mask + ';-webkit-mask-composite:source-in;mask-composite:intersect;">' : '')
+      + '</div>'
+      + '<div style="position:absolute;left:8cqw;top:7cqw;background:#F6F4EC;padding:1.4cqw 2.2cqw;display:flex;align-items:baseline;gap:1.4cqw;">'
+      + '<div style="font-size:2.4cqw;font-weight:500;letter-spacing:.2em;color:#3F4A39;">初估</div>'
+      + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.8cqw;letter-spacing:.18em;color:#9A7B4A;">PRELIMINARY</div></div>'
+      + '<img src="' + LOGO + '" alt="有植 YUZHI" style="position:absolute;right:7cqw;top:87cqw;width:12cqw;height:12cqw;object-fit:contain;mix-blend-mode:multiply;">'
+      + '<div style="position:absolute;left:8cqw;right:24cqw;top:87cqw;display:flex;flex-direction:column;">'
+      + '<div style="font-size:2.2cqw;font-weight:400;letter-spacing:.2em;color:#939D84;">' + esc(client.name) + '</div>'
+      + '<div style="font-size:4.4cqw;font-weight:500;letter-spacing:.06em;line-height:1.35;color:#3F4A39;margin-top:2cqw;">辦公室植栽訂閱式養護</div>'
+      + '<div style="font-size:4.4cqw;font-weight:500;letter-spacing:.06em;line-height:1.35;color:#3F4A39;">初估報價書</div>'
+      + '<div style="width:10cqw;height:.4cqw;background:#E5B23B;margin-top:3cqw;"></div>'
+      + '<div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:1.4cqw 3cqw;align-items:baseline;margin-top:3cqw;">'
+      + (client.site ? '<div style="font-size:1.8cqw;font-weight:400;letter-spacing:.14em;color:#939D84;">案場地址</div><div class="pretty" style="font-size:2cqw;letter-spacing:.04em;">' + esc(client.site) + '</div>' : '')
+      + '<div style="font-size:1.8cqw;font-weight:400;letter-spacing:.14em;color:#939D84;">出單日期</div><div style="font-size:2cqw;letter-spacing:.04em;">' + dTxt(issued) + '</div>'
+      + '<div style="font-size:1.8cqw;font-weight:400;letter-spacing:.14em;color:#939D84;">有效期限</div><div style="font-size:2cqw;letter-spacing:.04em;">' + dTxt(valid) + ' 前</div>'
+      + '</div></div>'
+      + foot(pl(1)) + legal() + wm() + '</section>';
+
+    // 點位頁
+    points.forEach(function (p, i) {
+      var sg = g(p.size);
+      var cands = (p.candidates || []).slice(0, 3);
+      html += '<section class="page inner" data-label="點位 ' + (i + 1) + '">'
+        + chrome(p.name, '點位 ' + pad(i + 1) + ' ／ ' + pad(points.length))
+        + '<div class="body">'
+        + '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:2cqw;"><div class="h">【 現場照片 】</div><div style="font-size:1.7cqw;letter-spacing:.08em;color:#939D84;">客戶提供</div></div>'
+        + '<div class="ph" style="height:50cqw;margin-top:1.6cqw;">' + (p.sitePhoto ? '<img src="' + esc(p.sitePhoto) + '" alt="' + esc(p.name) + ' 現場" style="object-position:' + esc(p.focus || '50% 50%') + ';">' : '') + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.6cqw 1.4cqw;margin-top:1.8cqw;font-size:2cqw;letter-spacing:.04em;line-height:1.5;">'
+        + '<div style="display:flex;gap:.8cqw;"><span class="k">建議擺放</span><span style="color:#3F4A39;">' + esc(p.note) + '</span></div>'
+        + '<div style="color:#E3E3DD;">｜</div>'
+        + '<div style="display:flex;gap:.8cqw;"><span class="k">建議尺寸</span><span style="color:#3F4A39;">' + esc(p.size + ' ' + sg.name + ' × ' + p.qty) + '</span></div></div>'
+        + '<div class="h rule" style="margin-top:4cqw;">【 候選品種（三選一或混搭） 】</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5cqw;margin-top:2.2cqw;">'
+        + cands.map(function (c, j) {
+          return '<div style="display:flex;flex-direction:column;min-width:0;">'
+            + '<div class="ph" style="height:29cqw;">' + (c.photo ? '<img src="' + esc(c.photo) + '" alt="' + esc(c.name) + '">' : '') + '</div>'
+            + '<div style="display:flex;align-items:baseline;gap:1cqw;margin-top:1.4cqw;"><div class="no" style="font-size:2cqw;">' + pad(j + 1) + '</div>'
+            + '<div style="font-size:2.2cqw;font-weight:500;letter-spacing:.06em;color:#3F4A39;">' + esc(c.name) + '</div></div>'
+            + '<div class="pretty" style="font-size:1.8cqw;line-height:1.55;letter-spacing:.02em;margin-top:.6cqw;">' + esc(c.reason) + '</div></div>';
+        }).join('')
+        + '</div></div>'
+        + foot(pl(i + 2)) + legal() + wm() + '</section>';
+    });
+
+    // 盆器風格（固定內容，來源＝Design 母版）
+    var pots = d.potStyles || [
+      { no: '01', name: '清水模', imgs: [['https://lh3.googleusercontent.com/d/1Tzr-4skPVYs5oaTEIeiYzM35wdZ7BuyF=w1200', '55% 60%']], desc: 'GRC 水泥質感、霧面灰，重量穩，適合撐起有存在感的主角樹。', fit: '櫃台、大廳等主角位置' },
+      { no: '02', name: '古樸紋理玻璃纖維盆', imgs: [['https://lh3.googleusercontent.com/d/1li1jQ0SvyFlX0m4p5MD8YC8gxHhRsCjk=w800', '50% 75%'], ['https://lh3.googleusercontent.com/d/15H73UCM71MI2J537iwTHDByCwyODt67P=w800', '35% 75%']], desc: 'VERNUE 新綠，輕量化玻璃纖維盆，外觀有手作陶甕般的古樸紋理，礦石白、霧石白等色調好搭配辦公空間。', fit: '櫃台、走道、會議室' },
+      { no: '03', name: 'ECOPOTS 環保盆', imgs: [['https://lh3.googleusercontent.com/d/1hC-SOn8t5k_FzsfaI-vxmLcO8jFHAWa0=w1200', '50% 80%']], desc: '比利時製，回收塑料與天然石粉製成，輕量耐用、霧面質感。', fit: '走道、轉角、需移動的位置' }
+    ];
+    html += '<section class="page inner" data-label="盆器風格">' + chrome('盆器風格', '三種風格，可擇一或混搭')
+      + '<div class="body"><div class="h rule">【 盆器風格 】</div>'
+      + '<div class="pretty" style="font-size:2cqw;line-height:1.7;margin-top:1.8cqw;">盆器依空間調性與植栽尺寸搭配，款式與顏色於場勘後建議。</div>'
+      + '<div style="display:flex;flex-direction:column;gap:3cqw;margin-top:3cqw;">'
+      + pots.map(function (s) {
+        var imgs = s.imgs.length > 1
+          ? '<div style="height:30cqw;display:grid;grid-template-columns:repeat(' + s.imgs.length + ',minmax(0,1fr));gap:.8cqw;overflow:hidden;">' + s.imgs.map(function (im) { return '<div class="ph" style="min-width:0;"><img src="' + esc(im[0]) + '" alt="' + esc(s.name) + ' 情境" style="object-position:' + esc(im[1]) + ';"></div>'; }).join('') + '</div>'
+          : '<div class="ph" style="height:30cqw;"><img src="' + esc(s.imgs[0][0]) + '" alt="' + esc(s.name) + '" style="object-position:' + esc(s.imgs[0][1]) + ';"></div>';
+        return '<div style="display:grid;grid-template-columns:28cqw minmax(0,1fr);gap:4cqw;align-items:start;">' + imgs
+          + '<div style="display:flex;flex-direction:column;padding-top:1cqw;"><div class="no" style="font-size:2.4cqw;letter-spacing:.14em;">' + esc(s.no) + '</div>'
+          + '<div style="font-size:3.2cqw;font-weight:500;letter-spacing:.06em;color:#3F4A39;margin-top:.6cqw;">' + esc(s.name) + '</div>'
+          + '<div class="gold" style="margin-top:2cqw;"></div>'
+          + '<div class="pretty" style="font-size:2cqw;line-height:1.75;margin-top:2cqw;">' + esc(s.desc) + '</div>'
+          + '<div style="display:flex;gap:1cqw;font-size:1.8cqw;line-height:1.6;margin-top:1.6cqw;"><span class="k" style="white-space:nowrap;">適用</span><span>' + esc(s.fit) + '</span></div></div></div>';
+      }).join('')
+      + '</div></div>' + foot(pl(points.length + 2)) + legal() + wm() + '</section>';
+
+    // 月費總表
+    var head = '<div style="display:grid;grid-template-columns:' + cols + ';align-items:end;margin-top:2.4cqw;border-bottom:2px solid #939D84;">'
+      + '<div class="k" style="font-size:1.8cqw;letter-spacing:.1em;padding:0 0 1.4cqw;">尺寸</div>'
+      + '<div class="k" style="font-size:1.8cqw;letter-spacing:.1em;padding:0 0 1.4cqw;">高度說明</div>'
+      + plans.map(function (p) {
+        return '<div style="display:flex;flex-direction:column;gap:.4cqw;padding:0 0 1.4cqw 1.6cqw;"><div style="font-size:2.2cqw;font-weight:500;letter-spacing:.08em;color:#3F4A39;">' + esc(multi ? (p.label || '') : '數量') + '</div>'
+          + '<div style="font-size:1.7cqw;letter-spacing:.04em;">' + esc(multi ? (p.subtitle || '') : '') + '</div></div>';
+      }).join('') + '</div>';
+    var rows = used.map(function (s) {
+      var gg = g(s);
+      return '<div style="display:grid;grid-template-columns:' + cols + ';align-items:baseline;border-bottom:1px solid #ECECEC;">'
+        + '<div style="display:flex;align-items:baseline;gap:1cqw;padding:2cqw 0;"><div style="font-family:\'Cormorant Garamond\',serif;font-size:2.6cqw;font-weight:600;letter-spacing:.06em;color:#48513C;min-width:4cqw;">' + esc(s) + '</div>'
+        + '<div style="font-size:2cqw;font-weight:500;color:#48513C;">' + esc(gg.name) + '</div></div>'
+        + '<div style="font-size:2cqw;padding:2cqw 0;">' + esc(gg.height) + '</div>'
+        + plans.map(function (p) { var q = qtyOf(p, s); return '<div style="font-size:2cqw;padding:2cqw 0 2cqw 1.6cqw;color:#3F4A39;">' + (q ? q + ' 盆' : '—') + '</div>'; }).join('')
+        + '</div>';
+    }).join('');
+    var totals = '<div style="display:grid;grid-template-columns:' + cols + ';align-items:baseline;border-bottom:1px solid #E3E3DD;">'
+      + '<div style="font-size:2cqw;font-weight:500;color:#48513C;padding:2cqw 0;">合計</div><div></div>'
+      + plans.map(function (p) { var n = (p.rows || []).reduce(function (a, r) { return a + (r.qty || 0); }, 0); return '<div style="font-size:2cqw;font-weight:500;padding:2cqw 0 2cqw 1.6cqw;color:#3F4A39;">' + n + ' 盆</div>'; }).join('')
+      + '</div>';
+    var fees = '<div style="display:grid;grid-template-columns:' + cols + ';align-items:center;background:#F7F8F4;border:1px solid #E3E3DD;margin-top:3cqw;">'
+      + '<div style="display:flex;flex-direction:column;gap:.6cqw;padding:3cqw 0 3cqw 2cqw;grid-column:span 2;"><div style="font-size:2.4cqw;font-weight:500;letter-spacing:.08em;color:#3F4A39;">每月月費</div><div style="font-size:1.7cqw;letter-spacing:.04em;">含稅（下方為未稅）</div></div>'
+      + plans.map(function (p) {
+        return '<div style="display:flex;flex-direction:column;gap:.8cqw;padding:3cqw 1cqw 3cqw 1.6cqw;"><div style="display:flex;align-items:baseline;gap:.6cqw;color:#3F4A39;white-space:nowrap;">'
+          + '<span style="font-family:\'Cormorant Garamond\',serif;font-size:2.2cqw;">NT$</span><span style="font-family:\'Cormorant Garamond\',serif;font-size:5.2cqw;font-weight:600;line-height:1;">' + fmt(p.monthlyInc) + '</span></div>'
+          + '<div style="font-size:1.7cqw;white-space:nowrap;">未稅 NT$ ' + fmt(p.monthlyEx) + '</div></div>';
+      }).join('') + '</div>';
+    function note(t) { return '<div style="display:flex;gap:1cqw;font-size:1.8cqw;line-height:1.65;"><span style="color:#9A7B4A;">＊</span><span class="pretty">' + esc(t) + '</span></div>'; }
+    var notes = '<div style="display:flex;flex-direction:column;gap:1.2cqw;margin-top:4cqw;">'
+      + note('本初估依客戶提供之照片評估，正式報價依場勘後確認方案另行提供。')
+      + (d.minimumNote ? note(d.minimumNote) : '')
+      + (d.pricingNotes || []).map(note).join('') + '</div>';
+    html += '<section class="page inner" data-label="月費總表">' + chrome('月費總表', multi ? '未達低消，提供 ' + plans.length + ' 種配置' : '尺寸 × 數量彙總')
+      + '<div class="body"><div class="h">【 尺寸 × 數量 】</div>' + head + rows + totals + fees + notes + '</div>'
+      + foot(pl(points.length + 3)) + legal() + wm() + '</section>';
+
+    // 月費包含與服務流程
+    var incl = [['01', '植栽與盆器規劃配送', ''], ['02', '每週固定到場養護', '澆水、修剪、清潔、施肥、病蟲害處理'], ['03', '狀況不佳免費更換', ''], ['04', '依季節調整', '']];
+    var steps = [['01', '初估', '本文件，免費', true], ['02', '場勘', '設計師到場，提供空間合成示意與精確配置；場勘費合作後全額折抵'], ['03', '簽約', '確認方案、尺寸與數量'], ['04', '進場配置', '植栽與盆器配送到位'], ['05', '每週養護', '固定到場，每月初發送報告']];
+    html += '<section class="page inner" data-label="服務內容">' + chrome('服務內容', '月費包含 · 服務流程')
+      + '<div class="body"><div class="h rule">【 月費包含 】</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:4cqw;">'
+      + incl.map(function (x) { return '<div style="display:grid;grid-template-columns:4.4cqw minmax(0,1fr);padding:2cqw 0;border-bottom:1px solid #ECECEC;"><div class="no" style="font-size:2.2cqw;">' + x[0] + '</div><div class="pretty" style="font-size:2cqw;line-height:1.6;">' + x[1] + (x[2] ? '<br><span style="font-size:1.7cqw;">' + x[2] + '</span>' : '') + '</div></div>'; }).join('')
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:minmax(0,1fr) 22cqw;gap:4cqw;align-items:center;background:#F7F8F4;border:1px solid #E3E3DD;padding:3.4cqw;margin-top:3.4cqw;">'
+      + '<div style="display:flex;flex-direction:column;"><div class="no" style="font-size:1.9cqw;letter-spacing:.18em;">MONTHLY REPORT</div>'
+      + '<div style="font-size:3.2cqw;font-weight:500;letter-spacing:.06em;color:#3F4A39;margin-top:.8cqw;">每月電子養護報告</div><div class="gold" style="margin-top:2cqw;"></div>'
+      + '<div class="pretty" style="font-size:2cqw;line-height:1.8;margin-top:2cqw;">含到場紀錄、處理項目、現場照片，每月初發送。</div>'
+      + '<div class="pretty" style="font-size:2.2cqw;font-weight:500;line-height:1.7;color:#5F7D3A;margin-top:1.4cqw;">可直接作為內部核銷與呈報文件。</div></div>'
+      + '<div style="aspect-ratio:210/297;background:#FFFFFF;border:1px solid #E3E3DD;overflow:hidden;position:relative;">'
+      + (d.reportThumb ? '<img src="' + esc(d.reportThumb) + '" alt="養護報告範例" style="width:100%;height:100%;object-fit:cover;display:block;">'
+        : '<div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,#F7F8F4 0,#F7F8F4 1.2cqw,#ECECEC 1.2cqw,#ECECEC 1.4cqw);display:flex;align-items:center;justify-content:center;"><div style="background:#FFFFFF;padding:.8cqw 1.2cqw;font-size:1.7cqw;text-align:center;">養護報告範例縮圖</div></div>')
+      + '</div></div>'
+      + '<div class="h rule" style="margin-top:5cqw;">【 服務流程 】</div>'
+      + '<div style="position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1.6cqw;margin-top:2.4cqw;"><div style="position:absolute;left:1.3cqw;right:0;top:6.1cqw;height:1px;background:#939D84;"></div>'
+      + steps.map(function (s) {
+        return '<div style="display:flex;flex-direction:column;align-items:flex-start;position:relative;">'
+          + (s[3] ? '<div style="font-size:1.7cqw;font-weight:400;letter-spacing:.08em;color:#FFFFFF;background:#5F7D3A;padding:.3cqw 1cqw;height:2.6cqw;display:flex;align-items:center;">您在這裡</div>' : '<div style="height:2.6cqw;"></div>')
+          + '<div style="width:2.6cqw;height:2.6cqw;border-radius:50%;margin-top:2.2cqw;' + (s[3] ? 'background:#5F7D3A;' : 'background:#FAF9F3;border:1px solid #939D84;') + '"></div>'
+          + '<div class="no" style="font-size:2cqw;margin-top:1.6cqw;">' + s[0] + '</div>'
+          + '<div style="font-size:2.2cqw;font-weight:500;color:#3F4A39;margin-top:.4cqw;">' + s[1] + '</div>'
+          + '<div class="pretty" style="font-size:1.7cqw;line-height:1.6;margin-top:.8cqw;">' + s[2] + '</div></div>';
+      }).join('')
+      + '</div></div>' + foot(pl(points.length + 4)) + legal() + wm() + '</section>';
+
+    // 結尾
+    html += '<section class="page closing" data-label="結尾">'
+      + '<div style="position:absolute;left:0;right:0;top:26cqw;display:flex;flex-direction:column;align-items:center;">'
+      + '<img src="' + LOGO + '" alt="有植 YUZHI" style="width:20cqw;height:20cqw;object-fit:contain;mix-blend-mode:multiply;">'
+      + '<div style="font-size:2.4cqw;font-weight:300;letter-spacing:.4em;margin-top:1.6cqw;">有 植 Y U Z H I</div>'
+      + '<div style="width:8cqw;height:1px;background:#939D84;margin:7cqw 0;"></div>'
+      + '<div style="font-size:3cqw;font-weight:500;letter-spacing:.1em;color:#3F4A39;">有任何問題，直接在 LINE 回覆我們</div>'
+      + '<div style="display:flex;flex-direction:column;align-items:center;gap:1.4cqw;margin-top:8cqw;font-size:2cqw;letter-spacing:.06em;">'
+      + '<div style="font-weight:400;color:#3F4A39;">植間設計股份有限公司</div><div>統一編號 90877240</div><div>(02) 2221-0318</div><div>waynelin@yuzhiplant.com</div><div>業務聯絡：林瑋恒 0979-893-619</div>'
+      + '</div></div>' + foot(pl(total)) + legal() + wm() + '</section>';
+
+    document.getElementById('doc').innerHTML = html;
+    document.title = '初估報價書｜' + (client.name || '植間設計');
+    var ci = document.getElementById('coverImg');
+    if (ci) {
+      var fit = function () { if (ci.naturalWidth && ci.naturalWidth / ci.naturalHeight >= 1.25) ci.style.width = '100%'; };
+      if (ci.complete) fit(); else ci.addEventListener('load', fit);
+    }
+    // 給列印／產 PDF 用：全部圖片載完（或失敗）＋字型就緒才標 ready
+    var imgs = Array.prototype.slice.call(document.images);
+    Promise.all(imgs.map(function (im) { return im.complete ? 1 : new Promise(function (r) { im.addEventListener('load', r); im.addEventListener('error', r); }); }))
+      .then(function () { return document.fonts ? document.fonts.ready : 1; })
+      .then(function () { document.body.setAttribute('data-ready', '1'); });
+  }
+
+  window.renderEstimate = render;
+  if (window.__YZ_QUOTE_DATA__) { render(window.__YZ_QUOTE_DATA__); return; }
+  var url = params.get('data') || 'sample.json';
+  fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(render)
+    .catch(function (e) { document.getElementById('doc').innerHTML = '<div style="padding:40px;font-size:15px;">初估資料載入失敗：' + esc(e.message) + '</div>'; document.body.setAttribute('data-ready', 'error'); });
+})();
+</script>
+</body>
+</html>
