@@ -522,6 +522,15 @@
       }).catch(function () { finish(); });
     });
   }
+  document.addEventListener('click', function (ev) {   // 附掛報價卡「看內容」：同網域的報價檢視頁直接內嵌（就是客戶收到的那一頁），其他網址開新分頁
+    var a = ev.target && ev.target.closest ? ev.target.closest('.qView') : null; if (!a) return;
+    ev.preventDefault();
+    var u = a.getAttribute('data-url') || '', box = a.nextElementSibling;
+    if (u.indexOf('https://waynelin-yuzhi.github.io/yuzhi-liff/quote/') !== 0 || !box) { window.open(u, '_blank', 'noopener'); return; }
+    if (box.innerHTML) { box.innerHTML = ''; a.textContent = '看內容'; return; }
+    box.innerHTML = '<iframe src="' + esc(u) + '" style="width:100%;height:620px;border:1px solid #E5E0D3;border-radius:8px;margin:6px 0;background:#fff" loading="lazy"></iframe><a href="' + esc(u) + '" target="_blank" rel="noopener" class="small" style="color:#4A6FA5">另開完整頁面</a>';
+    a.textContent = '收起內容';
+  });
   function docStripHtml(t) {   // 文件狀態列：狀態讀進來、動作送出去（都投核可），正本留在報價／合約系統
     var d = t.dossier || {}; if (d.loading) return '';
     var qs = (d.quotes || []).filter(function (q) { return String(q.status || '') !== '已作廢'; }).slice(0, 3), ars = (d.receivables || []).filter(function (r) { return Number(r.balance) > 0 || /未|部分/.test(String(r.status || '')); }), cts = (d.contracts || []).slice(0, 2);
@@ -732,7 +741,7 @@
     if (!p && /^already_submitted/.test(String((t.dossier || {}).skipReason || ''))) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上一稿已處理；客戶再來訊時引擎會重新判斷。你也可以直接在下面回，或請客服擬一則主動訊息。</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(t.dossier.skipReason) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
     var nCards = (p.cards || []).length || Number(p.attach) || 0;
-    var modsHtml = (p.mods || []).length ? '<div class="small" id="modsBox" style="margin:8px 0 2px"><div style="display:flex;justify-content:space-between;align-items:center"><b>會一起發的附掛 ' + p.mods.length + ' 項</b><a href="#" id="modsNone" class="muted">這次全部不附</a></div>' + p.mods.map(function (m) { return '<label style="display:block;margin:3px 0"><input type="checkbox" class="modChk" value="' + esc(m.key) + '" checked> ' + esc(m.title || m.key) + '</label>'; }).join('') + '<div class="muted" style="font-size:11px">沒勾的不會發給客戶；只發文字就全部取消。</div></div>' : '';
+    var modsHtml = (p.mods || []).length ? '<div class="small" id="modsBox" style="margin:8px 0 2px"><div style="display:flex;justify-content:space-between;align-items:center"><b>會一起發的附掛 ' + p.mods.length + ' 項</b><a href="#" id="modsNone" class="muted">這次全部不附</a></div>' + p.mods.map(function (m) { return '<label style="display:block;margin:3px 0"><input type="checkbox" class="modChk" value="' + esc(m.key) + '" checked> ' + esc(m.title || m.key) + '</label>' + (m.url && /^https:\/\//.test(m.url) ? '<a href="#" class="qView" data-url="' + esc(m.url) + '" style="color:#5F6E58;font-weight:600;margin-left:22px">看內容</a><div class="qFrame"></div>' : ''); }).join('') + '<div class="muted" style="font-size:11px">沒勾的不會發給客戶；只發文字就全部取消。</div></div>' : '';
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>小卡預覽（點開載入）</summary><div id="cardsBox" class="small muted">點開預覽</div></details>' : '');
     pb.innerHTML = '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
       + '<div id="addArea">' + addAreaHtml(p) + '</div>'
