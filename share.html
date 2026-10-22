@@ -105,9 +105,9 @@ function closeSelf() {
   show('完成', '可以關閉此頁了');
 }
 function openPicker() {
-  liff.shareTargetPicker([
-    { type: 'flex', altText: PACK.alt || '植間設計｜案例分享', contents: PACK.bubble }
-  ]).then(function (res) {
+  var msgs = [{ type: 'flex', altText: PACK.alt || '植間設計｜案例分享', contents: PACK.bubble }];
+  if (PACK.followText) msgs.push({ type: 'text', text: String(PACK.followText).substring(0, 4900) });
+  liff.shareTargetPicker(msgs).then(function (res) {
     /* 分享成功或取消都直接關窗回聊天室（Wayne：越無感越好；要再分享重按卡片即可） */
     closeSelf();
   }).catch(function () {
