@@ -17,15 +17,26 @@
     if (app) app.innerHTML = '<div class="card"><div class="err">' + esc(msg) + '</div></div>';
   }
 
-  function api(fn, params) {
+  // 寫入類走引擎單一入口（staffCall；引擎驗身分、代呼 GAS）；引擎連不上才退回直打 GAS。讀取與照片仍直打 GAS
+  var WRITE_FNS = { punch: 1, reportSave: 1, draftSave: 1, draftDelete: 1, coachReply: 1, schedDraft: 1, schedMove: 1, schedMoveBatch: 1, schedSubmit: 1, schedWithdraw: 1, schedFixHolidays: 1, schedMergeManual: 1, schedApprove: 1, schedReject: 1, schedChangeDecide: 1 };
+  function cleanParams(params) { var o = {}; Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) o[k] = String(params[k]); }); return o; }
+  function enginePayload(fn, params) { var b = { fn: fn, params: cleanParams(params) }; if (S.dev) b.devToken = S.dev.token; else b.idToken = S.idToken || ''; return b; }
+  function apiGas(fn, params) {
     var body = new URLSearchParams();
     body.append('fn', fn);
     if (S.dev) body.append('devToken', S.dev.token);
     else body.append('idToken', S.idToken || '');
     Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) body.append(k, String(params[k])); });
-    return fetch(CFG.api + '?staff=1', { method: 'POST', body: body, redirect: 'follow', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。'; return j; });   // 後端只回 server_error，白話統一在這裡換
+    return fetch(CFG.api + '?staff=1', { method: 'POST', body: body, redirect: 'follow', cache: 'no-store' }).then(function (r) { return r.json(); });
+  }
+  function apiEngine(fn, params) {
+    return fetch(CFG.engine + '?action=staffCall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(enginePayload(fn, params)), cache: 'no-store' })
+      .then(function (r) { if (r.status >= 500) throw new Error('engine_' + r.status); return r.json(); })
+      .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response')) throw new Error(j.error); return j; });
+  }
+  function api(fn, params) {
+    var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function () { return apiGas(fn, params); }) : apiGas(fn, params);
+    return p.then(function (j) { if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。'; return j; });   // 後端只回 server_error，白話統一在這裡換
   }
 
   function devSetup() {
@@ -133,8 +144,10 @@
   }
   // staff.js 在 <head> 載入，#app 還不存在，等 DOM 好了再注入
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectTopbar); else injectTopbar();
-  function beacon(fn, params) {   // 離開頁面時的最後一送（fire-and-forget；GAS 的 doPost 在第一個 POST 就執行、不必等轉址）
-    try { if (!navigator.sendBeacon) return false; var body = new URLSearchParams(); body.append('fn', fn); if (S.dev) body.append('devToken', S.dev.token); else body.append('idToken', S.idToken || ''); Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) body.append(k, String(params[k])); }); return navigator.sendBeacon(CFG.api + '?staff=1', body); } catch (e) { return false; }
+  function beacon(fn, params) {   // 離開頁面時的最後一送（fire-and-forget）：寫入類送引擎 staffCall（text/plain 不觸發預檢）、其餘直打 GAS
+    try { if (!navigator.sendBeacon) return false;
+      if (WRITE_FNS[fn] && CFG.engine) return navigator.sendBeacon(CFG.engine + '?action=staffCall', new Blob([JSON.stringify(enginePayload(fn, params))], { type: 'text/plain' }));
+      var body = new URLSearchParams(); body.append('fn', fn); if (S.dev) body.append('devToken', S.dev.token); else body.append('idToken', S.idToken || ''); Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) body.append(k, String(params[k])); }); return navigator.sendBeacon(CFG.api + '?staff=1', body); } catch (e) { return false; }
   }
   window.STAFF = { S: S, CFG: CFG, beacon: beacon, qs: qs, esc: esc, $: $, fmtDate: fmtDate, showErr: showErr, errText: errText, api: api, init: init, cacheGet: cacheGet, cacheSet: cacheSet, locate: locate, distanceM: distanceM, openExternal: openExternal, href: href };
 })();
