@@ -4,5 +4,5 @@ window.STAFF_CFG = {
   api: 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec',
   engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api',
   legacyApp: 'https://script.google.com/macros/s/AKfycbyc-_0HKpg-LyBv0oNR54OzlYGqNhbwz32CyInz5UpmvfzEo42-zmTQ1qTb_KJwOCeo/exec',
-  version: 'staff v0.27.1'
+  version: 'staff v0.27.2'
 };

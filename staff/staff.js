@@ -35,7 +35,7 @@
   function apiEngine(fn, params) {
     return fetch(CFG.engine + '?action=staffCall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(enginePayload(fn, params)), cache: 'no-store' })
       .then(function (r) { if (r.status >= 500) throw fallbackErr('engine_' + r.status); return r.json(); })
-      .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response' || j.error === 'not_staff' || j.error === 'engine_not_configured')) throw fallbackErr(j.error); return j; });
+      .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response' || j.error === 'not_staff' || j.error === 'engine_not_configured' || j.error === 'no_token' || j.error === 'emp_not_found' || j.error === 'fn_not_allowed')) throw fallbackErr(j.error); return j; });   // no_token＝GAS 不認引擎鑰（2026-10-25 逸琳回報卡住實案）：一律退回直打，不能讓員工卡住
   }
   function api(fn, params) {
     var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function (e) { if (e && e.fallback) return apiGas(fn, params); throw e; }) : apiGas(fn, params);
