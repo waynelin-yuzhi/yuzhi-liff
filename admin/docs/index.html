@@ -128,7 +128,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       var paper = r.stampedAt ? '用印寄出 ' + r.stampedAt + (r.returnedAt ? '・寄回 ' + r.returnedAt : '') : '';
       return '<div class="grp"><div class="h"><span>' + esc(r.target || '(未命名)') + '<span class="chip ' + conCls(r.status) + '">' + esc(r.status) + '</span></span><span class="sum">' + esc(amt) + '</span></div>'
         + '<div class="ln"><span>' + esc(r.typeName) + (r.project ? '　' + esc(r.project) : '') + '</span><span class="m">' + esc(r.contractNo) + (r.quoteNo ? '　' + esc(r.quoteNo) : '') + '</span></div>'
-        + (r.start || r.end ? '<div class="ln"><span class="m">合約期 ' + esc(r.start) + ' 至 ' + esc(r.end) + (r.deposit && r.deposit !== '0' ? '　押金 ' + esc(moneyStr(r.deposit)) : '') + '</span></div>' : '')
+        + (r.start || r.end ? '<div class="ln"><span class="m">' + (r.end ? '合約期 ' + esc(r.start) + ' 至 ' + esc(r.end) : '合約起 ' + esc(r.start)) + (r.deposit && r.deposit !== '0' ? '　押金 ' + esc(moneyStr(r.deposit)) : '') + '</span></div>' : '')
         + '<div class="ln"><span class="m">建立 ' + esc(r.createdAt) + (r.signedAt ? '　簽署 ' + esc(r.signedAt) + (r.signer ? '（' + esc(r.signer) + '）' : '') : '') + '</span></div>'
         + (paper ? '<div class="ln"><span class="m">' + esc(paper) + (r.paperNote ? '　' + esc(r.paperNote) : '') + '</span></div>' : '')
         + '<div>' + link(r.signed ? '已簽合約 PDF' : '合約 PDF', r.pdfViewUrl) + link('簽署頁', r.signUrl) + '</div></div>';
