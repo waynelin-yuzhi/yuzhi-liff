@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>押金與合約 ｜ 植間後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--page-bg:#EFEEE9;--card:#fff;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--page-bg);color:var(--ink);line-height:1.6;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px;flex:1}
+.top a.btn,.top button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:none}
+main{max-width:860px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--sage);margin-bottom:8px}
+.note{font-size:13px;color:var(--ink-60)}
+input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px;background:#fff}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button{flex:1;padding:8px;border:1px solid var(--ink-20);border-radius:8px;background:#fff;font-size:13px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.tabs button.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chips button{padding:5px 11px;border:1px solid var(--ink-20);border-radius:14px;background:#fff;font-size:12px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.chips button.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--ink-20);border-radius:10px;padding:10px 6px;text-align:center}
+.stat .v{font-size:20px;font-weight:500;color:var(--sage)}
+.stat .l{font-size:11px;color:var(--ink-60);letter-spacing:.04em}
+.grp{padding:10px 0;border-top:1px solid var(--ink-20)}
+.grp:first-child{border-top:none}
+.grp .h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-weight:500;font-size:15px}
+.grp .h .sum{color:var(--sage);font-size:14px;white-space:nowrap}
+.ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;color:var(--ink);flex-wrap:wrap}
+.ln .m{color:var(--ink-60);font-size:12px}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em;margin-left:6px;vertical-align:middle}
+.chip.ok{background:var(--sage-tint);color:var(--sage-deep)}
+.chip.warn{background:var(--amber-tint);color:var(--amber)}
+.chip.bad{background:var(--terra-tint);color:var(--terra)}
+.chip.mute{background:#EEE;color:var(--ink-60)}
+.lk{display:inline-block;margin:4px 10px 0 0;font-size:12.5px;color:var(--sage);text-decoration:none;border:1px solid var(--sage);border-radius:6px;padding:3px 9px}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
+.ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">植間後台｜押金與合約</span><a class="btn" id="gasLink" href="#" target="_blank">新增／改狀態</a><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入後台</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+  <div id="app" style="display:none">
+    <div class="tabs"><button data-t="deposits" class="on">押金台帳</button><button data-t="contracts">合約清單</button></div>
+    <div class="chips" id="chips"></div>
+    <input type="search" id="q" placeholder="搜尋客戶、編號、項目">
+    <div class="stats" id="stats"></div>
+    <div class="card" id="list"><div class="ld">載入中</div></div>
+  </div>
+  <div class="foot">此頁只讀（引擎鏡像、最長落後 5 分）；新增押金、標已收／退還、合約用印寄出一律在右上角原頁。<br>植間設計股份有限公司</div>
+</main>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api', gas: 'https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function money(n) { return 'NT$ ' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+  function moneyStr(s) { var n = Number(String(s || '').replace(/[^\d.]/g, '')); return n ? money(n) : ''; }
+  function safeUrl(u) { return /^https:\/\//.test(String(u || '')) ? String(u) : ''; }
+  var D = { tab: 'deposits', data: {}, q: '', seq: 0, filter: { deposits: 'all', contracts: 'live' } };
+  var GAS_PAGE = { deposits: '?page=deposits', contracts: '?page=contract' };
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  function api(payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      return fetch(CFG.engine + '?action=adminDocs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function hit(parts) { if (!D.q) return true; return parts.join(' ').toLowerCase().indexOf(D.q) >= 0; }
+  function link(label, url) { var u = safeUrl(url); return u ? '<a class="lk" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(label) + '</a>' : ''; }
+  function depCls(st) { return st === '持有中' ? 'ok' : st === '待收' ? 'warn' : st === '已扣抵' ? 'bad' : 'mute'; }
+  function conCls(st) { return st === '已簽' || st === '已完成' ? 'ok' : st === '待簽' || st === '用印寄出' ? 'warn' : 'mute'; }
+  function chips(defs) {
+    var cur = D.filter[D.tab];
+    $('chips').innerHTML = defs.map(function (d) { return '<button data-f="' + esc(d[0]) + '"' + (cur === d[0] ? ' class="on"' : '') + '>' + esc(d[1]) + (d[2] != null ? ' ' + d[2] : '') + '</button>'; }).join('');
+    Array.prototype.forEach.call($('chips').querySelectorAll('button'), function (b) { b.onclick = function () { D.filter[D.tab] = b.getAttribute('data-f'); render(); }; });
+  }
+  function renderDeposits(d) {
+    var items = d.items || [];
+    var cnt = function (st) { return items.filter(function (r) { return r.status === st; }).length; };
+    chips([['all', '全部', items.length], ['持有中', '持有中', cnt('持有中')], ['待收', '待收', cnt('待收')], ['已退還', '已退還', cnt('已退還')], ['已扣抵', '已扣抵', cnt('已扣抵')]]);
+    var f = D.filter.deposits;
+    var rows = items.filter(function (r) { return (f === 'all' || r.status === f) && hit([r.customer, r.depId, r.item, r.note, r.status]); });
+    var holding = items.filter(function (r) { return r.status === '持有中' || r.status === '待收'; });
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + esc(money(d.holdingTotal || 0)) + '</div><div class="l">持有中＋待收</div></div><div class="stat"><div class="v">' + holding.length + '</div><div class="l">持有筆數</div></div><div class="stat"><div class="v">' + cnt('已退還') + '</div><div class="l">已退還</div></div>';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有符合的押金紀錄</div>'; return; }
+    $('list').innerHTML = rows.map(function (r) {
+      return '<div class="grp"><div class="h"><span>' + esc(r.customer || '(未命名)') + '<span class="chip ' + depCls(r.status) + '">' + esc(r.status) + '</span></span><span class="sum">' + esc(money(r.amount)) + '</span></div>'
+        + '<div class="ln"><span>' + esc(r.item) + '</span><span class="m">' + esc(r.depId) + '　' + esc(r.date) + '</span></div>'
+        + (r.refundDate || r.refundVia ? '<div class="ln"><span class="m">退還 ' + esc(r.refundDate) + (r.refundVia ? '・' + esc(r.refundVia) : '') + '</span></div>' : '')
+        + (r.note ? '<div class="ln"><span class="m">' + esc(r.note) + '</span></div>' : '')
+        + '<div>' + link('收據', r.receiptUrl) + '</div></div>';
+    }).join('');
+  }
+  function renderContracts(d) {
+    var items = d.items || [];
+    var live = items.filter(function (r) { return r.status !== '作廢'; });
+    var cnt = function (st) { return items.filter(function (r) { return r.status === st; }).length; };
+    chips([['live', '有效', live.length], ['待簽', '待簽', cnt('待簽')], ['已簽', '已簽', cnt('已簽')], ['用印寄出', '用印寄出', cnt('用印寄出')], ['已完成', '已完成', cnt('已完成')], ['作廢', '作廢', cnt('作廢')], ['all', '全部', items.length]]);
+    var f = D.filter.contracts;
+    var rows = items.filter(function (r) { return (f === 'all' || (f === 'live' ? r.status !== '作廢' : r.status === f)) && hit([r.target, r.contractNo, r.typeName, r.project, r.quoteNo, r.signer, r.status]); });
+    var today = new Date(); var ymd = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    var running = live.filter(function (r) { return (r.status === '已簽' || r.status === '用印寄出' || r.status === '已完成') && (!r.end || r.end >= ymd); }).length;
+    $('stats').innerHTML = '<div class="stat"><div class="v">' + cnt('待簽') + '</div><div class="l">待簽</div></div><div class="stat"><div class="v">' + running + '</div><div class="l">已簽、合約期內</div></div><div class="stat"><div class="v">' + live.length + '</div><div class="l">有效合約（不含作廢）</div></div>';
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有符合的合約</div>'; return; }
+    $('list').innerHTML = rows.map(function (r) {
+      var amt = r.monthly ? moneyStr(r.monthly) + '／月' : (r.fee ? moneyStr(r.fee) : '');
+      var paper = r.stampedAt ? '用印寄出 ' + r.stampedAt + (r.returnedAt ? '・寄回 ' + r.returnedAt : '') : '';
+      return '<div class="grp"><div class="h"><span>' + esc(r.target || '(未命名)') + '<span class="chip ' + conCls(r.status) + '">' + esc(r.status) + '</span></span><span class="sum">' + esc(amt) + '</span></div>'
+        + '<div class="ln"><span>' + esc(r.typeName) + (r.project ? '　' + esc(r.project) : '') + '</span><span class="m">' + esc(r.contractNo) + (r.quoteNo ? '　' + esc(r.quoteNo) : '') + '</span></div>'
+        + (r.start || r.end ? '<div class="ln"><span class="m">合約期 ' + esc(r.start) + ' 至 ' + esc(r.end) + (r.deposit && r.deposit !== '0' ? '　押金 ' + esc(moneyStr(r.deposit)) : '') + '</span></div>' : '')
+        + '<div class="ln"><span class="m">建立 ' + esc(r.createdAt) + (r.signedAt ? '　簽署 ' + esc(r.signedAt) + (r.signer ? '（' + esc(r.signer) + '）' : '') : '') + '</span></div>'
+        + (paper ? '<div class="ln"><span class="m">' + esc(paper) + (r.paperNote ? '　' + esc(r.paperNote) : '') + '</span></div>' : '')
+        + '<div>' + link(r.signed ? '已簽合約 PDF' : '合約 PDF', r.pdfViewUrl) + link('簽署頁', r.signUrl) + '</div></div>';
+    }).join('');
+  }
+  function render() {
+    var d = D.data[D.tab]; if (!d) return;
+    if (D.tab === 'deposits') renderDeposits(d); else renderContracts(d);
+  }
+  function load(tab) {
+    D.tab = tab; var seq = ++D.seq;
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) { b.className = b.getAttribute('data-t') === tab ? 'on' : ''; });
+    $('gasLink').href = CFG.gas + GAS_PAGE[tab];
+    if (D.data[tab]) { render(); return; }
+    $('stats').innerHTML = ''; $('chips').innerHTML = ''; $('list').innerHTML = '<div class="ld">載入中</div>';
+    api({ op: tab }).then(function (d) {
+      if (seq !== D.seq) return;
+      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
+      D.data[tab] = d; render();
+    }).catch(function (e) { if (seq !== D.seq) return; $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) { b.onclick = function () { load(b.getAttribute('data-t')); }; });
+  $('q').addEventListener('input', function () { D.q = this.value.trim().toLowerCase(); render(); });
+  $('gasLink').href = CFG.gas + GAS_PAGE.deposits;
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); load('deposits'); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); load('deposits'); } else showGate(); });
+})();
+</script>
+</body>
+</html>
