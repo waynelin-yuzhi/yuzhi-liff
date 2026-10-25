@@ -120,7 +120,8 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     var f = D.filter.contracts;
     var rows = items.filter(function (r) { return (f === 'all' || (f === 'live' ? r.status !== '作廢' : r.status === f)) && hit([r.target, r.contractNo, r.typeName, r.project, r.quoteNo, r.signer, r.status]); });
     var today = new Date(); var ymd = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    var running = live.filter(function (r) { return (r.status === '已簽' || r.status === '用印寄出' || r.status === '已完成') && (!r.end || r.end >= ymd); }).length;
+    var normD = function (d) { d = String(d || '').replace(/\//g, '-'); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''; };
+    var running = live.filter(function (r) { var e = normD(r.end); return (r.status === '已簽' || r.status === '用印寄出' || r.status === '已完成') && (!e || e >= ymd); }).length;
     $('stats').innerHTML = '<div class="stat"><div class="v">' + cnt('待簽') + '</div><div class="l">待簽</div></div><div class="stat"><div class="v">' + running + '</div><div class="l">已簽、合約期內</div></div><div class="stat"><div class="v">' + live.length + '</div><div class="l">有效合約（不含作廢）</div></div>';
     if (!rows.length) { $('list').innerHTML = '<div class="ld">沒有符合的合約</div>'; return; }
     $('list').innerHTML = rows.map(function (r) {
@@ -128,7 +129,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       var paper = r.stampedAt ? '用印寄出 ' + r.stampedAt + (r.returnedAt ? '・寄回 ' + r.returnedAt : '') : '';
       return '<div class="grp"><div class="h"><span>' + esc(r.target || '(未命名)') + '<span class="chip ' + conCls(r.status) + '">' + esc(r.status) + '</span></span><span class="sum">' + esc(amt) + '</span></div>'
         + '<div class="ln"><span>' + esc(r.typeName) + (r.project ? '　' + esc(r.project) : '') + '</span><span class="m">' + esc(r.contractNo) + (r.quoteNo ? '　' + esc(r.quoteNo) : '') + '</span></div>'
-        + (r.start || r.end ? '<div class="ln"><span class="m">' + (r.end ? '合約期 ' + esc(r.start) + ' 至 ' + esc(r.end) : '合約起 ' + esc(r.start)) + (r.deposit && r.deposit !== '0' ? '　押金 ' + esc(moneyStr(r.deposit)) : '') + '</span></div>' : '')
+        + (r.start || r.end ? '<div class="ln"><span class="m">' + (r.end ? '合約期 ' + esc(r.start) + ' 至 ' + esc(r.end) : '合約起 ' + esc(r.start)) + (moneyStr(r.deposit) ? '　押金 ' + esc(moneyStr(r.deposit)) : '') + '</span></div>' : '')
         + '<div class="ln"><span class="m">建立 ' + esc(r.createdAt) + (r.signedAt ? '　簽署 ' + esc(r.signedAt) + (r.signer ? '（' + esc(r.signer) + '）' : '') : '') + '</span></div>'
         + (paper ? '<div class="ln"><span class="m">' + esc(paper) + (r.paperNote ? '　' + esc(r.paperNote) : '') + '</span></div>' : '')
         + '<div>' + link(r.signed ? '已簽合約 PDF' : '合約 PDF', r.pdfViewUrl) + link('簽署頁', r.signUrl) + '</div></div>';
