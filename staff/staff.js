@@ -29,13 +29,16 @@
     Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) body.append(k, String(params[k])); });
     return fetch(CFG.api + '?staff=1', { method: 'POST', body: body, redirect: 'follow', cache: 'no-store' }).then(function (r) { return r.json(); });
   }
+  // 只有「引擎有回應、但它那端出問題」才退回直打 GAS（5xx／連不上 GAS／並行期鏡像還沒跟上的 not_staff）；
+  // 手機斷線這種沒有回應的錯不重送——引擎可能已經替你寫進去了，重送會變兩筆（審查 MEDIUM 2026-10-25）
+  function fallbackErr(code) { var e = new Error(code); e.fallback = true; return e; }
   function apiEngine(fn, params) {
     return fetch(CFG.engine + '?action=staffCall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(enginePayload(fn, params)), cache: 'no-store' })
-      .then(function (r) { if (r.status >= 500) throw new Error('engine_' + r.status); return r.json(); })
-      .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response')) throw new Error(j.error); return j; });
+      .then(function (r) { if (r.status >= 500) throw fallbackErr('engine_' + r.status); return r.json(); })
+      .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response' || j.error === 'not_staff' || j.error === 'engine_not_configured')) throw fallbackErr(j.error); return j; });
   }
   function api(fn, params) {
-    var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function () { return apiGas(fn, params); }) : apiGas(fn, params);
+    var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function (e) { if (e && e.fallback) return apiGas(fn, params); throw e; }) : apiGas(fn, params);
     return p.then(function (j) { if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。'; return j; });   // 後端只回 server_error，白話統一在這裡換
   }
 

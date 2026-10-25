@@ -440,6 +440,8 @@
       return { seq: z.seq, name: z.name, caption: z.caption, beforePhotos: z.beforePhotos.slice(), afterPhotos: z.afterPhotos.slice(), issues: z.issues.filter(function (x) { return x.desc; }) };
     });
     var proposals = Object.keys(A.proposals).map(function (ref) { return { ref: ref, proposalType: A.proposals[ref].proposalType, note: A.proposals[ref].note || '' }; });
+    // 送出前先配好 reportId（同 GAS 格式 CR-員工-時間）：之後任何重送都是覆寫同一筆、不會產生第二份報告
+    if (!A.st.reportId) { var meE = (T.S && T.S.me && T.S.me.emp && T.S.me.emp.empId) || 'EMP'; var dN = new Date(); var p2 = function (n) { return (n < 10 ? '0' : '') + n; }; A.st.reportId = 'CR-' + meE + '-' + dN.getFullYear() + p2(dN.getMonth() + 1) + p2(dN.getDate()) + p2(dN.getHours()) + p2(dN.getMinutes()) + p2(dN.getSeconds()); }
     var payload = { reportId: A.st.reportId || '', clientId: A.st.clientId, clientName: A.st.clientName, reportDate: A.st.reportDate, startTime: A.st.startTime, endTime: A.st.endTime, tasks: A.st.tasks, notes: A.st.notes, zones: zones, issueProposals: proposals };
     var rec = { clientName: A.st.clientName || '報告', reportDate: A.st.reportDate, payload: payload, photos: photos, total: photos.length, done: photos.filter(function (p) { return p.url; }).length, status: 'pending', createdAt: Date.now() };
     queuePut(rec).then(function () {
