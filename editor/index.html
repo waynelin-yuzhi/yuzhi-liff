@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#5F6E58">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="剪輯師">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>植間剪輯師</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+:root{--ink:#1B1A17;--ink-60:rgba(27,26,23,.6);--ink-20:rgba(27,26,23,.18);--paper:#F2EDE3;--card:#FFFCF5;--sage:#5F6E58;--sage-tint:#E9EDE3;--sage-deep:#4F6147;--amber:#B8893E;--amber-tint:#F5EBD7;--terra:#B85A3D;--terra-tint:#F5DDD2;--slate:#6B7A85;--slate-tint:#E6EBEE;--font:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--paper);color:var(--ink);line-height:1.55;display:flex;flex-direction:column;min-height:100vh}
+.top{background:var(--sage);color:#fff;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:10}
+.top .brand{font-weight:500;letter-spacing:.06em;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);border-radius:6px;background:transparent;color:#fff;font-size:12px;font-family:inherit;cursor:pointer}
+main{flex:1;max-width:720px;width:100%;margin:0 auto;padding:12px 12px 20px}
+.card{background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card h2{font-size:12.5px;font-weight:500;letter-spacing:.08em;color:var(--sage);margin-bottom:6px}
+.note{font-size:12.5px;color:var(--ink-60)}
+input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;margin-bottom:8px;background:#fff}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:var(--sage);color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+.btn.sec{background:#fff;color:var(--sage);border:1px solid var(--sage)}
+.btn.sm{padding:6px 10px;font-size:12.5px}
+.btn[disabled]{opacity:.5}
+.chip{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;letter-spacing:.04em;vertical-align:middle;white-space:nowrap}
+.chip.ask{background:var(--amber-tint);color:var(--amber)} .chip.prop{background:var(--slate-tint);color:var(--slate)} .chip.ok{background:var(--sage-tint);color:var(--sage-deep)} .chip.mute{background:#EEE;color:var(--ink-60)} .chip.bad{background:var(--terra-tint);color:var(--terra)}
+.row{display:flex;gap:8px;align-items:center}
+.row .grow{flex:1}
+/* 清單 */
+.th{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--ink-20);cursor:pointer}
+.th:first-child{border-top:none}
+.th .t{font-weight:500;font-size:15px}
+.th .m{font-size:12px;color:var(--ink-60)}
+.ld{text-align:center;color:var(--ink-60);padding:26px 0;font-size:13px}
+/* 對話 */
+.brief{background:#fff;border:1px solid var(--sage);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.brief .hd{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--sage);letter-spacing:.06em;cursor:pointer}
+.brief .hd .v{color:var(--ink-60);font-size:11.5px;margin-left:auto}
+.brief .bd{margin-top:8px;font-size:13px}
+.brief .sec{margin:6px 0}
+.brief .k{font-size:11px;color:var(--ink-60);letter-spacing:.06em}
+.brief ol{padding-left:18px}
+.brief .cap{font-weight:500}
+.brief .en{color:var(--ink-60);font-size:12px}
+.msgs{display:flex;flex-direction:column;gap:8px;padding:4px 0 90px}
+.msg{max-width:88%;padding:9px 12px;border-radius:14px;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.msg.wayne{align-self:flex-end;background:var(--sage);color:#fff;border-bottom-right-radius:4px}
+.msg.editor{align-self:flex-start;background:#fff;border:1px solid var(--ink-20);border-bottom-left-radius:4px}
+.msg.system{align-self:center;background:transparent;color:var(--ink-60);font-size:12px;text-align:center}
+.msg .ts{display:block;font-size:10.5px;opacity:.6;margin-top:4px}
+.typing{align-self:flex-start;color:var(--ink-60);font-size:12.5px;padding:4px 6px}
+.composer{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--ink-20);padding:8px 10px;padding-bottom:calc(8px + env(safe-area-inset-bottom));z-index:9}
+.composer .in{max-width:720px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;min-height:42px;max-height:120px;padding:10px 12px;border:1px solid var(--ink-20);border-radius:12px;font-size:16px;font-family:inherit;background:#fff;resize:none}
+.actions{max-width:720px;margin:0 auto 6px;display:flex;gap:6px;flex-wrap:wrap}
+.notes li{font-size:13px;padding:6px 0;border-top:1px solid var(--ink-20);display:flex;gap:8px;align-items:flex-start}
+.notes li:first-child{border-top:none}
+.notes li span{flex:1}
+.notes li button{border:none;background:transparent;color:var(--terra);font-size:12px;cursor:pointer;font-family:inherit}
+.foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:14px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="top"><button id="back" style="display:none">‹ 清單</button><span class="brand" id="brand">植間剪輯師</span><button id="notesBtn" style="display:none">導演筆記</button><button id="leave" style="display:none">離開</button></div>
+<main>
+  <div id="gate" class="card" style="display:none;max-width:420px;margin:40px auto">
+    <h2>進入</h2>
+    <div class="note" style="margin-bottom:10px">輸入公司信箱，收驗證碼後進入。加到手機桌面後下次直接開。</div>
+    <input type="email" id="gateEmail" placeholder="信箱" autocomplete="email">
+    <button class="btn" id="gateSend">寄驗證碼</button>
+    <div id="otpRow" style="display:none;margin-top:10px"><input type="text" id="gateCode" placeholder="驗證碼" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="gateVerify">進入</button></div>
+    <div class="note" id="gateMsg" style="margin-top:8px"></div>
+  </div>
+
+  <div id="vList" style="display:none">
+    <div class="card">
+      <h2>開一支新片子</h2>
+      <input type="text" id="newTitle" placeholder="片名或案場，例如：保樂力加 10月工作紀錄">
+      <textarea id="newText" placeholder="先講你的初步想法（可空白，剪輯師會先問你）" style="width:100%;min-height:70px;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;margin-bottom:8px"></textarea>
+      <div class="row"><span class="note grow">送出後剪輯師會回你，約 10 到 20 秒。</span><button class="btn" id="newGo">開始討論</button></div>
+    </div>
+    <div class="card" id="list"><div class="ld">載入中</div></div>
+    <div class="foot">一支片一條對話；腳本定稿後工單交剪片工人，成片進核可卡。<br>植間設計股份有限公司</div>
+  </div>
+
+  <div id="vThread" style="display:none">
+    <div class="brief" id="briefBox" style="display:none"></div>
+    <div class="msgs" id="msgs"></div>
+  </div>
+
+  <div id="vNotes" style="display:none">
+    <div class="card">
+      <h2>導演筆記</h2>
+      <div class="note" style="margin-bottom:8px">你的偏好，剪輯師每次都帶著。它從對話裡學到的會自動加進來，不對的直接刪。</div>
+      <div class="row"><input type="text" id="noteText" placeholder="例如：收尾字卡不要用驚嘆號" style="margin:0"><button class="btn sm" id="noteAdd">加</button></div>
+    </div>
+    <div class="card"><ul class="notes" id="notes"><li class="ld">載入中</li></ul></div>
+  </div>
+</main>
+
+<div class="composer" id="composer" style="display:none">
+  <div class="actions" id="actions"></div>
+  <div class="in"><textarea id="say" placeholder="跟剪輯師說…" rows="1"></textarea><button class="btn" id="send">送出</button></div>
+</div>
+
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4',
+    engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api' };
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function fmt(ts) { var d = new Date(ts); if (isNaN(d)) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  var D = { view: 'list', threads: [], cur: null, briefOpen: true, busy: false };
+  function show(v) {
+    D.view = v;
+    $('gate').style.display = 'none';
+    $('vList').style.display = v === 'list' ? 'block' : 'none';
+    $('vThread').style.display = v === 'thread' ? 'block' : 'none';
+    $('vNotes').style.display = v === 'notes' ? 'block' : 'none';
+    $('composer').style.display = v === 'thread' ? 'block' : 'none';
+    $('back').style.display = v === 'list' ? 'none' : 'inline-block';
+    $('notesBtn').style.display = v === 'list' ? 'inline-block' : 'none';
+    $('leave').style.display = v === 'list' ? 'inline-block' : 'none';
+    $('brand').textContent = v === 'thread' && D.cur ? (D.cur.thread.title || '片子') : v === 'notes' ? '導演筆記' : '植間剪輯師';
+    if (v !== 'thread') try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  }
+  function showGate() { $('gate').style.display = 'block'; $('vList').style.display = 'none'; $('vThread').style.display = 'none'; $('vNotes').style.display = 'none'; $('composer').style.display = 'none'; $('leave').style.display = 'none'; $('notesBtn').style.display = 'none'; $('back').style.display = 'none'; }
+  function api(action, payload) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
+      var ctl = new AbortController(); var tm = setTimeout(function () { ctl.abort(); }, 90000);
+      return fetch(CFG.engine + '?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}), signal: ctl.signal }).finally(function () { clearTimeout(tm); });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  function chipOf(st, job) {
+    if (job === 'cutting') return '<span class="chip prop">剪片中</span>';
+    var m = { '詢問中': 'ask', '已提案': 'prop', '已定稿': 'ok', '剪片中': 'prop', '待核可': 'ok', '已排程': 'ok', '已發佈': 'mute', '取消': 'bad' };
+    return '<span class="chip ' + (m[st] || 'mute') + '">' + esc(st) + '</span>';
+  }
+  // 清單
+  function loadList() {
+    show('list');
+    api('editor', { op: 'list' }).then(function (d) {
+      if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
+      D.threads = d.threads || [];
+      if (!D.threads.length) { $('list').innerHTML = '<div class="ld">還沒有片子。上面開第一支。</div>'; return; }
+      $('list').innerHTML = D.threads.map(function (t) {
+        return '<div class="th" data-id="' + esc(t.id) + '"><div><div class="t">' + esc(t.title || '片子') + '</div><div class="m">' + esc(t.site || '') + (t.brief_ver ? '　腳本第 ' + t.brief_ver + ' 版' : '') + '　' + esc(fmt(t.last_msg_at)) + '</div></div><div>' + chipOf(t.status, t.job) + '</div></div>';
+      }).join('');
+      Array.prototype.forEach.call($('list').querySelectorAll('.th'), function (el) { el.onclick = function () { openThread(el.getAttribute('data-id')); }; });
+    }).catch(function (e) { $('list').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  $('newGo').onclick = function () {
+    var title = $('newTitle').value.trim(), text = $('newText').value.trim();
+    if (!title && !text) { $('newTitle').focus(); return; }
+    var btn = this; btn.disabled = true; btn.textContent = text ? '剪輯師思考中…' : '開啟中…';
+    api('editor', { op: 'new', title: title || text.slice(0, 30), text: text }).then(function (d) {
+      btn.disabled = false; btn.textContent = '開始討論';
+      if (!d || !d.ok) { alert('沒開成：' + ((d && d.error) || '連線失敗')); return; }
+      $('newTitle').value = ''; $('newText').value = '';
+      if (d.chatError) alert('片子開好了，但剪輯師這次沒回話（' + d.chatError + '）。進去再送一次。');
+      renderThread(d); show('thread');
+    }).catch(function (e) { btn.disabled = false; btn.textContent = '開始討論'; alert(e.message || '連線失敗'); });
+  };
+  // 對話
+  function openThread(id) {
+    D.cur = null; $('msgs').innerHTML = '<div class="ld">載入中</div>'; $('briefBox').style.display = 'none'; $('actions').innerHTML = ''; show('thread'); $('brand').textContent = '載入中';
+    try { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(id)); } catch (e) {}
+    api('editor', { op: 'thread', id: id }).then(function (d) {
+      if (!d || !d.ok) { $('msgs').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
+      renderThread(d);
+    }).catch(function (e) { $('msgs').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
+  }
+  function renderBrief(b, ver) {
+    if (!b) { $('briefBox').style.display = 'none'; return; }
+    var body = (b.body || []).map(function (x) { return '<li>' + esc(x.shot) + (x.note ? '<span class="note">　' + esc(x.note) + '</span>' : '') + '</li>'; }).join('');
+    $('briefBox').style.display = 'block';
+    $('briefBox').innerHTML = '<div class="hd" id="briefHd">腳本卡　' + esc(b.template) + '・約 ' + esc(b.durationSec) + ' 秒' + (b.site ? '・' + esc(b.site) : '') + '<span class="v">第 ' + (ver || 1) + ' 版 ' + (D.briefOpen ? '收合' : '展開') + '</span></div>'
+      + '<div class="bd" style="display:' + (D.briefOpen ? 'block' : 'none') + '">'
+      + '<div class="sec"><div class="k">鉤子（前 3 秒）</div>' + esc(b.hook && b.hook.shot) + '<div class="cap">' + esc(b.hook && b.hook.text) + '</div></div>'
+      + '<div class="sec"><div class="k">主體</div><ol>' + body + '</ol></div>'
+      + '<div class="sec"><div class="k">收尾</div>' + esc(b.ending && b.ending.shot) + '<div class="cap">' + esc(b.ending && b.ending.captionZh) + '</div><div class="en">' + esc(b.ending && b.ending.captionEn) + '</div></div>'
+      + '<div class="sec"><div class="k">BGM</div>' + esc(b.bgm) + '</div>'
+      + (b.avoid && b.avoid.length ? '<div class="sec"><div class="k">忌諱</div>' + esc(b.avoid.join('、')) + '</div>' : '')
+      + (b.shootRequests && b.shootRequests.length ? '<div class="sec"><div class="k">建議補拍</div>' + esc(b.shootRequests.join('、')) + '</div>' : '')
+      + '</div>';
+    $('briefHd').onclick = function () { D.briefOpen = !D.briefOpen; renderBrief(b, ver); };
+  }
+  function renderThread(d) {
+    D.cur = d; var t = d.thread;
+    $('brand').textContent = t.title || '片子';
+    renderBrief(t.brief, t.brief_ver);
+    $('msgs').innerHTML = (d.messages || []).map(function (m) {
+      return '<div class="msg ' + esc(m.role) + '">' + esc(m.text) + (m.role !== 'system' ? '<span class="ts">' + esc(fmt(m.created_at)) + '</span>' : '') + '</div>';
+    }).join('') || '<div class="ld">還沒有對話</div>';
+    var acts = '';
+    if (t.brief && t.status !== '已定稿' && t.status !== '剪片中' && t.status !== '待核可' && t.status !== '已排程' && t.status !== '已發佈') acts += '<button class="btn sm" id="confirm">就這樣剪</button>';
+    if (t.brief && t.status === '已定稿') acts += '<span class="chip ok">已定稿，等剪片</span>';
+    if (t.status === '待核可') acts += '<span class="chip ok">成片在核可卡</span>';
+    acts += '<span class="grow"></span>';
+    if (t.status !== '取消' && t.status !== '已發佈') acts += '<button class="btn sm sec" id="cancel">不剪了</button>';
+    $('actions').innerHTML = acts;
+    if ($('confirm')) $('confirm').onclick = function () { if (!confirm('腳本定稿、開工單給剪片工人？')) return; busy(true); api('editor', { op: 'confirm', id: t.id }).then(function (r) { busy(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.detail) || (r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { busy(false); alert(e.message); }); };
+    if ($('cancel')) $('cancel').onclick = function () { if (!confirm('這支片不剪了？')) return; api('editor', { op: 'status', id: t.id, status: '取消' }).then(function (r) { if (r && r.ok) renderThread(r); }); };
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+  function busy(on) { D.busy = on; $('send').disabled = on; $('say').disabled = on; }
+  function sendMsg() {
+    var text = $('say').value.trim(); if (!text || !D.cur || D.busy) return;
+    var t = D.cur.thread; $('say').value = ''; $('say').style.height = 'auto';
+    $('msgs').insertAdjacentHTML('beforeend', '<div class="msg wayne">' + esc(text) + '</div><div class="typing" id="typing">剪輯師思考中…</div>');
+    window.scrollTo(0, document.body.scrollHeight); busy(true);
+    api('editor', { op: 'send', id: t.id, text: text }).then(function (d) {
+      busy(false);
+      if (!d || !d.ok) { var ty = $('typing'); if (ty) ty.textContent = '沒送出：' + ((d && d.error) || '連線失敗') + '，請再送一次'; $('say').value = text; return; }
+      if (d.chatError) { renderThread(d); $('msgs').insertAdjacentHTML('beforeend', '<div class="msg system">剪輯師這次沒回話（' + esc(d.detail || d.chatError) + '），再說一句試試</div>'); return; }
+      renderThread(d);
+    }).catch(function (e) { busy(false); var ty = $('typing'); if (ty) ty.textContent = (e.message || '連線失敗') + '，請再送一次'; $('say').value = text; });
+  }
+  $('send').onclick = sendMsg;
+  $('say').addEventListener('input', function () { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px'; });
+  // 筆記
+  function loadNotes() {
+    show('notes');
+    api('editorNotes', { op: 'list' }).then(renderNotes).catch(function (e) { $('notes').innerHTML = '<li class="ld">' + esc(e.message) + '</li>'; });
+  }
+  function renderNotes(d) {
+    if (!d || !d.ok) { $('notes').innerHTML = '<li class="ld">載入失敗</li>'; return; }
+    var ns = d.notes || [];
+    $('notes').innerHTML = ns.length ? ns.map(function (n) { return '<li><span>' + esc(n.text) + '</span><button data-id="' + esc(n.id) + '">刪</button></li>'; }).join('') : '<li class="ld">還沒有筆記</li>';
+    Array.prototype.forEach.call($('notes').querySelectorAll('button'), function (b) { b.onclick = function () { api('editorNotes', { op: 'del', noteId: Number(b.getAttribute('data-id')) }).then(renderNotes); }; });
+  }
+  $('noteAdd').onclick = function () { var v = $('noteText').value.trim(); if (!v) return; $('noteText').value = ''; api('editorNotes', { op: 'add', text: v }).then(renderNotes); };
+  $('notesBtn').onclick = loadNotes;
+  $('back').onclick = function () { loadList(); };
+  // 登入
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; btn.disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) { btn.disabled = false; $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）'; if (!r.error) $('otpRow').style.display = 'block'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; btn.disabled = true;
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } boot(); });
+  };
+  $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
+  function boot() { var t = new URLSearchParams(location.search).get('t'); if (t) openThread(t); else loadList(); }
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) boot(); else showGate(); });
+})();
+</script>
+</body>
+</html>
