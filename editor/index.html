@@ -166,8 +166,9 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
       btn.disabled = false; btn.textContent = '開始討論';
       if (!d || !d.ok) { alert('沒開成：' + ((d && d.error) || '連線失敗')); return; }
       $('newTitle').value = ''; $('newText').value = '';
-      if (d.chatError) alert('片子開好了，但剪輯師這次沒回話（' + d.chatError + '）。進去再送一次。');
+      if (!d.thread) { openThread(d.id); return; }
       renderThread(d); show('thread');
+      if (d.chatError) $('msgs').insertAdjacentHTML('beforeend', '<div class="msg system">剪輯師這次沒回話（' + esc(d.detail || d.chatError) + '），再說一句試試</div>');
     }).catch(function (e) { btn.disabled = false; btn.textContent = '開始討論'; alert(e.message || '連線失敗'); });
   };
   // 對話
@@ -195,21 +196,27 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     $('briefHd').onclick = function () { D.briefOpen = !D.briefOpen; renderBrief(b, ver); };
   }
   function renderThread(d) {
+    if (!d || !d.thread) { if (d && d.id) openThread(d.id); else loadList(); return; }
     D.cur = d; var t = d.thread;
     $('brand').textContent = t.title || '片子';
     renderBrief(t.brief, t.brief_ver);
     $('msgs').innerHTML = (d.messages || []).map(function (m) {
       return '<div class="msg ' + esc(m.role) + '">' + esc(m.text) + (m.role !== 'system' ? '<span class="ts">' + esc(fmt(m.created_at)) + '</span>' : '') + '</div>';
     }).join('') || '<div class="ld">還沒有對話</div>';
+    var jobs = d.jobs || [];
+    var job = function (st) { return jobs.some(function (j) { return j.status === st; }); };
     var acts = '';
-    if (t.brief && t.status !== '已定稿' && t.status !== '剪片中' && t.status !== '待核可' && t.status !== '已排程' && t.status !== '已發佈') acts += '<button class="btn sm" id="confirm">就這樣剪</button>';
-    if (t.brief && t.status === '已定稿') acts += '<span class="chip ok">已定稿，等剪片</span>';
-    if (t.status === '待核可') acts += '<span class="chip ok">成片在核可卡</span>';
+    var closed = t.status === '取消' || t.status === '已發佈' || t.status === '已排程';
+    if (job('cutting')) acts += '<span class="chip prop">剪片中</span>';
+    else if (job('submitted') || t.status === '待核可') acts += '<span class="chip ok">成片在核可卡</span>';
+    else if (job('queued')) acts += '<span class="chip ok">已定稿，排隊等剪</span>';
+    else if (t.brief && !closed) acts += '<button class="btn sm" id="confirm">就這樣剪</button>';
     acts += '<span class="grow"></span>';
-    if (t.status !== '取消' && t.status !== '已發佈') acts += '<button class="btn sm sec" id="cancel">不剪了</button>';
+    if (!closed) acts += '<button class="btn sm sec" id="cancel">不剪了</button>';
     $('actions').innerHTML = acts;
-    if ($('confirm')) $('confirm').onclick = function () { if (!confirm('腳本定稿、開工單給剪片工人？')) return; busy(true); api('editor', { op: 'confirm', id: t.id }).then(function (r) { busy(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.detail) || (r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { busy(false); alert(e.message); }); };
-    if ($('cancel')) $('cancel').onclick = function () { if (!confirm('這支片不剪了？')) return; api('editor', { op: 'status', id: t.id, status: '取消' }).then(function (r) { if (r && r.ok) renderThread(r); }); };
+    var lock = function (on) { ['confirm', 'cancel'].forEach(function (k) { if ($(k)) $(k).disabled = on; }); busy(on); };
+    if ($('confirm')) $('confirm').onclick = function () { if (!confirm('腳本定稿、開工單給剪片工人？')) return; lock(true); api('editor', { op: 'confirm', id: t.id }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.detail) || (r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
+    if ($('cancel')) $('cancel').onclick = function () { if (!confirm('這支片不剪了？排隊中的工單會一起撤掉。')) return; lock(true); api('editor', { op: 'status', id: t.id, status: '取消' }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
     window.scrollTo(0, document.body.scrollHeight);
   }
   function busy(on) { D.busy = on; $('send').disabled = on; $('say').disabled = on; }
