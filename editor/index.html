@@ -64,6 +64,12 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
 .notes li:first-child{border-top:none}
 .notes li span{flex:1}
 .notes li button{border:none;background:transparent;color:var(--terra);font-size:12px;cursor:pointer;font-family:inherit}
+.stages{display:flex;gap:4px;margin:6px 0 2px;flex-wrap:wrap}
+.stg{flex:1;min-width:46px;text-align:center;font-size:10.5px;padding:4px 2px;border-radius:6px;border:1px solid var(--ink-20);background:#fff;color:var(--ink-60)}
+.stg.done{background:var(--sage-tint);color:var(--sage-deep);border-color:transparent}
+.stg.running{background:var(--amber-tint);color:var(--amber);border-color:transparent}
+.stg.failed{background:var(--terra-tint);color:var(--terra);border-color:transparent}
+.deliv{font-size:12px;color:var(--sage);margin:2px 0 6px}
 .foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:14px;line-height:1.7}
 </style>
 </head>
@@ -206,6 +212,15 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     }).join('') || '<div class="ld">還沒有對話</div>';
     var jobs = d.jobs || [];
     var job = function (st) { return jobs.some(function (j) { return j.status === st; }); };
+    var STAGE_NAMES = { pick: '選段', cut: '剪接', grade: '調色', caption: '字卡', cover: '封面', publish: '上架' };
+    var activeJob = jobs.filter(function (j) { return j.status === 'queued' || j.status === 'cutting' || j.status === 'submitted' || j.status === 'done'; })[0];
+    var stageHtml = '';
+    if (activeJob) {
+      var stg = activeJob.stages || {};
+      stageHtml = (activeJob.deliverable ? '<div class="deliv">交付物：' + esc(activeJob.deliverable) + '</div>' : '') + '<div class="stages">' + (d.stages || ['pick', 'cut', 'grade', 'caption', 'cover', 'publish']).map(function (k) { var o = stg[k] || {}; var cls = o.status === 'done' ? 'done' : o.status === 'running' ? 'running' : o.status === 'failed' ? 'failed' : ''; return '<div class="stg ' + cls + '" title="' + esc(o.note || '') + '">' + esc(STAGE_NAMES[k] || k) + '</div>'; }).join('') + '</div>';
+      var failed = Object.keys(stg).filter(function (k) { return stg[k] && stg[k].status === 'failed'; })[0];
+      if (failed && stg[failed].note) stageHtml += '<div class="note" style="color:var(--terra)">卡在' + esc(STAGE_NAMES[failed] || failed) + '：' + esc(stg[failed].note) + '</div>';
+    }
     var acts = '';
     var closed = t.status === '取消' || t.status === '已發佈' || t.status === '已排程';
     if (job('cutting')) acts += '<span class="chip prop">剪片中</span>';
@@ -214,7 +229,7 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     else if (t.brief && !closed) acts += '<button class="btn sm" id="confirm">就這樣剪</button>';
     acts += '<span class="grow"></span>';
     if (!closed) acts += '<button class="btn sm sec" id="cancel">不剪了</button>';
-    $('actions').innerHTML = acts;
+    $('actions').innerHTML = stageHtml + acts;
     var lock = function (on) { ['confirm', 'cancel'].forEach(function (k) { if ($(k)) $(k).disabled = on; }); busy(on); };
     if ($('confirm')) $('confirm').onclick = function () { if (!confirm('腳本定稿、開工單給剪片工人？')) return; lock(true); api('editor', { op: 'confirm', id: t.id }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.detail) || (r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
     if ($('cancel')) $('cancel').onclick = function () { var reason = prompt('這支片不剪了？寫一句原因（可空白）。排隊中的工單會一起撤掉，原因會讓剪輯師學起來。'); if (reason === null) return; lock(true); api('editor', { op: 'status', id: t.id, status: '取消', reason: reason.trim() }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
