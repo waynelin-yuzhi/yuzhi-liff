@@ -84,7 +84,7 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
       <h2>開一支新片子</h2>
       <input type="text" id="newTitle" placeholder="片名或案場，例如：保樂力加 10月工作紀錄">
       <textarea id="newText" placeholder="先講你的初步想法（可空白，剪輯師會先問你）" style="width:100%;min-height:70px;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;margin-bottom:8px"></textarea>
-      <div class="row"><span class="note grow">送出後剪輯師會回你，約 10 到 20 秒。</span><button class="btn" id="newGo">開始討論</button></div>
+      <div class="row"><span class="note grow">送出後剪輯師會回你，約 10 到 20 秒。打「照上次」會直接帶同案場上一份定稿腳本。</span><button class="btn" id="newGo">開始討論</button></div>
     </div>
     <div class="card" id="list"><div class="ld">載入中</div></div>
     <div class="foot">一支片一條對話；腳本定稿後工單交剪片工人，成片進核可卡。<br>植間設計股份有限公司</div>
@@ -216,7 +216,7 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     $('actions').innerHTML = acts;
     var lock = function (on) { ['confirm', 'cancel'].forEach(function (k) { if ($(k)) $(k).disabled = on; }); busy(on); };
     if ($('confirm')) $('confirm').onclick = function () { if (!confirm('腳本定稿、開工單給剪片工人？')) return; lock(true); api('editor', { op: 'confirm', id: t.id }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.detail) || (r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
-    if ($('cancel')) $('cancel').onclick = function () { if (!confirm('這支片不剪了？排隊中的工單會一起撤掉。')) return; lock(true); api('editor', { op: 'status', id: t.id, status: '取消' }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
+    if ($('cancel')) $('cancel').onclick = function () { var reason = prompt('這支片不剪了？寫一句原因（可空白）。排隊中的工單會一起撤掉，原因會讓剪輯師學起來。'); if (reason === null) return; lock(true); api('editor', { op: 'status', id: t.id, status: '取消', reason: reason.trim() }).then(function (r) { lock(false); if (!r || !r.ok) { alert('沒成功：' + ((r && r.error) || '')); return; } renderThread(r); }).catch(function (e) { lock(false); alert(e.message || '連線失敗'); }); };
     window.scrollTo(0, document.body.scrollHeight);
   }
   function busy(on) { D.busy = on; $('send').disabled = on; $('say').disabled = on; }
