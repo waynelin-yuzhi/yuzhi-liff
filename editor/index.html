@@ -82,7 +82,8 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   <div id="vList" style="display:none">
     <div class="card">
       <h2>開一支新片子</h2>
-      <input type="text" id="newTitle" placeholder="片名或案場，例如：保樂力加 10月工作紀錄">
+      <input type="text" id="newTitle" placeholder="片名，例如：保樂力加 10月工作紀錄">
+      <input type="text" id="newSite" placeholder="案場／客戶（打「照上次」要靠它找上一份腳本）">
       <textarea id="newText" placeholder="先講你的初步想法（可空白，剪輯師會先問你）" style="width:100%;min-height:70px;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;margin-bottom:8px"></textarea>
       <div class="row"><span class="note grow">送出後剪輯師會回你，約 10 到 20 秒。打「照上次」會直接帶同案場上一份定稿腳本。</span><button class="btn" id="newGo">開始討論</button></div>
     </div>
@@ -162,10 +163,10 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     var title = $('newTitle').value.trim(), text = $('newText').value.trim();
     if (!title && !text) { $('newTitle').focus(); return; }
     var btn = this; btn.disabled = true; btn.textContent = text ? '剪輯師思考中…' : '開啟中…';
-    api('editor', { op: 'new', title: title || text.slice(0, 30), text: text }).then(function (d) {
+    api('editor', { op: 'new', title: title || text.slice(0, 30), site: $('newSite').value.trim(), text: text }).then(function (d) {
       btn.disabled = false; btn.textContent = '開始討論';
       if (!d || !d.ok) { alert('沒開成：' + ((d && d.error) || '連線失敗')); return; }
-      $('newTitle').value = ''; $('newText').value = '';
+      $('newTitle').value = ''; $('newSite').value = ''; $('newText').value = '';
       if (!d.thread) { openThread(d.id); return; }
       renderThread(d); show('thread');
       if (d.chatError) $('msgs').insertAdjacentHTML('beforeend', '<div class="msg system">剪輯師這次沒回話（' + esc(d.detail || d.chatError) + '），再說一句試試</div>');
