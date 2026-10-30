@@ -46,7 +46,8 @@ function _quoteDocHtml_(data, opts) {
   var esc = _qdocEsc_, money = _qdocMoney_;
   var mode = String(data.mode || 'purchase');
   var isStatement = String(data.docKind || 'quote') === 'statement';
-  var docTitle = (QDOC_MODE_TITLES[mode] || '') + (isStatement ? '請款單' : '報價單');
+  // docTitlePrefix／payNote：服務費類單據（場勘費等）自訂標題與付款說明，沒帶就照模式預設
+  var docTitle = (String(data.docTitlePrefix || '').trim().substring(0, 12) || QDOC_MODE_TITLES[mode] || '') + (isStatement ? '請款單' : '報價單');
   var cust = data.customer || {};
   // 效期一律換算成實際日期（呼叫端沒給就用 報價日+validityDays 自算）——避免小卡顯示日期、文件顯示天數
   if (!isStatement && !opts.validUntil && data.date && data.validityDays) {
@@ -61,20 +62,8 @@ function _quoteDocHtml_(data, opts) {
   var fees = Array.isArray(data.fees) ? data.fees : [];
 
   // ── 金額計算（與編輯器同律：items+fees=小計、5% 稅、grandTotal 以檔內為準） ──
-  var subtotal = 0;
-  items.forEach(function (it) { subtotal += Number(it.total != null ? it.total : (Number(it.qty) || 0) * (Number(it.price) || 0)) || 0; });
-  fees.forEach(function (f) { subtotal += Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0; });
-  // 押金＝保證金不課稅（訂閱 07-20、租賃 07-22 Wayne 拍板；與編輯器稅基同律）
-  var docDepositSum = 0;
-  if (mode === 'subscription' || mode === 'rental') {
-    fees.forEach(function (f) {
-      var _a = Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0;
-      if (String(f.name || '').indexOf('押金') >= 0 && _a > 0) docDepositSum += _a;
-    });
-  }
-  var taxableSub = subtotal - docDepositSum;
-  var tax = data.isTaxEnabled ? Math.round(taxableSub * 0.05) : 0;
-  var grand = Number(data.grandTotal) || (subtotal + tax);
+  var _tt = qdocTotals_(data);
+  var subtotal = _tt.subtotal, docDepositSum = _tt.depositSum, taxableSub = subtotal - docDepositSum, tax = _tt.tax, grand = _tt.grand;
 
   // ── 付款區（照抄編輯器各模式語意；landscape 才用 p1/p2、其餘模式 p1 無意義不得套用） ──
   var pt = data.paymentTerms || {};
@@ -121,7 +110,7 @@ function _quoteDocHtml_(data, opts) {
       + payNote('押金將於退租確認物品無損後退回。');
   } else {
     paySection = '<div class="pay">' + payLine('訂金／預付款', '100%', money(grand)) + '</div>'
-      + payNote('單次採購專案，請於出貨前結清全額款項，以便安排後續備貨與物流作業。');
+      + payNote(String(data.payNote || '').trim().substring(0, 120) || '單次採購專案，請於出貨前結清全額款項，以便安排後續備貨與物流作業。');
   }
 
   // ── 品項列（租賃模式帶天數/加日價欄、金額算式一眼可核；Wayne 2026-07-15） ──
@@ -417,4 +406,20 @@ function _quoteDocHtml_(data, opts) {
     // 判斷在一般分享頁恆成立 → 鎖捲動＋藏下載列（Wayne：預覽不能往下滑）。而簽核頁 srcdoc 是
     // sandbox="allow-same-origin"（不執行 script）、由外層自量高度——這段在唯一目標場景根本不會跑、純害無利。
     + '</div></body></html>';
+}
+
+
+// 報價／請款單金額（渲染器與核可頁共用同一套：items＋fees＝小計、押金不課稅、5% 稅、grandTotal 以檔內為準）
+function qdocTotals_(data) {
+  data = data || {};
+  var mode = String(data.mode || 'landscape');
+  var items = Array.isArray(data.items) ? data.items : [], fees = Array.isArray(data.fees) ? data.fees : [];
+  var feeAmt = function (f) { return Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0; };
+  var subtotal = 0, depositSum = 0;
+  items.forEach(function (it) { if (it) subtotal += Number(it.total != null ? it.total : (Number(it.qty) || 0) * (Number(it.price) || 0)) || 0; });
+  fees.forEach(function (f) { if (f) subtotal += feeAmt(f); });
+  // 押金＝保證金不課稅（訂閱 07-20、租賃 07-22 Wayne 拍板；與編輯器稅基同律）
+  if (mode === 'subscription' || mode === 'rental') fees.forEach(function (f) { var a = f ? feeAmt(f) : 0; if (f && String(f.name || '').indexOf('押金') >= 0 && a > 0) depositSum += a; });
+  var tax = data.isTaxEnabled ? Math.round((subtotal - depositSum) * 0.05) : 0;
+  return { subtotal: subtotal, depositSum: depositSum, tax: tax, grand: Number(data.grandTotal) || (subtotal + tax), feeAmt: feeAmt };
 }
