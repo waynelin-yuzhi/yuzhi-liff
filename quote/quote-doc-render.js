@@ -110,7 +110,7 @@ function _quoteDocHtml_(data, opts) {
       + payNote('押金將於退租確認物品無損後退回。');
   } else {
     paySection = '<div class="pay">' + payLine('訂金／預付款', '100%', money(grand)) + '</div>'
-      + payNote(String(data.payNote || '').trim().substring(0, 120) || '單次採購專案，請於出貨前結清全額款項，以便安排後續備貨與物流作業。');
+      + payNote(esc(String(data.payNote || '').trim().substring(0, 120)) || '單次採購專案，請於出貨前結清全額款項，以便安排後續備貨與物流作業。');
   }
 
   // ── 品項列（租賃模式帶天數/加日價欄、金額算式一眼可核；Wayne 2026-07-15） ──
