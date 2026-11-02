@@ -137,9 +137,12 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
       if (D.ym !== ym) return;
       if (!r || !r.ok) { var e = (r && (typeof r.detail === 'string' ? r.detail : r.error)) || '失敗'; throw new Error(r && r.error === 'backend_error' ? '送出結果不明、請重新整理確認' : e); }
       if (test) { if (m) m.textContent = '測試卡已送到你的 LINE'; btn.disabled = false; return; }
-      if (r.alreadyPushed) { if (m) m.textContent = '這個月已推播過、沒有重發'; btn.disabled = false; return; }
+      if (r.alreadyPushed) { if (m) m.textContent = r.msg || '這個月已推播過、沒有重發'; btn.disabled = false; return; }
+      // 只有 success 才算送到；deferred（非工作時段、GAS 排進延後佇列）等其他狀態照 GAS 的話顯示、不標已推播
+      if (r.status !== 'success') { if (m) m.textContent = r.msg || ('已受理：' + String(r.status || '')); btn.disabled = false; return; }
       c.lastPushedAt = new Date().toLocaleString('zh-TW', { hour12: false }).slice(0, 16);
       render();
+      var m3 = $('msg-' + cid); if (m3 && r.msg) m3.textContent = r.msg;
     }).catch(function (e) { var m2 = $('msg-' + cid); if (m2) m2.textContent = (test ? '測試卡' : '推播') + '失敗：' + (e.message || '連線失敗'); btn.disabled = false; });
   }
   $('ym').onchange = function () { load(this.value); };
