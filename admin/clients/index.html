@@ -127,7 +127,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     $('noteAdd').onclick = function () {
       var t = $('noteIn').value.trim(); if (!t) return;
       var b = this; b.disabled = true; $('noteMsg').textContent = '送出中…';
-      adminCall('clientAddNote', { clientId: c.clientId, note: t, byWho: D.email || 'admin-app' }).then(function (r) {
+      adminCall('clientAddNote', { clientId: c.clientId, note: t }).then(function (r) {
         if (!r || !r.ok) throw new Error(errText(r));
         var item = document.createElement('div'); item.className = 'item';
         var dv = document.createElement('div'); dv.textContent = t;
