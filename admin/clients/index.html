@@ -110,13 +110,13 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
         var patch = {};
         Array.prototype.forEach.call(box.querySelectorAll('input[data-k]'), function (i) { var k = i.getAttribute('data-k'), v = i.value.trim(); if (v !== String(c[k] || '')) patch[k] = v; });
         if (!Object.keys(patch).length) { $('editMsg').textContent = '沒有變更'; return; }
-        var b = this; b.disabled = true; $('editMsg').textContent = '儲存中…';
-        adminCall('clientUpdate', { clientId: c.clientId, patch: patch }).then(function (r) {
+        var b = this, cid = c.clientId; b.disabled = true; $('editMsg').textContent = '儲存中…';
+        adminCall('clientUpdate', { clientId: cid, patch: patch }).then(function (r) {
           if (!r || !r.ok) throw new Error(errText(r));
           Object.keys(patch).forEach(function (k) { c[k] = patch[k]; });
           D.list = null;
-          if (D.lastDetail) { D.lastDetail.detail = c; renderDetail(D.lastDetail); }
-        }).catch(function (e) { b.disabled = false; $('editMsg').textContent = '儲存失敗：' + errText(null, e); });
+          if (D.cur === cid) openDetail(cid);   // 鏡像在 GAS 回應前已推、重拉一次＝聯絡人卡等派生欄一起更新；切到別的客戶就不重畫
+        }).catch(function (e) { var m = $('editMsg'); if (!m) return; b.disabled = false; m.textContent = '儲存失敗：' + errText(null, e); });
       };
     };
     var cards = document.querySelectorAll('#detailView .card'); var nc = cards[cards.length - 1];
@@ -126,9 +126,11 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     nc.appendChild(form);
     $('noteAdd').onclick = function () {
       var t = $('noteIn').value.trim(); if (!t) return;
-      var b = this; b.disabled = true; $('noteMsg').textContent = '送出中…';
-      adminCall('clientAddNote', { clientId: c.clientId, note: t }).then(function (r) {
+      var b = this, cid = c.clientId; b.disabled = true; $('noteMsg').textContent = '送出中…';
+      adminCall('clientAddNote', { clientId: cid, note: t }).then(function (r) {
+        if (r && r.ok === false && r.error === 'backend_error') { var e2 = new Error('送出結果不明、請重新整理確認是否已新增'); e2.keep = true; throw e2; }
         if (!r || !r.ok) throw new Error(errText(r));
+        if (D.cur !== cid || !document.body.contains(nc)) { D.list = null; return; }
         var item = document.createElement('div'); item.className = 'item';
         var dv = document.createElement('div'); dv.textContent = t;
         var m = document.createElement('div'); m.className = 'm'; m.textContent = new Date().toLocaleString('zh-TW', { hour12: false }) + (D.email ? '　' + D.email : '');
@@ -138,7 +140,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
         if (first) nc.insertBefore(item, first); else nc.insertBefore(item, form);
         var h2 = nc.querySelector('h2'); if (h2) h2.textContent = '備註 ' + nc.querySelectorAll('.item').length;
         $('noteIn').value = ''; $('noteMsg').textContent = '已新增'; b.disabled = false;
-      }).catch(function (e) { b.disabled = false; $('noteMsg').textContent = '新增失敗：' + errText(null, e); });
+      }).catch(function (e) { var m = $('noteMsg'); if (!m) return; b.disabled = false; m.textContent = (e && e.keep ? '' : '新增失敗：') + errText(null, e); });
     };
   }
   function cls(r) { if (!r.hasCentralActual) return 'missing'; if (r.nfcCode && r.billingName) return 'match'; return 'central'; }
