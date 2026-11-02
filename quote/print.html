@@ -29,10 +29,15 @@ body[data-ready="error"] #doc{padding:40px;font-size:15px;font-family:"Noto Sans
   function render(r) {
     if (!r || r.ok === false) return done(false, (r && r.message) || 'no data');
     if (r.expired || r.legacy) return done(false, r.legacy ? '舊件無 JSON、請用 GAS 原頁' : '連結已過期');
+    var isSafeUri = function (u) { return /^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(String(u || '')); };
+    if (r.stampDefault && !isSafeUri(r.stampDefault)) return done(false, '公司章 URI 格式不合（只收 data:image base64）');
     try { QUOTE_DEFAULT_STAMP_URI = String(r.stampDefault || ''); } catch (e) {}
     var opts = {};
-    if (r.validUntilOverride) opts.validUntil = r.validUntilOverride;
-    if (r.signed && r.signed.sigUri) opts.signature = { uri: r.signed.sigUri, name: r.signed.signer, at: r.signed.at };
+    if (r.validUntilOverride) opts.validUntil = String(r.validUntilOverride);
+    if (r.signed && r.signed.sigUri) {
+      if (!isSafeUri(r.signed.sigUri)) return done(false, '簽名 URI 格式不合（只收 data:image base64）');
+      opts.signature = { uri: String(r.signed.sigUri), name: String(r.signed.signer || ''), at: String(r.signed.at || '') };
+    }
     var html = _quoteDocHtml_(r.doc || {}, opts);
     var styleM = html.match(/<style>([\s\S]*?)<\/style>/);
     var st = document.createElement('style'); st.textContent = styleM ? styleM[1] : ''; document.head.appendChild(st);
