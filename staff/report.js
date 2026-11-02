@@ -136,8 +136,8 @@
   function uploadOne(ph, zi, ba) {
     var z = A.st.zones[zi]; if (!z) return;
     ph.status = 'uploading'; renderThumbs(zi, ba);
-    T.api('photoUpload', { dataUri: ph.dataUri, reportId: A.st.reportId || '', clientName: A.st.clientName || '未指定客戶', zoneSeq: z.seq, beforeAfter: ba }).then(function (r) {
-      if (r && r.ok) { ph.status = 'done'; ph.url = r.url; } else ph.status = 'failed';
+    T.api('photoUpload', { dataUri: ph.dataUri, reportId: A.st.reportId || '', clientName: A.st.clientName || '未指定客戶', zoneSeq: z.seq, beforeAfter: ba, native: '1' }).then(function (r) {
+      if (r && r.ok) { ph.status = 'done'; ph.url = r.url; if (r.viewUrl) ph.view = r.viewUrl; } else ph.status = 'failed';
       photoPut(ph); renderThumbs(zi, ba); snapshot();
     }).catch(function () { ph.status = 'failed'; photoPut(ph); renderThumbs(zi, ba); });
   }
@@ -364,6 +364,10 @@
     img.dataset.fbDone = '1';
     var m = String(img.src).match(/[?&]id=([\w-]+)/) || String(img.src).match(/\/d\/([\w-]+)/);
     if (!m) { img.style.display = 'none'; return; }
+    if (/^E[A-Za-z0-9]{23}$/.test(m[1])) {   // 引擎桶的照片：拿簽名網址（Drive 網址只是參照）
+      T.api('photoSigned', { ids: m[1], native: '1' }).then(function (r) { var u = r && r.ok && r.urls && r.urls[m[1]]; if (u) img.src = u; else img.style.display = 'none'; }).catch(function () { img.style.display = 'none'; });
+      return;
+    }
     T.api('photoData', { fileId: m[1] }).then(function (r) { if (r && r.ok && r.dataUri) img.src = r.dataUri; else img.style.display = 'none'; }).catch(function () { img.style.display = 'none'; });
   }
   function renderIssues(zi) {
@@ -444,13 +448,48 @@
     if (!A.st.reportId) { var meE = (A.me && A.me.emp && A.me.emp.empId) || (T.S && T.S.me && T.S.me.emp && T.S.me.emp.empId) || 'EMP'; var dN = new Date(); var p2 = function (n) { return (n < 10 ? '0' : '') + n; }; A.st.reportId = 'CR-' + meE + '-' + dN.getFullYear() + p2(dN.getMonth() + 1) + p2(dN.getDate()) + p2(dN.getHours()) + p2(dN.getMinutes()) + p2(dN.getSeconds()); }
     var payload = { reportId: A.st.reportId || '', clientId: A.st.clientId, clientName: A.st.clientName, reportDate: A.st.reportDate, startTime: A.st.startTime, endTime: A.st.endTime, tasks: A.st.tasks, notes: A.st.notes, zones: zones, issueProposals: proposals };
     var rec = { clientName: A.st.clientName || '報告', reportDate: A.st.reportDate, payload: payload, photos: photos, total: photos.length, done: photos.filter(function (p) { return p.url; }).length, status: 'pending', createdAt: Date.now() };
+    var left = photos.filter(function (p) { return !p.url; }).length;
+    var isNew = !A.editing;
     queuePut(rec).then(function () {
       A.st = initial(); A.proposals = {}; A.editing = false; A.openIssuesLoadedFor = ''; A.dirty = false; A.draftStatus = '';
       clearSnapshot(); T.api('draftDelete');
       A.submitting = false; render();
-      alert('已送出。照片還在傳的話會在背景完成，請先別關這個頁面。');
+      if (left > 0 && isNew) {
+        // 部分版：只帶已傳好的照片先存進系統（狀態「照片補傳中」、我的報告看得到）；傳完佇列會送完整版覆蓋。順序＝先入佇列再存，任何時候關掉都不丟
+        savePartialFirst(partialPayload(payload, photos), 0);
+        alert('已送出，報告已先存進系統。\n還有 ' + left + ' 張照片在背景補傳，請先別關這個頁面；中途關掉也沒關係，下次打開養護回報會自動補傳。');
+      } else {
+        alert('已送出，正在存進系統，請先別關這個頁面。');
+      }
       processQueue();
     }).catch(function (e) { A.submitting = false; render(); alert('送出失敗：' + (e && e.message || e) + '\n資料還在草稿裡，稍後再試。'); });
+  }
+  function partialPayload(payload, photos) {
+    var pl = JSON.parse(JSON.stringify(payload));
+    pl.zones.forEach(function (z) {
+      var maps = {};
+      ['before', 'after'].forEach(function (ba) {
+        var key = ba === 'before' ? 'beforePhotos' : 'afterPhotos';
+        z[key] = z[key] || [];
+        var map = [], n = z[key].length;
+        for (var k = 0; k < n; k++) map.push(k);
+        photos.filter(function (p) { return p.zoneSeq === z.seq && p.ba === ba; }).sort(function (a, b) { return a.order - b.order; }).forEach(function (p) {
+          if (p.url) { z[key].push(p.url); map.push(n); n++; } else map.push(null);
+        });
+        maps[ba] = map;
+      });
+      (z.issues || []).forEach(function (iss) {
+        if (!iss || !iss.repPhoto || !maps[iss.repPhoto.kind]) return;
+        var ni = maps[iss.repPhoto.kind][iss.repPhoto.idx];
+        iss.repPhoto = (ni === null || ni === undefined) ? null : { kind: iss.repPhoto.kind, idx: ni };
+      });
+    });
+    return pl;
+  }
+  function savePartialFirst(pl, attempt) {   // 失敗不擋員工（完整版還在佇列）、重試一次
+    T.api('reportSave', { payloadJson: JSON.stringify(pl), partial: '1', native: '1' }).then(function (r) {
+      if (!(r && r.ok) && attempt < 1) setTimeout(function () { savePartialFirst(pl, attempt + 1); }, 5000);
+    }).catch(function () { if (attempt < 1) setTimeout(function () { savePartialFirst(pl, attempt + 1); }, 5000); });
   }
   var qRunning = false, qUploaded = false;
   function processQueue() {
@@ -468,10 +507,12 @@
             var ph = rec.photos[i]; if (ph.url) continue;
             var src = pmap[ph.pid];
             if (!src) { failed = true; break; }
+            // 選完即傳那次還在跑：等它最多 20 秒（避免兩邊同時傳、最後存到第二份）
+            for (var w = 0; w < 20 && src && !src.url && src.status === 'uploading'; w++) { await new Promise(function (s) { setTimeout(s, 1000); }); var again = await photoAll(); src = again.filter(function (p) { return p.id === ph.pid; })[0] || src; }
             if (src.url) { ph.url = src.url; continue; }
             var url = null;
             for (var att = 0; att <= 2 && !url; att++) {
-              try { var r = await T.api('photoUpload', { dataUri: src.dataUri, reportId: rec.payload.reportId || ('q-' + rec.id), clientName: rec.clientName, zoneSeq: ph.zoneSeq, beforeAfter: ph.ba }); if (r && r.ok) url = r.url; } catch (e) {}
+              try { var r = await T.api('photoUpload', { dataUri: src.dataUri, reportId: rec.payload.reportId || ('q-' + rec.id), clientName: rec.clientName, zoneSeq: ph.zoneSeq, beforeAfter: ph.ba, native: '1' }); if (r && r.ok) url = r.url; } catch (e) {}
               if (!url && att < 2) await new Promise(function (s) { setTimeout(s, 800 + att * 700); });
             }
             if (!url) { failed = true; break; }
@@ -483,7 +524,7 @@
           rec.photos.forEach(function (ph) { var z = payload.zones.filter(function (zz) { return zz.seq === ph.zoneSeq; })[0]; if (!z) return; var key = ph.ba === 'before' ? 'beforePhotos' : 'afterPhotos'; z[key] = z[key] || []; if (z[key].indexOf(ph.url) < 0) z[key].push(ph.url); });
           payload.zones.forEach(function (z) { ['beforePhotos', 'afterPhotos'].forEach(function (k) { if (z[k]) z[k] = z[k].filter(function (u, i, a) { return u && a.indexOf(u) === i; }); }); });
           var saved = false;
-          try { var rs = await T.api('reportSave', { payloadJson: JSON.stringify(payload) }); saved = !!(rs && rs.ok); if (!saved && rs && rs.error) console.log('reportSave', rs); } catch (e) {}
+          try { var rs = await T.api('reportSave', { payloadJson: JSON.stringify(payload), native: '1' }); saved = !!(rs && rs.ok); if (!saved && rs && rs.error) console.log('reportSave', rs); } catch (e) {}
           if (saved) { qUploaded = true; await queueDel(rec.id); rec.photos.forEach(function (ph) { photoDel(ph.pid); }); A.list = null; A.listFromEngine = false; A.listSeq = (A.listSeq || 0) + 1; A.listLoading = false; if (A.view === 'list') renderList(); }
           else { rec.status = 'failed'; await queuePut(rec); }
           renderQueueBar();
@@ -525,9 +566,18 @@
     $('app').innerHTML = '<div class="card">' + A.list.map(function (r) { return '<div class="list-item" data-open="' + esc(r.reportId) + '"><div class="t">' + esc(r.clientName || '(未指定客戶)') + ' <span class="chip">' + esc(r.status || '') + '</span></div><div class="m">' + esc(r.reportDate) + '　' + esc(r.startTime || '') + '–' + esc(r.endTime || '') + (r.tasks ? '　' + esc(r.tasks) : '') + '</div></div>'; }).join('') + '</div><div class="note" style="text-align:center">點一筆可以修改後重新送出</div>';
     Array.prototype.forEach.call(document.querySelectorAll('[data-open]'), function (el) { el.addEventListener('click', function () { openReport(el.getAttribute('data-open')); }); });
   }
+  var PARTIAL_TIP = '這份報告的照片還在背景補傳，傳完才能修改。請先保持畫面開啟，上方提示消失後再點一次。';
   function openReport(rid) {
+    // 佇列裡還有這份＝照片在補傳中、不准改；佇列沒有（手機清掉了）就放行，讓員工把沒傳到的照片重新加進去送出
+    queueAll().then(function (all) {
+      if (all.some(function (q) { return q && q.payload && q.payload.reportId === rid; })) { alert(PARTIAL_TIP); return; }
+      openReportLoad(rid);
+    }).catch(function () { openReportLoad(rid); });
+  }
+  function openReportLoad(rid) {
     $('app').innerHTML = '<div class="card"><div class="note">載入報告…</div></div>';
-    T.api('reportGet', { reportId: rid }).then(function (r) {
+    T.api('reportGet', { reportId: rid, native: '1' }).then(function (r) {
+      if (r && r.ok && r.data && r.data.status === '照片補傳中') alert('這份報告之前有照片沒傳完。沒看到的照片請重新加進去，再按送出。');
       if (!(r && r.ok)) { alert('載入失敗：' + ((r && (r.detail || r.error)) || '')); A.view = 'list'; render(); return; }
       var d = r.data;
       A.st = { reportId: d.reportId, clientId: d.clientId, clientName: d.clientName, reportDate: d.reportDate, startTime: d.startTime, endTime: d.endTime, timesFromCheckin: false, tasks: d.tasks || [], notes: d.notes || '',

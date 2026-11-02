@@ -18,7 +18,7 @@
   }
 
   // 寫入類走引擎單一入口（staffCall；引擎驗身分、代呼 GAS）；引擎連不上才退回直打 GAS。讀取與照片仍直打 GAS
-  var WRITE_FNS = { punch: 1, reportSave: 1, draftSave: 1, draftDelete: 1, coachReply: 1, schedDraft: 1, schedMove: 1, schedMoveBatch: 1, schedSubmit: 1, schedWithdraw: 1, schedFixHolidays: 1, schedMergeManual: 1, schedApprove: 1, schedReject: 1, schedChangeDecide: 1 };
+  var WRITE_FNS = { punch: 1, reportSave: 1, photoUpload: 1, reportGet: 1, photoSigned: 1, draftSave: 1, draftDelete: 1, coachReply: 1, schedDraft: 1, schedMove: 1, schedMoveBatch: 1, schedSubmit: 1, schedWithdraw: 1, schedFixHolidays: 1, schedMergeManual: 1, schedApprove: 1, schedReject: 1, schedChangeDecide: 1 };
   function cleanParams(params) { var o = {}; Object.keys(params || {}).forEach(function (k) { if (params[k] !== undefined && params[k] !== null) o[k] = String(params[k]); }); return o; }
   function enginePayload(fn, params) { var b = { fn: fn, params: cleanParams(params) }; if (S.dev) b.devToken = S.dev.token; else b.idToken = S.idToken || ''; return b; }
   function apiGas(fn, params) {
@@ -38,7 +38,9 @@
       .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response' || j.error === 'not_staff' || j.error === 'engine_not_configured' || j.error === 'no_token' || j.error === 'emp_not_found' || j.error === 'fn_not_allowed')) throw fallbackErr(j.error); return j; });   // no_token＝GAS 不認引擎鑰（2026-10-25 逸琳回報卡住實案）：一律退回直打，不能讓員工卡住
   }
   function api(fn, params) {
-    var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function (e) { if (e && e.fallback) return apiGas(fn, params); throw e; }) : apiGas(fn, params);
+    // 部分版（照片還沒傳完先存一份）只准走引擎：退回 GAS 會把半套照片當正式報告寫進試算表
+    var engineOnly = !!(params && params.partial === '1');
+    var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function (e) { if (e && e.fallback && !engineOnly) return apiGas(fn, params); throw e; }) : apiGas(fn, params);
     return p.then(function (j) { if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。'; return j; });   // 後端只回 server_error，白話統一在這裡換
   }
 
