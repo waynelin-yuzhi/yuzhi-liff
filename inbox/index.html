@@ -584,6 +584,7 @@
       + '<div class="small muted" id="fwdMsg" style="margin-top:8px"></div>'
       + '<div class="actions" style="margin-top:10px"><button class="btn main" id="fwdGo" disabled>送出給員工</button><button class="btn ghost" id="fwdCancel">取消</button></div></div>';
     var close = function () { box.remove(); };
+    var fwdReq = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // 同一次開框只送一次（逾時重按不會重複發卡）
     document.getElementById('fwdX').onclick = close; document.getElementById('fwdCancel').onclick = close;
     var phSel = function () { return Array.prototype.map.call(box.querySelectorAll('.fwdPh:checked'), function (c) { return c.value; }); };
     run('csInboxStaffForward', [{ contactId: cur, msgText: msgText, photoUrls: photos.filter(function (x) { return x.on; }).map(function (x) { return x.url; }), dryRun: true }], function (r) {
@@ -603,11 +604,11 @@
       if (!empId) { document.getElementById('fwdMsg').textContent = '請選收件員工'; return; }
       if (!text) { document.getElementById('fwdMsg').textContent = '交代內容不能空白'; return; }
       var b = this; busy(b, true, '送出中');
-      run('csInboxStaffForward', [{ contactId: cur, employeeId: empId, text: text, msgText: msgText, photoUrls: phSel() }], function (r) {
+      run('csInboxStaffForward', [{ contactId: cur, employeeId: empId, text: text, msgText: msgText, photoUrls: phSel(), reqId: fwdReq }], function (r) {
         busy(b, false);
         if (r && r.ok) { close(); stat(r.result || '已送給員工'); setTimeout(function () { refreshAll(true); }, 1500); }
         else document.getElementById('fwdMsg').textContent = '失敗：' + friendlyErr((r && (r.detail || r.error)) || '');
-      }, function () { busy(b, false); });
+      }, function () { b.disabled = true; b.textContent = '結果未知'; document.getElementById('fwdMsg').textContent = '連線逾時、不確定有沒有送出。先關掉這個框、重新整理看員工有沒有收到，別直接再按（再按也只會送一次）。'; });
     };
   }
   function renderThread(t) {
