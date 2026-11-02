@@ -47,6 +47,8 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
 .acts a{font-size:12px;color:var(--sage);border:1px solid var(--sage);border-radius:6px;padding:6px 10px;text-decoration:none}
 .foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
 .ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
+.fl{display:block;margin:8px 0;font-size:13px}
+.fl span{display:block;color:var(--ink-60);font-size:12px;margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -86,6 +88,58 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
       return fetch(CFG.engine + '?action=adminClients', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
     }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
+  }
+  // 寫入單一入口：引擎 adminCall（App 憑證 → 白名單 fn → 代呼 GAS、from 留痕）
+  function adminCall(fn, params) {
+    return sb.auth.getSession().then(function (r) {
+      var tok = r.data && r.data.session && r.data.session.access_token; if (!tok) { showGate(); throw new Error('請先登入'); }
+      return fetch(CFG.engine + '?action=adminCall', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ fn: fn, params: params || {} }) });
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線逾期、請重新登入'); } return res.json(); });
+  }
+  var EDIT_FIELDS = [['contact', '聯絡人'], ['phone', '電話'], ['invoiceAddr', '發票地址'], ['siteAddr', '案場地址'], ['industry', '產業'], ['contractNote', '合約備註']];
+  function errText(r, e) { if (e) return e.message || '連線失敗'; if (!r) return '沒有回應'; return (r.detail && r.detail.msg) || (typeof r.detail === 'string' ? r.detail : '') || r.error || '失敗'; }
+  function wireDetailActions(c) {
+    var box = $('editBox'), btn = $('editBtn');
+    if (btn) btn.onclick = function (ev) {
+      ev.preventDefault();
+      if (box.style.display === 'block') { box.style.display = 'none'; return; }
+      box.innerHTML = EDIT_FIELDS.map(function (f) { return '<label class="fl"><span>' + f[1] + '</span><input type="text" data-k="' + f[0] + '" value="' + esc(c[f[0]] || '') + '"></label>'; }).join('')
+        + '<div class="acts" style="align-items:center"><button class="btn" id="saveEdit">儲存</button><span class="note" id="editMsg"></span></div>';
+      box.style.display = 'block';
+      $('saveEdit').onclick = function () {
+        var patch = {};
+        Array.prototype.forEach.call(box.querySelectorAll('input[data-k]'), function (i) { var k = i.getAttribute('data-k'), v = i.value.trim(); if (v !== String(c[k] || '')) patch[k] = v; });
+        if (!Object.keys(patch).length) { $('editMsg').textContent = '沒有變更'; return; }
+        var b = this; b.disabled = true; $('editMsg').textContent = '儲存中…';
+        adminCall('clientUpdate', { clientId: c.clientId, patch: patch }).then(function (r) {
+          if (!r || !r.ok) throw new Error(errText(r));
+          Object.keys(patch).forEach(function (k) { c[k] = patch[k]; });
+          D.list = null;
+          if (D.lastDetail) { D.lastDetail.detail = c; renderDetail(D.lastDetail); }
+        }).catch(function (e) { b.disabled = false; $('editMsg').textContent = '儲存失敗：' + errText(null, e); });
+      };
+    };
+    var cards = document.querySelectorAll('#detailView .card'); var nc = cards[cards.length - 1];
+    if (!nc) return;
+    var form = document.createElement('div'); form.className = 'acts'; form.style.alignItems = 'center';
+    form.innerHTML = '<input type="text" id="noteIn" placeholder="新增備註…" style="flex:1;min-width:160px"><button class="btn" id="noteAdd">新增</button><span class="note" id="noteMsg"></span>';
+    nc.appendChild(form);
+    $('noteAdd').onclick = function () {
+      var t = $('noteIn').value.trim(); if (!t) return;
+      var b = this; b.disabled = true; $('noteMsg').textContent = '送出中…';
+      adminCall('clientAddNote', { clientId: c.clientId, note: t, byWho: D.email || 'admin-app' }).then(function (r) {
+        if (!r || !r.ok) throw new Error(errText(r));
+        var item = document.createElement('div'); item.className = 'item';
+        var dv = document.createElement('div'); dv.textContent = t;
+        var m = document.createElement('div'); m.className = 'm'; m.textContent = new Date().toLocaleString('zh-TW', { hour12: false }) + (D.email ? '　' + D.email : '');
+        item.appendChild(dv); item.appendChild(m);
+        var first = nc.querySelector('.item'); var empty = nc.querySelector('.note');
+        if (empty && !first) empty.remove();
+        if (first) nc.insertBefore(item, first); else nc.insertBefore(item, form);
+        var h2 = nc.querySelector('h2'); if (h2) h2.textContent = '備註 ' + nc.querySelectorAll('.item').length;
+        $('noteIn').value = ''; $('noteMsg').textContent = '已新增'; b.disabled = false;
+      }).catch(function (e) { b.disabled = false; $('noteMsg').textContent = '新增失敗：' + errText(null, e); });
+    };
   }
   function cls(r) { if (!r.hasCentralActual) return 'missing'; if (r.nfcCode && r.billingName) return 'match'; return 'central'; }
   var LABEL = { match: '訂閱式客戶', central: '一般客戶', missing: '資料尚未完整' };
@@ -135,10 +189,11 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
   function backToList() { D.cur = ''; D.seq++; history.replaceState(null, '', location.pathname); $('detailView').style.display = 'none'; $('listView').style.display = 'block'; if (D.list === null) loadList(); }
   function kv(k, v) { return v ? '<div class="k">' + esc(k) + '</div><div>' + esc(v) + '</div>' : ''; }
   function renderDetail(d) {
+    D.lastDetail = d;
     var c = d.detail || {}; var h = '<span class="back" id="back">‹ 回清單</span>';
     h += '<div class="card"><h2>' + esc(c.clientId) + '</h2><div style="font-size:18px;font-weight:500;margin-bottom:6px">' + esc(c.short || c.full || '') + (c.full && c.full !== c.short ? ' <span class="note">' + esc(c.full) + '</span>' : '') + '</div>'
       + '<div class="kv">' + kv('類型', c.type) + kv('統編', c.vat && c.vat !== '/' ? c.vat : '') + kv('產業', c.industry) + kv('聯絡人', c.contact) + kv('電話', c.phone) + kv('發票地址', c.invoiceAddr) + kv('案場地址', c.siteAddr) + kv('合約備註', c.contractNote) + kv('LINE', c.lineBound ? '已綁定' : '未綁定') + '</div>'
-      + '<div class="acts"><a href="' + CFG.gas + '?page=clients" target="_blank">後台編輯</a></div></div>';
+      + '<div class="acts"><a href="#" id="editBtn">編輯資料</a><a href="' + CFG.gas + '?page=clients" target="_blank">後台編輯</a></div><div id="editBox" style="display:none"></div></div>';
     var sites = c.sites || [];
     h += '<div class="card"><h2>案場 ' + sites.length + '</h2>' + (sites.length ? sites.map(function (s) { return '<div class="item"><div class="t">' + esc(s.nfcCode) + '　' + esc(s.siteName) + '</div><div class="m">' + esc(s.addr || '') + (s.assignedEmpName ? '　負責：' + esc(s.assignedEmpName) : '') + '</div>' + (s.careNote ? '<div class="m">注意：' + esc(s.careNote) + '</div>' : '') + '</div>'; }).join('') : '<div class="note">尚無案場</div>') + '</div>';
     var cts = c.contacts || [];
@@ -152,6 +207,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     var ns = d.notes || [];
     h += '<div class="card"><h2>備註 ' + ns.length + '</h2>' + (ns.length ? ns.map(function (n) { return '<div class="item"><div>' + esc(n.note) + '</div><div class="m">' + esc(n.ts || '') + (n.byWho ? '　' + esc(n.byWho) : '') + (n.tags ? '　' + esc(n.tags) : '') + '</div></div>'; }).join('') : '<div class="note">尚無備註</div>') + '</div>';
     $('detailView').innerHTML = h; $('back').onclick = backToList;
+    wireDetailActions(c);
   }
   $('q').addEventListener('input', function () { D.q = this.value.trim().toLowerCase(); if (D.list) renderList(); });
   $('gasLink').href = CFG.gas + '?page=clients';
@@ -164,7 +220,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) { btn.disabled = false; if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; } showApp(); boot(); });
   };
   $('leave').onclick = function () { sb.auth.signOut({ scope: 'local' }).then(function () { location.reload(); }); };
-  function boot() { var cid = new URLSearchParams(location.search).get('cid'); loadList(); if (cid && /^C\d+$/.test(cid)) openDetail(cid); }
+  function boot() { sb.auth.getSession().then(function (r) { D.email = (r.data && r.data.session && r.data.session.user && r.data.session.user.email) || ''; }); var cid = new URLSearchParams(location.search).get('cid'); loadList(); if (cid && /^C\d+$/.test(cid)) openDetail(cid); }
   sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
 })();
 </script>
