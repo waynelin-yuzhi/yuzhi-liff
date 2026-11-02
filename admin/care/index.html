@@ -40,6 +40,10 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
 .acts{display:flex;gap:6px;flex-shrink:0}
 .acts a{font-size:12px;color:var(--sage);border:1px solid var(--sage);border-radius:6px;padding:5px 8px;text-decoration:none;white-space:nowrap}
 .acts a.mute{color:var(--ink-60);border-color:var(--ink-20)}
+.acts{flex-wrap:wrap;justify-content:flex-end;max-width:46%}
+.acts button.lnk{font-size:12px;color:var(--sage);border:1px solid var(--sage);border-radius:6px;padding:5px 8px;background:#fff;font-family:inherit;cursor:pointer;white-space:nowrap}
+.acts button.lnk[disabled]{opacity:.5}
+.row .msg{font-size:12px;color:var(--ink-60);margin-top:2px;min-height:0}
 .foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
 .ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
 @media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}.acts a{padding:5px 7px}}
@@ -115,9 +119,28 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
       var acts = '';
       if (c.hash) acts += '<a href="' + CFG.careView + '?h=' + esc(c.hash) + '" target="_blank">看報告</a>';
       if (c.pdfUrl) acts += '<a class="mute" href="' + esc(c.pdfUrl) + '" target="_blank">PDF</a>';
-      return '<div class="row"><div class="n"><div class="name">' + esc(c.name) + ' <span class="note">' + esc(c.clientId) + '</span></div><div class="meta">' + chips + '</div></div><div class="acts">' + acts + '</div></div>';
+      if (c.hasReport) {
+        acts += '<button class="lnk" data-push="' + esc(c.clientId) + '" data-test="1">測試推給我</button>';
+        if (c.lineBound) acts += '<button class="lnk" data-push="' + esc(c.clientId) + '">推播給客戶</button>';
+      }
+      return '<div class="row"><div class="n"><div class="name">' + esc(c.name) + ' <span class="note">' + esc(c.clientId) + '</span></div><div class="meta">' + chips + '</div><div class="msg" id="msg-' + esc(c.clientId) + '"></div></div><div class="acts">' + acts + '</div></div>';
     }).join('');
-    $('hint').textContent = '推播、核可與產 PDF 請按右上「後台操作」；排程佇列狀態只在後台原頁看得到。';
+    Array.prototype.forEach.call($('list').querySelectorAll('button[data-push]'), function (b) { b.onclick = function () { pushReport(b.getAttribute('data-push'), b.getAttribute('data-test') === '1', b); }; });
+    $('hint').textContent = '「推播給客戶」會把本月報告卡送到客戶 LINE（按下前會再確認一次）；「測試推給我」只送你自己。核可與產 PDF 仍在右上「後台操作」。';
+  }
+  // 推播走引擎 adminCall → GAS careReportPush（與後台原頁同一支）；成功就地更新該列、清單快取失效
+  function pushReport(cid, test, btn) {
+    var ym = D.ym, c = ((D.data && D.data.list) || []).filter(function (x) { return x.clientId === cid; })[0]; if (!c) return;
+    if (!test && !confirm('確定把 ' + c.name + ' ' + ym.replace('-', ' / ') + ' 的養護報告推播到客戶 LINE？')) return;
+    var m = $('msg-' + cid); btn.disabled = true; if (m) m.textContent = test ? '送出測試卡…' : '推播中…';
+    api('adminCall', { fn: 'careReportPush', params: { clientId: cid, ym: ym, test: test } }).then(function (r) {
+      if (D.ym !== ym) return;
+      if (!r || !r.ok) { var e = (r && (typeof r.detail === 'string' ? r.detail : r.error)) || '失敗'; throw new Error(r && r.error === 'backend_error' ? '送出結果不明、請重新整理確認' : e); }
+      if (test) { if (m) m.textContent = '測試卡已送到你的 LINE'; btn.disabled = false; return; }
+      if (r.alreadyPushed) { if (m) m.textContent = '這個月已推播過、沒有重發'; btn.disabled = false; return; }
+      c.lastPushedAt = new Date().toLocaleString('zh-TW', { hour12: false }).slice(0, 16);
+      render();
+    }).catch(function (e) { var m2 = $('msg-' + cid); if (m2) m2.textContent = (test ? '測試卡' : '推播') + '失敗：' + (e.message || '連線失敗'); btn.disabled = false; });
   }
   $('ym').onchange = function () { load(this.value); };
   $('gateSend').onclick = function () {
