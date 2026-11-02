@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<title>報價單 PDF 版型 ｜ 植間設計</title>
+<style>
+/* PDF 專用版型（pdf-worker 用 headless Chrome 開這頁印成 PDF；與 index.html 同一支排版器、只拿掉螢幕用的外框與按鈕）
+   資料來源：worker 注入 window.__YZ_QUOTE_DATA__（＝引擎 quoteView 的回傳）；沒注入時用 ?h= 向引擎取（預覽用） */
+html,body{margin:0;padding:0;background:#fff}
+body[data-ready="error"] #doc{padding:40px;font-size:15px;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+</style>
+</head>
+<body>
+<div id="doc"></div>
+<script src="quote-doc-render.js?v=4"></script>
+<script>
+(function () {
+  var GW = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+  function done(ok, msg) {
+    if (!ok) document.getElementById('doc').textContent = '報價資料載入失敗：' + String(msg || '');
+    document.body.setAttribute('data-ready', ok ? '1' : 'error');
+  }
+  function whenAssetsReady() {
+    var imgs = [].slice.call(document.images);
+    var waits = imgs.map(function (im) { return im.complete ? Promise.resolve() : new Promise(function (res) { im.onload = im.onerror = function () { res(); }; }); });
+    return Promise.all(waits).then(function () { return (document.fonts && document.fonts.ready) ? document.fonts.ready : null; });
+  }
+  function render(r) {
+    if (!r || r.ok === false) return done(false, (r && r.message) || 'no data');
+    if (r.expired || r.legacy) return done(false, r.legacy ? '舊件無 JSON、請用 GAS 原頁' : '連結已過期');
+    try { QUOTE_DEFAULT_STAMP_URI = String(r.stampDefault || ''); } catch (e) {}
+    var opts = {};
+    if (r.validUntilOverride) opts.validUntil = r.validUntilOverride;
+    if (r.signed && r.signed.sigUri) opts.signature = { uri: r.signed.sigUri, name: r.signed.signer, at: r.signed.at };
+    var html = _quoteDocHtml_(r.doc || {}, opts);
+    var styleM = html.match(/<style>([\s\S]*?)<\/style>/);
+    var st = document.createElement('style'); st.textContent = styleM ? styleM[1] : ''; document.head.appendChild(st);
+    document.getElementById('doc').innerHTML = html.replace(/^[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*$/, '');
+    if (r.title) document.title = r.title;
+    whenAssetsReady().then(function () { done(true); }, function () { done(true); });
+  }
+  try {
+    if (window.__YZ_QUOTE_DATA__) { render(window.__YZ_QUOTE_DATA__); return; }
+    var h = String(new URLSearchParams(location.search).get('h') || '').trim();
+    if (!h) { done(false, '沒有資料也沒有 h'); return; }
+    fetch(GW + '?action=quoteView&h=' + encodeURIComponent(h), { cache: 'no-store' })
+      .then(function (res) { return res.json(); }).then(render)
+      .catch(function (e) { done(false, e && e.message); });
+  } catch (e) { done(false, e && e.message); }
+})();
+</script>
+</body>
+</html>
