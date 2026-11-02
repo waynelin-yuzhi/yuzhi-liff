@@ -569,7 +569,7 @@
       + '<div class="row"><textarea id="memNote" rows="2" placeholder="你的補充（引擎每次都會讀、不會被覆蓋）" style="flex:1;min-width:200px;font-size:12px;padding:6px;border:1px solid var(--line);font-family:inherit">' + esc(memo.note || '') + '</textarea><button class="btn ghost small" id="memSave">存補充</button></div>'
       + '</div></details>';
   }
-  // 客訴轉負責員工：先向後台拿預設負責人＋交代文案（引擎同事口吻），Wayne 改完送出＝投核可，核可才發老闆交代卡
+  // 客訴轉負責員工：先向後台拿預設負責人＋交代文案（引擎同事口吻），Wayne 改完按送出＝直接發老闆交代卡（不再投核可）
   function openFwd(t, i) {
     var m = (t.messages || [])[i]; if (!m) return;
     var msgText = m.kind === 'text' ? String(m.text || '') : '';
@@ -579,10 +579,10 @@
     box.innerHTML = '<div style="background:#FFFCF5;width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px 16px 22px"><div style="display:flex;justify-content:space-between;align-items:center"><b>轉給員工</b><button class="btn link" id="fwdX">關閉</button></div>'
       + '<div class="small muted" style="margin:6px 0">客戶反映：' + esc(msgText || '（照片）').slice(0, 160) + '</div>'
       + '<div class="small" style="margin-top:8px">收件員工</div><select id="fwdEmp" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff"><option value="">載入中…</option></select>'
-      + '<div class="small" style="margin-top:8px">交代內容（核可前還能再改）</div><textarea id="fwdText" rows="6" style="width:100%" placeholder="客服擬稿中…"></textarea>'
+      + '<div class="small" style="margin-top:8px">交代內容（送出前可再改）</div><textarea id="fwdText" rows="6" style="width:100%" placeholder="客服擬稿中…"></textarea>'
       + (photos.length ? '<div class="small" style="margin-top:8px">附客戶照片</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + photos.map(function (ph, k) { return '<label style="display:block;width:84px"><img src="' + esc(ph.url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=200') + '" style="width:84px;height:84px;object-fit:cover;border-radius:6px;display:block"><input type="checkbox" class="fwdPh" value="' + esc(ph.url) + '"' + (ph.on ? ' checked' : '') + '> 附上</label>'; }).join('') + '</div>' : '')
       + '<div class="small muted" id="fwdMsg" style="margin-top:8px"></div>'
-      + '<div class="actions" style="margin-top:10px"><button class="btn main" id="fwdGo" disabled>投核可</button><button class="btn ghost" id="fwdCancel">取消</button></div></div>';
+      + '<div class="actions" style="margin-top:10px"><button class="btn main" id="fwdGo" disabled>送出給員工</button><button class="btn ghost" id="fwdCancel">取消</button></div></div>';
     var close = function () { box.remove(); };
     document.getElementById('fwdX').onclick = close; document.getElementById('fwdCancel').onclick = close;
     var phSel = function () { return Array.prototype.map.call(box.querySelectorAll('.fwdPh:checked'), function (c) { return c.value; }); };
@@ -605,7 +605,7 @@
       var b = this; busy(b, true, '送出中');
       run('csInboxStaffForward', [{ contactId: cur, employeeId: empId, text: text, msgText: msgText, photoUrls: phSel() }], function (r) {
         busy(b, false);
-        if (r && r.ok) { close(); stat('已投核可 ' + r.id + '，核可後才會發給員工'); setTimeout(function () { refreshAll(true); }, 1500); }
+        if (r && r.ok) { close(); stat(r.result || '已送給員工'); setTimeout(function () { refreshAll(true); }, 1500); }
         else document.getElementById('fwdMsg').textContent = '失敗：' + friendlyErr((r && (r.detail || r.error)) || '');
       }, function () { busy(b, false); });
     };
