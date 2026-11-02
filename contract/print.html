@@ -15,7 +15,7 @@ body[data-ready="error"] #doc{padding:40px;font-size:15px;font-family:"Noto Sans
 </head>
 <body>
 <div id="doc"></div>
-<script src="contract-doc-render.js?v=2"></script>
+<script src="contract-doc-render.js?v=bb3b465f25"></script>
 <script>
 (function () {
   function done(ok, msg) {
@@ -33,14 +33,20 @@ body[data-ready="error"] #doc{padding:40px;font-size:15px;font-family:"Noto Sans
     if (!d || !d.type || !d.p) { done(false, '沒有注入資料'); return; }
     var t = CONTRACT_RENDER_TYPES[String(d.type)];
     if (!t) { done(false, '未知合約類型 ' + String(d.type)); return; }
-    CONTRACT_STAMP_URI = isSafeUri(d.stampUri) ? d.stampUri : '';
-    CONTRACT_QUOTE_DOC = (d.quoteDoc && d.quoteDoc.doc) ? d.quoteDoc : null;
+    if (d.stampUri && !isSafeUri(d.stampUri)) { done(false, '合約章 URI 格式不合（只收 data:image base64）'); return; }
+    CONTRACT_STAMP_URI = d.stampUri ? String(d.stampUri) : '';
     var opts = Object.assign({}, d.opts || {});
     if (opts.signature) {
-      if (!isSafeUri(opts.signature.uri)) delete opts.signature;
-      else opts.signature = Object.assign({}, opts.signature, { uri: String(opts.signature.uri) });
+      if (!isSafeUri(opts.signature.uri)) { done(false, '簽名 URI 格式不合（只收 data:image base64）'); return; }
+      opts.signature = Object.assign({}, opts.signature, { uri: String(opts.signature.uri) });
     }
-    var html = t.render(d.p || {}, opts);
+    var p = d.p || {};
+    var needAppendix = !!String(p['報價單號'] || '').trim();
+    var qd = d.quoteDoc && d.quoteDoc.doc;
+    if (needAppendix && !(qd && typeof qd === 'object' && Array.isArray(qd.items))) { done(false, '合約帶報價單號但沒注入 quoteDoc.doc.items、附件一會缺'); return; }
+    CONTRACT_QUOTE_DOC = needAppendix ? d.quoteDoc : null;
+    var html = t.render(p, opts);
+    if (needAppendix && html.indexOf('class="doc axwrap"') < 0) { done(false, '附件一沒渲染出來'); return; }
     var styleM = html.match(/<style>([\s\S]*?)<\/style>/);
     var st = document.createElement('style'); st.textContent = styleM ? styleM[1] : ''; document.head.appendChild(st);
     document.getElementById('doc').innerHTML = html.replace(/^[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*$/, '');
