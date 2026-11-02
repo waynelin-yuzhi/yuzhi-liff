@@ -99,7 +99,7 @@
   function discardAll() {
     A.st = initial(); A.proposals = {}; A.editing = false; A.serverDraft = null; A.dirty = false;
     clearSnapshot(); T.api('draftDelete');
-    photoAll().then(function (all) { all.forEach(function (p) { photoDel(p.id); }); });
+    queueAll().then(function (recs) { var used = {}; recs.forEach(function (q) { (q.photos || []).forEach(function (ph) { used[ph.pid] = 1; }); }); return photoAll().then(function (all) { all.forEach(function (p) { if (!used[p.id]) photoDel(p.id); }); }); });   // 佇列還在用的照片不刪（放棄 B 不能把 A 的補傳照片一起清掉）
   }
 
   // ── 照片：壓縮／上傳 ──
@@ -570,7 +570,7 @@
   function openReport(rid) {
     // 佇列裡還有這份＝照片在補傳中、不准改；佇列沒有（手機清掉了）就放行，讓員工把沒傳到的照片重新加進去送出
     queueAll().then(function (all) {
-      if (all.some(function (q) { return q && q.payload && q.payload.reportId === rid; })) { alert(PARTIAL_TIP); return; }
+      if (all.some(function (q) { return q && q.payload && q.payload.reportId === rid && q.status !== 'failed'; })) { alert(PARTIAL_TIP); return; }   // 佇列已失敗的放行：讓員工把沒傳到的照片重新加進去送出
       openReportLoad(rid);
     }).catch(function () { openReportLoad(rid); });
   }
