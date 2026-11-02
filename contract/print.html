@@ -8,12 +8,14 @@
 /* PDF 專用版型（pdf-worker 用 headless Chrome 開這頁印成 PDF）
    資料來源：worker 注入 window.__YZ_QUOTE_DATA__ = { type, p, opts, stampUri, quoteDoc:{quoteNo,date,doc} }；沒注入＝顯示錯誤（合約無公開預覽） */
 html,body{margin:0;padding:0;background:#fff}
+/* GAS 版沒宣告 @page 邊界（HtmlService 引擎有預設天地）；Chrome 印 PDF 時 worker 給 0 邊界，要有天地才放得下 @bottom-center 頁碼 */
+@page{size:A4;margin:10mm 0 14mm}
 body[data-ready="error"] #doc{padding:40px;font-size:15px;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
 </style>
 </head>
 <body>
 <div id="doc"></div>
-<script src="contract-doc-render.js?v=1"></script>
+<script src="contract-doc-render.js?v=2"></script>
 <script>
 (function () {
   function done(ok, msg) {
@@ -33,7 +35,12 @@ body[data-ready="error"] #doc{padding:40px;font-size:15px;font-family:"Noto Sans
     if (!t) { done(false, '未知合約類型 ' + String(d.type)); return; }
     CONTRACT_STAMP_URI = isSafeUri(d.stampUri) ? d.stampUri : '';
     CONTRACT_QUOTE_DOC = (d.quoteDoc && d.quoteDoc.doc) ? d.quoteDoc : null;
-    var html = t.render(d.p || {}, d.opts || {});
+    var opts = Object.assign({}, d.opts || {});
+    if (opts.signature) {
+      if (!isSafeUri(opts.signature.uri)) delete opts.signature;
+      else opts.signature = Object.assign({}, opts.signature, { uri: String(opts.signature.uri) });
+    }
+    var html = t.render(d.p || {}, opts);
     var styleM = html.match(/<style>([\s\S]*?)<\/style>/);
     var st = document.createElement('style'); st.textContent = styleM ? styleM[1] : ''; document.head.appendChild(st);
     document.getElementById('doc').innerHTML = html.replace(/^[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*$/, '');
