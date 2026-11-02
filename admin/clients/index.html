@@ -49,6 +49,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
 .ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
 .fl{display:block;margin:8px 0;font-size:13px}
 .fl span{display:block;color:var(--ink-60);font-size:12px;margin-bottom:2px}
+.fl select{width:100%;padding:10px 12px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit;background:#fff}
 </style>
 </head>
 <body>
@@ -96,6 +97,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       return fetch(CFG.engine + '?action=adminCall', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ fn: fn, params: params || {} }) });
     }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線逾期、請重新登入'); } return res.json(); });
   }
+  var INDUSTRY_OPTIONS = ['醫美', '餐廳', '科技', '活動', '建設', '廚具', '行銷', '裝修', '百貨', '社區', '牙醫', '電商', '診所', '酒商', '金融', '中醫', '園藝', '個人', '招待所'];   // ＝中樞主檔 I 欄資料驗證清單
   var EDIT_FIELDS = [['contact', '聯絡人'], ['phone', '電話'], ['invoiceAddr', '發票地址'], ['siteAddr', '案場地址'], ['industry', '產業'], ['contractNote', '合約備註']];
   function errText(r, e) { if (e) return e.message || '連線失敗'; if (!r) return '沒有回應'; return (r.detail && r.detail.msg) || (typeof r.detail === 'string' ? r.detail : '') || r.error || '失敗'; }
   function wireDetailActions(c) {
@@ -103,12 +105,18 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     if (btn) btn.onclick = function (ev) {
       ev.preventDefault();
       if (box.style.display === 'block') { box.style.display = 'none'; return; }
-      box.innerHTML = EDIT_FIELDS.map(function (f) { return '<label class="fl"><span>' + f[1] + '</span><input type="text" data-k="' + f[0] + '" value="' + esc(c[f[0]] || '') + '"></label>'; }).join('')
+      box.innerHTML = EDIT_FIELDS.map(function (f) {
+        if (f[0] === 'industry') {   // 中樞主檔這欄有資料驗證清單、只能選不能打
+          var cur = String(c.industry || ''), opts = INDUSTRY_OPTIONS.slice(); if (cur && opts.indexOf(cur) < 0) opts.unshift(cur);
+          return '<label class="fl"><span>' + f[1] + '</span><select data-k="industry"><option value="">（未填）</option>' + opts.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>';
+        }
+        return '<label class="fl"><span>' + f[1] + '</span><input type="text" data-k="' + f[0] + '" value="' + esc(c[f[0]] || '') + '"></label>';
+      }).join('')
         + '<div class="acts" style="align-items:center"><button class="btn" id="saveEdit">儲存</button><span class="note" id="editMsg"></span></div>';
       box.style.display = 'block';
       $('saveEdit').onclick = function () {
         var patch = {};
-        Array.prototype.forEach.call(box.querySelectorAll('input[data-k]'), function (i) { var k = i.getAttribute('data-k'), v = i.value.trim(); if (v !== String(c[k] || '')) patch[k] = v; });
+        Array.prototype.forEach.call(box.querySelectorAll('[data-k]'), function (i) { var k = i.getAttribute('data-k'), v = String(i.value || '').trim(); if (v !== String(c[k] || '')) patch[k] = v; });
         if (!Object.keys(patch).length) { $('editMsg').textContent = '沒有變更'; return; }
         var b = this, cid = c.clientId; b.disabled = true; $('editMsg').textContent = '儲存中…';
         adminCall('clientUpdate', { clientId: cid, patch: patch }).then(function (r) {
