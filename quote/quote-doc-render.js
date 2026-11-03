@@ -133,7 +133,7 @@ function _quoteDocHtml_(data, opts) {
     }
     var imgSrc = (it.image && !(it.sharePhotoWithPrev && i > 0)) ? _qdocImg_(it.image) : '';
     var img = imgSrc ? '<img class="ph" src="' + imgSrc + '">' : '';
-    var specLine = [it.spec, (!areaBandOn && it.area) ? ('用途：' + it.area) : ''].filter(Boolean).map(esc).join('<br>');
+    var specLine = isStatement ? '' : [it.spec, (!areaBandOn && it.area) ? ('用途：' + it.area) : ''].filter(Boolean).map(esc).join('<br>');
     var cells;
     if (isRental) {
       cells = '<td class="c-qty">' + esc(it.qty || '') + '</td>'
@@ -176,7 +176,7 @@ function _quoteDocHtml_(data, opts) {
       + (((mode === 'subscription' || mode === 'rental') && String(f.name || '').indexOf('押金') >= 0 && amt > 0)
           ? '<span style="display:inline-block;font-size:9.5px;color:#8a6a2e;border:1px solid #D8C08A;border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:1px;">不計稅・退租退還</span>' : '')
       + '</div>'
-      + (f.spec ? '<div class="it-spec">' + esc(f.spec) + '</div>' : '') + '</div></td>'
+      + (f.spec && !isStatement ? '<div class="it-spec">' + esc(f.spec) + '</div>' : '') + '</div></td>'
       + feeCells
       + '</tr>';
   }).join('');
@@ -190,11 +190,16 @@ function _quoteDocHtml_(data, opts) {
     try { _stampUri = (typeof _quoteDefaultStampDataUrl_ === 'function') ? _quoteDefaultStampDataUrl_() : ''; } catch (e) { _stampUri = ''; }
   }
   var stampImg = _qdocImg_(_stampUri) ? '<img class="stamp" src="' + _qdocImg_(_stampUri) + '">' : '';
-  var signBlock = '<div class="sign-row">'
+  // 請款單（Wayne 2026-11-03）：要一眼看懂、直接匯款、不用回簽 → 只留公司章那一格
+  var signBlock = isStatement
+    ? '<div class="sign-row"><div class="sign-cell"><div class="sign-label">植間設計股份有限公司</div>'
+      + '<div class="sign-line">' + stampImg + '</div>'
+      + '<div class="sign-meta">統一編號 90877240</div></div></div>'
+    : '<div class="sign-row">'
     + '<div class="sign-cell"><div class="sign-label">植間設計股份有限公司</div>'
     +   '<div class="sign-line">' + stampImg + '</div>'
     +   '<div class="sign-meta">統一編號 90877240</div></div>'
-    + '<div class="sign-cell"><div class="sign-label">客戶簽署' + (isStatement ? '（確認請款）' : '（確認同意本報價）') + '</div>'
+    + '<div class="sign-cell"><div class="sign-label">客戶簽署（確認同意本報價）</div>'
     +   '<div class="sign-line">' + (sig && _qdocImg_(sig.uri) ? '<img class="sig-img" src="' + _qdocImg_(sig.uri) + '">' : '') + '</div>'
     +   '<div class="sign-meta">' + (sig ? esc(sig.name) + '　' + esc(sig.at) : '簽署人／日期') + '</div></div>'
     + '</div>';
@@ -255,8 +260,9 @@ function _quoteDocHtml_(data, opts) {
   }
   if (data.isTaxEnabled) notes.push('本單金額已含 5% 營業稅、開立統一發票。');
   // 自訂條款（服務範圍／不含項目／免責等；JSON extraNotes[]）——有帶就接在制式條款後；服務類單據可用 noPlantNote 關掉植栽照片那句
-  if (Array.isArray(data.extraNotes)) data.extraNotes.forEach(function (n) { if (String(n || '').trim()) notes.push(String(n).trim()); });
-  if (!data.noPlantNote) notes.push('植栽為自然產品、實際形態以現場交付為準；照片為主要樣式參考。');
+  // 請款單只留跟付款有關的（期限、含稅、勿扣手續費）；施作說明與免責留在報價單
+  if (Array.isArray(data.extraNotes)) data.extraNotes.forEach(function (n) { var nt = String(n || '').trim(); if (!nt) return; if (isStatement && !/付款|匯款|手續費|期限|案場|發票/.test(nt)) return; notes.push(nt); });
+  if (!data.noPlantNote && !isStatement) notes.push('植栽為自然產品、實際形態以現場交付為準；照片為主要樣式參考。');
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + esc(docTitle) + '</title><style>'
     + '@page { size: A4; margin: 18mm 0 14mm; }'
