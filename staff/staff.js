@@ -86,7 +86,7 @@
     // 開頁別等 GAS whoami（5～10 秒）：首頁存過的身分（3 天內）先用、背景再更新；要最新身分的頁自己再呼叫 whoami（2026-11-03 Wayne 要開頁快五成）
     var after = opts.skipWhoami ? function () { return Promise.resolve(null); } : function () {
       var cached = cacheGet('home');
-      if (cached && cached.empId) { S.me = cached; S.ready = true; setTimeout(function () { whoami().catch(function () {}); }, 1500); return Promise.resolve(cached); }
+      if (cached && (cached.empId || (cached.emp && cached.emp.empId))) { S.me = cached; S.ready = true; setTimeout(function () { whoami().catch(function () {}); }, 1500); return Promise.resolve(cached); }
       return whoami();
     };
     if (qs.get('dev') === '1') {
