@@ -37,11 +37,33 @@
       .then(function (r) { if (r.status >= 500) throw fallbackErr('engine_' + r.status); return r.json(); })
       .then(function (j) { if (j && (j.error === 'gas_unreachable' || j.error === 'gas_bad_response' || j.error === 'not_staff' || j.error === 'engine_not_configured' || j.error === 'no_token' || j.error === 'emp_not_found' || j.error === 'fn_not_allowed')) throw fallbackErr(j.error); return j; });   // no_token＝GAS 不認引擎鑰（2026-10-25 逸琳回報卡住實案）：一律退回直打，不能讓員工卡住
   }
+  // LINE idToken 約 1 小時到期：頁面開著放久（PWA／分頁沒關）再按打卡會回「IdToken expired」（逸琳 2026-11-03 實案）。
+  // 每次呼叫前看 token 的 exp，剩不到 2 分鐘就先在 LINE 內無痛重新登入（liff.login 在 LINE 裡不會跳畫面）、回來再請她按一次；後端已回過期也同樣處理。
+  function tokenExpMs() { try { var seg = String(S.idToken || '').split('.')[1] || ''; var js = JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/'))); return Number(js.exp || 0) * 1000; } catch (e) { return 0; } }
+  var RELOGIN_KEY = 'staff_relogin_at';
+  function relogin(why) {
+    try { sessionStorage.setItem(RELOGIN_KEY, String(Date.now())); } catch (e) {}
+    try { if (window.liff && liff.isLoggedIn && liff.isLoggedIn()) liff.logout(); } catch (e) {}
+    try { liff.login({ redirectUri: location.href }); } catch (e) { showErr('LINE 登入已過期，請關閉後重新從 LINE 開啟。'); }
+    return new Promise(function () {});   // 轉去登入、不再往下跑
+  }
+  function ensureFreshToken() {
+    if (S.dev || !S.idToken || !window.liff) return Promise.resolve();
+    var exp = tokenExpMs(); if (!exp || exp - Date.now() > 120000) return Promise.resolve();
+    return relogin('expiring');
+  }
+  function tokenExpired(j) { return !!(j && !S.dev && (j.error === 'token_invalid' || /IdToken expired|token_invalid/i.test(String(j.detail || '')))); }
   function api(fn, params) {
     // 部分版（照片還沒傳完先存一份）只准走引擎：退回 GAS 會把半套照片當正式報告寫進試算表
     var engineOnly = !!(params && params.partial === '1');
-    var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function (e) { if (e && e.fallback && !engineOnly) return apiGas(fn, params); throw e; }) : apiGas(fn, params);
-    return p.then(function (j) { if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。'; return j; });   // 後端只回 server_error，白話統一在這裡換
+    return ensureFreshToken().then(function () {
+      var p = (WRITE_FNS[fn] && CFG.engine) ? apiEngine(fn, params).catch(function (e) { if (e && e.fallback && !engineOnly) return apiGas(fn, params); throw e; }) : apiGas(fn, params);
+      return p.then(function (j) {
+        if (tokenExpired(j)) return relogin('expired');
+        if (j && j.error === 'exception') j.detail = '後台暫時出錯，請再試一次。';   // 後端只回 server_error，白話統一在這裡換
+        return j;
+      });
+    });
   }
 
   function devSetup() {
@@ -74,6 +96,10 @@
       if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return new Promise(function () {}); }
       S.idToken = liff.getIDToken() || '';
       if (!S.idToken) { showErr('拿不到 LINE 身分，請關閉後重新從 LINE 開啟。'); return Promise.reject(new Error('no token')); }
+      var expNow = tokenExpMs(); if (expNow && expNow - Date.now() < 120000) return relogin('stale_at_init');   // 快取的舊 token 一開頁就快過期：先換新的
+      try { var rl = Number(sessionStorage.getItem(RELOGIN_KEY) || 0); if (rl && Date.now() - rl < 120000) { sessionStorage.removeItem(RELOGIN_KEY); setTimeout(function () { try { var ns = window.STAFF || window.T; if (ns && typeof ns.toast === 'function') ns.toast('已重新登入，請再按一次剛才的動作'); else alert('已重新登入，請再按一次剛才的動作'); } catch (e) {} }, 400); } } catch (e) {}
+      // 頁面放到背景再回來（PWA 常見）：先檢查 token，過期就先換，免得按下去才失敗
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') ensureFreshToken(); });
       return after();
     }).catch(function (e) {
       showErr('LIFF 初始化失敗：' + (e && e.message ? e.message : e));
