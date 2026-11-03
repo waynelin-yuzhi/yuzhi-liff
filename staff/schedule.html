@@ -411,7 +411,11 @@
     var save = function (force) {
       var p = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, newDate: $('sh-date').value, newSlot: $('sh-slot').value, newOrder: $('sh-order').value };
       if (approved) { var rs = String(($('sh-reason') || {}).value || '').trim(); if (!rs && !AS) { $('sh-msg').textContent = '請寫原因'; return; } p.reason = rs; }
-      doMove(x, p, force, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = approved ? (AS ? '套用中…' : '送出申請中…') : '儲存中…'; } });
+      var sb = $('sh-save');
+      doMove(x, p, force, {
+        err: function (t) { if (sb) { sb.disabled = false; sb.textContent = approved ? (AS ? '儲存（立即生效）' : '送出變更申請') : '儲存'; } $('sh-msg').textContent = /change_pending|變更申請中/.test(String(t || '')) ? '這個班已經有變更申請在等 Wayne 核可了，不用再送。' : t; },
+        busy: function () { if (sb) { sb.disabled = true; sb.textContent = '送出中…'; } $('sh-msg').textContent = approved ? (AS ? '套用中…' : '送出申請中，約 10 到 20 秒，請稍等不要重按。') : '儲存中…'; }
+      });
     };
     $('sh-save').onclick = function () { save(false); };
     $('sh-remove').onclick = function (ev) { ev.preventDefault(); var rq = { ym: YM, siteCode: x.siteCode, date: x.date, slot: x.slot, remove: '1' }; if (approved) { var rs2 = String(($('sh-reason') || {}).value || '').trim(); if (!rs2 && !AS) { $('sh-msg').textContent = '請先在上面寫原因，再按這裡送出申請'; return; } if (!confirm(AS ? ('這個月不跑 ' + x.shortName + '？會立即生效') : ('申請這個月不跑 ' + x.shortName + '？Wayne 核可後才生效'))) return; rq.reason = rs2; } else if (!confirm('這個月不排 ' + x.shortName + '？（下個月照慣例排時會回來）')) return; doMove(x, rq, false, { err: function (t) { $('sh-msg').textContent = t; }, busy: function () { $('sh-msg').textContent = AS ? '套用中…' : '送出申請中…'; } }); };
