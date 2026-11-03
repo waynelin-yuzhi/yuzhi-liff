@@ -413,7 +413,7 @@
       if (approved) { var rs = String(($('sh-reason') || {}).value || '').trim(); if (!rs && !AS) { $('sh-msg').textContent = '請寫原因'; return; } p.reason = rs; }
       var sb = $('sh-save');
       doMove(x, p, force, {
-        err: function (t) { if (sb) { sb.disabled = false; sb.textContent = approved ? (AS ? '儲存（立即生效）' : '送出變更申請') : '儲存'; } $('sh-msg').textContent = /change_pending|變更申請中/.test(String(t || '')) ? '這個班已經有變更申請在等 Wayne 核可了，不用再送。' : t; },
+        err: function (t) { if (sb) { sb.disabled = false; sb.textContent = approved ? (AS ? '儲存（立即生效）' : '送出變更申請') : '儲存'; } $('sh-msg').textContent = /change_pending|已有變更申請|變更申請中/.test(String(t || '')) ? '這個班已經有變更申請在等 Wayne 核可了，不用再送。' : t; },
         busy: function () { if (sb) { sb.disabled = true; sb.textContent = '送出中…'; } $('sh-msg').textContent = approved ? (AS ? '套用中…' : '送出申請中，約 10 到 20 秒，請稍等不要重按。') : '儲存中…'; }
       });
     };
