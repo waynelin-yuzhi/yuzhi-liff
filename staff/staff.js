@@ -83,7 +83,12 @@
   // 初始化：回 Promise<me>；頁面自己決定拿到身分後畫什麼。opts.skipWhoami＝只拿身分 token、頁面自己打合併 API（打卡頁一趟到位）
   function init(opts) {
     opts = opts || {};
-    var after = opts.skipWhoami ? function () { return Promise.resolve(null); } : whoami;
+    // 開頁別等 GAS whoami（5～10 秒）：首頁存過的身分（3 天內）先用、背景再更新；要最新身分的頁自己再呼叫 whoami（2026-11-03 Wayne 要開頁快五成）
+    var after = opts.skipWhoami ? function () { return Promise.resolve(null); } : function () {
+      var cached = cacheGet('home');
+      if (cached && cached.empId) { S.me = cached; S.ready = true; setTimeout(function () { whoami().catch(function () {}); }, 1500); return Promise.resolve(cached); }
+      return whoami();
+    };
     if (qs.get('dev') === '1') {
       S.dev = devSetup();
       if (!S.dev) { showErr('沒有測試身分、無法載入。'); return Promise.reject(new Error('no dev')); }
@@ -111,7 +116,7 @@
   function whoami() {
     return api('whoami').then(function (r) {
       if (!r || !r.ok) { showErr(errText(r)); throw new Error(r && r.error); }
-      S.me = r; S.ready = true;
+      S.me = r; S.ready = true; cacheSet('home', r);
       return r;
     });
   }

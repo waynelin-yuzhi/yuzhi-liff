@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="staff.css?v=8">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="config.js?v=9"></script>
-<script src="staff.js?v=13"></script>
+<script src="staff.js?v=14"></script>
 <style>
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .cal .wd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}
@@ -180,7 +180,7 @@
     document.querySelectorAll('[data-chgno]').forEach(function (b) { b.onclick = function () { var box = $('rj-' + b.getAttribute('data-chgno')); if (box) box.style.display = box.style.display === 'none' ? '' : 'none'; }; });
     document.querySelectorAll('[data-chg],[data-chgno2]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-chg') || b.getAttribute('data-chgno2'); var rej = !!b.getAttribute('data-chgno2'); var why = ''; if (rej) { var ta = b.parentNode.querySelector('textarea'); why = String((ta && ta.value) || '').trim(); if (!why) { ta && ta.focus(); return; } } else if (!confirm('核可這筆變更？核可後班表更新，系統會擬改期通知給客戶進核可中心。')) return; var row = b.closest('.card'); if (row) row.querySelectorAll('button').forEach(function (x) { x.disabled = true; }); b.textContent = rej ? '退回中' : '核可中'; T.api('schedChangeDecide', { reqId: id, decision: rej ? 'reject' : 'approve', reason: why }).then(function (x) { MSG = x.ok ? ((rej ? '已退回 ' : '已核可 ') + id + (x.result ? '：' + x.result : '')) : ('失敗：' + (x.detail || x.error)); load(YM, true, true); }).catch(function () { MSG = '後台沒回應，請重新整理確認'; load(YM, true, true); }); }; });
   }
-  T.init().then(function () { load(YM || (new Date().getDate() >= 15 ? addYm(thisYm(), 1) : thisYm())); }).catch(function () {});
+  T.init({ skipWhoami: true }).then(function () { load(YM || (new Date().getDate() >= 15 ? addYm(thisYm(), 1) : thisYm())); }).catch(function () {});   // 總覽不需要身分資料、老闆與否由 schedOverview 自己判；開頁直接載入
 })();
 </script>
 </body>
