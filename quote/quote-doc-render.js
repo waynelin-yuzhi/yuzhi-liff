@@ -194,7 +194,7 @@ function _quoteDocHtml_(data, opts) {
   var signBlock = isStatement
     ? '<div class="sign-row"><div class="sign-cell"><div class="sign-label">植間設計股份有限公司</div>'
       + '<div class="sign-line">' + stampImg + '</div>'
-      + '<div class="sign-meta">統一編號 90877240</div></div></div>'
+      + '<div class="sign-meta">統一編號 90877240　新北市中和區連城路569巷9弄26號1樓　02-2221-0318</div></div></div>'
     : '<div class="sign-row">'
     + '<div class="sign-cell"><div class="sign-label">植間設計股份有限公司</div>'
     +   '<div class="sign-line">' + stampImg + '</div>'
@@ -409,7 +409,7 @@ function _quoteDocHtml_(data, opts) {
     + '<div class="tail' + (isStatement ? ' slim' : '') + '"><div class="sec-label">備註　NOTES</div>'
     + '<ul class="notes">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
     + signBlock
-    + '<div class="ft"><div>新北市中和區連城路569巷9弄26號1樓　02-2221-0318</div></div>'
+    + (isStatement ? '' : '<div class="ft"><div>新北市中和區連城路569巷9弄26號1樓　02-2221-0318</div></div>')
     + '</div>'
     + appendixHtml
     // 舊「內嵌自縮」腳本已移除（2026-07-28）：它用 self!==top 判斷內嵌，但 GAS 網頁永遠住沙盒 iframe、
