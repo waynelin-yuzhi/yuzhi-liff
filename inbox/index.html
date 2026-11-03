@@ -9,7 +9,9 @@
 <style>
   /* 關掉手機瀏覽器的下拉重新整理：改稿時在框裡往上捲到頂再往下拉，會被當成整頁重新整理（2026-10-21 Wayne 回報） */
   html,body{overscroll-behavior-y:contain}
-  textarea,#contacts,.chat{overscroll-behavior:contain}
+  textarea,.chat{overscroll-behavior:contain}
+  /* #contacts 只有桌機版是真的捲動容器（72vh）；手機版 max-height:none 不會自己捲，若也設 contain 會把手指捲動擋在清單裡、整頁滑不動（2026-11-03 Wayne 回報） */
+  @media(min-width:821px){#contacts{overscroll-behavior:contain}}
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--brick:#8a4a30;--amber:#F3E9C9;--tint:#EEF2E6}
   *{margin:0;padding:0;box-sizing:border-box}
   html{overflow-x:clip}
