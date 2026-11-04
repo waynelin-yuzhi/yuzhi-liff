@@ -147,6 +147,13 @@ function renderSign(d) {
       + '<input type="file" id="g_' + w + '" accept="image/*" style="display:none"></div>'
       + '<button type="button" class="clr" id="al_' + w + '" style="display:block;margin:2px auto 0;padding:5px">從相簿選</button></div>';
   };
+  var bl = Array.isArray(d.backlog) ? d.backlog : [];
+  var backlogCard = bl.length
+    ? '<div class="card" id="blcard"><div class="lbl">還有 ' + bl.length + ' 個月的薪資單沒簽收</div>'
+      + '<div class="note">這次一起簽，' + (d.isOutsource ? '每個月的勞務報酬單會一併產生，' : '') + '不用再逐月點卡片。不想這次簽的可以取消勾選。</div>'
+      + bl.map(function (b) { return '<label class="blrow" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:.5px solid #EDE9DE"><input type="checkbox" class="blck" data-token="' + esc(b.token) + '" checked><span style="flex:1">' + esc(b.label) + ' 薪資單</span><span>' + esc(money(b.netPay)) + '</span></label>'; }).join('')
+      + '</div>'
+    : '';
   var idCard = d.needId
     ? '<div class="card" id="idcard"><div class="lbl">身分證影本（勞務報酬單報稅申報用）</div>'
       + '<div class="note">首次簽收需附一次。證件放在深色桌面，四邊對齊框線，框變綠會自動拍下；系統自動裁掉背景、轉成黑白影本並蓋上「僅供報稅申報使用」章，不會留存彩色原照。之後每月自動附上、不用再拍。</div>'
@@ -160,8 +167,9 @@ function renderSign(d) {
     + '<div class="row"><div class="k">應扣合計</div><div>' + esc(money(s.dedTotal)) + '</div></div>'
     + '<div class="amt" style="margin-top:8px"><span class="lb">實發金額</span><b>' + esc(money(s.netPay)) + '</b></div></div>'
     + idCard
+    + backlogCard
     + '<div class="card">'
-    + '<div class="decl">本人已核對本月薪資單內容，確認無誤。</div>'
+    + '<div class="decl">本人已核對本月薪資單內容' + (bl.length ? '與下列補簽月份' : '') + '，確認無誤。</div>'
     + '<div class="lbl">簽名</div>'
     + '<div class="note">' + (d.isOutsource ? '此簽名將用於本次薪資單及勞務報酬單' : '此簽名將用於本次薪資單') + '</div>'
     + '<canvas id="cv" class="pad"></canvas>'
@@ -202,6 +210,13 @@ function renderSigned(d) {
         ? '<a class="ghost" style="margin-top:18px" href="' + dlUrl(pdfId) + '" target="_blank" rel="noopener">下載薪資單 PDF</a>'
         : '<div class="tm" style="margin-top:14px">已簽章 PDF 產生中，稍後重新開啟此連結即可下載。</div>')
     + (d.isOutsource ? '<div class="keep">勞務報酬單已同步產生並簽章，公司留存</div>' : '');
+  var ex = Array.isArray(d.extra) ? d.extra : [];
+  if (ex.length) {
+    var okL = ex.filter(function (x) { return x.ok; }).map(function (x) { return x.label; });
+    var badL = ex.filter(function (x) { return !x.ok; }).map(function (x) { return (x.label || '') + (x.msg ? '（' + x.msg + '）' : ''); });
+    extra += (okL.length ? '<div class="keep">同時補簽了 ' + okL.length + ' 個月：' + esc(okL.join('、')) + '</div>' : '')
+      + (badL.length ? '<div class="keep" style="color:#8C3B25">沒簽成：' + esc(badL.join('、')) + '，請跟植間說一聲</div>' : '');
+  }
   doneCard('已簽收', (d.empName || '') + '　' + (d.monthLabel || '') + ' 薪資單', false, extra);
 }
 
@@ -382,6 +397,8 @@ function doConfirm() {
   btn.disabled = true; btn.textContent = '送出中…';
   if (rep) rep.disabled = true;
   var extra = { sig: padPng() };
+  var picked = [].slice.call(document.querySelectorAll('.blck:checked')).map(function (c) { return c.getAttribute('data-token'); }).filter(Boolean);
+  if (picked.length) extra.extra = picked.join(',');
   if (IDS.front) extra.idFront = IDS.front;
   if (IDS.back) extra.idBack = IDS.back;
   var fields = postFields('confirm', extra);
@@ -394,6 +411,7 @@ function doConfirm() {
         merged.signedAt = res.signedAt || D.signedAt || '';
         merged.signedPdfId = res.signedPdfId || D.signedPdfId || '';
         merged.laborReceipt = res.laborReceipt || null;
+        merged.extra = res.extra || [];
         renderSigned(merged);
       } else {
         btn.disabled = false; btn.textContent = '確認無誤並簽名';
