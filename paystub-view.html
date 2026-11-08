@@ -154,6 +154,15 @@ function renderSign(d) {
       + bl.map(function (b) { return '<label class="blrow" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:.5px solid #EDE9DE"><input type="checkbox" class="blck" data-token="' + esc(b.token) + '" checked><span style="flex:1">' + esc(b.label) + ' 薪資單</span><span>' + esc(money(b.netPay)) + '</span></label>'; }).join('')
       + '</div>'
     : '';
+  // 外包勞報單補簽（電子簽上路前、已付款但勞報單沒簽的月份）：同一個簽名一起補上，不另發卡
+  var lb = Array.isArray(d.laborBacklog) ? d.laborBacklog : [];
+  var lbRange = lb.length ? (lb[0].label + (lb.length > 1 ? ' 到 ' + lb[lb.length - 1].label : '')) : '';
+  var laborCard = lb.length
+    ? '<div class="card" id="lbcard"><div class="lbl">順便補簽之前的勞務報酬單（' + lb.length + ' 張）</div>'
+      + '<div class="note">' + esc(lbRange) + ' 的酬勞都已經付給你了。那幾個月的勞務報酬單是公司報稅用的簽收單據，當時還沒簽到，這次用同一個簽名一起補上就好。金額跟當時一樣，不會重複付款，也不用再做別的事。</div>'
+      + lb.map(function (b) { return '<label class="blrow" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:.5px solid #EDE9DE"><input type="checkbox" class="lbck" data-ym="' + esc(b.ym) + '" checked><span style="flex:1">' + esc(b.label) + ' 勞務報酬</span><span>' + esc(money(b.amount)) + '</span></label>'; }).join('')
+      + '</div>'
+    : '';
   var idCard = d.needId
     ? '<div class="card" id="idcard"><div class="lbl">身分證影本（勞務報酬單報稅申報用）</div>'
       + '<div class="note">首次簽收需附一次。證件放在深色桌面，四邊對齊框線，框變綠會自動拍下；系統自動裁掉背景、轉成黑白影本並蓋上「僅供報稅申報使用」章，不會留存彩色原照。之後每月自動附上、不用再拍。</div>'
@@ -168,10 +177,11 @@ function renderSign(d) {
     + '<div class="amt" style="margin-top:8px"><span class="lb">實發金額</span><b>' + esc(money(s.netPay)) + '</b></div></div>'
     + idCard
     + backlogCard
+    + laborCard
     + '<div class="card">'
-    + '<div class="decl">本人已核對本月薪資單內容' + (bl.length ? '與下列補簽月份' : '') + '，確認無誤。</div>'
+    + '<div class="decl">本人已核對本月薪資單內容' + ((bl.length || lb.length) ? '與上方補簽項目' : '') + '，確認無誤。</div>'
     + '<div class="lbl">簽名</div>'
-    + '<div class="note">' + (d.isOutsource ? '此簽名將用於本次薪資單及勞務報酬單' : '此簽名將用於本次薪資單') + '</div>'
+    + '<div class="note">' + (d.isOutsource ? '此簽名將用於本次薪資單及勞務報酬單' + (lb.length ? '（含勾選的補簽月份）' : '') : '此簽名將用於本次薪資單') + '</div>'
     + '<canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr" type="button">清除重簽</button></div>'
     + '<button class="btn" id="go" type="button" disabled>確認無誤並簽名</button>'
@@ -214,7 +224,7 @@ function renderSigned(d) {
   if (ex.length) {
     var okL = ex.filter(function (x) { return x.ok; }).map(function (x) { return x.label; });
     var badL = ex.filter(function (x) { return !x.ok; }).map(function (x) { return (x.label || '') + (x.msg ? '（' + x.msg + '）' : ''); });
-    extra += (okL.length ? '<div class="keep">同時補簽了 ' + okL.length + ' 個月：' + esc(okL.join('、')) + '</div>' : '')
+    extra += (okL.length ? '<div class="keep">同時補簽好了：' + esc(okL.join('、')) + '</div>' : '')
       + (badL.length ? '<div class="keep" style="color:#8C3B25">沒簽成：' + esc(badL.join('、')) + '，請跟植間說一聲</div>' : '');
   }
   doneCard('已簽收', (d.empName || '') + '　' + (d.monthLabel || '') + ' 薪資單', false, extra);
@@ -399,6 +409,8 @@ function doConfirm() {
   var extra = { sig: padPng() };
   var picked = [].slice.call(document.querySelectorAll('.blck:checked')).map(function (c) { return c.getAttribute('data-token'); }).filter(Boolean);
   if (picked.length) extra.extra = picked.join(',');
+  var pickedL = [].slice.call(document.querySelectorAll('.lbck:checked')).map(function (c) { return c.getAttribute('data-ym'); }).filter(Boolean);
+  if (pickedL.length) extra.labor = pickedL.join(',');
   if (IDS.front) extra.idFront = IDS.front;
   if (IDS.back) extra.idBack = IDS.back;
   var fields = postFields('confirm', extra);
