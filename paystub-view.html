@@ -219,7 +219,14 @@ function renderSigned(d) {
     + (pdfId
         ? '<a class="ghost" style="margin-top:18px" href="' + dlUrl(pdfId) + '" target="_blank" rel="noopener">下載薪資單 PDF</a>'
         : '<div class="tm" style="margin-top:14px">已簽章 PDF 產生中，稍後重新開啟此連結即可下載。</div>')
-    + (d.isOutsource ? '<div class="keep">勞務報酬單已同步產生並簽章，公司留存</div>' : '');
+    + (d.isOutsource
+        ? (d.laborReceipt && d.laborReceipt.signed === false
+            ? '<div class="keep">本月勞務報酬單還沒簽好，植間會再處理，不用重簽</div>'
+            : '<div class="keep">勞務報酬單已同步產生並簽章，公司留存</div>')
+        : '')
+    + (Array.isArray(d.laborQueued) && d.laborQueued.length
+        ? '<div class="keep">之前月份的勞務報酬單（' + d.laborQueued.length + ' 張）正在補簽，幾分鐘內完成，不用再做任何事</div>'
+        : '');
   var ex = Array.isArray(d.extra) ? d.extra : [];
   if (ex.length) {
     var okL = ex.filter(function (x) { return x.ok; }).map(function (x) { return x.label; });
@@ -424,6 +431,7 @@ function doConfirm() {
         merged.signedPdfId = res.signedPdfId || D.signedPdfId || '';
         merged.laborReceipt = res.laborReceipt || null;
         merged.extra = res.extra || [];
+        merged.laborQueued = res.laborQueued || [];
         renderSigned(merged);
       } else {
         btn.disabled = false; btn.textContent = '確認無誤並簽名';
