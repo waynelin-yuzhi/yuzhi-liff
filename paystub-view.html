@@ -224,7 +224,7 @@ function renderSigned(d) {
             ? '<div class="keep">本月勞務報酬單還沒簽好，植間會再處理，不用重簽</div>'
             : (d.laborReceipt && d.laborReceipt.signed
                 ? '<div class="keep">勞務報酬單已同步產生並簽章，公司留存</div>'
-                : '<div class="keep">勞務報酬單由公司留存</div>'))
+                : '<div class="keep">本月勞務報酬單還沒產生，植間會再處理，不用重簽</div>'))
         : '')
     + (Array.isArray(d.laborRejected) && d.laborRejected.length
         ? '<div class="keep">之前月份的勞務報酬單有 ' + d.laborRejected.length + ' 張這次沒排進去，植間會再處理</div>'
