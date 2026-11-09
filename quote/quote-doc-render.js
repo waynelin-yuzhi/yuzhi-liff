@@ -108,7 +108,7 @@ function _quoteDocHtml_(data, opts) {
               + '<td style="padding:2px 0;text-align:right;font-variant-numeric:tabular-nums">' + (r.v < 0 ? '−' + money(-r.v) : money(r.v)) + '</td></tr>';
           }).join('')
         + '<tr><td style="padding:5px 18px 2px 0;border-top:1px solid #cfc8b8;font-weight:600">首期應支付合計</td>'
-        + '<td style="padding:5px 0 2px;border-top:1px solid #cfc8b8;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + money(Math.max(0, grand - docCredits.total)) + '</td></tr></table>';
+        + '<td style="padding:5px 0 2px;border-top:1px solid #cfc8b8;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + money(_fr.total) + '</td></tr></table>';
     } else {
       _frHtml = '<div class="pay-amt">首期應支付金額　<b>' + money(Math.max(0, grand - docCredits.total)) + '</b></div>';
     }
@@ -481,9 +481,15 @@ function qdocSubFirstRows_(data) {
     rows.push({ k: o.name + (tax ? '（含稅）' : ''), v: v, kind: 'one' });
   });
   if (dep > 0) rows.push({ k: '押金（不計稅、合約結束退還）', v: dep, kind: 'dep' });
+  // 以 qdocTotals_ 的 grand（合併算稅）為準：月費與一次性各自四捨五入可能差 1 元，差額由最後一列一次性費用吸收；差超過 1 回 null、呼叫端退回以 grand 為準的單行寫法
+  var diff = qdocTotals_(data).grand - (base + oneT + dep);
+  if (diff !== 0) {
+    if (Math.abs(diff) > 1 || !ones.length) return null;
+    for (var li = rows.length - 1; li >= 0; li--) { if (rows[li].kind === 'one') { rows[li].v += diff; break; } }
+  }
   var cr = qdocCreditsOf_(data);
   cr.list.forEach(function (c) { rows.push({ k: '扣除 ' + c.name, v: -c.amount, kind: 'neg' }); });
-  return { monthly: monthly, rows: rows, total: Math.max(0, base + oneT + dep - cr.total) };
+  return { monthly: monthly, rows: rows, total: Math.max(0, qdocTotals_(data).grand - cr.total) };
 }
 
 // 報價／請款單金額（渲染器與核可頁共用同一套：items＋fees＝小計、押金不課稅、5% 稅、grandTotal 以檔內為準）

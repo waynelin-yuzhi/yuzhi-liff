@@ -313,6 +313,8 @@ function _contractQuoteAppendixHtml_(p) {
   const fpAmt = fp ? (Number(fp.amount) || 0) : 0;
   const grand = Number(d.grandTotal) || (fp ? fpAmt + deposit + oneTimeTax : monthly + deposit + oneTimeTax);
   const credits = qdocCreditsOf_(d);
+  // 月費與一次性各自四捨五入可能與 grand（合併算稅）差 1 元：差額併入一次性費用顯示列、使逐列加總等於合計
+  const oneShow = (function() { const df = grand - ((fp ? fpAmt : monthly) + deposit + oneTimeTax); return (oneTime > 0 && Math.abs(df) <= 1) ? oneTimeTax + df : oneTimeTax; })();
 
   let rows = '', lastArea = null, no = 0;
   items.forEach(function(it) {
@@ -337,7 +339,7 @@ function _contractQuoteAppendixHtml_(p) {
   sums += sumRow('每月月費（' + (taxOn ? '含稅' : '未稅') + '）', money(monthly));
   const shortD = function(x) { return String(x || '').replace(/^\d{4}\//, ''); };
   if (fp) sums += sumRow('首期畸零 ' + E(shortD(fp.from)) + '–' + E(shortD(fp.to)) + '（' + Number(fp.days || 0) + (fp.monthDays ? '／' + Number(fp.monthDays) : '') + ' 天）', money(fpAmt));
-  if (oneTime > 0) sums += sumRow('一次性費用（' + (taxOn ? '含稅' : '未稅') + '）', money(oneTimeTax));
+  if (oneTime > 0) sums += sumRow('一次性費用（' + (taxOn ? '含稅' : '未稅') + '）', money(oneShow));
   if (deposit > 0) sums += sumRow('押金（不計稅・退租退還）', money(deposit));
   sums += sumRow('首期應付合計', money(grand), credits.total > 0 ? '' : 'grand');
   if (credits.total > 0) {
