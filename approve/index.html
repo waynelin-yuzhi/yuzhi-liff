@@ -174,6 +174,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   function render(it) {
     var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
     LOADED_STATUS = status || '';
+    HAS_PRESELECT = choiceList(pl).some(function (c) { return preIdx(c) >= 0; });
     var title = it.title || '', id = it.id, from = it.from;
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
       var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
@@ -259,7 +260,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   window.addEventListener('pageshow', function () { if (SENT) return; Array.prototype.forEach.call(document.querySelectorAll('form.busy'), function (f) { f.classList.remove('busy'); }); });   // 從 GAS 結果頁按返回（bfcache）時解鎖
   var FETCH_DECISIONS = { approve: 1, skip: 1, reject: 1, publishnow: 1, reschedule: 1, cancel: 1 };
   var DECISION_LABEL = { approve: '核可', skip: '略過', reject: '退回', publishnow: '改為立即發佈', reschedule: '改期', cancel: '取消排程' };
-  var SENT = false, LOADED_STATUS = '';
+  var SENT = false, LOADED_STATUS = '', HAS_PRESELECT = false;
   function lockAll(on) { Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { if (on) f.classList.add('busy'); else f.classList.remove('busy'); }); }
   function statusBox(cls, title, desc) {
     var el = document.getElementById('decideBox');
@@ -347,7 +348,11 @@ form.busy button{opacity:.5;pointer-events:none;}
         var ver = document.getElementById('ver'); if (ver && j.serverVersion) ver.textContent = 'Pages · ' + j.serverVersion;
       })
       .catch(function () {
-        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
+        // 帶推定選項的對帳卡在舊版頁面會被擋（舊版頁不送選項）：只請他重新整理，不指去舊版頁
+        var failNote = HAS_PRESELECT
+          ? '附掛項目這次沒載到，核可鈕先鎖住；這張對帳卡的選項只能在這頁核可，請重新整理再試。退回與略過仍可在這裡按。'
+          : '';
+        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = failNote ? '<div class="note">' + esc(failNote) + '</div>' : '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
         var bh = document.getElementById('approveHint'); if (bh) bh.textContent = '附掛項目沒載到、這裡不能核可';
       });
   }
