@@ -98,16 +98,26 @@ function _quoteDocHtml_(data, opts) {
       + payLine('驗收款／尾款', p3 + '%', money(grand - a1 - a2))
       + '</div>';
   } else if (mode === 'subscription') {
-    paySection = '<div class="pay-amt">次月起每月月費　<b style="color:#B85A3D">' + money(subMonthly) + '</b>'
-      + '<span style="font-size:10px;color:#6B675E">　（' + (data.isTaxEnabled ? '含稅' : '未稅') + (subNegFees < 0 ? '、已含每月折扣' : '') + '）</span></div>'
-      + (subFP ? '<div class="pay-amt">首期畸零期間 ' + esc(subFP.from || '') + '–' + esc(subFP.to || '') + '（' + Number(subFP.days || 0) + ' 天）　<b>' + money(subFPAmt) + '</b></div>' : '')
-      + (docCredits.total > 0
-          ? '<div class="pay-amt">首期應支付金額　<b>' + money(Math.max(0, grand - docCredits.total)) + '</b>'
-            + '<span style="font-size:10px;color:#6B675E">　（合計 ' + money(grand) + '，已扣 ' + esc(docCredits.list.map(function (c) { return c.name; }).join('、')) + ' ' + money(docCredits.total) + '）</span></div>'
-          : '<div class="pay-amt">首期應支付總計金額　<b>' + money(grand) + '</b></div>')
+    var _fr = qdocSubFirstRows_(data);
+    var _taxTxt = data.isTaxEnabled ? '含稅' : '未稅';
+    var _frHtml = '';
+    if (_fr && _fr.rows.length > 1) {
+      _frHtml = '<table style="border-collapse:collapse;font-size:12px;margin:4px 0 6px;min-width:62%">'
+        + _fr.rows.map(function (r) {
+            return '<tr><td style="padding:2px 18px 2px 0;color:' + (r.kind === 'dep' || r.kind === 'neg' ? '#6B675E' : '#2b2a26') + '">' + esc((r.kind === 'one' ? '一次性費用：' : '') + r.k) + '</td>'
+              + '<td style="padding:2px 0;text-align:right;font-variant-numeric:tabular-nums">' + (r.v < 0 ? '−' + money(-r.v) : money(r.v)) + '</td></tr>';
+          }).join('')
+        + '<tr><td style="padding:5px 18px 2px 0;border-top:1px solid #cfc8b8;font-weight:600">首期應支付合計</td>'
+        + '<td style="padding:5px 0 2px;border-top:1px solid #cfc8b8;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + money(Math.max(0, grand - docCredits.total)) + '</td></tr></table>';
+    } else {
+      _frHtml = '<div class="pay-amt">首期應支付金額　<b>' + money(Math.max(0, grand - docCredits.total)) + '</b></div>';
+    }
+    paySection = (_fr && _fr.rows.length > 1 ? '<div class="pay-amt" style="padding-bottom:0">首期款明細</div>' : '') + _frHtml
+      + '<div class="pay-amt">次月起每月　<b style="color:#B85A3D">' + money(subMonthly) + '</b>'
+      + '<span style="font-size:10px;color:#6B675E">　（' + _taxTxt + (subNegFees < 0 ? '、已含每月折扣' : '') + '）</span></div>'
       + payNote((subFP
-          ? '首期＝畸零期間養護費（每月月費 ÷ 當月天數 × 實際服務天數）＋押金及其他一次性費用；自次月起依上列月費按月收取。'
-          : '首期支付金額包含當月養護費、押金及其他一次性費用；次月起依上列月費收取。')
+          ? '首期畸零期間養護費＝每月月費 ÷ 當月天數 × 實際服務天數；自次月起依上列月費按月收取。'
+          : '首月月費、一次性費用及押金合計為首期款；次月起僅收每月月費。')
           + (docCredits.total > 0 ? '已收之款項（' + esc(docCredits.list.map(function (c) { return c.name; }).join('、')) + '）於首期全額扣回、僅扣一次。' : ''));
   } else if (mode === 'rental') {
     paySection = '<div class="pay-amt">總計應支付款項　<b>' + money(grand) + '</b></div>'
@@ -439,6 +449,41 @@ function qdocCreditsOf_(data) {
     return { name: String((c && c.name) || '首期折抵').substring(0, 60), amount: Math.round(Number(c && c.amount) || 0) };
   }).filter(function (c) { return c.amount > 0; });
   return { list: list, total: list.reduce(function (t, c) { return t + c.amount; }, 0) };
+}
+
+// 訂閱式首期款逐項（報價單付款區、LINE 小卡、簽回自動回覆共用；只呈現、金額口徑同 _quoteFirstBillFromData_）
+// 回 { monthly, rows:[{k,v,kind}], total }；kind＝base／one／dep／neg；金額 0 的列自動省略
+function qdocSubFirstRows_(data) {
+  data = data || {};
+  if (String(data.mode || '') !== 'subscription' || String(data.docKind || '') === 'statement') return null;
+  var feeAmt = function (f) { return Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0; };
+  var sum = 0, neg = 0, dep = 0, ones = [];
+  (data.items || []).forEach(function (it) { sum += Number(it.total != null ? it.total : (Number(it.qty) || 0) * (Number(it.price) || 0)) || 0; });
+  (data.fees || []).forEach(function (f) {
+    if (!f) return;
+    var a = feeAmt(f);
+    if (a < 0) neg += a;
+    else if (a > 0 && String(f.name || '').indexOf('押金') >= 0) dep += a;
+    else if (a > 0) ones.push({ name: String(f.name || f.label || '其他費用').replace(/（一次性）\s*$/, ''), amt: a });
+  });
+  var tax = data.isTaxEnabled === true;
+  var monthly = tax ? Math.round((sum + neg) * 1.05) : (sum + neg);
+  var oneRaw = ones.reduce(function (t, o) { return t + o.amt; }, 0);
+  var oneT = tax ? Math.round(oneRaw * 1.05) : oneRaw;
+  var fp = (data.firstPeriod && Number(data.firstPeriod.amount) > 0) ? data.firstPeriod : null;
+  var base = fp ? Number(fp.amount) : monthly;
+  var rows = [];
+  if (base > 0) rows.push({ k: fp ? '首期畸零 ' + String(fp.from || '') + '–' + String(fp.to || '') + '（' + Number(fp.days || 0) + ' 天）' : '首月月費', v: base, kind: 'base' });
+  var acc = 0;
+  ones.forEach(function (o, i) {
+    var v = (i === ones.length - 1) ? oneT - acc : (tax ? Math.round(o.amt * 1.05) : o.amt);
+    acc += v;
+    rows.push({ k: o.name + (tax ? '（含稅）' : ''), v: v, kind: 'one' });
+  });
+  if (dep > 0) rows.push({ k: '押金（不計稅、合約結束退還）', v: dep, kind: 'dep' });
+  var cr = qdocCreditsOf_(data);
+  cr.list.forEach(function (c) { rows.push({ k: '扣除 ' + c.name, v: -c.amount, kind: 'neg' }); });
+  return { monthly: monthly, rows: rows, total: Math.max(0, base + oneT + dep - cr.total) };
 }
 
 // 報價／請款單金額（渲染器與核可頁共用同一套：items＋fees＝小計、押金不課稅、5% 稅、grandTotal 以檔內為準）
