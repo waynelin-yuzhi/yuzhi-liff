@@ -312,6 +312,7 @@ function _quoteDocHtml_(data, opts) {
     + '.sums .box { width: 240px; }'
     + '.sums .row { display: flex; justify-content: space-between; padding: 5.5px 6px; font-size: 12px; }'
     + '.sums .row .k { color: #6B675E; letter-spacing: 0.14em; font-size: 10.5px; padding-top: 2px; }'
+    + '.sums .row .v { white-space: nowrap; flex: none; padding-left: 8px; }'
     + '.sums .grand { border-top: 1px solid #26251F; margin-top: 3px; padding-top: 8px; }'
     + '.sums .grand .k { color: #26251F; font-weight: 500; }'
     + '.sums .grand .v { font-size: 15.5px; font-weight: 600; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }'
