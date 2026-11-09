@@ -123,25 +123,36 @@ form.busy button{opacity:.5;pointer-events:none;}
     var cs = ea && Array.isArray(ea.choices) ? ea.choices : [];
     return cs.filter(function (c) { return c && /^[A-Za-z0-9_-]{1,40}$/.test(String(c.key || '')) && Array.isArray(c.candidates) && c.candidates.length; }).slice(0, 30);
   }
+  function preIdx(c) { var n = Number(c.preselect); return (c.preselect != null && c.preselect !== '' && n >= 0 && n < Math.min(4, c.candidates.length) && Math.floor(n) === n) ? n : -1; }
   function choicesHtml(pl) {
     var cs = choiceList(pl);
     if (!cs.length) return '';
     var money = function (n) { return Number(n || 0).toLocaleString(); };
-    var h2 = '<div class="chbox" id="chbox"><div class="schedlabel">要你選（' + cs.length + ' 筆）</div><div class="chhint">每筆點一個對應的應收，按核可時跟上面的一起銷帳，並記住這個匯款帳號，下次自動認人。不確定就留在「先不銷」。</div>';
-    cs.forEach(function (c) {
-      var key = String(c.key), d = String(c.date || '').replace(/^\d{4}[-\/]/, '').replace('-', '/');
+    var one = function (c) {
+      var key = String(c.key), d = String(c.date || '').replace(/^\d{4}[-\/]/, '').replace('-', '/'), pi = preIdx(c);
       var acct = String(c.acct || '').replace(/\D/g, '');
       var meta = [];
       if (c.payer) meta.push('匯款人 ' + c.payer);
       if (acct) meta.push('帳號末四碼 ' + acct.slice(-4));
-      if (c.why) meta.push(c.why);
-      h2 += '<fieldset class="chs"><legend>' + esc(d) + '　NT$ ' + esc(money(c.amount)) + '</legend>' + (meta.length ? '<div class="chmeta">' + esc(meta.join('｜')) + '</div>' : '');
+      if (pi >= 0 && c.reason) meta.push('推定理由：' + c.reason);
+      else if (c.why) meta.push(c.why);
+      var h3 = '<fieldset class="chs"><legend>' + esc(d) + '　NT$ ' + esc(money(c.amount)) + '</legend>' + (meta.length ? '<div class="chmeta">' + esc(meta.join('｜')) + '</div>' : '');
       c.candidates.slice(0, 4).forEach(function (cd, i) {
-        h2 += '<label><input type="radio" name="pick_' + esc(key) + '" value="' + i + '"><span>' + esc(cd.label || ((cd.arIds || []).join('＋'))) + '</span></label>';
+        h3 += '<label><input type="radio" name="pick_' + esc(key) + '" value="' + i + '"' + (i === pi ? ' checked' : '') + '><span>' + esc(cd.label || ((cd.arIds || []).join('＋'))) + '</span></label>';
       });
-      h2 += '<label class="skip on"><input type="radio" name="pick_' + esc(key) + '" value="none" checked><span>都不是／先不銷</span></label></fieldset>';
-    });
-    return h2 + '<div class="chsum" id="chsum">目前選了 0 筆，按核可只銷上面系統建議的。</div></div>';
+      return h3 + '<label class="skip"><input type="radio" name="pick_' + esc(key) + '" value="none"' + (pi < 0 ? ' checked' : '') + '><span>都不是／先不銷</span></label></fieldset>';
+    };
+    var pre = cs.filter(function (c) { return preIdx(c) >= 0; }), ask = cs.filter(function (c) { return preIdx(c) < 0; });
+    var h2 = '<div class="chbox" id="chbox">';
+    if (pre.length) {
+      h2 += '<div class="schedlabel">推定可銷（已幫你選好，可改）' + pre.length + ' 筆</div><div class="chhint">系統依金額與客戶推定的對應，已預先勾好；對了直接按核可，錯了改選別張或改「先不銷」。</div>';
+      pre.forEach(function (c) { h2 += one(c); });
+    }
+    if (ask.length) {
+      h2 += '<div class="schedlabel"' + (pre.length ? ' style="margin-top:14px;"' : '') + '>要你選（' + ask.length + ' 筆）</div><div class="chhint">每筆點一個對應的應收，按核可時跟上面的一起銷帳，並記住這個匯款帳號，下次自動認人。不確定就留在「先不銷」。</div>';
+      ask.forEach(function (c) { h2 += one(c); });
+    }
+    return h2 + '<div class="chsum" id="chsum"></div></div>';
   }
   function wireChoices(baseConfirm) {
     var box = document.getElementById('chbox'); if (!box) return;
@@ -152,9 +163,9 @@ form.busy button{opacity:.5;pointer-events:none;}
         if (r.checked && r.value !== 'none') n++;
       });
       var sum = document.getElementById('chsum');
-      if (sum) sum.textContent = n ? '目前選了 ' + n + ' 筆，按核可會一起銷帳並記住帳號。' : '目前選了 0 筆，按核可只銷上面系統建議的。';
+      if (sum) sum.textContent = n ? '目前勾了 ' + n + ' 筆，按核可會一起銷帳並記住帳號。' : '目前勾了 0 筆，按核可不會銷這區的任何一筆。';
       var ba = document.getElementById('btnApprove');
-      if (ba) ba.setAttribute('data-confirm', n ? '確定核可？你選的 ' + n + ' 筆會跟卡上建議的一起銷帳。' : baseConfirm);
+      if (ba) ba.setAttribute('data-confirm', n ? '確定核可？你勾的 ' + n + ' 筆會跟卡上建議的一起銷帳。' : baseConfirm);
     };
     box.addEventListener('change', upd);
     upd();
