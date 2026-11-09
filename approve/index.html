@@ -79,6 +79,17 @@ form.busy button{opacity:.5;pointer-events:none;}
 .decide.run{border-color:#C9A24A;background:#FFF8E6;}
 .decide.ok{border-color:#5F6E58;background:#EEF3EA;}
 .decide.warn{border-color:#B5583C;background:#FBEDE8;}
+.chbox{margin:14px 0 2px;}
+.chbox .chhint{font-size:13px;color:#8A8F86;line-height:1.6;margin-bottom:8px;}
+.chs{border:1px solid #E3DCCB;border-radius:10px;background:#FFFFFF;padding:10px 12px 6px;margin:0 0 10px;min-width:0;}
+.chs legend{font-size:14px;font-weight:600;color:#2E332C;padding:0 4px;line-height:1.5;}
+.chs .chmeta{font-size:12px;color:#8A8F86;margin:0 0 6px;line-height:1.5;word-break:break-word;}
+.chs label{display:flex;align-items:flex-start;gap:10px;padding:11px 10px;margin:0 0 6px;border:1px solid #EDE6D6;border-radius:8px;background:#FAF7F0;font-size:14.5px;line-height:1.5;cursor:pointer;}
+.chs label input{flex:none;width:20px;height:20px;margin:1px 0 0;accent-color:#5F6E58;}
+.chs label span{flex:1;word-break:break-word;}
+.chs label.on{border-color:#5F6E58;background:#EEF3EA;}
+.chs label.skip span{color:#8A8F86;}
+.chsum{font-size:13px;color:#5F6E58;margin:4px 0 0;}
 </style>
 </head>
 <body>
@@ -105,6 +116,49 @@ form.busy button{opacity:.5;pointer-events:none;}
 
   var hidden = function (n, v) { return '<input type="hidden" name="' + n + '" value="' + esc(v) + '">'; };
   var formHead = function () { return '<form method="post" action="' + esc(GAS) + '" target="_top">' + hidden('approvalDecide', '1') + hidden('h', h) + '<input type="hidden" name="fp" id="fp" value="">'; };
+
+  // 對帳卡「要你判斷」逐筆選項：每筆一組 radio、預設先不銷；表單只送候選序號，後台讀卡上存的候選（防竄改）
+  function choiceList(pl) {
+    var ea = (pl && pl.execAction === 'bankSettle' && pl.execArgs) || null;
+    var cs = ea && Array.isArray(ea.choices) ? ea.choices : [];
+    return cs.filter(function (c) { return c && /^[A-Za-z0-9_-]{1,40}$/.test(String(c.key || '')) && Array.isArray(c.candidates) && c.candidates.length; }).slice(0, 30);
+  }
+  function choicesHtml(pl) {
+    var cs = choiceList(pl);
+    if (!cs.length) return '';
+    var money = function (n) { return Number(n || 0).toLocaleString(); };
+    var h2 = '<div class="chbox" id="chbox"><div class="schedlabel">要你選（' + cs.length + ' 筆）</div><div class="chhint">每筆點一個對應的應收，按核可時跟上面的一起銷帳，並記住這個匯款帳號，下次自動認人。不確定就留在「先不銷」。</div>';
+    cs.forEach(function (c) {
+      var key = String(c.key), d = String(c.date || '').replace(/^\d{4}[-\/]/, '').replace('-', '/');
+      var acct = String(c.acct || '').replace(/\D/g, '');
+      var meta = [];
+      if (c.payer) meta.push('匯款人 ' + c.payer);
+      if (acct) meta.push('帳號末四碼 ' + acct.slice(-4));
+      if (c.why) meta.push(c.why);
+      h2 += '<fieldset class="chs"><legend>' + esc(d) + '　NT$ ' + esc(money(c.amount)) + '</legend>' + (meta.length ? '<div class="chmeta">' + esc(meta.join('｜')) + '</div>' : '');
+      c.candidates.slice(0, 4).forEach(function (cd, i) {
+        h2 += '<label><input type="radio" name="pick_' + esc(key) + '" value="' + i + '"><span>' + esc(cd.label || ((cd.arIds || []).join('＋'))) + '</span></label>';
+      });
+      h2 += '<label class="skip on"><input type="radio" name="pick_' + esc(key) + '" value="none" checked><span>都不是／先不銷</span></label></fieldset>';
+    });
+    return h2 + '<div class="chsum" id="chsum">目前選了 0 筆，按核可只銷上面系統建議的。</div></div>';
+  }
+  function wireChoices(baseConfirm) {
+    var box = document.getElementById('chbox'); if (!box) return;
+    var upd = function () {
+      var n = 0;
+      Array.prototype.forEach.call(box.querySelectorAll('input[type=radio]'), function (r) {
+        var lb = r.parentNode; if (r.checked) lb.classList.add('on'); else lb.classList.remove('on');
+        if (r.checked && r.value !== 'none') n++;
+      });
+      var sum = document.getElementById('chsum');
+      if (sum) sum.textContent = n ? '目前選了 ' + n + ' 筆，按核可會一起銷帳並記住帳號。' : '目前選了 0 筆，按核可只銷上面系統建議的。';
+      var ba = document.getElementById('btnApprove');
+      if (ba) ba.setAttribute('data-confirm', n ? '確定核可？你選的 ' + n + ' 筆會跟卡上建議的一起銷帳。' : baseConfirm);
+    };
+    box.addEventListener('change', upd);
+    upd();
+  }
 
   function render(it) {
     var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
@@ -152,6 +206,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         html += '<div class="editbox"><div class="schedlabel">內容（可直接修改、核可以此版本為準）</div><textarea name="text" style="min-height:140px;">' + esc(pl.text || '') + '</textarea></div>';
         if (pl.lineReplyTo) { var reqAtC = pl.publishAt || ''; html += '<div class="schedbox"><div class="schedlabel">指定發送時間（留空＝核可後立即發送）' + (reqAtC ? '<span class="schedhint">投稿方建議 ' + esc(reqAtC) + '（已預填、可改可清）</span>' : '') + '</div><input type="datetime-local" name="publishAt" value="' + esc(reqAtC ? reqAtC.replace(' ', 'T') : '') + '"></div>'; }
       }
+      html += choicesHtml(pl);
       html += '<div id="ph-attach" class="ph loading">附掛項目載入中…</div>';
       html += '<button class="btn-main" type="submit" name="decision" value="approve" id="btnApprove" disabled data-confirm="' + esc(confirmMsg) + '">' + (isPub ? '核可並發佈' : '核可') + '<span id="approveHint" style="display:block;font-size:11px;font-weight:400;letter-spacing:0;opacity:.85;">附掛項目載入後才能核可</span></button>';
       if (!isPub) html += '<div id="ph-cal" class="ph"></div>';
@@ -183,6 +238,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     }
     app.innerHTML = html;
     wire();
+    if (status === '待核可' && !isPub) wireChoices(confirmMsg);
     if (status === '發佈中') setTimeout(function () { location.reload(); }, 30000);
     loadExtras(status);
   }
