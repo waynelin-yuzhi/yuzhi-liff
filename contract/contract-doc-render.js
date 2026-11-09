@@ -279,6 +279,15 @@ function _contractCss_() {
     + '';
 }
 
+function qdocCreditsOf_(data) {
+  data = data || {};
+  if (String(data.mode || '') !== 'subscription' || String(data.docKind || '') === 'statement') return { list: [], total: 0 };   // 請款單不扣（只扣首期報價一次）
+  var list = (Array.isArray(data.credits) ? data.credits : []).map(function (c) {
+    return { name: String((c && c.name) || '首期折抵').substring(0, 60), amount: Math.round(Number(c && c.amount) || 0) };
+  }).filter(function (c) { return c.amount > 0; });
+  return { list: list, total: list.reduce(function (t, c) { return t + c.amount; }, 0) };
+}
+
 function _contractQuoteAppendixHtml_(p) {
   const rec = _qsignFindByQuoteNo_(String(p.報價單號 || ''));
   if (!rec || !rec.jsonId) return '';
@@ -303,6 +312,7 @@ function _contractQuoteAppendixHtml_(p) {
   const fp = d.firstPeriod || null;
   const fpAmt = fp ? (Number(fp.amount) || 0) : 0;
   const grand = Number(d.grandTotal) || (fp ? fpAmt + deposit + oneTimeTax : monthly + deposit + oneTimeTax);
+  const credits = qdocCreditsOf_(d);
 
   let rows = '', lastArea = null, no = 0;
   items.forEach(function(it) {
@@ -329,13 +339,18 @@ function _contractQuoteAppendixHtml_(p) {
   if (fp) sums += sumRow('首期畸零 ' + E(shortD(fp.from)) + '–' + E(shortD(fp.to)) + '（' + Number(fp.days || 0) + (fp.monthDays ? '／' + Number(fp.monthDays) : '') + ' 天）', money(fpAmt));
   if (oneTime > 0) sums += sumRow('一次性費用（' + (taxOn ? '含稅' : '未稅') + '）', money(oneTimeTax));
   if (deposit > 0) sums += sumRow('押金（不計稅・退租退還）', money(deposit));
-  sums += sumRow('首期應付合計', money(grand), 'grand');
+  sums += sumRow('首期應付合計', money(grand), credits.total > 0 ? '' : 'grand');
+  if (credits.total > 0) {
+    credits.list.forEach(function(c) { sums += sumRow('－' + E(c.name), money(-c.amount)); });
+    sums += sumRow('首期實付', money(Math.max(0, grand - credits.total)), 'grand');
+  }
 
   const notes = [
     '本附件依報價單 ' + E(rec.quoteNo || p.報價單號) + '（' + E(rec.date || '') + '）製作，為本合約之一部分；品項如經雙方依「參、服務量調整」變更，以調整後之明細為準。',
     (fp ? '首期畸零費用＝每月月費 ÷ 當月天數 × 實際服務天數；自次月起依每月月費按月收取。' : '首期＝當月月費＋押金及一次性費用；次月起依每月月費按月收取。'),
     '損壞賠償依本表單價協商（肆、養護服務內容第八項）；植栽為自然產品、實際形態以現場交付為準。'
   ];
+  if (credits.total > 0) notes.splice(2, 0, '首期折抵為已收之款項（' + credits.list.map(function(c) { return E(c.name); }).join('、') + '），於首期應付中全額扣回、僅扣一次。');
   return '<div class="doc axwrap">'
     + '<table class="sec"><tr><td class="tk"><div></div></td><td class="lb">附件一　植栽明細表</td><td class="rl"><div></div></td></tr></table>'
     + '<div class="axmeta">合約編號 ' + E(p.合約編號 || '') + '　·　設置地點 ' + E(p.設置地點 || '') + '　·　報價單 ' + E(rec.quoteNo || p.報價單號) + '</div>'

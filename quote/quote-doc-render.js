@@ -64,6 +64,7 @@ function _quoteDocHtml_(data, opts) {
   // ── 金額計算（與編輯器同律：items+fees=小計、5% 稅、grandTotal 以檔內為準） ──
   var _tt = qdocTotals_(data);
   var subtotal = _tt.subtotal, docDepositSum = _tt.depositSum, taxableSub = subtotal - docDepositSum, tax = _tt.tax, grand = _tt.grand;
+  var docCredits = qdocCreditsOf_(data);
 
   // ── 付款區（照抄編輯器各模式語意；landscape 才用 p1/p2、其餘模式 p1 無意義不得套用） ──
   var pt = data.paymentTerms || {};
@@ -100,10 +101,14 @@ function _quoteDocHtml_(data, opts) {
     paySection = '<div class="pay-amt">次月起每月月費　<b style="color:#B85A3D">' + money(subMonthly) + '</b>'
       + '<span style="font-size:10px;color:#6B675E">　（' + (data.isTaxEnabled ? '含稅' : '未稅') + (subNegFees < 0 ? '、已含每月折扣' : '') + '）</span></div>'
       + (subFP ? '<div class="pay-amt">首期畸零期間 ' + esc(subFP.from || '') + '–' + esc(subFP.to || '') + '（' + Number(subFP.days || 0) + ' 天）　<b>' + money(subFPAmt) + '</b></div>' : '')
-      + '<div class="pay-amt">首期應支付總計金額　<b>' + money(grand) + '</b></div>'
-      + payNote(subFP
+      + (docCredits.total > 0
+          ? '<div class="pay-amt">首期應支付金額　<b>' + money(Math.max(0, grand - docCredits.total)) + '</b>'
+            + '<span style="font-size:10px;color:#6B675E">　（合計 ' + money(grand) + '，已扣 ' + esc(docCredits.list.map(function (c) { return c.name; }).join('、')) + ' ' + money(docCredits.total) + '）</span></div>'
+          : '<div class="pay-amt">首期應支付總計金額　<b>' + money(grand) + '</b></div>')
+      + payNote((subFP
           ? '首期＝畸零期間養護費（每月月費 ÷ 當月天數 × 實際服務天數）＋押金及其他一次性費用；自次月起依上列月費按月收取。'
-          : '首期支付金額包含當月養護費、押金及其他一次性費用；次月起依上列月費收取。');
+          : '首期支付金額包含當月養護費、押金及其他一次性費用；次月起依上列月費收取。')
+          + (docCredits.total > 0 ? '已收之款項（' + esc(docCredits.list.map(function (c) { return c.name; }).join('、')) + '）於首期全額扣回、僅扣一次。' : ''));
   } else if (mode === 'rental') {
     paySection = '<div class="pay-amt">總計應支付款項　<b>' + money(grand) + '</b></div>'
       + payNote('租金與押金（詳見其他費用）須於出貨前結清。')
@@ -116,7 +121,7 @@ function _quoteDocHtml_(data, opts) {
   // ── 品項列（租賃模式帶天數/加日價欄、金額算式一眼可核；Wayne 2026-07-15） ──
   var isRental = (mode === 'rental');
   var rentalBase3 = isRental && data.rentalModel === 'base3';
-  // 一式／檔期計價單（全品項 extraDay 明確為 0）：表頭不寫「/天」、天數欄改「租期(天)」——否則客戶拿單價×天數核不出金額（Q-2026-044）
+  // 一式／檔期計價單（全品項 extraDay 明確為 0）：表頭不寫「/天」、天數欄改「租期(天)」——否則客戶拿單價×天數核不出金額（2026 租賃單實案）
   var rentalFlat = isRental && !rentalBase3 && items.length > 0 && items.every(function (it) { return it && it.extraDay != null && (Number(it.extraDay) || 0) === 0; });
   var rentalDaysN = Number(data.rentalDays || 1);
   var shareNext = items.map(function (it, i) { return !!(items[i + 1] && items[i + 1].sharePhotoWithPrev); });
@@ -398,6 +403,10 @@ function _quoteDocHtml_(data, opts) {
         : '<div class="row"><div class="k">小計</div><div class="v">' + money(subtotal) + '</div></div>'
           + (data.isTaxEnabled ? '<div class="row"><div class="k">營業稅 5%</div><div class="v">' + money(tax) + '</div></div>' : '')
           + '<div class="row grand"><div class="k">' + (isStatement ? '應付總計' : '總計') + '</div><div class="v">' + money(grand) + '</div></div>')
+    + (docCredits.total > 0
+        ? docCredits.list.map(function (c) { return '<div class="row" style="color:#8a8275"><div class="k">－' + esc(c.name) + '</div><div class="v">−' + money(c.amount) + '</div></div>'; }).join('')
+          + '<div class="row grand"><div class="k">首期實付</div><div class="v">' + money(Math.max(0, grand - docCredits.total)) + '</div></div>'
+        : '')
     + '</div></div>'
     + '<div class="pay-sec"><div class="sec-label">付款方式　PAYMENT</div>'
     + paySection
@@ -418,6 +427,18 @@ function _quoteDocHtml_(data, opts) {
     + '</div></body></html>';
 }
 
+
+// 首期折抵（訂閱式）：已收過、合作後要從首期扣回的款項（例：場勘費折抵），含稅金額、只扣首期一次。
+// 不進 grandTotal（報價總額照舊＝月費／畸零＋一次性費用＋押金），首期實付＝總額－折抵；首期應收＝總額－押金－折抵。
+// 欄位：credits:[{ name:'場勘費折抵（報價單號）', amount:3000 }]（2026-11-09：負數 fees 會被當每月折扣、不能拿來寫一次性折抵）
+function qdocCreditsOf_(data) {
+  data = data || {};
+  if (String(data.mode || '') !== 'subscription' || String(data.docKind || '') === 'statement') return { list: [], total: 0 };   // 請款單不扣（只扣首期報價一次）
+  var list = (Array.isArray(data.credits) ? data.credits : []).map(function (c) {
+    return { name: String((c && c.name) || '首期折抵').substring(0, 60), amount: Math.round(Number(c && c.amount) || 0) };
+  }).filter(function (c) { return c.amount > 0; });
+  return { list: list, total: list.reduce(function (t, c) { return t + c.amount; }, 0) };
+}
 
 // 報價／請款單金額（渲染器與核可頁共用同一套：items＋fees＝小計、押金不課稅、5% 稅、grandTotal 以檔內為準）
 function qdocTotals_(data) {
