@@ -492,6 +492,16 @@ function qdocSubFirstRows_(data) {
   return { monthly: monthly, rows: rows, total: Math.max(0, qdocTotals_(data).grand - cr.total) };
 }
 
+// qdocSubFirstRows_ 回 null 的原因（給退路事件用）：statement／非訂閱不算異常、回空字串
+function qdocSubFirstNullReason_(data) {
+  data = data || {};
+  if (String(data.mode || '') !== 'subscription' || String(data.docKind || '') === 'statement') return '';
+  var fees = Array.isArray(data.fees) ? data.fees : [];
+  var feeAmt = function (f) { return Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0; };
+  var hasOne = fees.some(function (f) { return f && feeAmt(f) > 0 && String(f.name || '').indexOf('押金') < 0; });
+  return '存檔合計 ' + qdocTotals_(data).grand + ' 與逐項重算不符（' + (hasOne ? '有一次性費用、差超過 1 元' : '沒有一次性費用可吸收差額') + '）';
+}
+
 // 報價／請款單金額（渲染器與核可頁共用同一套：items＋fees＝小計、押金不課稅、5% 稅、grandTotal 以檔內為準）
 function qdocTotals_(data) {
   data = data || {};
