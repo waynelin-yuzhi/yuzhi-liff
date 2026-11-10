@@ -47,6 +47,41 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
 .foot{text-align:center;font-size:11px;color:var(--ink-60);margin-top:18px;line-height:1.8}
 .ld{text-align:center;color:var(--ink-60);padding:30px 0;font-size:13px}
 @media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}.acts a{padding:5px 7px}}
+
+.bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.bar .tb{padding:11px 4px;border:1px solid var(--sage);border-radius:10px;background:#fff;color:var(--sage-deep);font-size:14px;font-family:inherit;cursor:pointer;line-height:1.3}
+.bar .tb.main{background:var(--sage);color:#fff}
+.bar .tb[disabled]{opacity:.45}
+.selline{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-60);margin-bottom:12px}
+.selline b{color:var(--ink);font-weight:500}
+.selline .more{margin-left:auto;padding:7px 12px;border:1px solid var(--ink-20);border-radius:8px;background:#fff;font-size:13px;font-family:inherit;cursor:pointer;color:var(--ink)}
+.menu{display:none;background:var(--card);border:1px solid var(--ink-20);border-radius:12px;padding:6px 14px;margin-bottom:12px}
+.menu.on{display:block}
+.menu .it{display:flex;align-items:center;padding:12px 0;border-top:1px solid var(--ink-20);font-size:14px;cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left;font-family:inherit;color:var(--ink)}
+.menu .it:first-child{border-top:none}
+.menu .it small{display:block;color:var(--ink-60);font-size:12px}
+.menu .it[disabled]{opacity:.45}
+.menu .sub{font-size:12px;color:var(--ink-60);padding:10px 0 4px;letter-spacing:.04em}
+.menu a.it{text-decoration:none}
+.row.sel{background:var(--sage-tint);margin:0 -16px;padding-left:16px;padding-right:16px}
+.row .n{cursor:pointer}
+.sheet-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center}
+.sheet-bg.on{display:flex}
+.sheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:84vh;display:flex;flex-direction:column}
+.sheet h3{font-size:15px;font-weight:500;color:var(--sage-deep);padding:16px 18px 6px}
+.sheet .body{padding:4px 18px 12px;overflow-y:auto;font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+.sheet .sched{padding:0 18px 10px;display:none}
+.sheet .sched.on{display:block}
+.sheet .sched input{width:100%;padding:9px 10px;border:1px solid var(--ink-20);border-radius:8px;font-size:16px;font-family:inherit}
+.sheet .btns{display:flex;gap:8px;padding:10px 18px 18px;flex-wrap:wrap}
+.sheet .btns button{flex:1;min-width:30%;padding:12px 8px;border-radius:10px;border:1px solid var(--sage);background:#fff;color:var(--sage-deep);font-size:14px;font-family:inherit;cursor:pointer}
+.sheet .btns button.go{background:var(--sage);color:#fff}
+.sheet .btns button[disabled]{opacity:.5}
+.qrow{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--ink-20);font-size:13px}
+.qrow:first-child{border-top:none}
+.qrow span{flex:1}
+.qrow button{padding:5px 10px;border:1px solid var(--terra);color:var(--terra);background:#fff;border-radius:6px;font-size:12px;font-family:inherit;cursor:pointer}
+@media (max-width:480px){.bar .tb{font-size:13px}}
 </style>
 </head>
 <body>
@@ -62,10 +97,28 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   </div>
   <div id="app" style="display:none">
     <div class="stats" id="stats"></div>
+    <div class="bar">
+      <button class="tb" id="bCheck">回報檢查</button>
+      <button class="tb" id="bTest" disabled>試發給我</button>
+      <button class="tb main" id="bSend" disabled>發送客戶</button>
+      <button class="tb main" id="bAll">全部推播</button>
+    </div>
+    <div class="selline"><span id="selTxt">點下方案場選一家，才能試發或發送</span><button class="more" id="bMore">更多</button></div>
+    <div class="menu" id="menu">
+      <button class="it" id="mPdf" disabled><span>產出或重產 PDF<small>先選一家；已發行的會原地更新、連結不變</small></span></button>
+      <button class="it" id="mRemind"><span>提醒養護員補回報<small>只送員工、不送客戶</small></span></button>
+      <button class="it" id="mApprove"><span>送審核卡給我<small>只投核可中心、核可後才推播</small></span></button>
+      <button class="it" id="mQueue"><span>排程中的發送<small>看與取消整批或單家排程</small></span></button>
+      <button class="it" id="mCopy" disabled><span>複製客戶連結<small>先選一家</small></span></button>
+      <div class="sub">還在舊版後台（尚未搬到這頁）</div>
+      <a class="it" id="mOld1" href="#" target="_blank"><span>編輯照片、刪除回報、綁 LINE、記一筆指導<small>開舊版後台</small></span></a>
+      <a class="it" id="mOld2" href="#" target="_blank"><span>發送指導、推播設定<small>開舊版後台</small></span></a>
+    </div>
     <div class="card" id="list"><div class="ld">載入中</div></div>
     <div class="note" id="hint"></div>
   </div>
-  <div class="foot">此頁由引擎鏡像出資料（最長落後 5 分）；推播、核可、產 PDF 等操作仍在後台原頁。<br>植間設計股份有限公司</div>
+  <div class="sheet-bg" id="sheetBg"><div class="sheet"><h3 id="shT"></h3><div class="body" id="shB"></div><div class="sched" id="shS"><input type="datetime-local" id="shAt"></div><div class="btns" id="shBtns"></div></div></div>
+  <div class="foot">清單由引擎鏡像出資料（最長落後 5 分）；所有送出動作的確認文字都由系統試算後產生。<br>植間設計股份有限公司</div>
 </main>
 <script>
 (function () {
@@ -74,7 +127,7 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
-  var D = { ym: '', data: null, filter: 'all', months: [] };
+  var D = { ym: '', data: null, filter: 'all', months: [], sel: '', missing: {} };
   function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
   function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
   function api(action, payload) {
@@ -83,13 +136,22 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
       return fetch(CFG.engine + '?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
     }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
   }
+  function adminCall(fn, params) { return api('adminCall', { fn: fn, params: params || {} }); }
+  function careOp(params) { return adminCall('careAdminOp', params); }
+  function errText(r) {
+    if (!r) return '沒有回應';
+    if (r.error === 'backend_error') return '送出結果不明，請重新整理確認';
+    if (r.error === 'forbidden_for_agent') return '後台金鑰還沒開通這個功能，請找總管授權';
+    return (typeof r.detail === 'string' && r.detail) || r.error || '失敗';
+  }
   function thisYm() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
   function fillMonths(months) {
     var sel = $('ym'); var cur = D.ym; var ms = months.slice(); if (ms.indexOf(thisYm()) < 0) ms.unshift(thisYm()); if (cur && ms.indexOf(cur) < 0) ms.unshift(cur);
     sel.innerHTML = ms.map(function (m) { return '<option value="' + esc(m) + '"' + (m === cur ? ' selected' : '') + '>' + esc(m.replace('-', ' / ')) + '</option>'; }).join('');
   }
+  function cur() { return ((D.data && D.data.list) || []).filter(function (x) { return x.clientId === D.sel; })[0] || null; }
   function load(ym) {
-    D.ym = ym; $('gasLink').href = CFG.gas + '?page=care'; $('list').innerHTML = '<div class="ld">載入中</div>';
+    D.ym = ym; D.missing = {}; D.sel = ''; $('gasLink').href = CFG.gas + '?page=care'; $('mOld1').href = CFG.gas + '?page=care'; $('mOld2').href = CFG.gas + '?page=care'; $('list').innerHTML = '<div class="ld">載入中</div>';
     api('adminCareStatuses', { ym: ym }).then(function (d) {
       if (ym !== D.ym) return;
       if (!d || !d.ok) { $('list').innerHTML = '<div class="ld">載入失敗：' + esc((d && d.error) || '') + '</div>'; return; }
@@ -104,46 +166,203 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     if (D.filter === 'reported') return c.hasReport; if (D.filter === 'unreported') return !c.hasReport;
     if (D.filter === 'unpushed') return c.hasReport && !c.lastPushedAt; if (D.filter === 'unbound') return !c.lineBound; return true;
   }
+  function syncBar() {
+    var c = cur(); var has = !!c;
+    $('selTxt').innerHTML = c ? '已選：<b>' + esc(c.name) + '</b>' : '點下方案場選一家，才能試發或發送';
+    $('bTest').disabled = !(has && c.hasReport); $('bSend').disabled = !(has && c.hasReport); $('mPdf').disabled = !has; $('mCopy').disabled = !(has && c.hash);
+  }
   function render() {
     var list = (D.data && D.data.list) || []; var k = counts(list);
     var cards = [['all', k.all, '案場'], ['reported', k.reported, '已回報'], ['unpushed', k.unpushed, '已回報未推播'], ['unbound', k.unbound, '未綁 LINE']];
     $('stats').innerHTML = cards.map(function (x) { return '<div class="stat' + (D.filter === x[0] ? ' on' : '') + '" data-f="' + x[0] + '"><div class="v">' + x[1] + '</div><div class="l">' + x[2] + '</div></div>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.stat'), function (el) { el.onclick = function () { D.filter = el.getAttribute('data-f'); render(); }; });
     var rows = list.filter(pass).sort(function (a, b) { return (Number(b.hasReport) - Number(a.hasReport)) || String(a.name).localeCompare(String(b.name), 'zh-Hant'); });
-    if (!rows.length) { $('list').innerHTML = '<div class="ld">這個條件下沒有案場</div>'; return; }
+    if (!rows.length) { $('list').innerHTML = '<div class="ld">這個條件下沒有案場</div>'; syncBar(); return; }
     $('list').innerHTML = rows.map(function (c) {
       var chips = c.hasReport ? '<span class="chip ok">已回報</span>' : '<span class="chip mute">未回報</span>';
+      var mk = D.missing[c.clientId]; if (mk) chips += '<span class="chip bad">缺 ' + esc(mk) + '</span>';
       chips += c.lineBound ? '' : '<span class="chip bad">未綁 LINE</span>';
       if (c.hasReport) chips += c.lastPushedAt ? '<span class="chip ok">已推播 ' + esc(c.lastPushedAt) + '</span>' : '<span class="chip warn">未推播</span>';
       if (c.hasPdf) chips += '<span class="chip mute">PDF v' + esc(c.pdfVersion) + '</span>';
       var acts = '';
       if (c.hash) acts += '<a href="' + CFG.careView + '?h=' + esc(c.hash) + '" target="_blank">看報告</a>';
       if (c.pdfUrl) acts += '<a class="mute" href="' + esc(c.pdfUrl) + '" target="_blank">PDF</a>';
-      if (c.hasReport) {
-        acts += '<button class="lnk" data-push="' + esc(c.clientId) + '" data-test="1">測試推給我</button>';
-        if (c.lineBound) acts += '<button class="lnk" data-push="' + esc(c.clientId) + '">推播給客戶</button>';
-      }
-      return '<div class="row"><div class="n"><div class="name">' + esc(c.name) + ' <span class="note">' + esc(c.clientId) + '</span></div><div class="meta">' + chips + '</div><div class="msg" id="msg-' + esc(c.clientId) + '"></div></div><div class="acts">' + acts + '</div></div>';
+      return '<div class="row' + (c.clientId === D.sel ? ' sel' : '') + '"><div class="n" data-sel="' + esc(c.clientId) + '"><div class="name">' + esc(c.name) + ' <span class="note">' + esc(c.clientId) + '</span></div><div class="meta">' + chips + '</div><div class="msg" id="msg-' + esc(c.clientId) + '"></div></div><div class="acts">' + acts + '</div></div>';
     }).join('');
-    Array.prototype.forEach.call($('list').querySelectorAll('button[data-push]'), function (b) { b.onclick = function () { pushReport(b.getAttribute('data-push'), b.getAttribute('data-test') === '1', b); }; });
-    $('hint').textContent = '「推播給客戶」會把本月報告卡送到客戶 LINE（按下前會再確認一次）；「測試推給我」只送你自己。核可與產 PDF 仍在右上「後台操作」。';
+    Array.prototype.forEach.call($('list').querySelectorAll('[data-sel]'), function (el) { el.onclick = function () { var id = el.getAttribute('data-sel'); D.sel = (D.sel === id) ? '' : id; render(); }; });
+    $('hint').textContent = '日常四顆：回報檢查、試發給我、發送客戶、全部推播。缺回報的客戶一律不會送出。';
+    syncBar();
   }
-  // 推播走引擎 adminCall → GAS careReportPush（與後台原頁同一支）；成功就地更新該列、清單快取失效
-  function pushReport(cid, test, btn) {
-    var ym = D.ym, c = ((D.data && D.data.list) || []).filter(function (x) { return x.clientId === cid; })[0]; if (!c) return;
-    if (!test && !confirm('確定把 ' + c.name + ' ' + ym.replace('-', ' / ') + ' 的養護報告推播到客戶 LINE？')) return;
-    var m = $('msg-' + cid); btn.disabled = true; if (m) m.textContent = test ? '送出測試卡…' : '推播中…';
-    api('adminCall', { fn: 'careReportPush', params: { clientId: cid, ym: ym, test: test } }).then(function (r) {
-      if (D.ym !== ym) return;
-      if (!r || !r.ok) { var e = (r && (typeof r.detail === 'string' ? r.detail : r.error)) || '失敗'; throw new Error(r && r.error === 'backend_error' ? '送出結果不明、請重新整理確認' : e); }
-      if (test) { if (m) m.textContent = '測試卡已送到你的 LINE'; btn.disabled = false; return; }
-      if (r.alreadyPushed) { if (m) m.textContent = r.msg || '這個月已推播過、沒有重發'; btn.disabled = false; return; }
-      // 只有 success 才算送到；deferred（非工作時段、GAS 排進延後佇列）等其他狀態照 GAS 的話顯示、不標已推播
-      if (r.status !== 'success') { if (m) m.textContent = r.msg || ('已受理：' + String(r.status || '')); btn.disabled = false; return; }
-      c.lastPushedAt = new Date().toLocaleString('zh-TW', { hour12: false }).slice(0, 16);
+  function setMsg(cid, t) { var m = $('msg-' + cid); if (m) m.textContent = t; }
+  var sheetDone = null;
+  function sheet(title, body, btns, opts) {
+    opts = opts || {}; $('shT').textContent = title; $('shB').textContent = body; $('shS').className = 'sched' + (opts.sched ? ' on' : '');
+    $('shBtns').innerHTML = ''; $('sheetBg').className = 'sheet-bg on';
+    btns.forEach(function (b) {
+      var el = document.createElement('button'); el.textContent = b.t; if (b.go) el.className = 'go';
+      el.onclick = function () { if (b.keep) { b.fn(el); return; } closeSheet(); if (b.fn) b.fn(); };
+      $('shBtns').appendChild(el);
+    });
+  }
+  function closeSheet() { $('sheetBg').className = 'sheet-bg'; }
+  $('sheetBg').onclick = function (e) { if (e.target === $('sheetBg')) closeSheet(); };
+  function info(title, text) { sheet(title, text, [{ t: '知道了' }]); }
+  function busy(title, text) { sheet(title, text, []); }
+  function confirmThen(title, text, goLabel, fn) { sheet(title, text, [{ t: '取消' }, { t: goLabel, go: true, fn: fn }]); }
+
+  // 回報檢查
+  $('bCheck').onclick = function () {
+    busy('回報檢查', '檢查中，約十來秒…');
+    careOp({ op: 'check', ym: D.ym }).then(function (r) {
+      if (!r || !r.ok) { info('回報檢查失敗', errText(r)); return; }
+      D.missing = {}; (r.missing || []).forEach(function (m) { if (!(m.soft && m.reportedCount > 0)) D.missing[m.clientId] = (m.missingDates || []).map(function (d) { return String(d).substring(5).replace('-', '/'); }).join('、'); });
+      render(); info('回報檢查', r.confirmText || '');
+    }).catch(function (e) { info('回報檢查失敗', e.message || '連線失敗'); });
+  };
+  // 試發給我：只發到 Wayne 自己的 LINE，不標已推播
+  $('bTest').onclick = function () {
+    var c = cur(); if (!c) return; var ym = D.ym; busy('試發給我', '把 ' + c.name + ' 的報告卡送到你的 LINE…');
+    adminCall('careReportPush', { clientId: c.clientId, ym: ym, test: true }).then(function (r) {
+      if (!r || !r.ok) { info('試發失敗', errText(r)); return; }
+      info('試發給我', c.name + '：測試卡已送到你的 LINE，客戶沒有收到。');
+    }).catch(function (e) { info('試發失敗', e.message || '連線失敗'); });
+  };
+  // 發出一家：回傳 { cid, kind, text }
+  function sendOne(cid, ym) {
+    return adminCall('careReportPush', { clientId: cid, ym: ym }).then(function (r) {
+      if (r && r.ok === false && r.error === 'gap_blocked') return { cid: cid, kind: 'gap', text: '缺回報不送：' + (r.detail || '') };
+      if (!r || !r.ok) return { cid: cid, kind: 'fail', text: errText(r) };
+      if (r.alreadyPushed) return { cid: cid, kind: 'skip', text: r.msg || '已推播過、沒有重發' };
+      if (r.status !== 'success') return { cid: cid, kind: 'defer', text: r.msg || ('已受理：' + String(r.status || '')) };
+      return { cid: cid, kind: 'ok', text: r.msg || '已推播' };
+    }).catch(function (e) { return { cid: cid, kind: 'fail', text: e.message || '連線失敗' }; });
+  }
+  function markPushed(cid) { var c = ((D.data && D.data.list) || []).filter(function (x) { return x.clientId === cid; })[0]; if (c) c.lastPushedAt = new Date().toLocaleString('zh-TW', { hour12: false }).slice(0, 16); }
+  // 發送客戶：先試算（含缺件門）、確認文字由後端組、確認後才送
+  $('bSend').onclick = function () {
+    var c = cur(); if (!c) return; var ym = D.ym; busy('發送客戶', '試算中…');
+    careOp({ op: 'pushPreview', ym: ym, clientId: c.clientId }).then(function (p) {
+      if (!p || !p.ok) { info('不能送', errText(p)); return; }
+      if (!p.send.length) { info('發送客戶', p.confirmText); return; }
+      confirmThen('發送客戶', p.confirmText, '確定發送', function () {
+        busy('發送客戶', '送出中…');
+        sendOne(c.clientId, ym).then(function (o) {
+          if (D.ym !== ym) return;
+          if (o.kind === 'ok') { markPushed(c.clientId); render(); }
+          setMsg(c.clientId, o.text); info('發送客戶', c.name + '：' + o.text);
+        });
+      });
+    }).catch(function (e) { info('試算失敗', e.message || '連線失敗'); });
+  };
+  // 全部推播：試算 → 立即（逐家送、顯示進度）或排程
+  $('bAll').onclick = function () {
+    var ym = D.ym; busy('全部推播', '試算中，約十來秒…');
+    careOp({ op: 'pushPreview', ym: ym }).then(function (p) {
+      if (!p || !p.ok) { info('不能送', errText(p)); return; }
+      if (!p.send.length) { info('全部推播', p.confirmText); return; }
+      var at = new Date(Date.now() + 3600000); var pad = function (n) { return String(n).padStart(2, '0'); };
+      $('shAt').value = at.getFullYear() + '-' + pad(at.getMonth() + 1) + '-' + pad(at.getDate()) + 'T' + pad(at.getHours()) + ':00';
+      sheet('全部推播', p.confirmText + '\n\n要排程就選時間再按「排程發送」。', [
+        { t: '取消' },
+        { t: '排程發送', fn: function () { scheduleAll(ym); }, keep: true },
+        { t: '立即發送', go: true, fn: function () { sendAll(ym, p.send); } }
+      ], { sched: true });
+    }).catch(function (e) { info('試算失敗', e.message || '連線失敗'); });
+  };
+  function scheduleAll(ym) {
+    var v = $('shAt').value; if (!v) { return; } var at = v.replace('T', ' ');
+    careOp({ op: 'scheduleAll', ym: ym, at: at, dryRun: true }).then(function (d) {
+      if (!d || !d.ok) { info('不能排程', errText(d)); return; }
+      confirmThen('排程發送', d.confirmText, '確定排程', function () {
+        careOp({ op: 'scheduleAll', ym: ym, at: at }).then(function (r) {
+          if (!r || !r.ok) { info('排程失敗', errText(r)); return; }
+          info('排程發送', (r.msg || '已排程') + '\n預計 ' + r.willSend + ' 家。');
+        }).catch(function (e) { info('排程失敗', e.message || '連線失敗'); });
+      });
+    }).catch(function (e) { info('排程失敗', e.message || '連線失敗'); });
+  }
+  function sendAll(ym, list) {
+    var results = [], i = 0, stop = false;
+    function step() {
+      if (D.ym !== ym) { return; }
+      if (i >= list.length) { done(); return; }
+      var it = list[i]; busy('立即發送', '送出中 ' + (i + 1) + ' / ' + list.length + '：' + it.name + '\n請不要關閉這頁。');
+      sendOne(it.clientId, ym).then(function (o) { o.name = it.name; results.push(o); if (o.kind === 'ok') markPushed(it.clientId); setMsg(it.clientId, o.text); i++; step(); });
+    }
+    function done() {
       render();
-      var m3 = $('msg-' + cid); if (m3 && r.msg) m3.textContent = r.msg;
-    }).catch(function (e) { var m2 = $('msg-' + cid); if (m2) m2.textContent = (test ? '測試卡' : '推播') + '失敗：' + (e.message || '連線失敗'); btn.disabled = false; });
+      var by = function (k) { return results.filter(function (x) { return x.kind === k; }); };
+      var t = '送出 ' + by('ok').length + ' 家';
+      if (by('defer').length) t += '；已排進延後 ' + by('defer').length + ' 家';
+      if (by('skip').length) t += '；已推過略過 ' + by('skip').length + ' 家';
+      if (by('gap').length) t += '；缺回報擋下 ' + by('gap').length + ' 家';
+      if (by('fail').length) t += '；失敗 ' + by('fail').length + ' 家';
+      var bad = results.filter(function (x) { return x.kind === 'fail' || x.kind === 'gap' || x.kind === 'defer'; });
+      if (bad.length) t += '\n\n' + bad.map(function (x) { return x.name + '：' + x.text; }).join('\n');
+      info('全部推播結果', t);
+    }
+    step();
+  }
+  // 更多
+  $('bMore').onclick = function () { $('menu').classList.toggle('on'); };
+  function closeMenu() { $('menu').classList.remove('on'); }
+  $('mPdf').onclick = function () {
+    closeMenu(); var c = cur(); if (!c) return; var ym = D.ym; busy('產出 PDF', '試算中…');
+    careOp({ op: 'genPdf', ym: ym, clientId: c.clientId, dryRun: true }).then(function (d) {
+      if (!d || !d.ok) { info('不能產出', errText(d)); return; }
+      if (d.blocked) { info('不能產出', d.confirmText); return; }
+      confirmThen('產出 PDF', d.confirmText, '確定產出', function () {
+        busy('產出 PDF', '產出中，約半分鐘到一分鐘…');
+        careOp({ op: 'genPdf', ym: ym, clientId: c.clientId }).then(function (r) {
+          if (!r || !r.ok) { info('產出失敗', errText(r)); return; }
+          info('產出 PDF', c.name + '：完成，版本 ' + (r.version || '?') + (r.warning ? '\n注意：' + r.warning : ''));
+          load(ym);
+        }).catch(function (e) { info('產出失敗', e.message || '連線失敗'); });
+      });
+    }).catch(function (e) { info('試算失敗', e.message || '連線失敗'); });
+  };
+  function dryThen(op, title, goLabel) {
+    closeMenu(); var ym = D.ym; busy(title, '試算中…');
+    careOp({ op: op, ym: ym, dryRun: true }).then(function (d) {
+      if (!d || !d.ok) { info(title + '失敗', errText(d)); return; }
+      if (op === 'remindStaff' && !(d.emps || []).length) { info(title, d.confirmText); return; }
+      confirmThen(title, d.confirmText, goLabel, function () {
+        busy(title, '送出中…');
+        careOp({ op: op, ym: ym }).then(function (r) {
+          if (!r || !r.ok) { info(title + '失敗', errText(r)); return; }
+          info(title, op === 'requestApproval' ? (r.msg || ('已投核可件 ' + (r.approvalId || ''))) : ('完成，已提醒 ' + (r.pushed || 0) + ' 位。' + (r.msg || '')));
+        }).catch(function (e) { info(title + '失敗', e.message || '連線失敗'); });
+      });
+    }).catch(function (e) { info(title + '失敗', e.message || '連線失敗'); });
+  }
+  $('mRemind').onclick = function () { dryThen('remindStaff', '提醒養護員', '確定提醒'); };
+  $('mApprove').onclick = function () { dryThen('requestApproval', '送審核卡給我', '確定投卡'); };
+  $('mCopy').onclick = function () {
+    closeMenu(); var c = cur(); if (!c || !c.hash) return; var u = CFG.careView + '?h=' + c.hash;
+    (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function () { info('複製連結', c.name + '：連結已複製。'); }, function () { info('複製連結', u); });
+  };
+  $('mQueue').onclick = function () {
+    closeMenu(); busy('排程中的發送', '讀取中…');
+    careOp({ op: 'queueList' }).then(function (r) {
+      if (!r || !r.ok) { info('讀取失敗', errText(r)); return; }
+      var items = (r.items || []).filter(function (x) { return x.isCare; });
+      var other = (r.items || []).length - items.length;
+      if (!items.length) { info('排程中的發送', '目前沒有養護排程。' + (other ? '\n（另有 ' + other + ' 筆非養護排程，這裡不處理）' : '')); return; }
+      var lab = { careReport: '整批推播', careReportSingle: '單家推播', pushApproval: '送審核卡', staffRemind: '提醒養護員' };
+      var body = items.map(function (x) { return (lab[x.type] || x.type) + ' ' + (x.ym || '') + (x.clientId ? ' ' + x.clientId : '') + '：' + x.scheduledAtLocal; }).join('\n');
+      sheet('排程中的發送', body + (other ? '\n\n（另有 ' + other + ' 筆非養護排程，這裡不處理）' : ''),
+        [{ t: '關閉' }].concat(items.slice(0, 4).map(function (x) { return { t: '取消 ' + (lab[x.type] || x.type) + ' ' + String(x.scheduledAtLocal).slice(5), fn: function () { cancelQ(x); } }; })));
+    }).catch(function (e) { info('讀取失敗', e.message || '連線失敗'); });
+  };
+  function cancelQ(x) {
+    var isBatch = x.type === 'careReport' && x.ym;
+    var p1 = isBatch ? { op: 'cancelBatch', ym: x.ym } : { op: 'queueCancel', uuid: x.uuid };
+    careOp(Object.assign({ dryRun: true }, p1)).then(function (d) {
+      if (!d || !d.ok) { info('不能取消', errText(d)); return; }
+      confirmThen('取消排程', d.confirmText, '確定取消', function () {
+        careOp(p1).then(function (r) { info('取消排程', (r && r.ok) ? '已取消。' : errText(r)); });
+      });
+    });
   }
   $('ym').onchange = function () { load(this.value); };
   $('gateSend').onclick = function () {
