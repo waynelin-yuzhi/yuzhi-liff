@@ -354,10 +354,11 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   }
   function did(u) { var m = String(u).match(/[?&]id=([^&]+)/) || String(u).match(/\/file\/d\/([^/]+)/); return m ? m[1] : ''; }
   function fmtTime(t) { return t ? String(t) : ''; }
-  function photoRow(label, list, urls) {
+  function photoRow(label, list, urls, failed) {
     if (!list || !list.length) return '';
-    return '<div class="lab">' + label + '</div><div class="ph">' + list.map(function (u) { var s = urls[did(u)]; return s ? '<a href="' + esc(s) + '" target="_blank"><img loading="lazy" src="' + esc(s) + '"></a>' : '<span>舊系統照片</span>'; }).join('') + '</div>';
+    return '<div class="lab">' + label + '</div><div class="ph">' + list.map(function (u) { var id = did(u), s = urls[id]; if (s) return '<a href="' + esc(s) + '" target="_blank"><img loading="lazy" src="' + esc(s) + '"></a>'; return (failed || []).indexOf(id) >= 0 ? '<span style="color:var(--terra)">照片載入失敗</span>' : '<span>舊系統照片</span>'; }).join('') + '</div>';
   }
+  function rvReady() { var r = D.rv && D.rv.data; return !!(r && r.ok && ((r.data || {}).reports || []).length && !r.photoError); }
   function openReview(cid) {
     var c = ((D.data && D.data.list) || []).filter(function (x) { return x.clientId === cid; })[0]; if (!c) return; var ym = D.ym;
     D.rv = { cid: cid, ym: ym, name: c.name, data: null }; $('rvT').textContent = c.name + '　' + ym.replace('-', ' / ');
@@ -365,18 +366,18 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
     api('adminCareReview', { clientId: cid, ym: ym }).then(function (r) {
       if (!D.rv || D.rv.cid !== cid || D.rv.ym !== ym) return;
       if (!r || !r.ok) { $('rvB').innerHTML = '<div class="ld">讀取失敗：' + esc((r && (r.detail || r.error)) || '') + '</div>'; return; }
-      D.rv.data = r; renderReview();
+      D.rv.data = r; renderReview(); syncRvFoot();
     }).catch(function (e) { if (D.rv) $('rvB').innerHTML = '<div class="ld">' + esc(e.message || '連線失敗') + '</div>'; });
   }
   function renderReview() {
     var r = D.rv.data, d = r.data || {}, reps = d.reports || [];
     if (!reps.length) { $('rvB').innerHTML = '<div class="ld">這個月沒有有效回報</div>'; return; }
-    var html = '<div class="note" style="margin-bottom:10px">共 ' + reps.length + ' 次回報。看完每一次，需要提醒夥伴就按該次的「記一筆」。</div>';
+    var html = (r.photoError ? '<div class="banner on">' + esc('部分照片沒載入：' + r.photoError + '。請關閉再打開重試；照片沒載齊前不能勾看過。') + '</div>' : '') + '<div class="note" style="margin-bottom:10px">共 ' + reps.length + ' 次回報。看完每一次，需要提醒夥伴就按該次的「記一筆」。</div>';
     html += reps.map(function (p, i) {
       var who = (r.empNames || {})[p.empId] || p.empId || '';
       var tk = (p.tasks || []).map(function (t) { return '<span class="chip mute">' + esc(t) + '</span>'; }).join('');
       var zones = (p.zones || []).map(function (z) {
-        return '<div class="zone"><div class="zn">' + esc(z.name || '區域') + '</div>' + (z.caption ? '<div class="cap">' + esc(z.caption) + '</div>' : '') + photoRow('施作前', z.beforePhotos, r.photoUrls || {}) + photoRow('施作後', z.afterPhotos, r.photoUrls || {}) + '</div>';
+        return '<div class="zone"><div class="zn">' + esc(z.name || '區域') + '</div>' + (z.caption ? '<div class="cap">' + esc(z.caption) + '</div>' : '') + photoRow('施作前', z.beforePhotos, r.photoUrls || {}, r.failedPhotos) + photoRow('施作後', z.afterPhotos, r.photoUrls || {}, r.failedPhotos) + '</div>';
       }).join('');
       return '<div class="rep" data-i="' + i + '"><div class="hd">' + esc(p.reportDate) + ' 週' + esc(p.dayOfWeek || '') + '<span class="sub">' + esc(who) + ' ' + esc(fmtTime(p.startTime)) + (p.endTime ? '–' + esc(p.endTime) : '') + '</span><button data-coach="' + i + '">記一筆</button></div>'
         + (tk ? '<div class="tk">' + tk + '</div>' : '') + (p.notes ? '<div class="nt">' + esc(p.notes) + '</div>' : '') + zones
@@ -401,15 +402,18 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   }
   function syncRvFoot() {
     var rv = D.rv; if (!rv) return; var seen = isSeen(rv.cid);
-    $('rvSeen').textContent = seen ? '已看過（再按一次取消）' : '這家看過了'; $('rvSeen').className = seen ? 'seen' : 'go';
+    $('rvSeen').textContent = seen ? '已看過（再按一次取消）' : (rvReady() ? '這家看過了' : '回報與照片載完才能勾'); $('rvSeen').className = seen ? 'seen' : 'go'; $('rvSeen').disabled = !seen && !rvReady();
   }
   $('rvCoach').onclick = function () { var first = $('rvB').querySelector('[data-coach]'); if (first) first.scrollIntoView({ block: 'center' }); };
   $('rvClose').onclick = function () { $('rv').className = 'rv'; document.body.style.overflow = ''; D.rv = null; };
   $('rvSeen').onclick = function () {
-    var rv = D.rv; if (!rv) return; var want = !isSeen(rv.cid), btn = this; btn.disabled = true;
-    careOp({ op: 'reviewSet', ym: rv.ym, clientId: rv.cid, seen: want }).then(function (r) {
+    var rv = D.rv; if (!rv) return; var want = !isSeen(rv.cid), btn = this;
+    if (want && !rvReady()) { info('還不能勾', '回報與照片還沒載完整，請關閉重開審閱頁。'); return; }
+    btn.disabled = true;
+    var shown = want ? ((rv.data.data || {}).reports || []).map(function (p) { return p.reportId; }) : [];
+    careSend({ op: 'reviewSet', ym: rv.ym, clientId: rv.cid, seen: want, shownIds: shown }).then(function (r) {
       btn.disabled = false;
-      if (!r || !r.ok) { info('沒存到', errText(r)); return; }
+      if (!r || !r.ok) { info('沒存到', errText(r)); syncRvFoot(); return; }
       if (rv.ym === D.ym) { if (want) D.review[rv.cid] = { valid: true, at: r.at || '', count: r.count || 0, current: r.count || 0 }; else delete D.review[rv.cid]; render(); }
       syncRvFoot();
     }).catch(function (e) { btn.disabled = false; info('沒存到', e.message || '連線失敗'); });
@@ -441,6 +445,7 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
         busy(title, '送出中…');
         careOp({ op: op, ym: ym }).then(function (r) {
           if (!r || !r.ok) { info(title + '失敗', errText(r)); return; }
+          if (r.deferred) { info(title, '現在非工作時段，已排程' + (r.scheduledAtLocal ? '在 ' + r.scheduledAtLocal : '') + ' 自動提醒，不用再按。'); return; }
           var bad = (r.failed || 0) + (r.noLine || 0); var tx = '已提醒 ' + (r.pushed || 0) + ' 位' + (r.noLine ? '；沒綁 LINE ' + r.noLine + ' 位' : '') + (r.failed ? '；失敗 ' + r.failed + ' 位' : '') + '。';
           if ((r.failList || []).length) tx += '\n' + r.failList.map(function (x) { return x.empName + '：' + x.msg; }).join('\n');
           info(bad ? title + '：部分沒送出' : title, tx);
