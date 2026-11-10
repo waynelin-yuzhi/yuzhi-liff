@@ -138,6 +138,7 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   }
   function adminCall(fn, params) { return api('adminCall', { fn: fn, params: params || {} }); }
   function careOp(params) { return adminCall('careAdminOp', params); }
+  function careSend(params) { return adminCall('careAdminSend', params); }
   function errText(r) {
     if (!r) return '沒有回應';
     if (r.error === 'backend_error') return '送出結果不明，請重新整理確認';
@@ -271,10 +272,10 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   };
   function scheduleAll(ym) {
     var v = $('shAt').value; if (!v) { return; } var at = v.replace('T', ' ');
-    careOp({ op: 'scheduleAll', ym: ym, at: at, dryRun: true }).then(function (d) {
+    careSend({ op: 'scheduleAll', ym: ym, at: at, dryRun: true }).then(function (d) {
       if (!d || !d.ok) { info('不能排程', errText(d)); return; }
       confirmThen('排程發送', d.confirmText, '確定排程', function () {
-        careOp({ op: 'scheduleAll', ym: ym, at: at }).then(function (r) {
+        careSend({ op: 'scheduleAll', ym: ym, at: at }).then(function (r) {
           if (!r || !r.ok) { info('排程失敗', errText(r)); return; }
           info('排程發送', (r.msg || '已排程') + '\n預計 ' + r.willSend + ' 家。');
         }).catch(function (e) { info('排程失敗', e.message || '連線失敗'); });
@@ -284,15 +285,14 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   function sendAll(ym, list) {
     var results = [], i = 0, stop = false;
     function step() {
-      if (D.ym !== ym) { return; }
       if (i >= list.length) { done(); return; }
       var it = list[i]; busy('立即發送', '送出中 ' + (i + 1) + ' / ' + list.length + '：' + it.name + '\n請不要關閉這頁。');
-      sendOne(it.clientId, ym).then(function (o) { o.name = it.name; results.push(o); if (o.kind === 'ok') markPushed(it.clientId); setMsg(it.clientId, o.text); i++; step(); });
+      sendOne(it.clientId, ym).then(function (o) { o.name = it.name; results.push(o); if (o.kind === 'ok' && D.ym === ym) markPushed(it.clientId); if (D.ym === ym) setMsg(it.clientId, o.text); i++; step(); });
     }
     function done() {
-      render();
+      if (D.ym === ym) render();
       var by = function (k) { return results.filter(function (x) { return x.kind === k; }); };
-      var t = '送出 ' + by('ok').length + ' 家';
+      var t = ym.replace('-', ' / ') + ' 月：送出 ' + by('ok').length + ' 家';
       if (by('defer').length) t += '；已排進延後 ' + by('defer').length + ' 家';
       if (by('skip').length) t += '；已推過略過 ' + by('skip').length + ' 家';
       if (by('gap').length) t += '；缺回報擋下 ' + by('gap').length + ' 家';
@@ -308,12 +308,12 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
   function closeMenu() { $('menu').classList.remove('on'); }
   $('mPdf').onclick = function () {
     closeMenu(); var c = cur(); if (!c) return; var ym = D.ym; busy('產出 PDF', '試算中…');
-    careOp({ op: 'genPdf', ym: ym, clientId: c.clientId, dryRun: true }).then(function (d) {
+    careSend({ op: 'genPdf', ym: ym, clientId: c.clientId, dryRun: true }).then(function (d) {
       if (!d || !d.ok) { info('不能產出', errText(d)); return; }
       if (d.blocked) { info('不能產出', d.confirmText); return; }
       confirmThen('產出 PDF', d.confirmText, '確定產出', function () {
         busy('產出 PDF', '產出中，約半分鐘到一分鐘…');
-        careOp({ op: 'genPdf', ym: ym, clientId: c.clientId }).then(function (r) {
+        careSend({ op: 'genPdf', ym: ym, clientId: c.clientId }).then(function (r) {
           if (!r || !r.ok) { info('產出失敗', errText(r)); return; }
           info('產出 PDF', c.name + '：完成，版本 ' + (r.version || '?') + (r.warning ? '\n注意：' + r.warning : ''));
           load(ym);
@@ -330,7 +330,10 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
         busy(title, '送出中…');
         careOp({ op: op, ym: ym }).then(function (r) {
           if (!r || !r.ok) { info(title + '失敗', errText(r)); return; }
-          info(title, op === 'requestApproval' ? (r.msg || ('已投核可件 ' + (r.approvalId || ''))) : ('完成，已提醒 ' + (r.pushed || 0) + ' 位。' + (r.msg || '')));
+          if (op === 'requestApproval') { info(title, r.msg || ('已投核可件 ' + (r.approvalId || ''))); return; }
+          var bad = (r.failed || 0) + (r.noLine || 0); var tx = '已提醒 ' + (r.pushed || 0) + ' 位' + (r.noLine ? '；沒綁 LINE ' + r.noLine + ' 位' : '') + (r.failed ? '；失敗 ' + r.failed + ' 位' : '') + '。';
+          if ((r.failList || []).length) tx += '\n' + r.failList.map(function (x) { return x.empName + '：' + x.msg; }).join('\n');
+          info(bad ? title + '：部分沒送出' : title, tx);
         }).catch(function (e) { info(title + '失敗', e.message || '連線失敗'); });
       });
     }).catch(function (e) { info(title + '失敗', e.message || '連線失敗'); });
@@ -348,21 +351,21 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
       var items = (r.items || []).filter(function (x) { return x.isCare; });
       var other = (r.items || []).length - items.length;
       if (!items.length) { info('排程中的發送', '目前沒有養護排程。' + (other ? '\n（另有 ' + other + ' 筆非養護排程，這裡不處理）' : '')); return; }
-      var lab = { careReport: '整批推播', careReportSingle: '單家推播', pushApproval: '送審核卡', staffRemind: '提醒養護員' };
+      var lab = { careAutoPublishMonthlyReports: '整批推播', careLinePushReport: '單家推播', careRequestPushApproval: '送審核卡', careRemindStaffPendingReports: '提醒養護員' };
       var body = items.map(function (x) { return (lab[x.type] || x.type) + ' ' + (x.ym || '') + (x.clientId ? ' ' + x.clientId : '') + '：' + x.scheduledAtLocal; }).join('\n');
       sheet('排程中的發送', body + (other ? '\n\n（另有 ' + other + ' 筆非養護排程，這裡不處理）' : ''),
         [{ t: '關閉' }].concat(items.slice(0, 4).map(function (x) { return { t: '取消 ' + (lab[x.type] || x.type) + ' ' + String(x.scheduledAtLocal).slice(5), fn: function () { cancelQ(x); } }; })));
     }).catch(function (e) { info('讀取失敗', e.message || '連線失敗'); });
   };
   function cancelQ(x) {
-    var isBatch = x.type === 'careReport' && x.ym;
+    var isBatch = x.type === 'careAutoPublishMonthlyReports' && x.ym;
     var p1 = isBatch ? { op: 'cancelBatch', ym: x.ym } : { op: 'queueCancel', uuid: x.uuid };
-    careOp(Object.assign({ dryRun: true }, p1)).then(function (d) {
+    careSend(Object.assign({ dryRun: true }, p1)).then(function (d) {
       if (!d || !d.ok) { info('不能取消', errText(d)); return; }
       confirmThen('取消排程', d.confirmText, '確定取消', function () {
-        careOp(p1).then(function (r) { info('取消排程', (r && r.ok) ? '已取消。' : errText(r)); });
+        careSend(p1).then(function (r) { info('取消排程', (r && r.ok) ? '已取消。' : errText(r)); }).catch(function (e) { info('取消失敗', e.message || '連線失敗'); });
       });
-    });
+    }).catch(function (e) { info('取消失敗', e.message || '連線失敗'); });
   }
   $('ym').onchange = function () { load(this.value); };
   $('gateSend').onclick = function () {
