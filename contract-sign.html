@@ -68,7 +68,7 @@ var PARTY_FILL = [];
 var app = document.getElementById('app');
 
 function esc(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function docView(id) {
   return 'https://waynelin-yuzhi.github.io/yuzhi-liff/doc-view.html?id=' + encodeURIComponent(id);
@@ -122,7 +122,7 @@ function render(d) {
       + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下甲方資料於合約中尚未填寫，請補齊後再簽署，所填內容將一併載入已簽署之合約正本。</div>'
       + PARTY_FILL.map(function (f, i) {
           return '<div class="field"><label>甲方' + esc(f.label) + (f.required ? '（必填）' : '（選填）') + '</label>'
-            + '<input id="pf' + i + '" inputmode="' + esc(f.inputmode || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + ' maxlength="' + ({ vat: 8, tel: 30, name: 30, addr: 120 }[f.format] || 120) + '">'
+            + '<input id="pf' + i + '" inputmode="' + ({ text: 'text', numeric: 'numeric', tel: 'tel' }[f.inputmode] || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + ' maxlength="' + ({ vat: 8, tel: 30, name: 30, addr: 120 }[f.format] || 120) + '">'
             + (f.hint ? '<div class="fhint">' + esc(f.hint) + '</div>' : '') + '</div>';
         }).join('')
       + '</div>'
