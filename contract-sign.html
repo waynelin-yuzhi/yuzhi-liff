@@ -19,6 +19,7 @@
   .decl { font-size: 13px; color: #4A4A45; background: #f0f3ee; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
   .field { margin-bottom: 10px; }
   .field label { display: block; font-size: 11px; color: #A09A8C; letter-spacing: .1em; margin: 4px 0 4px; }
+  .fhint { font-size: 11px; color: #8a8275; margin-top: 3px; }
   .field input { width: 100%; padding: 11px 12px; border: 1px solid #C9C2B0; border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; }
   canvas.pad { width: 100%; height: 170px; background: #fff; border: 1.5px dashed #C9C2B0; border-radius: 8px; touch-action: none; }
   .btn { display: block; width: 100%; padding: 14px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
@@ -45,7 +46,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取合約</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v4</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v5</span></div>
 </div>
 <script src="pad.js?v=2"></script>
 <script>
@@ -63,6 +64,7 @@ var HASH = new URLSearchParams(location.search).get('h') || '';
   if (pv && el) el.textContent = 'contract-sign v' + pv;
 })();
 var NEED_BANK = false;
+var PARTY_FILL = [];
 var app = document.getElementById('app');
 
 function esc(s) {
@@ -114,6 +116,17 @@ function render(d) {
       + '<div class="field"><label>帳號</label><input id="bankAccount" inputmode="numeric" placeholder="請輸入帳號"></div>'
       + '<div class="field"><label>戶名</label><input id="bankHolder" placeholder="與身分證相符之戶名"></div></div>'
     : '';
+  PARTY_FILL = Array.isArray(d.partyFill) ? d.partyFill : [];
+  var partyCard = PARTY_FILL.length
+    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">請補上貴公司資料</div>'
+      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下甲方資料於合約中尚未填寫，請補齊後再簽署，所填內容將一併載入已簽署之合約正本。</div>'
+      + PARTY_FILL.map(function (f, i) {
+          return '<div class="field"><label>甲方' + esc(f.label) + (f.required ? '（必填）' : '（選填）') + '</label>'
+            + '<input id="pf' + i + '" inputmode="' + esc(f.inputmode || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + (f.format === 'vat' ? ' maxlength="8"' : '') + '>'
+            + (f.hint ? '<div class="fhint">' + esc(f.hint) + '</div>' : '') + '</div>';
+        }).join('')
+      + '</div>'
+    : '';
   app.innerHTML = '<h1>合約簽署</h1><div class="sub">' + esc(d.typeLabel || '') + '　' + esc(d.contractNo || '') + '</div>' + lineWarn
     + flowHtml(d.flow)
     + '<div class="card">'
@@ -121,6 +134,7 @@ function render(d) {
     + (d.pdfId ? '<a class="ghost" href="' + esc(docView(d.pdfId)) + '" target="_blank">查看合約全文</a>' : '')
     + '<div class="decl">本人已詳閱並同意本合約全部條款，茲以電子簽名確認簽署。</div></div>'
     + bankCard
+    + partyCard
     + '<div class="card"><div class="field"><label>' + esc(d.signerLabel || '簽署人') + '姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
     + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
@@ -146,11 +160,52 @@ function padPng() {
   return t.toDataURL('image/png').split(',')[1];
 }
 
+// 甲方自填欄檢查（與後端同規則；後端仍會再驗一次）。回 null＝有欄位不合、已提示
+function halfWidth(s) {
+  return String(s || '').replace(/[\uFF10-\uFF19]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/\uFF0D/g, '-').replace(/\uFF08/g, '(').replace(/\uFF09/g, ')').replace(/\uFF0B/g, '+').replace(/\uFF03/g, '#').replace(/\u3000/g, ' ');
+}
+function vatOk(v) {
+  var w = [1, 2, 1, 2, 1, 2, 4, 1], sum = 0;
+  for (var i = 0; i < 8; i++) { var p = Number(v.charAt(i)) * w[i]; sum += Math.floor(p / 10) + (p % 10); }
+  return sum % 5 === 0 || (v.charAt(6) === '7' && (sum + 1) % 5 === 0);
+}
+function collectPartyFill() {
+  var out = {};
+  for (var i = 0; i < PARTY_FILL.length; i++) {
+    var f = PARTY_FILL[i];
+    var el = document.getElementById('pf' + i);
+    var v = String((el && el.value) || '').replace(/\s+/g, ' ').trim();
+    var bad = function (msg) { alert(msg); if (el) el.focus(); return null; };
+    if (!v) {
+      if (f.required) return bad('請填寫甲方' + f.label);
+      continue;
+    }
+    if (f.format === 'name' && (v.length < 2 || v.length > 30)) return bad('甲方' + f.label + '請填 2 到 30 個字');
+    if (f.format === 'vat') {
+      v = halfWidth(v).replace(/[\s-]/g, '');
+      if (!/^[0-9]{8}$/.test(v)) return bad('統一編號須為 8 碼數字');
+      if (!vatOk(v)) return bad('統一編號檢核不符，請再確認');
+    }
+    if (f.format === 'tel') {
+      v = halfWidth(v);
+      var dg = v.replace(/[^0-9]/g, '').length;
+      if (!/^[0-9()+# -]+$/.test(v)) return bad('聯絡電話只能填數字與 - ( ) # +');
+      if (dg < 8 || dg > 15) return bad('聯絡電話位數不對，市話請加區碼');
+    }
+    if (f.format === 'addr' && (v.length < 6 || v.length > 120)) return bad('聯絡地址請填完整（含縣市、區）');
+    out[f.key] = v;
+  }
+  return out;
+}
+
 // 送出＝傳統表單全頁 POST（鐵則：零登入頁互動不走 fetch/XHR）。
 // 2026-08-03 實案：外包簽約在 LINE 內建瀏覽器按「確認簽署」沒反應——
 // 跨網域 fetch POST 被 webview 擋、根本沒出手機；伺服器端實測管線全好。
 // 全頁表單提交＝零 cookie 零 XHR、任何瀏覽器都通，伺服器回品牌版簽署完成頁。
 function doSign() {
+  var pf = collectPartyFill();
+  if (pf === null) return;
   var name = (document.getElementById('signer').value || '').trim();
   if (!name) { alert('請填寫簽署人姓名'); return; }
   if (NEED_BANK) {
@@ -172,6 +227,7 @@ function doSign() {
   };
   add('publicSign', 'contract'); add('hash', HASH);
   add('signerName', name); add('png', padPng());
+  if (PARTY_FILL.length) add('partyFill', JSON.stringify(pf));
   if (NEED_BANK) {
     add('bankName', document.getElementById('bankName').value.trim());
     add('bankAccount', document.getElementById('bankAccount').value.trim());
