@@ -46,7 +46,7 @@
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
   <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取合約</p></div></div>
-  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v5</span></div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgv">contract-sign v6</span></div>
 </div>
 <script src="pad.js?v=2"></script>
 <script>
@@ -118,11 +118,11 @@ function render(d) {
     : '';
   PARTY_FILL = Array.isArray(d.partyFill) ? d.partyFill : [];
   var partyCard = PARTY_FILL.length
-    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">請補上貴公司資料</div>'
-      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下甲方資料於合約中尚未填寫，請補齊後再簽署，所填內容將一併載入已簽署之合約正本。</div>'
+    ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">請確認貴公司資料</div>'
+      + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下資料將載入合約簽署欄，如有不符請直接更正；尚未填寫之欄位請補齊後再簽署。</div>'
       + PARTY_FILL.map(function (f, i) {
           return '<div class="field"><label>甲方' + esc(f.label) + (f.required ? '（必填）' : '（選填）') + '</label>'
-            + '<input id="pf' + i + '" inputmode="' + ({ text: 'text', numeric: 'numeric', tel: 'tel' }[f.inputmode] || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + ' maxlength="' + ({ vat: 8, tel: 30, name: 30, addr: 120 }[f.format] || 120) + '">'
+            + '<input id="pf' + i + '" inputmode="' + ({ text: 'text', numeric: 'numeric', tel: 'tel' }[f.inputmode] || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + ' maxlength="' + ({ vat: 8, tel: 30, name: 30, addr: 120 }[f.format] || 120) + '" value="' + esc(f.value == null ? '' : f.value) + '">'
             + (f.hint ? '<div class="fhint">' + esc(f.hint) + '</div>' : '') + '</div>';
         }).join('')
       + '</div>'
@@ -160,7 +160,7 @@ function padPng() {
   return t.toDataURL('image/png').split(',')[1];
 }
 
-// 甲方自填欄檢查（與後端同規則；後端仍會再驗一次）。回 null＝有欄位不合、已提示
+// 甲方資料確認與更正欄檢查（與後端同規則；後端仍會再驗一次）。回 null＝有欄位不合、已提示
 function halfWidth(s) {
   return String(s || '').replace(/[\uFF10-\uFF19]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
     .replace(/\uFF0D/g, '-').replace(/\uFF08/g, '(').replace(/\uFF09/g, ')').replace(/\uFF0B/g, '+').replace(/\uFF03/g, '#').replace(/\u3000/g, ' ');
@@ -181,6 +181,8 @@ function collectPartyFill() {
       if (f.required) return bad('請填寫甲方' + f.label);
       continue;
     }
+    // 系統帶入的原值沒改就原樣送回、不擋（後端同規則：沒改不重驗）
+    if (f.editable && v === String(f.value == null ? '' : f.value).replace(/\s+/g, ' ').trim()) { out[f.key] = v; continue; }
     if (f.format === 'name' && (v.length < 2 || v.length > 30)) return bad('甲方' + f.label + '請填 2 到 30 個字');
     if (f.format === 'vat') {
       v = halfWidth(v).replace(/[\s-]/g, '');
