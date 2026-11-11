@@ -122,7 +122,7 @@ function render(d) {
       + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下甲方資料於合約中尚未填寫，請補齊後再簽署，所填內容將一併載入已簽署之合約正本。</div>'
       + PARTY_FILL.map(function (f, i) {
           return '<div class="field"><label>甲方' + esc(f.label) + (f.required ? '（必填）' : '（選填）') + '</label>'
-            + '<input id="pf' + i + '" inputmode="' + esc(f.inputmode || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + (f.format === 'vat' ? ' maxlength="8"' : '') + '>'
+            + '<input id="pf' + i + '" inputmode="' + esc(f.inputmode || 'text') + '" placeholder="' + esc(f.placeholder || '') + '"' + ' maxlength="' + ({ vat: 8, tel: 30, name: 30, addr: 120 }[f.format] || 120) + '">'
             + (f.hint ? '<div class="fhint">' + esc(f.hint) + '</div>' : '') + '</div>';
         }).join('')
       + '</div>'
@@ -135,7 +135,7 @@ function render(d) {
     + '<div class="decl">本人已詳閱並同意本合約全部條款，茲以電子簽名確認簽署。</div></div>'
     + bankCard
     + partyCard
-    + '<div class="card"><div class="field"><label>' + esc(d.signerLabel || '簽署人') + '姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name"></div>'
+    + '<div class="card"><div class="field"><label>' + esc(d.signerLabel || '簽署人') + '姓名</label><input id="signer" placeholder="請輸入您的姓名" autocomplete="name" maxlength="40"></div>'
     + '<div style="font-size:13px;color:#4A4A45;margin:12px 0 6px">親筆簽名</div><canvas id="cv" class="pad"></canvas>'
     + '<div style="text-align:right"><button class="clr" id="clr">清除重簽</button></div>'
     + '<button class="btn" id="go">確認簽署</button></div>';
@@ -189,6 +189,7 @@ function collectPartyFill() {
     }
     if (f.format === 'tel') {
       v = halfWidth(v);
+      if (v.length > 30) return bad('聯絡電話過長，請再確認');
       var dg = v.replace(/[^0-9]/g, '').length;
       if (!/^[0-9()+# -]+$/.test(v)) return bad('聯絡電話只能填數字與 - ( ) # +');
       if (dg < 8 || dg > 15) return bad('聯絡電話位數不對，市話請加區碼');
@@ -208,6 +209,7 @@ function doSign() {
   if (pf === null) return;
   var name = (document.getElementById('signer').value || '').trim();
   if (!name) { alert('請填寫簽署人姓名'); return; }
+  if (name.length > 40) { alert('簽署人姓名請在 40 字以內'); return; }
   if (NEED_BANK) {
     var bn = (document.getElementById('bankName').value || '').trim();
     var ba = (document.getElementById('bankAccount').value || '').trim();
