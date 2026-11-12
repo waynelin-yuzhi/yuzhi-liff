@@ -803,7 +803,7 @@
       if (at) {   // 選了時間但已經到了（手機時間選擇器預設帶「現在」、按送出時早就過）：直接當現在送，不要讓後台退件卡在半路
         var atMs = Date.parse(String(at).replace(' ', 'T'));
         if (atMs && atMs < Date.now() + 2 * 60000) {
-          if (!confirm('預定時間 ' + at + ' 已經到了，改成現在送出？')) return;
+          if (!confirm(atMs <= Date.now() ? ('預定時間 ' + at + ' 已經過了，改成現在送出？') : ('預定時間 ' + at + ' 離現在不到 2 分鐘，排程來不及，改成現在送出？（要排程請至少選 3 分鐘後）'))) return;
           at = ''; var saClr = document.getElementById('sendAt'); if (saClr) saClr.value = ''; var wbClr = document.getElementById('whenBox'); if (wbClr) wbClr.classList.remove('on');
         }
       }
