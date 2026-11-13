@@ -141,6 +141,14 @@
     .yz-sheet-grid a.active{background:#E9EDE3;border-color:var(--moss)}
     .yz-sheet-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
   }
+
+#imgZoomBox{position:fixed;inset:0;z-index:9999;background:rgba(27,26,23,.94);display:none;flex-direction:column}
+#imgZoomBox.on{display:flex}
+#imgZoomBox .bar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;flex:none}
+#imgZoomBox .bar button{font-size:16px;padding:10px 18px;border:1px solid rgba(255,255,255,.6);background:transparent;color:#fff;border-radius:2px}
+#imgZoomBox .bar a{color:rgba(255,255,255,.75);font-size:13px;text-decoration:underline}
+#imgZoomBox .pic{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom pan-x pan-y}
+#imgZoomBox .pic img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 </style>
 </head>
 <body>
@@ -652,7 +660,7 @@
     chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m, i) {
       if (m.kind === 'event') return '<div class="msg event">' + esc(m.text) + '</div>';
       var body = m.kind === 'card' ? '<span class="pill">卡片</span> ' + esc(m.text.replace('[卡片]', '').trim()) : esc(m.text);
-      if (m.kind === 'image' && m.img && STORAGE_OK.test(m.img)) body = '<a href="' + esc(m.img) + '" target="_blank"><img src="' + esc(m.img.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=600') + '" style="max-width:220px;border-radius:6px;display:block"></a>';
+      if (m.kind === 'image' && m.img && STORAGE_OK.test(m.img)) body = '<a class="imgZoom" href="' + esc(m.img) + '" target="_blank"><img src="' + esc(m.img.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=600') + '" style="max-width:220px;border-radius:6px;display:block"></a>';
       else if (m.kind === 'image' && m.mediaId) body = '（照片）<button class="btn link photoLoad" data-mid="' + esc(m.mediaId) + '" data-i="' + i + '">載入照片</button>';
       var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
       var who = m.side === 'owner' ? 'Wayne（群組內）' : (m.side === 'employee' ? esc(m.senderName || '員工') : (m.side === 'out' ? '植間' : (m.senderName ? esc(m.senderName) : '對方')));
@@ -661,7 +669,7 @@
     }).join('');
     chat.scrollTop = chat.scrollHeight;
     var cidP = t.contactId;
-    var loadPhoto = function (btn, auto) { var midT = btn.getAttribute('data-mid'); if (auto && PHOTO_TRIED[midT]) return; PHOTO_TRIED[midT] = 1; var mid = btn.getAttribute('data-mid'), i = Number(btn.getAttribute('data-i')); btn.textContent = auto ? '載入中' : '載入中…'; btn.disabled = true; api({ media: { op: 'fetch', contactId: cidP, msgId: mid } }).then(function (r) { if (cur !== cidP) return; if (!r || !r.ok || !r.url || !STORAGE_OK.test(r.url)) { btn.textContent = r && r.error === 'too_large' ? '照片太大' : '照片已無法取得'; btn.disabled = false; return; } var m = (THREAD.messages || [])[i]; if (m) m.img = r.url; var wrap = btn.parentNode; if (wrap) wrap.innerHTML = '<a href="' + esc(r.url) + '" target="_blank"><img src="' + esc(r.preview || r.url) + '" style="max-width:220px;border-radius:6px;display:block"></a>'; }).catch(function () { btn.textContent = '載入失敗'; btn.disabled = false; }); };
+    var loadPhoto = function (btn, auto) { var midT = btn.getAttribute('data-mid'); if (auto && PHOTO_TRIED[midT]) return; PHOTO_TRIED[midT] = 1; var mid = btn.getAttribute('data-mid'), i = Number(btn.getAttribute('data-i')); btn.textContent = auto ? '載入中' : '載入中…'; btn.disabled = true; api({ media: { op: 'fetch', contactId: cidP, msgId: mid } }).then(function (r) { if (cur !== cidP) return; if (!r || !r.ok || !r.url || !STORAGE_OK.test(r.url)) { btn.textContent = r && r.error === 'too_large' ? '照片太大' : '照片已無法取得'; btn.disabled = false; return; } var m = (THREAD.messages || [])[i]; if (m) m.img = r.url; var wrap = btn.parentNode; if (wrap) wrap.innerHTML = '<a class="imgZoom" href="' + esc(r.url) + '" target="_blank"><img src="' + esc(r.preview || r.url) + '" style="max-width:220px;border-radius:6px;display:block"></a>'; }).catch(function () { btn.textContent = '載入失敗'; btn.disabled = false; }); };
     Array.prototype.forEach.call(chat.querySelectorAll('.fwdStaff'), function (a) { a.onclick = function (ev) { ev.preventDefault(); openFwd(t, Number(a.getAttribute('data-i'))); }; });
     var btns = Array.prototype.slice.call(chat.querySelectorAll('.photoLoad')); btns.forEach(function (b) { b.onclick = function () { loadPhoto(b, false); }; });
     // 最近一輪（我方上一則之後）的客戶照片自動載，最多 3 張
@@ -1050,6 +1058,33 @@
   var BOOTED = false;
   function boot() { if (BOOTED) return; BOOTED = true; var startCid = INIT_CID || ''; if (INIT_CID) { try { history.replaceState(null, '', location.pathname); } catch (eH) {} } loadList(function () { if (startCid) { openThread(startCid); INIT_CID = ''; } }); poll(); }
   sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
+</script>
+
+<div id="imgZoomBox" role="dialog" aria-label="照片檢視">
+  <div class="bar"><button type="button" id="imgZoomClose">關閉</button><a id="imgZoomRaw" href="#" target="_blank" rel="noopener">另開原圖</a></div>
+  <div class="pic" id="imgZoomPic"><img id="imgZoomImg" alt=""></div>
+</div>
+<script>
+/* 對話裡的照片改在同一頁放大檢視：原本另開分頁，手機上按返回回不來（Wayne 2026-11-13） */
+(function () {
+  var box = document.getElementById('imgZoomBox'), img = document.getElementById('imgZoomImg'), raw = document.getElementById('imgZoomRaw');
+  var pushed = false;
+  function hide() { box.classList.remove('on'); img.removeAttribute('src'); }
+  function closeZoom() { if (!box.classList.contains('on')) return; if (pushed) { pushed = false; try { history.back(); return; } catch (e) {} } hide(); }
+  function openZoom(url) {
+    img.src = url; raw.href = url; box.classList.add('on');
+    try { history.pushState({ imgZoom: 1 }, ''); pushed = true; } catch (e) { pushed = false; }
+  }
+  window.addEventListener('popstate', function () { if (box.classList.contains('on')) { pushed = false; hide(); } });
+  document.addEventListener('click', function (ev) {
+    var a = ev.target && ev.target.closest ? ev.target.closest('a.imgZoom') : null;
+    if (!a) return;
+    ev.preventDefault(); openZoom(a.getAttribute('href'));
+  });
+  document.getElementById('imgZoomClose').onclick = closeZoom;
+  document.getElementById('imgZoomPic').onclick = function (ev) { if (ev.target === this) closeZoom(); };
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closeZoom(); });
+})();
 </script>
 </body>
 </html>
