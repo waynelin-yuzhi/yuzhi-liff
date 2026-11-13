@@ -456,7 +456,7 @@
     if (OV.stale) return null;
     var mine = ovPendingAll(cid), ovp = mine[0];
     if (!ovp || !ovp.text) return null;
-    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], queued: mine.length - 1, attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [] };
+    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], queued: mine.length - 1, attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [], attachWarnings: ovp.attachWarnings, inheritedFrom: ovp.inheritedFrom };
   }
   function userBusy() {   // 正在打字／正在改稿／有附件排隊＝不要重畫，會吃掉還沒上屏的字與焦點
     var typing = ['manualText', 'fbText', 'fbWhen', 'fbWhy', 'fbMust', 'selfText', 'selfText2', 'bindQ', 'sendAt', 'manualAt', 'memNote', 'roleNote', 'draft', 'briefText', 'oqA0', 'oqA1', 'oqA2'].some(function (id) { var e = document.getElementById(id); return !!(e && String(e.value || '') !== String(e.defaultValue || '')); });
@@ -724,6 +724,15 @@
     if (remUnchecked) { var rk2 = document.getElementById('remKeep'); if (rk2) rk2.checked = false; }
     bindAddArea(p);
   }
+  function attachWarnHtml(p) {   // 附掛防錯（GAS v2.666.50）：只提醒，送出前一定看得到；欄位缺或型別不對就不畫
+    var ws = Array.isArray(p.attachWarnings) ? p.attachWarnings.filter(function (w) { return typeof w === 'string' && w.trim(); }) : [];
+    var inh = typeof p.inheritedFrom === 'string' ? p.inheritedFrom.trim() : '';
+    if (!ws.length && !inh) return '';
+    return '<div class="small" id="attachWarnBox" style="margin:8px 0 0;padding:8px 10px;border:1px solid #B85A3D;border-radius:8px;background:#F5DDD2;color:#B85A3D"><b>留意附掛</b>'
+      + ws.map(function (w) { return '<div style="margin-top:3px">' + esc(w) + '</div>'; }).join('')
+      + (inh ? '<div style="margin-top:3px">這則沿用了舊稿 ' + esc(inh) + ' 的附掛，請確認附掛對不對</div>' : '')
+      + '<div style="margin-top:4px;font-size:11px;opacity:.85">系統只提醒、不會自動加卡或拿卡；請在附掛清單勾選調整。</div></div>';
+  }
   function renderPending(t) {
     var p = t.pending, pb = document.getElementById('pendBox');
     var qo = t.queue || [], lj = t.lastJob || null;
@@ -772,6 +781,7 @@
       + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + modsHtml + cards
       + (p.images && p.images.length ? '<div class="att">' + p.images.map(function (u) { return STORAGE_OK.test(u) ? '<div class="it"><img src="' + esc(u) + '"></div>' : ''; }).join('') + '</div>' : '')
       + '<div class="att" id="att-draft"></div>'
+      + attachWarnHtml(p)
       + '<div class="actions"><button class="btn main" id="btnSend">送出' + (p.exec && p.exec.short ? '並' + esc(p.exec.short) : '') + '</button><button class="btn ghost" id="btnWhen">' + (p.publishAt ? '建議 ' + esc(p.publishAt) : '預定時間') + '</button><button class="btn ghost attbtn" id="btnAtt">附加照片／檔案</button></div>'
       + '<div class="when' + (p.publishAt ? ' on' : '') + '" id="whenBox"><span>預定送出</span><input type="datetime-local" id="sendAt" value="' + esc(p.publishAt ? p.publishAt.replace(' ', 'T') : '') + '"><span class="muted">留空＝現在送</span></div>'
       + '<div class="secondary"><button class="btn link" id="btnFb">給意見重擬</button><button class="btn link" id="btnReject">退回不用</button><button class="btn link" id="btnManual">改手動回覆</button><button class="btn link" id="btnSelf">已在 LINE 回過</button><span class="small muted" id="pendMsg"></span></div>'
