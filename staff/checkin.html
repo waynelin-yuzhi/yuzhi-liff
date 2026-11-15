@@ -40,6 +40,43 @@
     return '<div class="gps"><span class="dot ok"></span>已定位（案場座標待補、距離不計）</div>';
   }
 
+  // 附近路邊停車格（臺北市；點開才抓 siteParking，後端快取 6 小時）
+  var PK = {};
+  function parkingHtml() {
+    var id = ST.site.id, st = PK[id] || {};
+    var h = '<div class="note" style="margin-top:8px"><a class="lnk" href="#" id="pk-toggle">' + (st.open ? '收合附近停車' : '附近停車') + '</a></div>';
+    if (!st.open) return h;
+    if (st.loading) return h + '<div class="note">查詢附近停車格…</div>';
+    var r = st.res;
+    if (!r || !r.ok) return h + '<div class="note" style="color:var(--terra)">' + esc((r && r.detail) || '查詢失敗，不是附近沒有車格，請稍後再試。') + '</div>';
+    var row = function (name, n, d, url) { return '<div class="row" style="padding:6px 0"><div><div class="n" style="font-weight:500">' + esc(name) + '</div><div class="s">' + esc(n) + ' 格・約 ' + esc(d) + ' 公尺</div></div>' + (url ? '<a class="btn sm secondary" target="_blank" href="' + esc(url) + '">開地圖</a>' : '') + '</div>'; };
+    h += '<div style="margin-top:6px;padding:10px 12px;border:.5px solid var(--line);border-radius:10px">';
+    if (r.where && r.where.resolved) h += '<div class="note" style="color:var(--body)">Google 解析位置：' + esc(r.where.resolved) + '</div>';
+    h += '<div class="note">方圓 ' + esc(r.radius) + ' 公尺　資料月份 ' + esc(r.dataMonth || '未知') + '</div>';
+    if (r.stale) h += '<div class="note" style="color:var(--amber)">' + esc(r.staleNote) + '</div>';
+    if (r.truncated) h += '<div class="note" style="color:var(--amber)">' + esc(r.truncatedNote) + '</div>';
+    h += '<div class="note" style="color:var(--ink);font-weight:600;margin-top:6px">貨車裝卸格' + (r.loading.total ? '（' + r.loading.total + ' 格）' : '') + '</div>';
+    h += r.loading.groups.length ? r.loading.groups.slice(0, 4).map(function (g) { return row(g.road, g.count, g.distanceM, g.mapUrl); }).join('') : '<div class="note">附近沒有收錄的裝卸格</div>';
+    h += '<div class="note" style="color:var(--ink);font-weight:600;margin-top:6px">一般汽車格與限時格' + (r.car.total ? '（' + (r.car.partial ? '至少 ' : '') + r.car.total + ' 格）' : '') + '</div>';
+    h += r.car.roads.length ? r.car.roads.slice(0, 5).map(function (x) { return row(x.road + (x.timedBan ? '（含時段性禁停）' : ''), x.count, x.distanceM, x.mapUrl); }).join('') : '<div class="note">附近沒有收錄的汽車格</div>';
+    if (r.flex && r.flex.total) h += '<div class="note" style="margin-top:6px;color:var(--body)">彈性共用格 ' + (r.flex.partial ? '至少 ' : '') + esc(r.flex.total) + ' 格（' + esc(r.flex.note || '') + '）</div>';
+    if (!r.found && r.emptyNote) h += '<div class="note">' + esc(r.emptyNote) + '</div>';
+    h += '<div class="note" style="font-size:11.5px;margin-top:6px">' + (r.rules || []).map(esc).join('<br>') + '</div></div>';
+    return h;
+  }
+  function toggleParking() {
+    if (!ST.site) return;
+    var id = ST.site.id, st = PK[id] || (PK[id] = {});
+    st.open = !st.open;
+    if (st.open && !st.res && !st.loading) {
+      st.loading = true;
+      T.api('siteParking', { clientId: id }).then(function (r) { st.loading = false; st.res = r; render(); })
+        .catch(function () { st.loading = false; st.res = { ok: false, detail: '連線失敗，不是附近沒有車格，請稍後再試。' }; render(); });
+    }
+    if (st.open && st.res && !st.res.ok && !st.loading) { st.res = null; st.open = false; return toggleParking(); }
+    render();
+  }
+
   function render() {
     var me = ST.me, emp = me.emp || {};
     var h = '';
@@ -63,6 +100,7 @@
           + (ST.site.accessMethod ? '進出：' + esc(ST.site.accessMethod) + '\n' : '')
           + (ST.site.careNote ? '注意：' + esc(ST.site.careNote) : '') + '</div>';
       }
+      h += parkingHtml();
       h += '<div style="margin-top:10px">' + gpsHtml() + '</div>';
     }
     h += '</div>';
@@ -81,6 +119,7 @@
 
     var sel = $('site-sel');
     if (sel) sel.addEventListener('change', function () { pickSite(sel.value); });
+    var pkt = $('pk-toggle'); if (pkt) pkt.addEventListener('click', function (e) { e.preventDefault(); toggleParking(); });
     var rt = $('gps-retry'); if (rt) rt.addEventListener('click', function (e) { e.preventDefault(); doLocate(); });
     var bi = $('b-in'); if (bi) bi.addEventListener('click', function () { attempt('抵達'); });
     var bo = $('b-out'); if (bo) bo.addEventListener('click', function () { attempt('離開'); });
