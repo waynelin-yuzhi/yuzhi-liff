@@ -51,6 +51,7 @@
     if (!r || !r.ok) return h + '<div class="note" style="color:var(--terra)">' + esc((r && r.detail) || '查詢失敗，不是附近沒有車格，請稍後再試。') + '</div>';
     var row = function (name, n, d, url) { return '<div class="row" style="padding:6px 0"><div><div class="n" style="font-weight:500">' + esc(name) + '</div><div class="s">' + esc(n) + ' 格・約 ' + esc(d) + ' 公尺</div></div>' + (url ? '<a class="btn sm secondary" target="_blank" href="' + esc(url) + '">開地圖</a>' : '') + '</div>'; };
     h += '<div style="margin-top:6px;padding:10px 12px;border:.5px solid var(--line);border-radius:10px">';
+    if (r.where && r.where.resolved) h += '<div class="note" style="color:var(--body)">Google 解析位置：' + esc(r.where.resolved) + '</div>';
     h += '<div class="note">方圓 ' + esc(r.radius) + ' 公尺　資料月份 ' + esc(r.dataMonth || '未知') + '</div>';
     if (r.stale) h += '<div class="note" style="color:var(--amber)">' + esc(r.staleNote) + '</div>';
     if (r.truncated) h += '<div class="note" style="color:var(--amber)">' + esc(r.truncatedNote) + '</div>';
