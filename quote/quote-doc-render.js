@@ -224,7 +224,9 @@ function _quoteDocHtml_(data, opts) {
     + '</div>';
 
   // ── 附件一・損壞買回價目表（租賃品項 ≥5 自動改附件整頁表格、兼撤場點交清點表；<5 維持備註一行） ──
-  var bbAppendix = isRental && items.length > 0;   // Wayne 2026-07-16：不管幾項、租賃一律附價目表（兼點交清點表）
+  // 單張關閉（Wayne 2026-11-17）：noBuybackAppendix 嚴格 true → 不附附件一、備註也不印任何買回句（撤場條件改寫在 extraNotes）
+  var noBuyback = data.noBuybackAppendix === true;
+  var bbAppendix = isRental && items.length > 0 && !noBuyback;   // Wayne 2026-07-16：不管幾項、租賃一律附價目表（兼點交清點表）
   var appendixHtml = '';
   if (bbAppendix) {
     var axSeen = {}, axRows = [], axNo = 0;
@@ -263,10 +265,10 @@ function _quoteDocHtml_(data, opts) {
     notes.push('租賃期間：' + (data.rentalStart ? String(data.rentalStart).replace(/-/g, '/') + ' 〜 ' + String(data.rentalEnd || '').replace(/-/g, '/') + '、' : '') + '共 ' + Number(data.rentalDays) + ' 天；提前歸還恕不退費。');
     if (data.rentalModel === 'base3') notes.push('租金計價：基本租期 3 天（含）為一單位、自第 4 天起依各品項「加日價」按日累計。');
     notes.push('租借撤場：須按原本打包方式集中於卸／上貨區（自取請按原包裝包好）；追加商品另表估算。');
-    notes.push('品項損壞以撤場點交當場雙方確認（照片為證）為準；如商品損壞嚴重失去觀賞性，依買回價（原價）由客戶買回、品項歸客戶所有（買回款開立發票' + (hasDeposit ? '；如有收取押金，得自押金優先扣抵' : '') + '）。');
+    if (!noBuyback) notes.push('品項損壞以撤場點交當場雙方確認（照片為證）為準；如商品損壞嚴重失去觀賞性，依買回價（原價）由客戶買回、品項歸客戶所有（買回款開立發票' + (hasDeposit ? '；如有收取押金，得自押金優先扣抵' : '') + '）。');
     if (bbAppendix) {
       notes.push('損壞買回價：詳見「附件一・損壞買回價目表」（與本單具同等效力、並作為撤場點交清點依據）。');
-    } else {
+    } else if (!noBuyback) {
       var bbSeen = {}, bbParts = [], bbMissing = false;
       items.forEach(function (it) {
         if (Number(it.origPrice) > 0) {
