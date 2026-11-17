@@ -136,6 +136,8 @@ function _quoteDocHtml_(data, opts) {
   // 一式／檔期計價單（全品項 extraDay 明確為 0）：表頭不寫「/天」、天數欄改「租期(天)」——否則客戶拿單價×天數核不出金額（2026 租賃單實案）
   var rentalFlat = isRental && !rentalBase3 && items.length > 0 && items.every(function (it) { return it && it.extraDay != null && (Number(it.extraDay) || 0) === 0; });
   var rentalDaysN = Number(data.rentalDays || 1);
+  // 一口價租賃（整張單租期與各品項天數都是空白或 1）：不顯示天數欄、單價不帶「/天」，免得客戶誤會只租一天；期間寫在條款
+  var rentalNoDays = isRental && !rentalBase3 && !(rentalDaysN > 1) && !items.some(function (it) { return it && Number(it.days) > 1; });
   var shareNext = items.map(function (it, i) { return !!(items[i + 1] && items[i + 1].sharePhotoWithPrev); });
   // 分區橫幅（Wayne 2026-07-27：客戶版也要看得出區域）：換區插一條全寬帶。
   // 用橫幅列不用 rowspan——GAS PDF 引擎跨頁會把 rowspan 儲存格切壞，橫幅列每列獨立、分頁安全。
@@ -156,7 +158,7 @@ function _quoteDocHtml_(data, opts) {
       cells = '<td class="c-qty">' + esc(it.qty || '') + '</td>'
         + '<td class="c-price">' + money(it.price) + '</td>'
         + (rentalBase3 ? '<td class="c-price">' + ((Number(it.extraDay) || 0) > 0 ? money(it.extraDay) : '—') + '</td>' : '')
-        + '<td class="c-qty">' + rentalDaysN + '</td>'
+        + (rentalNoDays ? '' : '<td class="c-qty">' + rentalDaysN + '</td>')
         + '<td class="c-total">' + money(it.total != null ? it.total : 0) + '</td>';
     } else {
       cells = '<td class="c-qty">' + esc(it.qty || '') + ' ' + esc(it.unit || '') + '</td>'
@@ -180,7 +182,7 @@ function _quoteDocHtml_(data, opts) {
       feeCells = '<td class="c-qty">' + esc(f.qty || '1') + ' 式</td>'
         + '<td class="c-price">' + money(amt) + '</td>'
         + (rentalBase3 ? '<td class="c-price">—</td>' : '')
-        + '<td class="c-qty">—</td>'
+        + (rentalNoDays ? '' : '<td class="c-qty">—</td>')
         + '<td class="c-total">' + money(amt) + '</td>';
     } else {
       feeCells = '<td class="c-qty">' + esc(f.qty || '1') + ' 式</td>'
@@ -389,8 +391,8 @@ function _quoteDocHtml_(data, opts) {
     + '<div class="sec-label">品項明細　ITEMS</div>'
     + '<div class="tbl-wrap"><table class="items"><thead><tr><th class="c-no">NO.</th><th>品項</th><th class="c-qty">數量</th>'
     + (isRental
-        ? (rentalBase3 ? '<th class="c-price">基本租期價<br><span class="th-sub">（3 天內）</span></th><th class="c-price">加日價<br><span class="th-sub">（第 4 天起/天）</span></th>' : (rentalFlat ? '<th class="c-price">單價<br><span class="th-sub">（一式／檔期）</span></th>' : '<th class="c-price">單價/天</th>'))
-          + '<th class="c-qty">' + (rentalFlat ? '租期(天)' : '天數') + '</th>'
+        ? (rentalBase3 ? '<th class="c-price">基本租期價<br><span class="th-sub">（3 天內）</span></th><th class="c-price">加日價<br><span class="th-sub">（第 4 天起/天）</span></th>' : (rentalFlat ? '<th class="c-price">單價<br><span class="th-sub">（一式／檔期）</span></th>' : (rentalNoDays ? '<th class="c-price">單價</th>' : '<th class="c-price">單價/天</th>')))
+          + (rentalNoDays ? '' : '<th class="c-qty">' + (rentalFlat ? '租期(天)' : '天數') + '</th>')
         : '<th class="c-price">單價</th>')
     + '<th class="c-total">金額</th></tr></thead>'
     + '<tbody>' + itemRows + feeRows + '</tbody></table></div>'
