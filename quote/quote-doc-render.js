@@ -223,10 +223,12 @@ function _quoteDocHtml_(data, opts) {
     +   '<div class="sign-meta">' + (sig ? esc(sig.name) + '　' + esc(sig.at) : '簽署人／日期') + '</div></div>'
     + '</div>';
 
-  // ── 附件一・損壞買回價目表（租賃品項 ≥5 自動改附件整頁表格、兼撤場點交清點表；<5 維持備註一行） ──
+  // ── 附件一・損壞買回價目表（兼撤場點交清點表） ──
   // 單張關閉（Wayne 2026-11-17）：noBuybackAppendix 嚴格 true → 不附附件一、備註也不印任何買回句（撤場條件改寫在 extraNotes）
   var noBuyback = data.noBuybackAppendix === true;
-  var bbAppendix = isRental && items.length > 0 && !noBuyback;   // Wayne 2026-07-16：不管幾項、租賃一律附價目表（兼點交清點表）
+  // Wayne 2026-11-17：資料不完整就不附（取代 2026-07-16 租賃一律附）；任一品項原價未填或非正數 → 整份不附、改走備註列價
+  var bbAllPriced = items.length > 0 && items.every(function (it) { return Number(it.origPrice) > 0; });
+  var bbAppendix = isRental && bbAllPriced && !noBuyback;
   var appendixHtml = '';
   if (bbAppendix) {
     var axSeen = {}, axRows = [], axNo = 0;
