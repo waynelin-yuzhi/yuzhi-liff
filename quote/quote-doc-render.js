@@ -65,6 +65,7 @@ function _quoteDocHtml_(data, opts) {
   var _tt = qdocTotals_(data);
   var subtotal = _tt.subtotal, docDepositSum = _tt.depositSum, taxableSub = subtotal - docDepositSum, tax = _tt.tax, grand = _tt.grand;
   var docCredits = qdocCreditsOf_(data);
+  var hasDeposit = qdocHasDeposit_(data);
 
   // ── 付款區（照抄編輯器各模式語意；landscape 才用 p1/p2、其餘模式 p1 無意義不得套用） ──
   var pt = data.paymentTerms || {};
@@ -121,8 +122,9 @@ function _quoteDocHtml_(data, opts) {
           + (docCredits.total > 0 ? '已收之款項（' + esc(docCredits.list.map(function (c) { return c.name; }).join('、')) + '）於首期全額扣回、僅扣一次。' : ''));
   } else if (mode === 'rental') {
     paySection = '<div class="pay-amt">總計應支付款項　<b>' + money(grand) + '</b></div>'
-      + payNote('租金與押金（詳見其他費用）須於出貨前結清。')
-      + payNote('押金將於退租確認物品無損後退回。');
+      + (hasDeposit
+          ? payNote('租金與押金（詳見其他費用）須於出貨前結清。') + payNote('押金將於退租確認物品無損後退回。')
+          : payNote('租金須於出貨前結清。'));
   } else {
     paySection = '<div class="pay">' + payLine('訂金／預付款', '100%', money(grand)) + '</div>'
       + payNote(esc(String(data.payNote || '').trim().substring(0, 120)) || '單次採購專案，請於出貨前結清全額款項，以便安排後續備貨與物流作業。');
@@ -246,7 +248,7 @@ function _quoteDocHtml_(data, opts) {
       + '</tbody></table>'
       + '<ul class="notes" style="margin-top:10px;">'
       + '<li>本附件與報價單正文具同等效力；品項損壞以撤場點交當場雙方確認（照片為證）為準。</li>'
-      + '<li>嚴重失去觀賞性之品項依上列買回價由客戶買回、品項歸客戶所有；買回款開立發票、如有收取押金得自押金優先扣抵。</li>'
+      + '<li>嚴重失去觀賞性之品項依上列買回價由客戶買回、品項歸客戶所有；買回款開立發票' + (hasDeposit ? '、如有收取押金得自押金優先扣抵' : '') + '。</li>'
       + '</ul></div>';
   }
 
@@ -259,7 +261,7 @@ function _quoteDocHtml_(data, opts) {
     notes.push('租賃期間：' + (data.rentalStart ? String(data.rentalStart).replace(/-/g, '/') + ' 〜 ' + String(data.rentalEnd || '').replace(/-/g, '/') + '、' : '') + '共 ' + Number(data.rentalDays) + ' 天；提前歸還恕不退費。');
     if (data.rentalModel === 'base3') notes.push('租金計價：基本租期 3 天（含）為一單位、自第 4 天起依各品項「加日價」按日累計。');
     notes.push('租借撤場：須按原本打包方式集中於卸／上貨區（自取請按原包裝包好）；追加商品另表估算。');
-    notes.push('品項損壞以撤場點交當場雙方確認（照片為證）為準；如商品損壞嚴重失去觀賞性，依買回價（原價）由客戶買回、品項歸客戶所有（買回款開立發票；如有收取押金，得自押金優先扣抵）。');
+    notes.push('品項損壞以撤場點交當場雙方確認（照片為證）為準；如商品損壞嚴重失去觀賞性，依買回價（原價）由客戶買回、品項歸客戶所有（買回款開立發票' + (hasDeposit ? '；如有收取押金，得自押金優先扣抵' : '') + '）。');
     if (bbAppendix) {
       notes.push('損壞買回價：詳見「附件一・損壞買回價目表」（與本單具同等效力、並作為撤場點交清點依據）。');
     } else {
@@ -348,7 +350,7 @@ function _quoteDocHtml_(data, opts) {
     + '.tail.slim { page-break-inside: auto; break-inside: auto; }'
     + '.tail.slim .notes, .tail.slim .sign-row { page-break-inside: avoid; break-inside: avoid; }'
     + '.tail.slim .sign-row { margin-top: 18px; }'
-    + '.tail.slim .ft { margin-top: 24px; }'
+    + '.tail.slim .qd-ft { margin-top: 24px; }'
     + '@media screen { .appx { margin-top: 64px; padding-top: 30px; border-top: 1.5px solid #26251F; } }'
     + '.appx-title { font-size: 14px; font-weight: 600; letter-spacing: 0.12em; margin: 2px 0 12px; }'
     + '.sign-cell { flex: 1; }'
@@ -357,14 +359,13 @@ function _quoteDocHtml_(data, opts) {
     + '.sign-line .stamp { height: 82px; margin-left: 14px; }'
     + '.sign-line .sig-img { height: 72px; margin-left: 14px; }'
     + '.sign-meta { font-size: 10px; color: #6B675E; margin-top: 5px; letter-spacing: 0.08em; }'
-    + '.ft { margin-top: 56px; padding-top: 8px; border-top: 0.5px solid #D8D3C6;'
+    + '.qd-ft { margin-top: 56px; padding-top: 8px; border-top: 0.5px solid #D8D3C6;'
     + '  display: flex; justify-content: space-between; font-size: 8.5px; color: #A09A8C; letter-spacing: 0.12em; }'
     + '.th-sub { font-size: 8px; font-weight: 400; color: #9a917f; }'
     + '.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }'
     + '@media screen and (max-width: 640px) { .paper { padding: 20px 14px !important; min-height: auto !important; } '
     +   '.tbl-wrap table { min-width: 560px; } .doc-title { font-size: 20px; } body { padding: 0 !important; } }'
-    + '@media screen { .paper { min-height: 297mm; padding: 18mm 16mm 14mm; }'
-    + '  .ft { position: absolute; left: 16mm; right: 16mm; bottom: 10mm; margin-top: 0; } }'
+    + '@media screen { .paper { min-height: 297mm; padding: 18mm 16mm 14mm; } }'
     + '</style></head><body><div class="paper">'
     + '<div class="hd"><div><div class="co">植間設計股份有限公司</div><div class="co-en">Jardin Design Studio CO., LTD.</div></div>'
     + '<div class="doc"><div class="doc-title">' + esc(docTitle) + '</div>'
@@ -429,7 +430,7 @@ function _quoteDocHtml_(data, opts) {
     + '<div class="tail' + (isStatement ? ' slim' : '') + '"><div class="sec-label">備註　NOTES</div>'
     + '<ul class="notes">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
     + signBlock
-    + (isStatement ? '' : '<div class="ft"><div>新北市中和區連城路569巷9弄26號1樓　02-2221-0318</div></div>')
+    + (isStatement ? '' : '<div class="qd-ft"><div>新北市中和區連城路569巷9弄26號1樓　02-2221-0318</div></div>')
     + '</div>'
     + appendixHtml
     // 舊「內嵌自縮」腳本已移除（2026-07-28）：它用 self!==top 判斷內嵌，但 GAS 網頁永遠住沙盒 iframe、
@@ -500,6 +501,19 @@ function qdocSubFirstNullReason_(data) {
   var feeAmt = function (f) { return Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0; };
   var hasOne = fees.some(function (f) { return f && feeAmt(f) > 0 && String(f.name || '').indexOf('押金') < 0; });
   return '存檔合計 ' + qdocTotals_(data).grand + ' 與逐項重算不符（' + (hasOne ? '有一次性費用、差超過 1 元' : '沒有一次性費用可吸收差額') + '）';
+}
+
+// 押金判定：其他費用名稱含「押金」或「保證金」且金額大於 0（負數折扣不算）。
+// 租賃付款說明、買回備註、簽回回覆（public-quote-sign.gs）共用；編輯器 quotation.html 的 _rentalHasDeposit_ 照抄同一條規則，改這裡要一起改。
+// 只管文字要不要提押金；稅基排除仍沿用 qdocTotals_ 只認「押金」的既有口徑。
+function qdocIsDepositFee_(f) {
+  if (!f) return false;
+  var amt = Number(f.total != null ? f.total : (f.amount != null ? f.amount : f.price)) || 0;
+  return amt > 0 && /押金|保證金/.test(String(f.name || f.label || ''));
+}
+function qdocHasDeposit_(data) {
+  var fees = (data && Array.isArray(data.fees)) ? data.fees : [];
+  return fees.some(qdocIsDepositFee_);
 }
 
 // 報價／請款單金額（渲染器與核可頁共用同一套：items＋fees＝小計、押金不課稅、5% 稅、grandTotal 以檔內為準）
