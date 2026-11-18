@@ -436,10 +436,12 @@
       if (BATCH) batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll" disabled>' + esc(batchLabel()) + '</button></div>';   // 批次進行中清單重畫：只畫停用的進度鈕，不可以再出現可按的批次鈕
       else if (withAt.length > 1) { batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
         document.getElementById('sendAll').onclick = function () { if (BATCH || !confirm('把 ' + withAt.length + ' 則待核可稿全部照各自的建議時間排程送出？')) return; BATCH = { i: 0, n: withAt.length }; renderList(); var i = 0, bad = [], unk = []; BATCH_NOTE = null; (function next(r) {
+          if (i > 0) r = asResp(r);
           if (r && r.ok && withAt[i - 1]) { delete KEEP_AT[withAt[i - 1].contactId]; } if (r && r.ok && withAt[i - 1]) apDone([withAt[i - 1].id], withAt[i - 1].contactId, '已照建議時間排程送出（' + withAt[i - 1].id + '）');
-          if (r && r.ok === false && r.error === 'line_send_unknown' && withAt[i - 1]) { var wu = withAt[i - 1]; unk.push(wu.id + '（' + wu.name + '）'); delete KEEP_AT[wu.contactId]; apDone([wu.id], wu.contactId, null); unsureMark(wu.contactId, 'draft', wu.text || '', wu.id, 'ap', Date.now(), { msg: LINE_UNKNOWN_DRAFT, approved: true }); }
-          else if (r && r.ok === false && withAt[i - 1] && !definiteFail(r, SEND_DEFINITE)) { var wx = withAt[i - 1]; unk.push(wx.id + '（' + wx.name + '）'); unsureMark(wx.contactId, 'draft', wx.text || '', wx.id, 'ap', Date.now()); }   // 逾時、轉址落空等沒認出的錯誤：不列成沒送出
-          else if (r && r.ok === false && withAt[i - 1]) bad.push(withAt[i - 1].id + '（' + withAt[i - 1].name + '）' + (r.error === 'line_send_failed' ? '客戶沒收到：' + String(r.detail || '').slice(0, 40) : r.error === 'publishAt_past' ? '時間已過' : friendlyErr(r.detail || r.error)));
+          var lineOldB = r && r.error === 'line_send_failed' && !lineRejected(r);
+          if (r && !r.ok && (r.error === 'line_send_unknown' || lineOldB) && withAt[i - 1]) { var wu = withAt[i - 1]; unk.push(wu.id + '（' + wu.name + '）'); delete KEEP_AT[wu.contactId]; apDone([wu.id], wu.contactId, null); unsureMark(wu.contactId, 'draft', wu.text || '', wu.id, 'ap', Date.now(), { msg: lineOldB ? LINE_UNKNOWN_MANUAL : LINE_UNKNOWN_DRAFT, approved: true }); }
+          else if (r && !r.ok && withAt[i - 1] && !definiteFail(r, SEND_DEFINITE)) { var wx = withAt[i - 1]; unk.push(wx.id + '（' + wx.name + '）'); unsureMark(wx.contactId, 'draft', wx.text || '', wx.id, 'ap', Date.now()); }   // 逾時、轉址落空等沒認出的錯誤：不列成沒送出
+          else if (r && !r.ok && withAt[i - 1]) bad.push(withAt[i - 1].id + '（' + withAt[i - 1].name + '）' + (r.error === 'line_send_failed' ? '客戶沒收到：' + String(r.detail || '').slice(0, 40) : r.error === 'publishAt_past' ? '時間已過' : friendlyErr(r.detail || r.error)));
           if (i >= withAt.length) {   // 批次也要走單件的三道防線：失敗的列出來，不能靜悄悄消失
             BATCH = null;
             var nh = (bad.length ? '<div class="small" style="margin:0 0 8px;padding:8px;border:1px solid #C0705A;border-radius:6px;color:#8C3B25"><b>' + bad.length + ' 件沒送出</b><br>' + bad.map(esc).join('<br>') + '<br>點進各自的對話框處理。</div>' : '')
@@ -585,18 +587,25 @@
   // 送出類錯誤只有「白名單裡、送出前就被擋下」的才可以說沒有送出；其他（含 http／Error／Timeout／not found 這類傳輸層字樣）一律當結果不明（第六輪審查）
   // 手動回覆、送出我的字（csInboxReply）：public-cs-inbox.gs csInboxReply_、public-line-relay.gs coworkSendLineReply_ 呼叫 LINE 前的 return，加引擎 cs-run/index.ts app 分支
   var REPLY_DEFINITE = { owner_only: 1, pending_exists: 1, forceApId_required: 1, pending_changed: 1, scheduled_exists: 1, params_required: 1, quiet_hours: 1, attachment_rejected: 1, skip_failed: 1, outside_customer_hours: 1, empty_message: 1, message_too_long: 1, recipient_required: 1, recipient_no_line_uid: 1, recipient_ambiguous: 1, recipient_invalid_type: 1, recipient_is_owner: 1, junk_content: 1, use_approval_center: 1, dry_run_required: 1, scheduleAt_invalid: 1, app_key_missing: 1, app_op_invalid: 1 };
-  // 待核可稿送出（csInboxSend）：public-cs-inbox.gs csInboxSend_、_csInboxDecide_ 呼叫核可送出前的 return；line_send_failed 是 LINE 明確拒絕、稿已退回待核可
+  // 待核可稿送出（csInboxSend）：public-cs-inbox.gs csInboxSend_、_csInboxDecide_ 呼叫核可送出前的 return；line_send_failed 只有 detail 是 HTTP 4xx 才算確定（舊後台把 LINE 沒回應 HTTP -1 也回成 line_send_failed）
   var SEND_DEFINITE = { owner_only: 1, apId_required: 1, publishAt_invalid: 1, publishAt_past: 1, attachment_rejected: 1, not_found: 1, needs_approve_page: 1, bad_status: 1, superseded: 1, review_only: 1, quiet_hours: 1, line_send_failed: 1, app_key_missing: 1, app_op_invalid: 1 };
   // 發文件卡（csInboxDocSend）：public-cs-inbox.gs csInboxDocSend 投核可前的 return
   var DOC_DEFINITE = { owner_only: 1, contactId_invalid: 1, quoteNo_invalid: 1, quote_not_found: 1, voided: 1, already_signed: 1, quote_owner_mismatch: 1, already_bound: 1, kind_invalid: 1, scheduled_exists: 1, already_attached: 1, app_key_missing: 1, app_op_invalid: 1 };
   var TRANSPORT_RE = /http|error|timeout|not found|fetch|abort/i;
-  function definiteFail(r, list) {   // true＝確定沒有送出／沒有投進；false＝結果不明
-    if (!r || r.ok !== false) return false;
+  function lineRejected(r) {   // LINE 明確拒絕＝HTTP 4xx；負數碼（-1 等）是 LINE 沒回應、可能已送到
+    var d = String((r && r.detail) || ''), c = Number(r && r.code);
+    if (/HTTP -\d|code\W*-\d/i.test(d) || c < 0) return false;
+    return (c >= 400 && c < 500) || /HTTP 4\d\d\b/i.test(d);
+  }
+  function definiteFail(r, list) {   // true＝確定沒有送出／沒有投進；false＝結果不明（回應沒有 ok 欄位、不是物件也算不明）
+    if (!r || typeof r !== 'object' || r.ok) return false;
     var e = String(r.error || ''), d = String(r.detail || '');
     if (!e || TRANSPORT_RE.test(e)) return false;
-    if (e === 'line_push_failed' && list === REPLY_DEFINITE) { var c = Number(r.code); return c >= 400 && c < 500 && !/HTTP -1\b|code\W*-1\b/.test(d); }   // LINE 明確拒絕（4xx）才算
+    if ((e === 'line_push_failed' && list === REPLY_DEFINITE) || (e === 'line_send_failed' && list === SEND_DEFINITE)) return lineRejected(r);   // 只有 4xx 才算確定失敗
     return !!list[e] && !TRANSPORT_RE.test(d);
   }
+  function noSession(e) { return /請先進入/.test(String((e && e.message) || '')); }   // 沒有登入、請求根本沒送出：只解開按鈕，框與稿原樣留著
+  function asResp(r) { return (r && typeof r === 'object') ? r : { ok: false, error: '' }; }   // 回應不是物件＝結果不明
   function gateOn() { var g = document.getElementById('gate'); return !!(g && g.style.display === 'block'); }
   function cname(cid) { var c = (LIST || []).filter(function (x) { return x.contactId === cid; })[0]; return (c && c.name) || String(cid || '').substring(0, 8); }
   function toast(text) {
@@ -1091,7 +1100,7 @@
       var pmNow = function () { return (cur === cid0 && document.getElementById('pendMsg')) || awaySink(cid0, 'pend'); };   // 還在這位就寫畫面；已切走就存成那位的結果留言
       var pm = pmNow(), here = function () { return cur === cid0; };
       run('csInboxSend', [{ apId: p.id, contactId: cid0, text: edited ? taTxt : null, publishAt: at, attachments: attD, nightOk: nightOk, keepMods: modKeep(), keepReminder: (function () { var rk = document.getElementById('remKeep'); return rk ? !!rk.checked : false; })() }], function (r) {
-      pm = pmNow();
+      pm = pmNow(); r = asResp(r);
       if (r.ok) { delete KEEP_AT[cid0]; try { localStorage.removeItem('yz_draft:' + cid0); } catch (eL1) {} var doneT = r.quietGuard ? ('靜默時段，已排在 ' + r.publishAt + ' 送出') : ('完成：' + r.status + (r.publishAt ? '（' + r.publishAt + '）' : '')); if (here()) pm.textContent = doneT; apDone([p.id], cid0, doneT); laterRefresh(cid0, ['pend'], r.quietGuard ? 2500 : 1200); return; }
       busy(sendBtn, false);   // 失敗不動 dirty：改過的稿要留著，「改成現在送出」才會帶修改版
       if (r.error === 'publishAt_past') {   // 流程不准斷在半路：就地給一鍵現在送，不要叫他回頭改時間
@@ -1101,9 +1110,10 @@
         var sn = document.getElementById('sendNow'); if (sn) sn.onclick = function (ev) { ev.preventDefault(); var w = document.getElementById('sendAt'); if (w) w.value = ''; var wb = document.getElementById('whenBox'); if (wb) wb.classList.remove('on'); document.getElementById('btnSend').click(); };
         return;
       }
-      if (r.error === 'line_send_unknown') {   // LINE 沒回應、可能已送到；件在後台已是已核可：不說失敗、不說重新確認，走結果不明（兩個按鈕由他決定）
+      var lineOld = r.error === 'line_send_failed' && !lineRejected(r);   // 舊後台：LINE 沒回應也回 line_send_failed（detail HTTP -1），稿被退回待核可
+      if (r.error === 'line_send_unknown' || lineOld) {   // LINE 沒回應、可能已送到：不說失敗、不說重新確認，走結果不明（兩個按鈕由他決定）；不套 7 分鐘的可以再按
         delete KEEP_AT[cid0]; apDone([p.id], cid0, null);
-        unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend, { msg: LINE_UNKNOWN_DRAFT, approved: true }); if (here()) unsureResolve(cid0, THREAD, undefined); else toast('（' + cname(cid0) + '）送出時 LINE 沒有回應，回到這位時請先確認再決定');
+        unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend, { msg: lineOld ? LINE_UNKNOWN_MANUAL : LINE_UNKNOWN_DRAFT, approved: true }); if (here()) unsureResolve(cid0, THREAD, undefined); else toast('（' + cname(cid0) + '）送出時 LINE 沒有回應，回到這位時請先確認再決定');
         laterRefresh(cid0, null, 1500); return;
       }
       if (r.error === 'line_send_failed') { pm.innerHTML = '<b style="color:#8C3B25">客戶沒有收到</b>：' + esc(String(r.detail || '').slice(0, 120)) + '。稿已退回待核可，確認對方沒有封鎖後再按一次送出。'; return; }
@@ -1116,7 +1126,7 @@
         var sendMine = function (forceApId, forceSched, mAt2, nightOk2) { var tSendMine = Date.now();
           busy(sendBtn, true, '送出中');
           run('csInboxReply', [{ contactId: cid0, text: myTxt, force: true, forceApId: forceApId, forceScheduled: !!forceSched, scheduleAt: mAt2, nightOk: !!nightOk2, attachments: attD }], function (r2) {
-            busy(sendBtn, false); pm = pmNow();
+            busy(sendBtn, false); pm = pmNow(); r2 = asResp(r2);
             if (r2.ok) { delete KEEP_AT[cid0]; try { localStorage.removeItem('yz_draft:' + cid0); } catch (eL2) {} var mineT = (r2.scheduled ? '已排程 ' + (r2.sendAt || mAt2) + ' 送出你改的文字' : '已用你改的文字送出') + '，客服新稿已撤。'; if (here()) pm.textContent = mineT; apDone([p.id, forceApId], cid0, mineT); laterRefresh(cid0, ['pend'], 1500); return; }
             if (!here() && /^(pending_exists|scheduled_exists|quiet_hours)$/.test(String(r2.error || ''))) { pm.textContent = '你改的文字還沒送出（需要你決定要不要送），回來後請再按一次送出。'; return; }   // 要他決定的問題不在別人的畫面上問
             if (r2.error === 'pending_exists' && r2.apId) { if (confirm('客服又換了一份新稿（' + r2.apId + '）。一樣用你的文字送出並撤掉它？')) sendMine(r2.apId, forceSched, mAt2, nightOk2); else pm.textContent = '你的文字還在框裡；新稿 ' + r2.apId + ' 在下方。'; return; }
@@ -1125,7 +1135,7 @@
             if (r2.error === 'pending_changed') { pm.textContent = '那份新稿剛被處理過了，重新整理中。'; laterRefresh(cid0, ['pend'], 1200); return; }
             if (definiteFail(r2, REPLY_DEFINITE)) { pm.textContent = '送出失敗：' + String(r2.detail || r2.error) + (here() ? '。你的文字還在框裡，沒有送出。' : '。你改的文字沒有送出。'); return; }
             mineUnsure(); return;   // 沒認出的錯誤：可能已送到，跟逾時同一條路
-          }, function () { busy(sendBtn, false); mineUnsure(); });
+          }, function (e) { busy(sendBtn, false); if (noSession(e)) return; mineUnsure(); });
           var mineUnsure = function () {   // 結果不明：舊稿已被取代，從畫面拿掉；字只放在提示裡由他決定，不留在可直接送出的框
             apDone([p.id], cid0, null); unsureMark(cid0, 'draft', myTxt, p.id, 'text', tSendMine);
             if (here()) unsureResolve(cid0, THREAD, undefined); else toast('（' + cname(cid0) + '）送出沒有收到確定結果，回到這位時請先確認再決定');
@@ -1135,8 +1145,9 @@
         sendMine(r.supersededBy, false, at, nightOk);
         return;
       }
+      if (definiteFail(r, SEND_DEFINITE)) { pm.textContent = '沒有送出：' + String(r.detail || r.error) + (/^(bad_status|not_found)$/.test(r.error) ? '。' : '。稿還在待核可。'); return; }   // 送出前就被擋下：講原因（textContent 寫入）
       unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend); if (here()) pm.textContent = '這次沒有收到確定結果，可能已經送到客戶，正在重新確認（對話紀錄有我方那則＝已送出）…'; else toast('（' + cname(cid0) + '）送出沒有收到確定結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000);
-    }, function () { busy(sendBtn, false); unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend); if (here()) pmNow().textContent = '後台回應太慢，訊息可能已經送出，3 秒後重新確認（對話紀錄有我方那則＝已送出）'; else toast('（' + cname(cid0) + '）送出沒有收到結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000); }); };
+    }, function (e) { busy(sendBtn, false); if (noSession(e)) return; unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend); if (here()) pmNow().textContent = '後台回應太慢，訊息可能已經送出，3 秒後重新確認（對話紀錄有我方那則＝已送出）'; else toast('（' + cname(cid0) + '）送出沒有收到結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000); }); };
     document.getElementById('btnFb').onclick = function () { document.getElementById('fbBox').classList.toggle('on'); };
     var oqSend = document.getElementById('oqSend'); if (oqSend) oqSend.onclick = function () { var qs = p.ownerQuestions || [], lines = [], any = false; qs.forEach(function (q, i) { var a = (document.getElementById('oqA' + i) || {}).value || ''; a = String(a).trim(); if (a) { any = true; lines.push((i + 1) + '. ' + q + ' → ' + a); } }); if (!any) { document.getElementById('pendMsg').textContent = '至少答一題'; return; } var learn = document.getElementById('oqLearn').checked; var fb = (learn ? '' : '（只針對這一則，不要學成規則）\n') + '情況：客服對這則缺資料、先擬了過渡稿，店主已補充\n做法：依下面店主的答案寫出完整回覆，不再用「確認後回覆」這類過渡句\n店主的答案：\n' + lines.join('\n'); busy(this, true, '重擬中'); document.getElementById('pendMsg').textContent = '退回過渡稿、依你的答案重擬中'; var cidQ = cur; run('csInboxFeedback', [{ apId: p.id, contactId: cidQ, feedback: fb, stars: 0 }], function (r) { if (!r.ok) busy(oqSend, false); tellIn(cidQ, 'pendMsg', 'pend', r.ok ? r.note : ('失敗：' + friendlyErr(r.detail || r.error) + '，答案沒有送出'), !r.ok); if (r.ok) apDone([p.id], cidQ, r.note || '已退回過渡稿，依你的答案重擬中'); laterRefresh(cidQ, r.ok ? ['pend'] : null, 3000); }, function () { busy(oqSend, false); sayIn(cidQ, 'pendMsg', '後台回應太慢，你的答案可能已經收到，3 秒後重新確認'); laterRefresh(cidQ, null, 3000); }); };
     document.getElementById('fbCancel').onclick = function () { document.getElementById('fbBox').classList.remove('on'); };
@@ -1168,13 +1179,13 @@
         var mt = document.getElementById('manualText'); if (mt && (normTxt(mt.value) === normTxt(txt) || !normTxt(mt.value))) mt.value = ''; var ma = document.getElementById('manualAt'); if (ma && String(ma.value || '').replace('T', ' ') === mAt) ma.value = ''; ATT.compose = []; renderAtt('compose'); stashSave();
       };
       var sendManual = function (force, forceApId, forceSched) { run('csInboxReply', [{ contactId: cid0, text: txt, scheduleAt: mAt, nightOk: mNight, attachments: attC, force: !!force, forceApId: forceApId || '', forceScheduled: !!forceSched }], function (r) {
-        var needAsk = r && (r.error === 'quiet_hours' || r.error === 'pending_exists' || r.error === 'scheduled_exists' || r.error === 'pending_changed');
+        r = asResp(r); var needAsk = r && (r.error === 'quiet_hours' || r.error === 'pending_exists' || r.error === 'scheduled_exists' || r.error === 'pending_changed');
         if (needAsk && !here()) { busy(mBtn, false); noteAway(cid0, 'compose', '這段還沒送出（' + ({ quiet_hours: '現在是靜默時段，要你決定送出時間', pending_exists: '這位還有一份待核可稿，要你決定要不要收掉', scheduled_exists: '這位已有排程中的訊息，要你決定要不要再送', pending_changed: '那份待核可稿剛被處理過' }[r.error] || r.error) + '），回來後請再按一次發送。'); return; }   // 要他決定的問題不在別人的畫面上問
         if (r && r.error === 'quiet_hours') { busy(mBtn, false); if (confirm('現在是靜默時段（21:00 到 09:00）。按「確定」排到 ' + r.suggestAt + ' 送；按「取消」我再問要不要現在送')) { mAt = r.suggestAt; busy(mBtn, true, '發送中'); sendManual(force, forceApId, forceSched); } else if (confirm('確定現在就發給客戶？')) { mNight = true; busy(mBtn, true, '發送中'); sendManual(force, forceApId, forceSched); } return; }
         if (r && r.error === 'pending_exists') { busy(mBtn, false); if (confirm('這位還有一份待核可稿（' + (r.apId || '') + '）。要收掉那份稿、改送你打的這段嗎？')) { busy(mBtn, true, '發送中'); sendManual(true, r.apId, forceSched); } return; }
         if (r && r.error === 'pending_changed') { busy(mBtn, false); alert('那份待核可稿剛被處理過了，畫面已更新，請再確認一次'); loadList(null, true); forcePaint(['pend']); openThread(cid0, true); return; }
         if (r && r.error === 'scheduled_exists') { busy(mBtn, false); var when = (r.items || []).map(function (x) { return x.at; }).join('、'); if (confirm('這位已有排程要發的訊息（' + when + '）。仍要現在再送這段嗎？')) { busy(mBtn, true, '發送中'); sendManual(force, forceApId, true); } return; }
-        if (r && r.ok === false && !definiteFail(r, REPLY_DEFINITE)) {   // 白名單以外（LINE 沒回應、轉址落空、引擎錯誤…）＝結果不明，不顯示成確定失敗
+        if (!r.ok && !definiteFail(r, REPLY_DEFINITE)) {   // 白名單以外（LINE 沒回應、轉址落空、引擎錯誤…）＝結果不明，不顯示成確定失敗
           var lineNoReply = r.error === 'line_push_failed';
           busy(mBtn, false); unsureMark(cid0, 'manual', txt, '', '', tSendM, lineNoReply ? { msg: LINE_UNKNOWN_MANUAL } : null); clearSent(); var mmU = here() ? document.getElementById('manualMsg') : null; if (mmU) mmU.textContent = ''; if (here()) unsureResolve(cid0, THREAD, undefined); else toast('（' + cname(cid0) + '）' + (lineNoReply ? '送出時 LINE 沒有回應' : '送出沒有收到確定結果') + '，回到這位時請先確認再決定'); return;
         }
@@ -1182,7 +1193,7 @@
         if (r.ok) { unsureClear(cid0, 'manual'); if (here()) { ATT.compose = []; renderAtt('compose'); var mtO = document.getElementById('manualText'); if (mtO) mtO.value = ''; var maC = document.getElementById('manualAt'); if (maC) maC.value = ''; stashSave(); } else stashDrop(cid0, ['#manualText', '#manualAt']); laterRefresh(cid0, ['compose'], 1500); }
         busy(mBtn, false);
         tellIn(cid0, 'manualMsg', 'compose', r.ok ? ((r.scheduled ? ('已排程 ' + r.sendAt) : '已送出') + (r.note ? '（' + r.note + '）' : '')) : ('失敗：' + (r.detail || r.error) + '，這段沒有送出'), !r.ok || !!r.note);   // 已切走時：單純成功不留言，部分失敗與確定失敗要留言
-      }, function () { busy(mBtn, false); unsureMark(cid0, 'manual', txt, '', '', tSendM); clearSent(); if (here()) sayIn(cid0, 'manualMsg', '後台回應太慢，訊息可能已經送出，3 秒後重新確認（對話紀錄有這則＝已送出，不要再按）'); else toast('（' + cname(cid0) + '）送出沒有收到結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000); }); }; sendManual(false, '', false); };
+      }, function (e) { busy(mBtn, false); if (noSession(e)) return; unsureMark(cid0, 'manual', txt, '', '', tSendM); clearSent(); if (here()) sayIn(cid0, 'manualMsg', '後台回應太慢，訊息可能已經送出，3 秒後重新確認（對話紀錄有這則＝已送出，不要再按）'); else toast('（' + cname(cid0) + '）送出沒有收到結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000); }); }; sendManual(false, '', false); };
     document.getElementById('btnBrief').onclick = function () { document.getElementById('briefBox').classList.toggle('on'); };
     document.getElementById('btnNoReply').onclick = function () { if (!confirm('把這位標成「不用回」？清單不再顯示待回；客戶再來訊會重新判斷。')) return; var bN = this; busy(bN, true, '結案中'); run('csInboxNoReply', [{ contactId: cur }], function (r) { busy(bN, false); document.getElementById('manualMsg').textContent = r.ok ? '已標不用回' : ('失敗：' + friendlyErr(r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 800); }, function () { busy(bN, false); }); };
     if ((t.queue || []).length) { var bbQ = document.getElementById('btnBrief'); bbQ.disabled = true; bbQ.title = '客服擬稿中，等稿出來再說'; }
