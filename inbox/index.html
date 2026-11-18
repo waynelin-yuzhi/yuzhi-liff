@@ -706,7 +706,7 @@
       };
       run('csInboxSelfReplied', [{ contactId: cid, apId: d.ap, text: d.text }], function (r) {
         r = asResp(r); var note = String(r.note || '');
-        if (r.ok && (!note || /^稿未收掉：目前狀態/.test(note))) finish('已標記為送到，稿已收掉。');   // 稿未收掉且是狀態不對＝已不在待核可，視為已收掉
+        if (r.ok && (!note || /^稿未收掉：(目前狀態|客服在你編輯時換了新稿|not_found)/.test(note))) finish('已標記為送到，稿已收掉。');   // 稿未收掉但原因是狀態不對、被新稿取代、找不到＝舊稿已不在待核可，視為已收掉
         else keep();
       }, function () { keep(); });
     };
@@ -1166,7 +1166,7 @@
       }
       if (definiteFail(r, SEND_DEFINITE)) {   // 送出前就被擋下：講原因（textContent 寫入）；狀態不對的不說「沒有送出」，免得被讀成客戶沒收到去補發
         var stB = String(r.detail || '').replace(/^目前狀態\s*/, '').trim();
-        pm.textContent = r.error === 'bad_status' ? ('這張稿目前狀態是「' + stB + '」' + (/已核可|已發送|已排程/.test(stB) ? '，代表先前已經送出或排好了，這次沒有再送一次。請看對話紀錄，不要補發。' : '，這次沒有送。'))
+        pm.textContent = r.error === 'bad_status' ? (/發佈中/.test(stB) ? '這張稿正在送出中，這次沒有再送一次。請稍後看對話紀錄，不要補發。' : ('這張稿目前狀態是「' + stB + '」' + (/已核可|已發佈|已排程|已發送/.test(stB) ? '，代表先前已經送出或排好了，這次沒有再送一次。請看對話紀錄，不要補發。' : '，這次沒有送。')))
           : r.error === 'not_found' ? '找不到這張稿，這次沒有送。' : ('沒有送出：' + String(r.detail || r.error) + '。稿還在待核可。');
         return;
       }   // 送出前就被擋下：講原因（textContent 寫入）
