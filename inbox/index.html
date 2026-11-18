@@ -394,7 +394,7 @@
   function mergeOverview() {
     var now0 = Date.now(); OV.scheduled = (OV.scheduled || []).filter(function (x) { var g = SCHED_GONE[x.kind + ':' + (x.id || x.row || '')]; return !(g && now0 - g < 600000); });
     var pend = {}, sched = {}, schedName = {};
-    (OV.pending || []).forEach(function (p) { if (apGone(p.id)) return; pend[p.contactId] = p; });   // 剛處理掉的稿：總覽快取還帶著也不算
+    (OV.pending || []).forEach(function (p) { if (apHidden(p.id)) return; pend[p.contactId] = p; });   // 剛處理掉的稿：總覽快取還帶著也不算
     (OV.scheduled || []).forEach(function (x) { sched[x.contactId] = (sched[x.contactId] || 0) + 1; schedName[x.contactId] = x.name; });
     var seen = {}; LIST = LIST.filter(function (c) { return !c._stub; });
     if (!OV.loaded) return;   // 清單 0.2 秒就回、總覽還在路上：這時抹掉 c.pending 等於每次刷新都讓待核可徽章消失一次
@@ -431,7 +431,7 @@
       batch.innerHTML += '<details class="small" style="margin:0 0 8px;padding:6px 10px;border:1px solid #E5E0D3;border-radius:8px;background:#FBF9F3"><summary style="cursor:pointer;color:#8a8275">另有 ' + OV.other.length + ' 件非客服的待核可（LINE 核可卡處理）</summary><div style="margin-top:6px">' + OV.other.slice(0, 8).map(function (o) { return '・' + esc(o.id) + ' ' + esc(o.title) + '（' + esc(String(o.ts).substring(5, 16)) + '）'; }).join('<br>') + '</div></details>';   // 收合成一行，點開才列（Wayne 2026-10-07：黃色區塊太佔空間）
     }
     if (TAB === 'todo') {
-      var withAt = (OV.pending || []).filter(function (p) { return p.publishAt && Date.parse(String(p.publishAt).replace(' ', 'T') + ':00') > Date.now() + 60000; });   // 建議時間已經過的不能批次送，照舊路會立刻發給客戶
+      var withAt = (OV.pending || []).filter(function (p) { return !apHidden(p.id) && p.publishAt && Date.parse(String(p.publishAt).replace(' ', 'T') + ':00') > Date.now() + 60000; });   // 建議時間已經過的不能批次送，照舊路會立刻發給客戶
       var batchLabel = function () { return '送出中（第 ' + BATCH.i + ' 張／共 ' + BATCH.n + ' 張）'; };
       if (BATCH) batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll" disabled>' + esc(batchLabel()) + '</button></div>';   // 批次進行中清單重畫：只畫停用的進度鈕，不可以再出現可按的批次鈕
       else if (withAt.length > 1) { batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
@@ -439,7 +439,7 @@
           if (i > 0) r = asResp(r);
           if (r && r.ok && withAt[i - 1]) { delete KEEP_AT[withAt[i - 1].contactId]; } if (r && r.ok && withAt[i - 1]) apDone([withAt[i - 1].id], withAt[i - 1].contactId, '已照建議時間排程送出（' + withAt[i - 1].id + '）');
           var lineOldB = r && r.error === 'line_send_failed' && !lineRejected(r);
-          if (r && !r.ok && (r.error === 'line_send_unknown' || lineOldB) && withAt[i - 1]) { var wu = withAt[i - 1]; unk.push(wu.id + '（' + wu.name + '）'); delete KEEP_AT[wu.contactId]; apDone([wu.id], wu.contactId, null); unsureMark(wu.contactId, 'draft', wu.text || '', wu.id, 'ap', Date.now(), { msg: lineOldB ? LINE_UNKNOWN_MANUAL : LINE_UNKNOWN_DRAFT, approved: true }); }
+          if (r && !r.ok && (r.error === 'line_send_unknown' || lineOldB) && withAt[i - 1]) { var wu = withAt[i - 1]; unk.push(wu.id + '（' + wu.name + '）'); delete KEEP_AT[wu.contactId]; apDone([wu.id], wu.contactId, null); unsureMark(wu.contactId, 'draft', wu.text || '', wu.id, 'ap', Date.now(), { msg: lineOldB ? LINE_UNKNOWN_MANUAL : LINE_UNKNOWN_DRAFT, approved: true, rolledBack: lineOldB }); }
           else if (r && !r.ok && withAt[i - 1] && !definiteFail(r, SEND_DEFINITE)) { var wx = withAt[i - 1]; unk.push(wx.id + '（' + wx.name + '）'); unsureMark(wx.contactId, 'draft', wx.text || '', wx.id, 'ap', Date.now()); }   // 逾時、轉址落空等沒認出的錯誤：不列成沒送出
           else if (r && !r.ok && withAt[i - 1]) bad.push(withAt[i - 1].id + '（' + withAt[i - 1].name + '）' + (r.error === 'line_send_failed' ? '客戶沒收到：' + String(r.detail || '').slice(0, 40) : r.error === 'publishAt_past' ? '時間已過' : friendlyErr(r.detail || r.error)));
           if (i >= withAt.length) {   // 批次也要走單件的三道防線：失敗的列出來，不能靜悄悄消失
@@ -464,7 +464,7 @@
   var OPEN_GEN = 0, FORCE_DOSSIER = {};
   function apNum(id) { return Number(String(id || '').replace(/\D/g, '')) || 0; }
   // 同一位有多則待核可（例：一人管四家、各發一張卡）：照件號由小到大排、先出最早那則，核可完下一則才接著出現
-  function ovPendingAll(cid) { return (OV.pending || []).filter(function (p) { return p.contactId === cid && !apGone(p.id); }).sort(function (a, b) { return apNum(a.id) - apNum(b.id); }); }
+  function ovPendingAll(cid) { return (OV.pending || []).filter(function (p) { return p.contactId === cid && !apHidden(p.id); }).sort(function (a, b) { return apNum(a.id) - apNum(b.id); }); }
   function ovPendingFor(cid) {   // 總覽裡就有稿的內容，不必等後台補件
     if (OV.stale) return null;
     var mine = ovPendingAll(cid), ovp = mine[0];
@@ -598,7 +598,7 @@
     return (c >= 400 && c < 500) || /HTTP 4\d\d\b/i.test(d);
   }
   function definiteFail(r, list) {   // true＝確定沒有送出／沒有投進；false＝結果不明（回應沒有 ok 欄位、不是物件也算不明）
-    if (!r || typeof r !== 'object' || r.ok) return false;
+    if (!r || typeof r !== 'object' || r.ok !== false) return false;
     var e = String(r.error || ''), d = String(r.detail || '');
     if (!e || TRANSPORT_RE.test(e)) return false;
     if ((e === 'line_push_failed' && list === REPLY_DEFINITE) || (e === 'line_send_failed' && list === SEND_DEFINITE)) return lineRejected(r);   // 只有 4xx 才算確定失敗
@@ -632,6 +632,10 @@
     document.getElementById('resNoteOk').onclick = function (ev) { ev.preventDefault(); try { sessionStorage.removeItem('yz_note:' + cidN); } catch (eNr) {} var e = document.getElementById('resNote'); if (e) e.remove(); };
   }
   function sayIn(cid, id, text) { var e = cur === cid ? document.getElementById(id) : null; if (e) e.textContent = text; return e; }
+  function apHidden(id) {   // 剛處理掉的稿，或有「後台已核可／舊後台已退回」的結果不明標記指著它：標記在的期間不畫、不進批次（不靠 10 分鐘的記憶體記號）
+    if (apGone(id)) return true; if (!id) return false;
+    try { return Object.keys(localStorage).some(function (k) { if (k.indexOf('yz_unsure:') !== 0) return false; var d = unsureGet(k.slice(10)).draft; return !!(d && d.ap === id && (d.approved || d.rolledBack)); }); } catch (eH) { return false; }
+  }
   function apGone(id) { return !!(id && DONE_AP[id] && Date.now() - DONE_AP[id] < 600000); }
   function apDone(ids, cid, note) {
     (ids || []).forEach(function (id) { if (id) DONE_AP[id] = Date.now(); });
@@ -656,7 +660,7 @@
   var UNSURE_MSG = '這段上次送出時沒有收到結果，可能已經送到客戶，請先看對話紀錄確認再決定要不要重送';
   var LINE_UNKNOWN_DRAFT = '送出時 LINE 沒有回應，可能已經送到客戶。這張稿已經不在待核可；請先問客戶或看 LINE 官方帳號後台，確定沒收到再用下面的框補發', LINE_UNKNOWN_MANUAL = '送出時 LINE 沒有回應，可能已經送到客戶。請先問客戶或看 LINE 官方帳號後台，確定沒收到再補發';   // 後台 line_send_unknown／HTTP -1：件留在已核可
   function unsureGet(cid) { try { var o = JSON.parse(localStorage.getItem('yz_unsure:' + cid) || '{}'); Object.keys(o).forEach(function (k) { if (!o[k] || Date.now() - Number(o[k].at || 0) > 6 * 3600000) delete o[k]; }); return o; } catch (eUg) { return {}; } }
-  function unsureMark(cid, kind, text, ap, mode, sentAt, opt) { if (!cid || gateOn()) return; try { var o = unsureGet(cid); o[kind] = { text: String(text || ''), ap: ap || '', mode: mode || 'ap', at: Date.now(), sent: Number(sentAt) || Date.now(), msg: (opt && opt.msg) || '', approved: !!(opt && opt.approved) };   /* sent＝按下送出那一刻，線索的時間下限 */ localStorage.setItem('yz_unsure:' + cid, JSON.stringify(o)); } catch (eUm) {} if (cur === cid) stashSave(); }
+  function unsureMark(cid, kind, text, ap, mode, sentAt, opt) { if (!cid || gateOn()) return; try { var o = unsureGet(cid); o[kind] = { text: String(text || ''), ap: ap || '', mode: mode || 'ap', at: Date.now(), sent: Number(sentAt) || Date.now(), msg: (opt && opt.msg) || '', approved: !!(opt && opt.approved), rolledBack: !!(opt && opt.rolledBack) };   /* sent＝按下送出那一刻，線索的時間下限 */ localStorage.setItem('yz_unsure:' + cid, JSON.stringify(o)); } catch (eUm) {} if (cur === cid) stashSave(); }
   function unsureClear(cid, kind) { try { var o = unsureGet(cid); if (!o[kind]) return; delete o[kind]; if (Object.keys(o).length) localStorage.setItem('yz_unsure:' + cid, JSON.stringify(o)); else localStorage.removeItem('yz_unsure:' + cid); } catch (eUc) {} }
   // 結果不明一律不由程式下結論：只顯示中性提示與兩個按鈕，由他看對話紀錄後自己決定（2026-11-18 第二輪審查：自動判定會把沒送到說成送到）
   var DEFAULT_ATT_TEXT = { '附上照片，請查收。': 1, '附上檔案，請查收。': 1 };
@@ -689,8 +693,23 @@
     if (document.getElementById('unsDOk')) return;
     var pb = document.getElementById('pendBox'); if (!pb) return;
     var box = document.createElement('div'); box.id = 'unsureNote'; box.className = 'small'; box.style.cssText = 'margin-top:8px;padding:8px 10px;border:1px solid #B85A3D;border-radius:8px;background:#F5DDD2;color:#8C3B25';
-    box.innerHTML = unsureHtml(d, d.mode === 'text' ? sameMsgClue(t, d) : '', 'unsD'); pb.insertBefore(box, pb.firstChild);
-    document.getElementById('unsDOk').onclick = function (ev) { ev.preventDefault(); unsureClear(cid, 'draft'); box.remove(); delete KEEP_AT[cid]; apDone([d.ap], cid, '已標記為送到。'); };
+    box.innerHTML = unsureHtml(d, d.mode === 'text' ? sameMsgClue(t, d) : '', 'unsD') + (d.warn ? '<div id="unsDWarn" style="margin-top:4px;font-weight:600">' + esc(d.warn) + '</div>' : ''); pb.insertBefore(box, pb.firstChild);
+    document.getElementById('unsDOk').onclick = function (ev) {
+      ev.preventDefault(); var okA = this; if (okA.getAttribute('data-busy')) return;
+      var finish = function (msg) { unsureClear(cid, 'draft'); box.remove(); delete KEEP_AT[cid]; apDone([d.ap], cid, msg); };
+      if (!d.rolledBack) { finish('已標記為送到。'); return; }   // 新後台：稿已是已核可，只清本機
+      okA.setAttribute('data-busy', '1'); okA.textContent = '收掉稿中…';   // 舊後台：稿還在待核可，先在後台收掉並把這段記進對話紀錄
+      var keep = function () {   // 警告存進標記本身：之後稿區重畫也帶得出來
+        var WARN = '稿沒有收掉，還在待核可，請不要再按送出，稍後再按一次已經送到了。';
+        try { var oW = unsureGet(cid); if (oW.draft) { oW.draft.warn = WARN; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(oW)); } } catch (eW) {}
+        okA.removeAttribute('data-busy'); okA.textContent = '已經送到了（清掉這段）'; var w = document.getElementById('unsDWarn'); if (!w) { w = document.createElement('div'); w.id = 'unsDWarn'; w.style.cssText = 'margin-top:4px;font-weight:600'; box.appendChild(w); } w.textContent = WARN;
+      };
+      run('csInboxSelfReplied', [{ contactId: cid, apId: d.ap, text: d.text }], function (r) {
+        r = asResp(r); var note = String(r.note || '');
+        if (r.ok && (!note || /^稿未收掉：目前狀態/.test(note))) finish('已標記為送到，稿已收掉。');   // 稿未收掉且是狀態不對＝已不在待核可，視為已收掉
+        else keep();
+      }, function () { keep(); });
+    };
     document.getElementById('unsDBack').onclick = function (ev) { ev.preventDefault(); var ta = document.getElementById('draft'); var toDraft = !!(ta && shownAp() === d.ap && !d.approved);   /* 已核可的稿不能再送：一律貼到手動回覆框 */   // 稿區是另一張稿：貼到手動回覆框，不貼進新稿
       if (!pasteBack(toDraft ? ta : document.getElementById('manualText'), d.text)) return;
       if (toDraft && ta.oninput) ta.oninput(); unsureClear(cid, 'draft'); box.remove(); stashSave(); };
@@ -732,7 +751,7 @@
       var firstPaint = function () {
         if (cur !== cid || gen !== OPEN_GEN) return;
         if (!quiet && OV.loaded) { var op0 = ovPendingFor(cid); if (op0) { t.pending = op0; t.scheduled = (OV.scheduled || []).filter(function (x) { return x.contactId === cid; }); t.extrasLoaded = true; } }
-        if (quiet && THREAD && THREAD.contactId === cid && THREAD.pending && !apGone(THREAD.pending.id)) {   // 背景重抓：清單也說還是同一張稿就先沿用，不要讓稿區先變成「查看有沒有待核可稿」再跳回來
+        if (quiet && THREAD && THREAD.contactId === cid && THREAD.pending && !apHidden(THREAD.pending.id)) {   // 背景重抓：清單也說還是同一張稿就先沿用，不要讓稿區先變成「查看有沒有待核可稿」再跳回來
           var lp = ((LIST.filter(function (x) { return x.contactId === cid; })[0] || {}).pending || {}).id || '';
           if (lp === THREAD.pending.id) { t.pending = THREAD.pending; t.scheduled = THREAD.scheduled || []; t.extrasLoaded = THREAD.extrasLoaded; t.extrasFailed = THREAD.extrasFailed; }
         }
@@ -783,7 +802,7 @@
       if (cur !== cid || gen !== OPEN_GEN) return;
       if (!x || x.ok === false) { finish(); return; }
       delete FORCE_DOSSIER[cid];
-      if (x.pending && apGone(x.pending.id)) x.pending = null;   // 後台還沒更新完，剛處理掉的稿不可以畫回來
+      if (x.pending && apHidden(x.pending.id)) x.pending = null;   // 後台還沒更新完，剛處理掉的稿不可以畫回來
       var pendSame = !!(t.pending && x.pending && t.pending.id === x.pending.id);
       var textGrew = pendSame && String(x.pending.text || '').length > String(t.pending.text || '').length;   // 總覽版的稿被截到 4000 字，補件版才是完整的
       var modsSig = function (p) { return ((p && p.mods) || []).map(function (m) { return m.key; }).join('|'); }; var modsNew = pendSame && modsSig(x.pending) !== modsSig(t.pending);   // 補件版的附掛清單和畫面上的不同 → 重畫出勾選框
@@ -1113,7 +1132,7 @@
       var lineOld = r.error === 'line_send_failed' && !lineRejected(r);   // 舊後台：LINE 沒回應也回 line_send_failed（detail HTTP -1），稿被退回待核可
       if (r.error === 'line_send_unknown' || lineOld) {   // LINE 沒回應、可能已送到：不說失敗、不說重新確認，走結果不明（兩個按鈕由他決定）；不套 7 分鐘的可以再按
         delete KEEP_AT[cid0]; apDone([p.id], cid0, null);
-        unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend, { msg: lineOld ? LINE_UNKNOWN_MANUAL : LINE_UNKNOWN_DRAFT, approved: true }); if (here()) unsureResolve(cid0, THREAD, undefined); else toast('（' + cname(cid0) + '）送出時 LINE 沒有回應，回到這位時請先確認再決定');
+        unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend, { msg: lineOld ? LINE_UNKNOWN_MANUAL : LINE_UNKNOWN_DRAFT, approved: true, rolledBack: lineOld }); if (here()) unsureResolve(cid0, THREAD, undefined); else toast('（' + cname(cid0) + '）送出時 LINE 沒有回應，回到這位時請先確認再決定');
         laterRefresh(cid0, null, 1500); return;
       }
       if (r.error === 'line_send_failed') { pm.innerHTML = '<b style="color:#8C3B25">客戶沒有收到</b>：' + esc(String(r.detail || '').slice(0, 120)) + '。稿已退回待核可，確認對方沒有封鎖後再按一次送出。'; return; }
@@ -1145,7 +1164,12 @@
         sendMine(r.supersededBy, false, at, nightOk);
         return;
       }
-      if (definiteFail(r, SEND_DEFINITE)) { pm.textContent = '沒有送出：' + String(r.detail || r.error) + (/^(bad_status|not_found)$/.test(r.error) ? '。' : '。稿還在待核可。'); return; }   // 送出前就被擋下：講原因（textContent 寫入）
+      if (definiteFail(r, SEND_DEFINITE)) {   // 送出前就被擋下：講原因（textContent 寫入）；狀態不對的不說「沒有送出」，免得被讀成客戶沒收到去補發
+        var stB = String(r.detail || '').replace(/^目前狀態\s*/, '').trim();
+        pm.textContent = r.error === 'bad_status' ? ('這張稿目前狀態是「' + stB + '」' + (/已核可|已發送|已排程/.test(stB) ? '，代表先前已經送出或排好了，這次沒有再送一次。請看對話紀錄，不要補發。' : '，這次沒有送。'))
+          : r.error === 'not_found' ? '找不到這張稿，這次沒有送。' : ('沒有送出：' + String(r.detail || r.error) + '。稿還在待核可。');
+        return;
+      }   // 送出前就被擋下：講原因（textContent 寫入）
       unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend); if (here()) pm.textContent = '這次沒有收到確定結果，可能已經送到客戶，正在重新確認（對話紀錄有我方那則＝已送出）…'; else toast('（' + cname(cid0) + '）送出沒有收到確定結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000);
     }, function (e) { busy(sendBtn, false); if (noSession(e)) return; unsureMark(cid0, 'draft', sentTxt, p.id, 'ap', tSend); if (here()) pmNow().textContent = '後台回應太慢，訊息可能已經送出，3 秒後重新確認（對話紀錄有我方那則＝已送出）'; else toast('（' + cname(cid0) + '）送出沒有收到結果，回到這位時請先確認再決定'); laterRefresh(cid0, null, 3000); }); };
     document.getElementById('btnFb').onclick = function () { document.getElementById('fbBox').classList.toggle('on'); };
