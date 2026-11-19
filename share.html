@@ -140,7 +140,7 @@ var CG_TIMEOUT_MS = 8000;
 var CG_CARD = { title: '專屬養護群組邀請', subSuffix: ' x 有植',
   lines: ['1. 聯繫與安排時間', '2. 養護紀錄回報', '3. 訊息同步', '4. 特殊需求'],
   joinLabel: '加入群組', shareLabel: '分享給同事' };
-var CG_TOKEN_RE = /^[A-Za-z0-9_-]{22,128}$/;
+var CG_TOKEN_RE = /^[A-Za-z0-9_-]{22,64}$/;
 var CG_CODE_RE = /^[A-Za-z0-9_-]{6,64}$/;
 var CG_NAME_RE = /^[一-鿿A-Za-z0-9 ·・.()（）\-]{1,20}$/;
 function cgDecode(v) { try { return decodeURIComponent(String(v || '').replace(/\+/g, ' ')); } catch (e) { return ''; } }
@@ -159,7 +159,7 @@ function fetchCareGroup(token) {
     fetch(CG_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ action: 'shareCardGet', token: token }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        if (!j || j.ok !== true) { fin(j && /^(not_found|expired|revoked)$/.test(String(j.error || '')) ? { ok: false, cgDead: true } : { ok: false, cgNet: true }); return; }
+        if (!j || j.ok !== true) { fin(j && /^(not_found|expired|revoked|token_invalid)$/.test(String(j.error || '')) ? { ok: false, cgDead: true } : { ok: false, cgNet: true }); return; }
         var pl = j.payload || {};
         if (j.kind !== 'caregroup' || !CG_CODE_RE.test(String(pl.inviteCode || ''))) { fin({ ok: false, cgDead: true }); return; }
         var n = String(pl.clientShort || '').trim(); if (!CG_NAME_RE.test(n)) n = '貴公司';
