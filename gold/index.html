@@ -80,6 +80,7 @@
     <div class="line"><h1>AI 客服考題勾選</h1><span class="small muted num" id="progText"></span></div>
     <div class="prog"><i id="progBar"></i></div>
   </div>
+  <div id="shortNote" class="small muted" style="display:none;margin-bottom:8px"></div>
   <div id="loading" class="card"><span class="spin"></span>載入題目中</div>
   <div id="loadErr" class="card" style="display:none"><div id="loadErrText"></div><div class="row"><button class="btn" id="retryLoad" type="button">再試一次</button></div></div>
   <div id="view" style="display:none">
@@ -124,7 +125,7 @@
   var ERR_TEXT = {
     owner_only: '這一頁只有老闆可以用。', not_found: '找不到這一題，請重新整理頁面。', verdict_invalid: '按鈕的值不對，請重新整理頁面。',
     note_too_long: '原因太長了，請縮短到 200 字內。', note_invalid: '原因格式不對。', id_invalid: '題目編號不對，請重新整理頁面。',
-    gold_read_failed: '資料庫暫時讀不到，請再試一次。', gold_write_failed: '資料庫沒有寫進去，請再按一次。', gold_pick_failed: '挑題時資料庫出錯，請再試一次。',
+    gold_read_failed: '資料庫暫時讀不到，請再試一次。', gold_pick_timeout: '題目還在準備，請稍後再開。', gold_write_failed: '資料庫沒有寫進去，請再按一次。', gold_pick_failed: '挑題時資料庫出錯，請再試一次。',
     gold_failed: '系統出錯，請再試一次。', forbidden: '這個帳號沒有權限。', unknown_tenant: '系統設定有誤，請找總管。', app_op_invalid: '系統還沒更新到有這個功能，請找總管。'
   };
   function errText(code) { return ERR_TEXT[code] || ('系統回了錯誤（' + String(code || '不明').slice(0, 40) + '），請再試一次。'); }
@@ -155,10 +156,11 @@
           var aborted = e && (e.name === 'AbortError' || /abort/i.test(String(e.message || '')));
           return { ok: false, kind: aborted ? 'timeout' : 'network', code: aborted ? 'timeout' : 'network' };
         });
-    });
+    }).catch(function () { return { ok: false, kind: 'session', code: 'session' }; });   // 讀登入狀態失敗或上面任何一步丟例外：一律回失敗，讓呼叫端解開按鈕、顯示錯誤
   }
   function failText(r, saving) {
     if (r.kind === 'timeout') return saving ? '連線逾時，沒有確認存到。請再按一次（重按只會以最後一次為準）。' : '連線逾時，請再試一次。';
+    if (r.kind === 'session') return (saving ? '這筆沒有存到：' : '') + '讀不到登入狀態，請重新整理頁面再試。';
     if (r.kind === 'network') return saving ? '網路連不上，這筆沒有存到。確認網路後再按一次。' : '網路連不上，確認網路後再試。';
     return (saving ? '沒有存到：' : '') + errText(r.code);
   }
@@ -170,6 +172,8 @@
       $('loading').style.display = 'none';
       if (!r.ok) { if (r.kind === 'auth') return; $('loadErrText').textContent = failText(r, false); $('loadErr').style.display = 'block'; $('retryLoad').style.display = r.code === 'owner_only' ? 'none' : ''; return; }
       ITEMS = Array.isArray(r.data.items) ? r.data.items : [];
+      var sn = $('shortNote'), target = Number(r.data.target) || 0;
+      if (r.data.short === true && ITEMS.length && target) { sn.textContent = '這批只挑到 ' + ITEMS.length + ' 筆（目標 ' + target + '），符合條件的對話還不夠。'; sn.style.display = 'block'; } else { sn.textContent = ''; sn.style.display = 'none'; }
       if (!ITEMS.length) { $('empty').style.display = 'block'; progress(); return; }
       var fu = Number(r.data.firstUnmarked);
       if (fu >= 0 && fu < ITEMS.length) { IDX = fu; render(); } else { IDX = 0; showDone(); }
@@ -266,7 +270,7 @@
       ITEMS[at] = saved;
       var c = counts();
       if (r.data.progress && (r.data.progress.marked !== c.marked || r.data.progress.total !== c.total)) { load(); return; }   // 別的裝置也在勾：以資料庫為準重讀
-      var label = '第 ' + (at + 1) + ' 筆已存：' + (verdict === 'good' ? '好' : '不好');
+      var label = '第 ' + (at + 1) + ' 筆已存：' + (verdict === 'good' ? '好' : '不好') + (r.data.historyLogged === false ? '（判定已存，但修改歷程沒記到）' : '');
       if (reviewing && at + 1 < ITEMS.length) { FLASH = label; IDX = at + 1; render(); return; }
       if (c.marked === c.total) { FLASH = ''; showDone(label); return; }
       var next = at + 1 < ITEMS.length && !ITEMS[at + 1].verdict ? at + 1 : firstOpenFrom(at + 1);
