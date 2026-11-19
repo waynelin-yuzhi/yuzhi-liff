@@ -330,13 +330,13 @@
   var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4', engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/cs-run', tenant: 'yuzhi' };
   var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
   var SEND_OPS = { send: 1, reply: 1, docSend: 1 }, SEND_FNS = { csInboxSend: 1, csInboxReply: 1, csInboxDocSend: 1 };   // 對客送出類：錯誤不可以寫成「幾秒後再試一次」
-  function api(payload) {
+  function api(payload, quiet) {   // quiet：只給 App 殼的推播背景呼叫用，不寫狀態列；沒帶時行為不變
     return sb.auth.getSession().then(function (r) {
       var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先進入'); }
       payload.tenant = CFG.tenant;
       var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null; if (ac) setTimeout(function () { ac.abort(); }, 75000);   // 後台偶爾 80 秒以上才回：畫面不能一直轉
       return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload), signal: ac ? ac.signal : undefined });
-    }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); clearLocalEdits(); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error) { if (payload.app && SEND_OPS[payload.app.op]) stat(''); else stat('失敗：' + (d.detail || d.error)); } return d; });   // 對客送出類不在狀態列寫「再試一次」，結果由各自的畫面講
+    }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); clearLocalEdits(); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error && !quiet) { if (payload.app && SEND_OPS[payload.app.op]) stat(''); else stat('失敗：' + (d.detail || d.error)); } return d; });   // 對客送出類不在狀態列寫「再試一次」，結果由各自的畫面講
   }
   var ROLES = ['客戶', '會計事務所', '廠商', '合作夥伴', '其他'], MEMBER_ROLES = ['窗口', '主管', '會計', '採購', '其他'];
   var KEEP_AT = {};   // 每位客戶你在送出框設過的預定時間：稿被重擬換新時帶回來（2026-10-20 Amy 實案：設了 08:00、給意見重擬後新稿沒帶、按送出變成立刻發）
@@ -1413,7 +1413,7 @@
   var VIEW_EVERY = 20000;   // 後端 VIEW_MS＝60 秒沒回報就當沒在看：每 20 秒補報一次
   var CID_OK = /^[A-Za-z0-9]{1,40}$/;   // 與網址 cid 參數同一套清洗
   var REG = { token: '', state: 'idle', appVer: '', tokenWait: null };   // state：idle／working／ok／failed／unsure／denied
-  var PAUSED = false, MEM_DEV = '';
+  var PAUSED = false, MEM_DEV = '', STARTED = false, PENDING_CID = '';   // STARTED：這次登入已跑過註冊流程；PENDING_CID：登入失效時點的通知，重新登入後開
 
   function rand() { var a = new Uint8Array(16); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach(function (v, i) { a[i] = Math.floor(Math.random() * 256); }); return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
   function devId(renew) {   // 每次安裝一個裝置代號（後端 deviceId 8～128 字）；重裝 App 會換新，後端以同一個 FCM token 把舊列停用
@@ -1433,6 +1433,7 @@
     var x = document.createElement('a'); x.href = '#'; x.textContent = '關閉'; x.style.cssText = 'margin-left:8px;color:#8C3B25'; x.onclick = function (ev) { ev.preventDefault(); el.remove(); }; el.appendChild(x);
   }
   function barOff() { var el = document.getElementById('yzPushBar'); if (el) el.remove(); }
+  function pushApi(app) { return api({ app: app }, true); }   // 推播背景呼叫：不寫狀態列（免得蓋掉送出結果這類訊息）
   function errText(e) { return friendlyErr((e && (e.message || e.error)) || String(e || '')); }
 
   // 1. 註冊：登入後（boot）才請求通知權限；拿到 token 交給後台 pushRegister；token 換了 FCM 會再發 registration，照樣重送
@@ -1440,7 +1441,7 @@
     if (gateOn()) return;
     if (!PN) { bar('這一版 App 沒有推播元件，收不到通知，請安裝新版 App。', false); return; }
     if (REG.state === 'working') return;
-    REG.state = 'working'; barOff();
+    REG.state = 'working'; STARTED = true; barOff();
     var info = (APP && APP.getInfo) ? APP.getInfo().then(function (i) { REG.appVer = String((i && i.version) || '') + (i && i.build ? '+' + i.build : ''); }, function () {}) : Promise.resolve();
     info.then(function () { return PN.checkPermissions(); }).then(function (p) {
       var s = p && p.receive;
@@ -1456,7 +1457,7 @@
     if (!REG.token) return;
     if (gateOn()) { REG.state = 'idle'; return; }   // 還沒登入：登入後 boot 會再跑一次
     REG.state = 'working';
-    api({ app: { op: 'pushRegister', deviceId: devId(), fcmToken: REG.token, platform: 'android', appVer: REG.appVer } }).then(function (r) {
+    pushApi({ op: 'pushRegister', deviceId: devId(), fcmToken: REG.token, platform: 'android', appVer: REG.appVer }).then(function (r) {
       if (r && r.ok === true) { REG.state = 'ok'; barOff(); viewTick(true); return; }
       if (r && r.ok === false && r.error === 'device_owned_by_other' && !retried) { devId(true); sendRegister(true); return; }   // 這個裝置代號掛在別人名下：換一個新代號再登記一次
       if (r && r.ok === false && r.error) { REG.state = 'failed'; bar('推播註冊失敗（' + friendlyErr(r.detail || r.error) + '），這支手機暫時收不到通知。', true); return; }
@@ -1472,6 +1473,7 @@
     cid = String(cid || '');
     if (!CID_OK.test(cid)) return;   // 夜間彙總等沒有對象的通知：只打開 App
     if (!BOOTED) { INIT_CID = cid; return; }   // 還沒登入或還沒開機：boot() 會直接開這位
+    if (gateOn()) { PENDING_CID = cid; return; }   // 登入失效被踢回登入門：重新登入後再開（boot 包裝裡處理）
     openThread(cid, cur === cid && document.body.classList.contains('view-thread'));
   }
   // 前景收到：系統不跳通知（capacitor.config presentationOptions 為空），改在畫面上方提示；正在看的那位後端本來就不推
@@ -1492,14 +1494,19 @@
   }
 
   // 3. 正在看哪位（pushViewing）：開某位、離開、切背景、回前景都回報；開著同一位每 20 秒補報。只有註冊成功的裝置才回報
-  var VIEW = { sent: null, at: 0 };
+  var VIEW = { sent: null, at: 0, busy: false, fails: 0, nextAt: 0 };
   function viewingCid() { return (!PAUSED && document.visibilityState === 'visible' && !gateOn() && document.body.classList.contains('view-thread') && cur && CID_OK.test(String(cur))) ? String(cur) : ''; }
   function viewTick(force) {
-    if (REG.state !== 'ok') return;
+    if (REG.state !== 'ok' || VIEW.busy) return;
+    if (Date.now() < VIEW.nextAt) return;   // 上次沒報成功：退避中（5 秒起跳、連續失敗加倍，最多 60 秒）
     var v = viewingCid();
     if (!force && v === VIEW.sent && (!v || Date.now() - VIEW.at < VIEW_EVERY)) return;
-    VIEW.sent = v; VIEW.at = Date.now();
-    api({ app: { op: 'pushViewing', deviceId: devId(), contactId: v } }).then(function (r) { if (!(r && r.ok === true)) VIEW.at = 0; }).catch(function () { VIEW.at = 0; });   // 沒報成功：下一秒再補（後端 60 秒自動失效，最壞多響一則）
+    VIEW.busy = true;
+    var fail = function () { VIEW.busy = false; VIEW.fails++; VIEW.sent = null; VIEW.nextAt = Date.now() + Math.min(60000, 5000 * Math.pow(2, VIEW.fails - 1)); };
+    pushApi({ op: 'pushViewing', deviceId: devId(), contactId: v }).then(function (r) {
+      if (!(r && r.ok === true)) { fail(); return; }
+      VIEW.busy = false; VIEW.fails = 0; VIEW.nextAt = 0; VIEW.sent = v; VIEW.at = Date.now();
+    }, fail);   // 後端 60 秒自動失效：漏報最壞多響一則
   }
   setInterval(function () { viewTick(false); }, 1000);
   document.addEventListener('visibilitychange', function () { viewTick(false); });
@@ -1514,7 +1521,7 @@
     var go = function () { if (done) return; done = true; leaveOrig.apply(self, args); };
     if (!PN) { go(); return; }
     REG.state = 'idle'; VIEW.sent = null;
-    var srv = api({ app: { op: 'pushUnregister', deviceId: devId() } }).then(function (r) { return !!(r && r.ok === true); }, function () { return false; });
+    var srv = pushApi({ op: 'pushUnregister', deviceId: devId() }).then(function (r) { return !!(r && r.ok === true); }, function () { return false; });
     var dev = PN.unregister().then(function () { return true; }, function () { return false; });
     var timer = new Promise(function (res) { setTimeout(function () { res('timeout'); }, 8000); });
     Promise.race([Promise.all([srv, dev]), timer]).then(function (r) {
@@ -1538,7 +1545,22 @@
     PN.addListener('pushNotificationReceived', inAppNote);
   }
   var bootOrig = boot;
-  boot = function () { var r = bootOrig.apply(this, arguments); try { pushStart(); } catch (e) {} return r; };   // 登入後（含登入失效再登入）才請求權限與註冊
+  boot = function () {   // 登入後（含登入失效再登入：登入鈕直接呼叫 boot，原本的 boot 因 BOOTED 提早結束也會走到這裡）才請求權限與註冊
+    var r = bootOrig.apply(this, arguments);
+    try { pushStart(); } catch (e) {}
+    if (PENDING_CID && !gateOn()) { var pc = PENDING_CID; PENDING_CID = ''; openThread(pc); }
+    return r;
+  };
+  // 登入失效被踢回登入門（主程式 api 的 401／403 分支呼叫 showGate）：session 已失效打不了後台，只刪手機上的通知代碼，停止收這個帳號的通知；重新登入時 boot 會重新拿代碼註冊
+  var showGateOrig = showGate;
+  showGate = function () {
+    var r = showGateOrig.apply(this, arguments);
+    if (STARTED && PN) {
+      STARTED = false; clearTimeout(REG.tokenWait); REG.state = 'idle'; REG.token = ''; VIEW.sent = null; VIEW.busy = false; VIEW.fails = 0; VIEW.nextAt = 0; barOff();
+      try { PN.unregister().catch(function () {}); } catch (e) {}
+    }
+    return r;
+  };
   if (BOOTED) pushStart();   // 已登入時上一段的 getSession 可能在這段載入前就已經開機
 
   // 之後要做「通知設定」頁時的呼叫點（這次不做介面）：
