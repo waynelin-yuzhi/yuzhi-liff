@@ -26,7 +26,7 @@
     <p id="msg"></p>
   </div>
   <div class="muted">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240</div>
-  <div class="muted" style="margin-top:4px;">share v8 · pages</div>
+  <div class="muted" style="margin-top:4px;">share v9 · pages</div>
 </div>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
@@ -111,6 +111,7 @@ function openPicker() {
     /* 分享成功或取消都直接關窗回聊天室（Wayne：越無感越好；要再分享重按卡片即可） */
     closeSelf();
   }).catch(function () {
+    if (PACK && PACK.join) { cgFallback('分享沒有成功', '可以稍後再按一次「分享給同事」；要自己加入群組，按下面的按鈕。'); return; }
     show('分享沒有成功', '可以改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
   });
 }
@@ -129,6 +130,73 @@ function getKindKey() {
   if (st) q = decodeURIComponent(st[1]);
   var mk = q.match(/[?&]kind=([^&]+)/), my = q.match(/[?&]key=([^&]+)/);
   return (mk && my) ? { kind: decodeURIComponent(mk[1]), key: decodeURIComponent(my[1]) } : null;
+}
+/* v9：養護群組邀請卡 kind=caregroup&key=<token>（2026-11-20 安全審查後改版）：網址只帶伺服器發的不可猜 token，
+   卡片內容（邀請代碼、客戶簡稱）憑 token 向客服引擎閘道 shareCardGet 取；取不到（不存在、過期、撤銷）就不產生任何卡。網址裡自己帶的其他參數一律忽略。
+   卡片字與結構對照主系統 public-care-group-setup.gs 的 CGS_SHARE_CARD／_cgsInviteLinkCard_（經核可中心 _approvalLinkCardBubble_ 畫）；兩邊回歸逐欄比對。
+   後端回來的欄位照樣驗：邀請代碼只收群組邀請格式（加入群組只會連到 line.me/R/ti/g/）、簡稱不合規則用「貴公司」；畫面一律 textContent。 */
+var CG_API = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+var CG_TIMEOUT_MS = 8000;
+var CG_CARD = { title: '專屬養護群組邀請', subSuffix: ' x 有植',
+  lines: ['1. 聯繫與安排時間', '2. 養護紀錄回報', '3. 訊息同步', '4. 特殊需求'],
+  joinLabel: '加入群組', shareLabel: '分享給同事' };
+var CG_TOKEN_RE = /^[A-Za-z0-9_-]{22,128}$/;
+var CG_CODE_RE = /^[A-Za-z0-9_-]{6,64}$/;
+var CG_NAME_RE = /^[一-鿿A-Za-z0-9 ·・.()（）\-]{1,20}$/;
+function cgDecode(v) { try { return decodeURIComponent(String(v || '').replace(/\+/g, ' ')); } catch (e) { return ''; } }
+function getCareGroup() {
+  var q = location.search; var st = q.match(/liff\.state=([^&]+)/); if (st) q = cgDecode(st[1]);
+  if (!/[?&]kind=caregroup(&|$)/.test(q)) return null;
+  var mk = q.match(/[?&]key=([^&]*)/), t = mk ? cgDecode(mk[1]) : '';
+  return CG_TOKEN_RE.test(t) ? { token: t } : { bad: true };
+}
+function fetchCareGroup(token) {
+  return new Promise(function (resolve) {
+    var done = false;
+    var timer = setTimeout(function () { if (!done) { done = true; resolve({ ok: false, cgNet: true }); } }, CG_TIMEOUT_MS);
+    var fin = function (v) { if (done) return; done = true; clearTimeout(timer); resolve(v); };
+    /* text/plain＝簡單請求、不觸發 CORS 預檢；body 照樣是 JSON */
+    fetch(CG_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ action: 'shareCardGet', token: token }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || j.ok !== true) { fin(j && /^(not_found|expired|revoked)$/.test(String(j.error || '')) ? { ok: false, cgDead: true } : { ok: false, cgNet: true }); return; }
+        var pl = j.payload || {};
+        if (j.kind !== 'caregroup' || !CG_CODE_RE.test(String(pl.inviteCode || ''))) { fin({ ok: false, cgDead: true }); return; }
+        var n = String(pl.clientShort || '').trim(); if (!CG_NAME_RE.test(n)) n = '貴公司';
+        fin(buildCareGroup({ g: String(pl.inviteCode), n: n, token: token }));
+      })
+      .catch(function () { fin({ ok: false, cgNet: true }); });
+  });
+}
+function buildCareGroup(p) {
+  var join = 'https://line.me/R/ti/g/' + p.g;
+  var share = 'https://liff.line.me/' + LIFF_ID + '?kind=caregroup&key=' + p.token;
+  var bubble = {
+    type: 'bubble',
+    header: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: [
+      { type: 'text', text: p.n + CG_CARD.subSuffix, size: 'xs', color: '#E9EDE3' },
+      { type: 'text', text: CG_CARD.title, size: 'xl', color: '#FFFCF5', weight: 'bold', wrap: true, margin: 'sm' }
+    ]},
+    body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '20px', contents: CG_CARD.lines.map(function (t) {
+      return { type: 'text', text: t, size: 'sm', color: '#4A4A45', wrap: true };
+    }) },
+    footer: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '16px', paddingTop: '0px', contents: [
+      { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+        { type: 'button', style: 'primary', height: 'sm', color: '#5F6E58', action: { type: 'uri', label: CG_CARD.joinLabel, uri: join } },
+        { type: 'button', style: 'secondary', height: 'sm', color: '#FFFCF5', action: { type: 'uri', label: CG_CARD.shareLabel, uri: share } }
+      ]}
+    ]},
+    styles: { header: { backgroundColor: '#5F6E58' }, body: { backgroundColor: '#FFFCF5' }, footer: { backgroundColor: '#FFFCF5' } }
+  };
+  return { ok: true, bubble: bubble, alt: CG_CARD.title + '｜' + CG_CARD.joinLabel, url: join, join: join };
+}
+function cgFallback(t, m) {
+  var join = PACK && PACK.join;
+  show(t, m, join ? [{ label: CG_CARD.joinLabel, fn: function () { location.href = join; } }] : []);
+}
+function cgFail(d) {
+  if (d && d.cgNet) { show('連線失敗', '請稍後再試', [{ label: '重試', fn: function () { packP = fetchCareGroup(cg0.token); boot(); } }]); return; }
+  show('這張邀請已失效', '請跟植間要一張新的邀請卡');
 }
 /* v7：客戶選單「預約單次養護」直進預約頁（?page=booking）：LIFF 取 access token → 後台驗證並產專屬連結 → 直接換頁 */
 function wantsBooking() {
@@ -158,7 +226,10 @@ function bookingEnter() {
 var packed0 = getPackedData();
 var cid0 = getCaseId();
 var kk0 = getKindKey();
-var packP = packed0
+var cg0 = getCareGroup();
+var packP = cg0
+  ? (cg0.bad ? Promise.resolve({ ok: false, cgDead: true }) : fetchCareGroup(cg0.token))
+  : packed0
   ? Promise.resolve(buildBubble(packed0.p, packed0.raw))
   : (kk0
       ? fetch(API + '?page=card-share&kind=' + encodeURIComponent(kk0.kind) + '&key=' + encodeURIComponent(kk0.key) + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); })
@@ -177,16 +248,19 @@ function boot() {
       packP = fetch(API + '?page=case-share&case=' + cid + '&fmt=json', { redirect: 'follow' }).then(function (r) { return r.json(); });
       boot(); return;
     }
-    if (!d.ok) { show('卡片載入失敗', '請稍後再試'); return; }
+    if (!d.ok) { if (d.cgDead || d.cgNet) { cgFail(d); return; } show('卡片載入失敗', '請稍後再試'); return; }
     PACK = d;
     if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
       openPicker();
+    } else if (PACK.join) {
+      cgFallback('這裡沒辦法開好友選單', '請在 LINE 裡點卡片上的「分享給同事」；要自己加入群組，按下面的按鈕。');
     } else {
       show('這裡無法開好友選單', '改用複製連結的方式分享', [{ label: '複製案例連結', fn: copyLink }]);
     }
   }).catch(function () { show('連線失敗', '請稍後再試', [{ label: '重試', fn: boot }]); });
 }
 liff.init({ liffId: LIFF_ID }).then(wantsBooking() ? bookingEnter : boot).catch(function () {
+  if (cg0) { packP.then(function (d) { if (!d || !d.ok) { cgFail(d); return; } PACK = d; cgFallback('這裡沒辦法開好友選單', '請在 LINE 裡點卡片上的「分享給同事」；要自己加入群組，按下面的按鈕。'); }); return; }
   show('LINE 初始化失敗', '請重新點一次分享按鈕', [{ label: '重試', fn: boot, ghost: true }]);
 });
 </script>
