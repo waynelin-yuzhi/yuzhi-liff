@@ -1402,6 +1402,151 @@
     if (INIT_CID) { try { history.replaceState(null, '', location.pathname); } catch (eH) {} } loadList(function () { if (startCid) { openThread(startCid); INIT_CID = ''; } }); poll(); }
   sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
 </script>
+<script>
+/* ── 有植客服 App 殼（Capacitor）專用：推播註冊、點通知開對話、回報正在看哪位、手機返回鍵。
+   一般瀏覽器沒有 window.Capacitor，第一行就結束，不加任何監聽、不打任何後台（2026-11-19）。
+   後端：cs-run pushq.ts pushAppOp（pushRegister／pushUnregister／pushViewing…）、push/fcm.ts（通知 data 帶 contactId、kind、pushId）。 */
+(function () {
+  var CAP = window.Capacitor;
+  if (!CAP || typeof CAP.isNativePlatform !== 'function' || !CAP.isNativePlatform()) return;
+  var PN = CAP.Plugins && CAP.Plugins.PushNotifications, APP = CAP.Plugins && CAP.Plugins.App;
+  var VIEW_EVERY = 20000;   // 後端 VIEW_MS＝60 秒沒回報就當沒在看：每 20 秒補報一次
+  var CID_OK = /^[A-Za-z0-9]{1,40}$/;   // 與網址 cid 參數同一套清洗
+  var REG = { token: '', state: 'idle', appVer: '', tokenWait: null };   // state：idle／working／ok／failed／unsure／denied
+  var PAUSED = false, MEM_DEV = '';
+
+  function rand() { var a = new Uint8Array(16); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach(function (v, i) { a[i] = Math.floor(Math.random() * 256); }); return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function devId(renew) {   // 每次安裝一個裝置代號（後端 deviceId 8～128 字）；重裝 App 會換新，後端以同一個 FCM token 把舊列停用
+    var d = '';
+    try { d = renew ? '' : (localStorage.getItem('yz_push_dev') || ''); if (!/^[A-Za-z0-9_.:-]{8,128}$/.test(d)) { d = 'and-' + rand(); localStorage.setItem('yz_push_dev', d); } return d; }
+    catch (e) { if (renew || !MEM_DEV) MEM_DEV = 'and-' + rand(); return MEM_DEV; }
+  }
+
+  // 提示列：看得到、不擋操作；可重試、可關
+  function bar(text, retry) {
+    var app = document.getElementById('app'); if (!app) return;
+    var el = document.getElementById('yzPushBar');
+    if (!el) { el = document.createElement('div'); el.id = 'yzPushBar'; el.className = 'small'; el.style.cssText = 'margin:6px 8px;padding:8px 10px;border:1px solid #B85A3D;border-radius:8px;background:#F5DDD2;color:#8C3B25;line-height:1.5'; app.insertBefore(el, app.firstChild); }
+    el.textContent = '';
+    var t = document.createElement('span'); t.textContent = text; el.appendChild(t);
+    if (retry) { var b = document.createElement('a'); b.href = '#'; b.id = 'yzPushRetry'; b.textContent = '重試'; b.style.cssText = 'margin-left:8px;color:#8C3B25;font-weight:600'; b.onclick = function (ev) { ev.preventDefault(); pushStart(); }; el.appendChild(b); }
+    var x = document.createElement('a'); x.href = '#'; x.textContent = '關閉'; x.style.cssText = 'margin-left:8px;color:#8C3B25'; x.onclick = function (ev) { ev.preventDefault(); el.remove(); }; el.appendChild(x);
+  }
+  function barOff() { var el = document.getElementById('yzPushBar'); if (el) el.remove(); }
+  function errText(e) { return friendlyErr((e && (e.message || e.error)) || String(e || '')); }
+
+  // 1. 註冊：登入後（boot）才請求通知權限；拿到 token 交給後台 pushRegister；token 換了 FCM 會再發 registration，照樣重送
+  function pushStart() {
+    if (gateOn()) return;
+    if (!PN) { bar('這一版 App 沒有推播元件，收不到通知，請安裝新版 App。', false); return; }
+    if (REG.state === 'working') return;
+    REG.state = 'working'; barOff();
+    var info = (APP && APP.getInfo) ? APP.getInfo().then(function (i) { REG.appVer = String((i && i.version) || '') + (i && i.build ? '+' + i.build : ''); }, function () {}) : Promise.resolve();
+    info.then(function () { return PN.checkPermissions(); }).then(function (p) {
+      var s = p && p.receive;
+      return (s === 'prompt' || s === 'prompt-with-rationale') ? PN.requestPermissions() : p;
+    }).then(function (p) {
+      if (!p || p.receive !== 'granted') { REG.state = 'denied'; bar('通知權限沒有打開，這支手機收不到新訊息通知。請到手機「設定 > 應用程式 > 有植客服 > 通知」打開，再按重試。', true); return; }
+      clearTimeout(REG.tokenWait);
+      REG.tokenWait = setTimeout(function () { if (REG.state === 'working') { REG.state = 'failed'; bar('推播註冊失敗：手機一直拿不到通知代碼（可能沒有 Google Play 服務或網路不穩）。', true); } }, 30000);
+      return PN.register();
+    }).catch(function (e) { clearTimeout(REG.tokenWait); REG.state = 'failed'; bar('推播註冊失敗（' + errText(e) + '），這支手機暫時收不到通知。', true); });
+  }
+  function sendRegister(retried) {
+    if (!REG.token) return;
+    if (gateOn()) { REG.state = 'idle'; return; }   // 還沒登入：登入後 boot 會再跑一次
+    REG.state = 'working';
+    api({ app: { op: 'pushRegister', deviceId: devId(), fcmToken: REG.token, platform: 'android', appVer: REG.appVer } }).then(function (r) {
+      if (r && r.ok === true) { REG.state = 'ok'; barOff(); viewTick(true); return; }
+      if (r && r.ok === false && r.error === 'device_owned_by_other' && !retried) { devId(true); sendRegister(true); return; }   // 這個裝置代號掛在別人名下：換一個新代號再登記一次
+      if (r && r.ok === false && r.error) { REG.state = 'failed'; bar('推播註冊失敗（' + friendlyErr(r.detail || r.error) + '），這支手機暫時收不到通知。', true); return; }
+      REG.state = 'unsure'; bar('推播註冊沒有收到明確結果，不確定這支手機有沒有登記成功。', true);   // 結果不明：不說成功也不說失敗
+    }).catch(function (e) {
+      if (noSession(e) || /連線已失效/.test(String((e && e.message) || ''))) { REG.state = 'idle'; return; }   // 登入失效：登入門已經出來，重新登入後會再註冊
+      REG.state = 'unsure'; bar('推播註冊沒有收到後台回應（' + errText(e) + '），不確定這支手機有沒有登記成功。', true);
+    });
+  }
+
+  // 2. 點通知：App 沒開（冷啟動，外掛會把事件留到這裡掛上監聽才送）、在背景、在前景都走這裡
+  function openFromPush(cid) {
+    cid = String(cid || '');
+    if (!CID_OK.test(cid)) return;   // 夜間彙總等沒有對象的通知：只打開 App
+    if (!BOOTED) { INIT_CID = cid; return; }   // 還沒登入或還沒開機：boot() 會直接開這位
+    openThread(cid, cur === cid && document.body.classList.contains('view-thread'));
+  }
+  // 前景收到：系統不跳通知（capacitor.config presentationOptions 為空），改在畫面上方提示；正在看的那位後端本來就不推
+  function inAppNote(n) {
+    var d = (n && n.data) || {}, cid = String(d.contactId || '');
+    if (cid && cid === viewingCid()) return;
+    if (gateOn()) return;
+    var el = document.getElementById('yzPushNote');
+    if (!el) { el = document.createElement('div'); el.id = 'yzPushNote'; el.style.cssText = 'position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:95;width:calc(100% - 24px);max-width:420px;padding:10px 12px;border-radius:10px;background:#3F4A3A;color:#fff;font-size:14px;line-height:1.5;box-shadow:0 4px 14px rgba(0,0,0,.25)'; document.body.appendChild(el); }
+    el.textContent = '';
+    var t = document.createElement('div'); t.style.fontWeight = '600'; t.textContent = String((n && n.title) || '新通知'); el.appendChild(t);
+    var b = document.createElement('div'); b.textContent = String((n && n.body) || ''); el.appendChild(b);
+    var row = document.createElement('div'); row.style.cssText = 'margin-top:6px;text-align:right';
+    if (CID_OK.test(cid)) { var o = document.createElement('button'); o.type = 'button'; o.className = 'btn small'; o.textContent = '打開'; o.onclick = function () { el.style.display = 'none'; openFromPush(cid); }; row.appendChild(o); }
+    var c = document.createElement('button'); c.type = 'button'; c.className = 'btn ghost small'; c.style.marginLeft = '6px'; c.textContent = '關閉'; c.onclick = function () { el.style.display = 'none'; }; row.appendChild(c);
+    el.appendChild(row); el.style.display = 'block';
+    clearTimeout(el._t); el._t = setTimeout(function () { el.style.display = 'none'; }, 10000);
+  }
+
+  // 3. 正在看哪位（pushViewing）：開某位、離開、切背景、回前景都回報；開著同一位每 20 秒補報。只有註冊成功的裝置才回報
+  var VIEW = { sent: null, at: 0 };
+  function viewingCid() { return (!PAUSED && document.visibilityState === 'visible' && !gateOn() && document.body.classList.contains('view-thread') && cur && CID_OK.test(String(cur))) ? String(cur) : ''; }
+  function viewTick(force) {
+    if (REG.state !== 'ok') return;
+    var v = viewingCid();
+    if (!force && v === VIEW.sent && (!v || Date.now() - VIEW.at < VIEW_EVERY)) return;
+    VIEW.sent = v; VIEW.at = Date.now();
+    api({ app: { op: 'pushViewing', deviceId: devId(), contactId: v } }).then(function (r) { if (!(r && r.ok === true)) VIEW.at = 0; }).catch(function () { VIEW.at = 0; });   // 沒報成功：下一秒再補（後端 60 秒自動失效，最壞多響一則）
+  }
+  setInterval(function () { viewTick(false); }, 1000);
+  document.addEventListener('visibilitychange', function () { viewTick(false); });
+  document.addEventListener('pause', function () { PAUSED = true; viewTick(false); });
+  document.addEventListener('resume', function () { PAUSED = false; viewTick(false); });
+  if (APP) APP.addListener('appStateChange', function (s) { PAUSED = !(s && s.isActive); viewTick(false); });
+
+  // 4. 登出：先在後台取消這台的登記並刪掉手機上的通知代碼，再照原本流程登出；兩邊都沒確定成功才問
+  var leaveBtn = document.getElementById('leave'), leaveOrig = leaveBtn && leaveBtn.onclick;
+  if (leaveBtn && leaveOrig) leaveBtn.onclick = function () {
+    var self = this, args = arguments, done = false;
+    var go = function () { if (done) return; done = true; leaveOrig.apply(self, args); };
+    if (!PN) { go(); return; }
+    REG.state = 'idle'; VIEW.sent = null;
+    var srv = api({ app: { op: 'pushUnregister', deviceId: devId() } }).then(function (r) { return !!(r && r.ok === true); }, function () { return false; });
+    var dev = PN.unregister().then(function () { return true; }, function () { return false; });
+    var timer = new Promise(function (res) { setTimeout(function () { res('timeout'); }, 8000); });
+    Promise.race([Promise.all([srv, dev]), timer]).then(function (r) {
+      if (r !== 'timeout' && (r[0] || r[1])) { go(); return; }
+      if (confirm('這支手機的通知沒有確定取消，登出後可能還會收到這個帳號的通知。仍要登出嗎？')) go(); else pushStart();
+    });
+  };
+
+  // 5. 手機返回鍵：先關照片放大、再從對話回清單，在清單才把 App 收到背景
+  if (APP) APP.addListener('backButton', function () {
+    var z = document.getElementById('imgZoomBox');
+    if (z && z.classList.contains('on')) { history.back(); return; }
+    if (document.body.classList.contains('view-thread')) { document.getElementById('back').click(); return; }
+    if (APP.minimizeApp) APP.minimizeApp();
+  });
+
+  if (PN) {
+    PN.addListener('registration', function (t) { clearTimeout(REG.tokenWait); REG.token = String((t && t.value) || ''); sendRegister(false); });
+    PN.addListener('registrationError', function (e) { clearTimeout(REG.tokenWait); REG.state = 'failed'; bar('推播註冊失敗：手機拿不到通知代碼（' + errText(e) + '）。', true); });
+    PN.addListener('pushNotificationActionPerformed', function (a) { openFromPush(((a && a.notification && a.notification.data) || {}).contactId); });
+    PN.addListener('pushNotificationReceived', inAppNote);
+  }
+  var bootOrig = boot;
+  boot = function () { var r = bootOrig.apply(this, arguments); try { pushStart(); } catch (e) {} return r; };   // 登入後（含登入失效再登入）才請求權限與註冊
+  if (BOOTED) pushStart();   // 已登入時上一段的 getSession 可能在這段載入前就已經開機
+
+  // 之後要做「通知設定」頁時的呼叫點（這次不做介面）：
+  //   讀：api({ app: { op: 'pushSettingsGet' } }) → { ok, settings: { kinds:{msg,approval,overdue,task}, quietEnabled, quietStart, quietEnd, tz, urgentBypass, preview, overdueMin, workStart, workEnd, workDays } }
+  //   存：api({ app: { op: 'pushSettingsSet', settings: { 只放要改的欄位 } } }) → { ok, settings } 或 { ok:false, error:'<欄位>_invalid' }
+  // 圖示角標（pushBadge）也還沒接：安卓桌面角標跟著系統通知數走，要顯示待處理件數時再呼叫 api({ app: { op: 'pushBadge' } })。
+})();
+</script>
 
 <div id="imgZoomBox" role="dialog" aria-label="照片檢視">
   <div class="bar"><button type="button" id="imgZoomClose">關閉</button><a id="imgZoomRaw" href="#" target="_blank" rel="noopener">另開原圖</a></div>
