@@ -1678,7 +1678,7 @@ var yzNs = (function () {
     ['ack', '客戶的簡短回覆', '我們剛回過話、客戶回一句「好的、謝謝」這類確認話時，也輕輕通知。']
   ];
   var DAYS = ['一', '二', '三', '四', '五', '六', '日'];   // 後端 workDays：1＝週一 … 7＝週日
-  var S = { open: false, pushed: false, settings: null, defaults: null, loadErr: '', chain: Promise.resolve(), testMsg: null, testUntil: 0, testTimer: null };
+  var S = { open: false, pushed: false, locked: false, settings: null, defaults: null, loadErr: '', chain: Promise.resolve(), testMsg: null, testUntil: 0, testTimer: null };
   var box = document.getElementById('nsBox'), body = document.getElementById('nsBody');
 
   function pad(n) { return ('0' + n).slice(-2); }
@@ -1692,10 +1692,11 @@ var yzNs = (function () {
   function toInput(ms) { var d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
   function isTimeout(e) { return !!(e && e.message === 'ns_timeout'); }
   function isGone(e) { return /連線已失效|請先進入/.test(String((e && e.message) || '')); }
-  function call(app) {   // quiet：不寫收件匣狀態列，結果只在這個畫面講
+  function race(real) {   // 15 秒沒回就先告訴使用者；底下的請求不會因此停（api 要 75 秒才放棄），要等它的地方自己拿 real
     var t; var to = new Promise(function (res, rej) { t = setTimeout(function () { rej(new Error('ns_timeout')); }, TIMEOUT_MS); });
-    return Promise.race([api({ app: app }, true), to]).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; });
+    return Promise.race([real, to]).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; });
   }
+  function call(app) { return race(api({ app: app }, true)); }   // quiet：不寫收件匣狀態列，結果只在這個畫面講
   function errLabel(r) {
     var e = String((r && r.error) || '');
     if (!e) return '後台沒有回明確結果';
@@ -1760,6 +1761,7 @@ var yzNs = (function () {
     h += '<div class="ns-msg' + (S.testMsg && S.testMsg.cls ? ' ' + S.testMsg.cls : '') + '" id="nsTestMsg">' + esc(S.testMsg ? S.testMsg.text : '') + '</div></div>';
     body.innerHTML = h;
     bind();
+    if (S.locked) body.querySelectorAll('#nsModeSec input, #nsModeSec button, #nsKindSec input, #nsQuietSec input, #nsWorkSec input').forEach(function (x) { x.disabled = true; });
   }
 
   function bind() {
@@ -1794,39 +1796,50 @@ var yzNs = (function () {
     var tb = document.getElementById('nsTest'); if (tb) tb.onclick = test;
   }
 
-  // 存：一次一筆排隊送（後台每次回完整設定，照順序套才不會被舊回應蓋掉）
+  // 存：一次一筆排隊送（後台每次回完整設定，照順序套才不會被舊回應蓋掉）。
+  // 逾時：後台是整列讀出合併寫回、以抵達順序為準，所以要等原本那筆請求真的結束（成功或失敗）才重讀、才放行下一筆；等待期間設定鎖住不能改
   function save(patch, where) {
     say(where, '儲存中…', '');
     S.chain = S.chain.then(function () {
-      return call({ op: 'pushSettingsSet', settings: patch }).then(function (r) {
+      var real = api({ app: { op: 'pushSettingsSet', settings: patch } }, true);
+      return race(real).then(function (r) {
         if (r && r.ok === true && r.settings) { S.settings = r.settings; if (r.modeDefaults) S.defaults = r.modeDefaults; render(); say(where, '已儲存。', 'ok'); return; }
         render(); say(where, '沒有存成功（' + errLabel(r) + '），已改回原本的設定。', 'err');
       }, function (e) {
         if (isGone(e)) { close(); return; }
-        if (isTimeout(e)) { render(); say(where, '網路逾時：沒有收到回應，不確定有沒有存成功，正在重新讀取目前的設定…', 'err'); return reload(where); }
-        render(); say(where, '沒有存成功（' + friendlyErr(e && e.message) + '），已改回原本的設定。', 'err');
+        if (!isTimeout(e)) { render(); say(where, '沒有存成功（' + friendlyErr(e && e.message) + '），已改回原本的設定。', 'err'); return; }
+        S.locked = true; render(); say(where, '網路逾時：還在確認剛才的修改有沒有存成功，確認完之前先不能改設定。', 'err');
+        return real.then(function (r) { return r && r.ok === true && r.settings ? 'saved' : 'failed'; }, function (e2) { return isGone(e2) ? 'gone' : 'failed'; }).then(function (outcome) {
+          S.locked = false;
+          if (outcome === 'gone') { close(); return; }
+          return reload(where, outcome);
+        });
       });
     });
     return S.chain;
   }
-  function reload(where) {   // 逾時後：以後台實際的值為準重畫
+  function reload(where, outcome) {   // 原本那筆請求已經結束：這時讀到的就是後台實際的值
+    var head = outcome === 'saved' ? '剛才的修改晚了一點，但已經存進去。' : '剛才的修改沒有存成功。';
     return call({ op: 'pushSettingsGet' }).then(function (r) {
-      if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || S.defaults; render(); say(where, '已重新讀取，畫面上是目前實際的設定，請確認剛才的修改有沒有生效。', 'err'); return; }
-      say(where, '重新讀取也失敗（' + errLabel(r) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
+      if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || S.defaults; render(); say(where, head + '畫面上是後台目前的設定。', outcome === 'saved' ? 'ok' : 'err'); return; }
+      render(); say(where, head + '重新讀取設定失敗（' + errLabel(r) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
     }, function (e) {
       if (isGone(e)) { close(); return; }
-      say(where, '重新讀取也失敗（' + (isTimeout(e) ? '網路逾時' : friendlyErr(e && e.message)) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
+      render(); say(where, head + '重新讀取設定失敗（' + (isTimeout(e) ? '網路逾時' : friendlyErr(e && e.message)) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
     });
   }
-  function load() {
+  function load() {   // 也排進同一條隊伍：前一筆存檔還沒結束時讀，會讀到舊值
     S.settings = null; S.loadErr = ''; render();
-    return call({ op: 'pushSettingsGet' }).then(function (r) {
-      if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || null; } else S.loadErr = errLabel(r);
-      render();
-    }, function (e) {
-      if (isGone(e)) { close(); return; }
-      S.loadErr = isTimeout(e) ? '網路逾時，請確認網路後再試' : friendlyErr(e && e.message); render();
+    S.chain = S.chain.then(function () {
+      return call({ op: 'pushSettingsGet' }).then(function (r) {
+        if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || null; } else S.loadErr = errLabel(r);
+        render();
+      }, function (e) {
+        if (isGone(e)) { close(); return; }
+        S.loadErr = isTimeout(e) ? '網路逾時，請確認網路後再試' : friendlyErr(e && e.message); render();
+      });
     });
+    return S.chain;
   }
 
   // 測試通知
