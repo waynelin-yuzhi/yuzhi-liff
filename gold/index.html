@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>植間 - AI 客服考題勾選</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
+<style>
+  html,body{overscroll-behavior-y:contain}
+  :root{--moss:#5F6E58;--moss-deep:#4F6147;--paper:#F2EDE3;--paper-deep:#E8E1D2;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--terra:#B85A3D;--terra-tint:#F5DDD2;--amber-tint:#F5EBD7;--tint:#E9EDE3}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",-apple-system,sans-serif;font-size:15px;line-height:1.55}
+  .page{max-width:640px;margin:0 auto;padding:10px 12px 40px}
+  h1{font-family:"Shippori Mincho","Noto Serif TC",serif;font-weight:500;font-size:18px;letter-spacing:.04em}
+  .lbl{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.22em;color:var(--muted)}
+  .muted{color:var(--muted)}.small{font-size:12px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:2px;padding:14px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .btn{min-height:44px;padding:10px 14px;background:var(--moss);color:var(--paper);border:1px solid var(--moss);border-radius:2px;font-family:inherit;font-size:15px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--moss)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn:focus-visible,.vbtn:focus-visible,summary:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+  input[type=email],input[type=text]{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:2px;font-family:inherit;font-size:16px;background:#fff}
+  .top{position:sticky;top:0;z-index:5;background:var(--paper);padding:6px 0 8px;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .top .line{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .prog{height:4px;background:var(--paper-deep);margin-top:6px}
+  .prog i{display:block;height:100%;background:var(--moss);width:0}
+  .num{font-feature-settings:"tnum"}
+  .who{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .who b{font-size:16px}
+  .pill{display:inline-block;font-size:12px;padding:1px 9px;border:1px solid #C9D3B8;border-radius:16px;color:var(--moss);background:var(--tint)}
+  .pill.warn{background:var(--amber-tint);border-color:#E0CF93;color:#7a5a12}
+  .sec{margin-top:12px}
+  .sec .lbl{display:block;margin-bottom:4px}
+  .bub{background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:8px 10px;margin-bottom:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .final{border:1px solid var(--moss);border-left-width:4px;border-radius:2px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;font-size:16px}
+  details.ai{margin-top:12px;border:1px dashed rgba(27,26,23,.4);border-radius:2px;background:#FBF9F3}
+  details.ai summary{padding:10px 12px;cursor:pointer;color:var(--moss);font-weight:600;list-style:none;min-height:44px}
+  details.ai summary::-webkit-details-marker{display:none}
+  details.ai .in{padding:0 12px 12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--body)}
+  mark.d{background:var(--terra-tint);color:var(--ink);text-decoration:line-through;text-decoration-color:var(--terra)}
+  .legend{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .verdicts{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .vbtn{min-height:58px;padding:12px;border-radius:2px;font-family:inherit;font-size:17px;cursor:pointer;border:2px solid var(--moss);background:#fff;color:var(--moss);text-align:center}
+  .vbtn.bad{border-color:var(--terra);color:var(--terra)}
+  .vbtn.on{background:var(--moss);color:#fff}
+  .vbtn.bad.on{background:var(--terra);color:#fff}
+  .vbtn:disabled{opacity:.5;cursor:default}
+  .note{margin-top:12px}
+  .note .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .msg{margin-top:12px;padding:10px 12px;border-radius:2px;font-size:14px;display:none}
+  .msg.err{display:block;background:var(--terra-tint);border:1px solid var(--terra);color:#6e2c18}
+  .msg.ok{display:block;background:var(--tint);border:1px solid #B9C4AE;color:var(--moss-deep)}
+  .msg.busy{display:block;background:#fff;border:1px dashed var(--line);color:var(--body)}
+  .cur{margin-top:10px;font-size:13px;color:var(--body)}
+  .nav{display:flex;gap:8px;margin-top:16px}
+  .nav .btn{flex:1}
+  .done h2{font-family:"Shippori Mincho","Noto Serif TC",serif;font-weight:500;font-size:22px;margin-bottom:8px}
+  .stats{display:flex;gap:10px;margin:12px 0}
+  .stats div{flex:1;border:1px solid var(--line);border-radius:2px;padding:10px;text-align:center;background:#fff}
+  .stats b{display:block;font-family:"Shippori Mincho","Noto Serif TC",serif;font-size:30px;font-weight:400;font-feature-settings:"tnum"}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--moss);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="page">
+<div id="gate" class="card" style="max-width:420px;margin:40px auto;display:none">
+  <h1 style="margin-bottom:8px">進入考題勾選</h1>
+  <div class="small muted" style="margin-bottom:10px">跟收件匣同一組登入。輸入信箱收一組驗證碼；同一台裝置通過一次就會記住。</div>
+  <input type="email" id="gateEmail" placeholder="waynelin@yuzhiplant.com" autocomplete="email">
+  <div class="row"><button class="btn" id="gateSend" type="button">寄驗證碼</button></div>
+  <div id="otpRow" style="display:none;margin-top:8px"><input type="text" id="gateCode" placeholder="信裡的 8 碼" inputmode="numeric" autocomplete="one-time-code"><div class="row"><button class="btn" id="gateVerify" type="button">進入</button></div></div>
+  <div class="small muted" id="gateMsg" style="margin-top:8px"></div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="top">
+    <div class="line"><h1>AI 客服考題勾選</h1><span class="small muted num" id="progText"></span></div>
+    <div class="prog"><i id="progBar"></i></div>
+  </div>
+  <div id="loading" class="card"><span class="spin"></span>載入題目中</div>
+  <div id="loadErr" class="card" style="display:none"><div id="loadErrText"></div><div class="row"><button class="btn" id="retryLoad" type="button">再試一次</button></div></div>
+  <div id="view" style="display:none">
+    <div class="card" id="itemCard">
+      <div class="who"><span class="lbl num" id="seqLbl"></span><b id="custName"></b><span class="pill" id="intentPill"></span></div>
+      <div class="sec"><span class="lbl">客戶說</span><div id="custMsgs"></div></div>
+      <div class="sec"><span class="lbl">當時發出的定稿</span><div class="final" id="finalText"></div></div>
+      <details class="ai" id="aiBox"><summary id="aiSum"></summary><div class="in"><div class="legend" id="aiLegend"></div><div id="aiText"></div></div></details>
+      <div class="verdicts">
+        <button class="vbtn good" id="btnGood" type="button">好，可當標準答案</button>
+        <button class="vbtn bad" id="btnBad" type="button">不好，別學這則</button>
+      </div>
+      <div class="note">
+        <span class="lbl">一句原因（可不填）</span>
+        <input type="text" id="noteIn" maxlength="200" placeholder="例如：語氣太硬、漏講時間">
+        <div class="hint">原因會跟著按下的按鈕一起存；改了原因要再按一次按鈕才會存。</div>
+      </div>
+      <div class="cur" id="curState"></div>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+      <div class="nav"><button class="btn ghost" id="prevBtn" type="button">上一筆</button><button class="btn ghost" id="nextBtn" type="button">下一筆</button></div>
+    </div>
+  </div>
+  <div id="done" class="card done" style="display:none">
+    <h2>全部勾完了</h2>
+    <div class="muted small" id="doneSub"></div>
+    <div class="stats"><div><span class="lbl">好</span><b id="doneGood">0</b></div><div><span class="lbl">不好</span><b id="doneBad">0</b></div><div><span class="lbl">共</span><b id="doneTotal">0</b></div></div>
+    <div class="small muted">之後改客服引擎，就拿這批題目重跑比對。想改哪一筆，可以回頭逐筆看、重按就會更新。</div>
+    <div class="row"><button class="btn" id="reviewBtn" type="button">回頭看第一筆</button></div>
+  </div>
+  <div id="empty" class="card" style="display:none">目前還沒有可以勾的題目（需要有 AI 擬稿、而且你核可發出過的對話）。</div>
+  <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="leave" type="button" style="min-height:36px;font-size:13px;padding:6px 12px">登出</button></div>
+</div>
+</div>
+<script>
+(function () {
+  var CFG = { supabaseUrl: 'https://ytlakkxrbookftluulbo.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bGFra3hyYm9va2Z0bHV1bGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDY5MzcsImV4cCI6MjA5NzA4MjkzN30.2b9y-i9Y1niCXWgHFDhNhQ21COxtPde_AE4ixoIW2e4', engine: 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/cs-run', tenant: 'yuzhi' };
+  var TIMEOUT_MS = 20000;
+  var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
+  var $ = function (id) { return document.getElementById(id); };
+  var ITEMS = [], IDX = 0, SAVING = false, BOOTED = false, FLASH = '';
+
+  var ERR_TEXT = {
+    owner_only: '這一頁只有老闆可以用。', not_found: '找不到這一題，請重新整理頁面。', verdict_invalid: '按鈕的值不對，請重新整理頁面。',
+    note_too_long: '原因太長了，請縮短到 200 字內。', note_invalid: '原因格式不對。', id_invalid: '題目編號不對，請重新整理頁面。',
+    gold_read_failed: '資料庫暫時讀不到，請再試一次。', gold_write_failed: '資料庫沒有寫進去，請再按一次。', gold_pick_failed: '挑題時資料庫出錯，請再試一次。',
+    gold_failed: '系統出錯，請再試一次。', forbidden: '這個帳號沒有權限。', unknown_tenant: '系統設定有誤，請找總管。', app_op_invalid: '系統還沒更新到有這個功能，請找總管。'
+  };
+  function errText(code) { return ERR_TEXT[code] || ('系統回了錯誤（' + String(code || '不明').slice(0, 40) + '），請再試一次。'); }
+
+  function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; }
+  function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; }
+
+  // 回傳 { ok, data } 或 { ok:false, kind:'timeout'|'network'|'auth'|'server', code }
+  function api(app) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session;
+      if (!s) { showGate(); return { ok: false, kind: 'auth', code: 'no_session' }; }
+      var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = ac ? setTimeout(function () { ac.abort(); }, TIMEOUT_MS) : null;
+      return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify({ tenant: CFG.tenant, app: app }), signal: ac ? ac.signal : undefined })
+        .then(function (res) {
+          return res.json().catch(function () { return null; }).then(function (d) {
+            if (timer) clearTimeout(timer);
+            if (res.status === 401) { sb.auth.signOut({ scope: 'local' }); showGate(); $('gateMsg').textContent = '登入已失效，請重新進入。'; return { ok: false, kind: 'auth', code: 'unauthorized' }; }
+            if (d && d.ok === false && d.error === 'forbidden') { sb.auth.signOut({ scope: 'local' }); showGate(); $('gateMsg').textContent = '這個帳號沒有權限。'; return { ok: false, kind: 'auth', code: 'forbidden' }; }
+            if (!d) return { ok: false, kind: 'server', code: 'http_' + res.status };
+            if (d.ok === false) return { ok: false, kind: 'server', code: d.error || ('http_' + res.status) };
+            if (!res.ok) return { ok: false, kind: 'server', code: 'http_' + res.status };
+            return { ok: true, data: d };
+          });
+        }, function (e) {
+          if (timer) clearTimeout(timer);
+          var aborted = e && (e.name === 'AbortError' || /abort/i.test(String(e.message || '')));
+          return { ok: false, kind: aborted ? 'timeout' : 'network', code: aborted ? 'timeout' : 'network' };
+        });
+    });
+  }
+  function failText(r, saving) {
+    if (r.kind === 'timeout') return saving ? '連線逾時，沒有確認存到。請再按一次（重按只會以最後一次為準）。' : '連線逾時，請再試一次。';
+    if (r.kind === 'network') return saving ? '網路連不上，這筆沒有存到。確認網路後再按一次。' : '網路連不上，確認網路後再試。';
+    return (saving ? '沒有存到：' : '') + errText(r.code);
+  }
+
+  // ── 載入 ──
+  function load() {
+    $('loading').style.display = 'block'; $('loadErr').style.display = 'none'; $('view').style.display = 'none'; $('done').style.display = 'none'; $('empty').style.display = 'none';
+    api({ op: 'goldList' }).then(function (r) {
+      $('loading').style.display = 'none';
+      if (!r.ok) { if (r.kind === 'auth') return; $('loadErrText').textContent = failText(r, false); $('loadErr').style.display = 'block'; $('retryLoad').style.display = r.code === 'owner_only' ? 'none' : ''; return; }
+      ITEMS = Array.isArray(r.data.items) ? r.data.items : [];
+      if (!ITEMS.length) { $('empty').style.display = 'block'; progress(); return; }
+      var fu = Number(r.data.firstUnmarked);
+      if (fu >= 0 && fu < ITEMS.length) { IDX = fu; render(); } else { IDX = 0; showDone(); }
+    });
+  }
+
+  function counts() { var g = 0, b = 0; ITEMS.forEach(function (x) { if (x.verdict === 'good') g++; else if (x.verdict === 'bad') b++; }); return { good: g, bad: b, marked: g + b, total: ITEMS.length }; }
+  function progress() {
+    var c = counts();
+    $('progText').textContent = ITEMS.length ? ('第 ' + (IDX + 1) + ' / ' + c.total + ' 筆　已勾 ' + c.marked + ' 筆') : '';
+    $('progBar').style.width = c.total ? Math.round(c.marked * 100 / c.total) + '%' : '0';
+  }
+  function firstOpenFrom(i) { for (var k = 0; k < ITEMS.length; k++) { var j = (i + k) % ITEMS.length; if (!ITEMS[j].verdict) return j; } return -1; }
+
+  // ── 原稿與定稿的差異：標出原稿裡被改掉的字 ──
+  function diffMarks(a, b) {
+    var n = a.length, m = b.length;
+    if (!n || n > 2500 || m > 2500) return null;
+    var w = m + 1, T = new Uint16Array((n + 1) * w);
+    for (var i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--) T[i * w + j] = a[i] === b[j] ? T[(i + 1) * w + j + 1] + 1 : Math.max(T[(i + 1) * w + j], T[i * w + j + 1]);
+    var keep = new Array(n), x = 0, y = 0;
+    while (x < n && y < m) { if (a[x] === b[y]) { keep[x] = true; x++; y++; } else if (T[(x + 1) * w + y] >= T[x * w + y + 1]) x++; else y++; }
+    return keep;
+  }
+  function paintAi(el, ai, fin) {
+    el.textContent = '';
+    var a = Array.from(String(ai || '')), keep = diffMarks(a, Array.from(String(fin || '')));
+    if (!keep) { el.textContent = ai; return false; }
+    var buf = '', mode = null;
+    function flush() { if (!buf) return; if (mode === 'd') { var mk = document.createElement('mark'); mk.className = 'd'; mk.textContent = buf; el.appendChild(mk); } else el.appendChild(document.createTextNode(buf)); buf = ''; }
+    a.forEach(function (ch, i) { var md = keep[i] ? 's' : 'd'; if (md !== mode) { flush(); mode = md; } buf += ch; });
+    flush();
+    return true;
+  }
+
+  function fmtTime(s) { if (!s) return ''; var d = new Date(s); if (isNaN(d.getTime())) return ''; var t = new Date(d.getTime() + 8 * 3600e3).toISOString(); return t.slice(5, 10).replace('-', '/') + ' ' + t.slice(11, 16); }
+
+  // ── 一題 ──
+  function render() {
+    var it = ITEMS[IDX]; if (!it) return;
+    $('done').style.display = 'none'; $('view').style.display = 'block';
+    $('seqLbl').textContent = 'NO.' + (IDX + 1);
+    $('custName').textContent = it.name || '';
+    $('intentPill').textContent = it.intentLabel || it.intent || '';
+    var box = $('custMsgs'); box.textContent = '';
+    (Array.isArray(it.customer) ? it.customer : []).forEach(function (t) { var d = document.createElement('div'); d.className = 'bub'; d.textContent = t; box.appendChild(d); });
+    $('finalText').textContent = it.reply || '';
+    $('aiBox').open = false;
+    if (it.changed) {
+      $('aiSum').textContent = 'AI 原稿（你有改過，點開看）';
+      var marked = paintAi($('aiText'), it.aiDraft, it.reply);
+      $('aiLegend').textContent = marked ? '紅底刪除線＝定稿裡改掉或拿掉的字' : '稿子太長，沒有標出差異';
+    } else {
+      $('aiSum').textContent = 'AI 原稿（照發，跟定稿一樣）';
+      $('aiText').textContent = it.aiDraft || '';
+      $('aiLegend').textContent = '這則是 AI 原稿照發，一字沒改。';
+    }
+    $('noteIn').value = it.note || '';
+    paintVerdict();
+    $('prevBtn').disabled = IDX === 0;
+    $('nextBtn').disabled = IDX >= ITEMS.length - 1;
+    var m = $('msg');
+    if (FLASH) { m.className = 'msg ok'; m.textContent = FLASH; FLASH = ''; } else { m.className = 'msg'; m.textContent = ''; }
+    progress();
+    window.scrollTo(0, 0);
+  }
+  function paintVerdict() {
+    var it = ITEMS[IDX];
+    $('btnGood').classList.toggle('on', it.verdict === 'good');
+    $('btnBad').classList.toggle('on', it.verdict === 'bad');
+    $('btnGood').setAttribute('aria-pressed', it.verdict === 'good' ? 'true' : 'false');
+    $('btnBad').setAttribute('aria-pressed', it.verdict === 'bad' ? 'true' : 'false');
+    $('curState').textContent = it.verdict ? ('目前的判定：' + (it.verdict === 'good' ? '好' : '不好') + (it.note ? '（' + it.note + '）' : '') + (it.markedAt ? '　' + fmtTime(it.markedAt) + ' 存的' : '') + '。可以改，重按就會更新。') : '還沒判定。';
+  }
+  function setSaving(on, which) {
+    SAVING = on;
+    ['btnGood', 'btnBad', 'prevBtn', 'nextBtn'].forEach(function (id) { $(id).disabled = on; });
+    $('noteIn').disabled = on;
+    if (on) { var m = $('msg'); m.className = 'msg busy'; m.textContent = ''; var sp = document.createElement('span'); sp.className = 'spin'; m.appendChild(sp); m.appendChild(document.createTextNode('存檔中（' + (which === 'good' ? '好' : '不好') + '）')); }
+    else { $('prevBtn').disabled = IDX === 0; $('nextBtn').disabled = IDX >= ITEMS.length - 1; }
+  }
+  function mark(verdict) {
+    if (SAVING) return;
+    var it = ITEMS[IDX], at = IDX, note = $('noteIn').value.trim();
+    if (note.length > 200) { var m0 = $('msg'); m0.className = 'msg err'; m0.textContent = '原因太長了，請縮短到 200 字內。'; return; }
+    setSaving(true, verdict);
+    api({ op: 'goldMark', id: it.id, verdict: verdict, note: note }).then(function (r) {
+      setSaving(false);
+      var m = $('msg');
+      if (!r.ok) { if (r.kind === 'auth') return; m.className = 'msg err'; m.textContent = failText(r, true); return; }   // 留在原地，原因也留著，可以直接重按
+      var saved = r.data.item;
+      if (!saved || saved.id !== it.id || saved.verdict !== verdict) { m.className = 'msg err'; m.textContent = '沒有確認存到（回傳內容對不上），請再按一次。'; return; }
+      var reviewing = counts().marked === ITEMS.length;   // 已經全部勾完、回頭複查：改完一筆就往下一筆，不要每次跳完成畫面
+      ITEMS[at] = saved;
+      var c = counts();
+      if (r.data.progress && (r.data.progress.marked !== c.marked || r.data.progress.total !== c.total)) { load(); return; }   // 別的裝置也在勾：以資料庫為準重讀
+      var label = '第 ' + (at + 1) + ' 筆已存：' + (verdict === 'good' ? '好' : '不好');
+      if (reviewing && at + 1 < ITEMS.length) { FLASH = label; IDX = at + 1; render(); return; }
+      if (c.marked === c.total) { FLASH = ''; showDone(label); return; }
+      var next = at + 1 < ITEMS.length && !ITEMS[at + 1].verdict ? at + 1 : firstOpenFrom(at + 1);
+      if (next < 0) next = Math.min(at + 1, ITEMS.length - 1);
+      FLASH = label; IDX = next; render();
+    });
+  }
+  function showDone(label) {
+    var c = counts();
+    $('view').style.display = 'none'; $('done').style.display = 'block';
+    $('doneGood').textContent = c.good; $('doneBad').textContent = c.bad; $('doneTotal').textContent = c.total;
+    $('doneSub').textContent = (label ? label + '。' : '') + '這一批 ' + c.total + ' 筆都判定好了。';
+    $('progText').textContent = '已勾 ' + c.marked + ' / ' + c.total + ' 筆';
+    $('progBar').style.width = '100%';
+    window.scrollTo(0, 0);
+  }
+
+  $('btnGood').onclick = function () { mark('good'); };
+  $('btnBad').onclick = function () { mark('bad'); };
+  $('prevBtn').onclick = function () { if (SAVING || IDX === 0) return; IDX--; render(); };
+  $('nextBtn').onclick = function () { if (SAVING || IDX >= ITEMS.length - 1) return; IDX++; render(); };
+  $('reviewBtn').onclick = function () { IDX = 0; render(); };
+  $('retryLoad').onclick = load;
+  $('leave').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
+
+  // ── 登入（同收件匣：驗證碼登入、Supabase session 同網域共用） ──
+  function busyBtn(btn, on, label) { if (on) { btn.setAttribute('data-label', btn.textContent); btn.textContent = label; btn.disabled = true; } else { btn.textContent = btn.getAttribute('data-label') || btn.textContent; btn.disabled = false; } }
+  $('gateSend').onclick = function () {
+    var em = $('gateEmail').value.trim(); if (!em) return; var btn = this; busyBtn(btn, true, '寄送中');
+    sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) {
+      busyBtn(btn, false); $('gateMsg').textContent = r.error ? '寄送失敗，請稍後再試（每小時有次數限制）' : '驗證碼已寄到信箱（一小時內有效）';
+      if (!r.error) $('otpRow').style.display = 'block';
+    }, function () { busyBtn(btn, false); $('gateMsg').textContent = '寄送失敗，請確認網路後再試'; });
+  };
+  $('gateVerify').onclick = function () {
+    var em = $('gateEmail').value.trim(), code = $('gateCode').value.trim(); if (!em || !code) return; var btn = this; busyBtn(btn, true, '確認中');
+    sb.auth.verifyOtp({ email: em, token: code, type: 'email' }).then(function (r) {
+      busyBtn(btn, false);
+      if (r.error) { $('gateMsg').textContent = '驗證碼不對或已過期，請再試一次'; return; }
+      start();
+    }, function () { busyBtn(btn, false); $('gateMsg').textContent = '確認失敗，請確認網路後再試'; });
+  };
+  function start() { showApp(); if (BOOTED) { load(); return; } BOOTED = true; load(); }
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) start(); else showGate(); }, function () { showGate(); });
+})();
+</script>
+</body>
+</html>
