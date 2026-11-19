@@ -13,6 +13,7 @@
   /* #contacts 只有桌機版是真的捲動容器（72vh）；手機版 max-height:none 不會自己捲，若也設 contain 會把手指捲動擋在清單裡、整頁滑不動（2026-11-03 Wayne 回報） */
   @media(min-width:821px){#contacts{overscroll-behavior:contain}}
   :root{--moss:#5F6E58;--paper:#F2EDE3;--ink:#1B1A17;--muted:#8a8275;--body:#4A4A45;--line:#E5E0D3;--brick:#8a4a30;--amber:#F3E9C9;--tint:#EEF2E6}
+  :root{--bubble-self-bg:#5F6E58;--bubble-self-fg:#F2EDE3;--bubble-self-sub:#D9DECF;--bubble-staff-bg:#F5EBD7;--bubble-staff-line:#E8D9B8}
   *{margin:0;padding:0;box-sizing:border-box}
   html{overflow-x:clip}
   body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",-apple-system,sans-serif}
@@ -68,6 +69,14 @@
   .msg .who{font-size:11px;color:var(--muted);margin-bottom:2px}
   .msg.out .who,.msg.out .ts{text-align:right}
   .msg .ts{font-size:11px;color:var(--muted);margin-top:3px}
+  .msg .who .tagMe,.msg .who .tagStaff{display:inline-block;max-width:100%;padding:0 6px;border-radius:8px;font-size:11px;line-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+  .msg.self{background:var(--bubble-self-bg);color:var(--bubble-self-fg);border:none}
+  .msg.self .who,.msg.self .ts{color:var(--bubble-self-sub)}
+  .msg.self .who .tagMe{background:var(--bubble-self-fg);color:var(--bubble-self-bg);font-weight:600}
+  .msg.self a{color:var(--bubble-self-fg)}
+  .msg.staff{background:var(--bubble-staff-bg);border:1px solid var(--bubble-staff-line)}
+  .msg.staff .who .tagStaff{background:#fff;border:1px solid var(--bubble-staff-line);color:var(--body);line-height:15px}
+  .msg.in .who,.msg.in .ts{text-align:left}
   .draft{margin-top:10px;padding:12px;border:1px solid #B9C4AE;background:#F6F8F2;border-radius:8px}
   .draft .lab{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
   .draft textarea{width:100%;padding:10px;border:1px solid var(--line);font-family:inherit;font-size:15px;line-height:1.5;background:#fff;color:var(--ink);border-radius:6px}
@@ -339,6 +348,9 @@
     }).then(function (res) { if (res.status === 401 || res.status === 403) { if (pollTimer) clearTimeout(pollTimer); clearLocalEdits(); sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); }).then(function (d) { if (d && d.ok === false && d.error && !quiet) { if (payload.app && SEND_OPS[payload.app.op]) stat(''); else stat('失敗：' + (d.detail || d.error)); } return d; });   // 對客送出類不在狀態列寫「再試一次」，結果由各自的畫面講
   }
   var ROLES = ['客戶', '會計事務所', '廠商', '合作夥伴', '其他'], MEMBER_ROLES = ['窗口', '主管', '會計', '採購', '其他'];
+  var BUBBLE = { customerRole: '客戶', selfTag: '我', staffDefault: '員工', outName: '植間', otherDefault: '對方',
+    legendCustomer: '左白＝對方　右綠＝我們　深綠＝我　淡黃＝員工',
+    legendInternal: '內部群組　右：深綠＝我、淺綠＝系統　左：其他人、淡黃＝員工' };
   var KEEP_AT = {};   // 每位客戶你在送出框設過的預定時間：稿被重擬換新時帶回來（2026-10-20 Amy 實案：設了 08:00、給意見重擬後新稿沒帶、按送出變成立刻發）
   var OPS = { csInboxAddendumDrop: 'addendumDrop', csInboxDocSend: 'docSend', csInboxNoReply: 'noReply', csInboxStaffForward: 'staffForward', csInboxOverview: 'overview', csInboxSend: 'send', csInboxReply: 'reply', csInboxFeedback: 'feedback', csInboxManual: 'manual', csInboxReject: 'reject', csInboxRole: 'role', csInboxMember: 'member', csInboxBind: 'bind', csInboxMemoryNote: 'memoryNote', csInboxSelfReplied: 'selfReplied', csInboxCancelScheduled: 'cancelScheduled', csInboxUpload: 'upload' };
   function run(fn, args, ok, fail) {
@@ -903,6 +915,25 @@
       }, function () { b.disabled = true; b.textContent = '結果未知'; document.getElementById('fwdMsg').textContent = '連線逾時、不確定有沒有送出。先關掉這個框、重新整理看員工有沒有收到，別直接再按（再按也只會送一次）。'; });
     };
   }
+  // 群組／聊天室沒綁客戶、或對象類型不是客戶：算內部對話，只有本人放右邊
+  function isInternalChat(t) {
+    if (t.type !== 'group' && t.type !== 'room') return false;
+    var bound = t.clientId || (t.dossier && t.dossier.client && t.dossier.client.clientId) || '';
+    return !bound || (!!t.role && t.role !== BUBBLE.customerRole);
+  }
+  // 只認後台給的 senderKind；沒有這個欄位的舊訊息照舊畫
+  function bubbleLook(m, ours, internalChat) {
+    var sk = m.senderKind;
+    if (sk == null) {
+      var old = m.side === 'owner' ? esc(m.senderName || '') + '（群組內）' : (m.side === 'employee' ? esc(m.senderName || BUBBLE.staffDefault) : (m.side === 'out' ? esc(BUBBLE.outName) : (m.senderName ? esc(m.senderName) : esc(BUBBLE.otherDefault))));
+      return { cls: ours ? 'out' : 'in', who: 'legacy', label: old };
+    }
+    sk = String(sk);
+    if (sk === 'owner') return { cls: 'out self', who: 'self', label: '<span class="tagMe">' + esc(BUBBLE.selfTag) + '</span>' };
+    if (sk === 'employee' || sk.indexOf('employee:') === 0) return { cls: (internalChat ? 'in' : 'out') + ' staff', who: 'staff', label: '<span class="tagStaff">' + esc(m.senderName || BUBBLE.staffDefault) + '</span>' };
+    if (m.side === 'out') return { cls: 'out', who: 'system', label: esc(BUBBLE.outName) };
+    return { cls: ours ? 'out' : 'in', who: 'other', label: m.senderName ? esc(m.senderName) : esc(BUBBLE.otherDefault) };
+  }
   function renderThread(t) {
     if (!t || !t.ok) { document.getElementById('head').innerHTML = '<span class="muted">讀取失敗 ' + esc(t && t.error) + '</span>'; return; }
     var typeLabel = t.type === 'group' ? '群組' : (t.type === 'room' ? '聊天室' : '個人');
@@ -935,15 +966,16 @@
       }).catch(function (e) { busy(btn, false); document.getElementById('headMsg').textContent = '失敗：' + friendlyErr(e.message); });
     };
     var chat = document.getElementById('chat');
-    chat.innerHTML = '<div class="msg event">左邊白色＝對方　右邊綠色＝我們這邊</div>' + (t.messages || []).map(function (m, i) {
+    var internalChat = isInternalChat(t);
+    chat.innerHTML = '<div class="msg event">' + esc(internalChat ? BUBBLE.legendInternal : BUBBLE.legendCustomer) + '</div>' + (t.messages || []).map(function (m, i) {
       if (m.kind === 'event') return '<div class="msg event">' + esc(m.text) + '</div>';
       var body = m.kind === 'card' ? '<span class="pill">卡片</span> ' + esc(m.text.replace('[卡片]', '').trim()) : esc(m.text);
       if (m.kind === 'image' && m.img && STORAGE_OK.test(m.img)) body = '<a class="imgZoom" href="' + esc(m.img) + '" target="_blank"><img src="' + esc(m.img.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=600') + '" style="max-width:220px;border-radius:6px;display:block"></a>';
       else if (m.kind === 'image' && m.mediaId) body = '（照片）<button class="btn link photoLoad" data-mid="' + esc(m.mediaId) + '" data-i="' + i + '">載入照片</button>';
       var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
-      var who = m.side === 'owner' ? 'Wayne（群組內）' : (m.side === 'employee' ? esc(m.senderName || '員工') : (m.side === 'out' ? '植間' : (m.senderName ? esc(m.senderName) : '對方')));
       var fwd = (!ours && (m.kind === 'text' || m.kind === 'image')) ? ' <a href="#" class="fwdStaff" data-i="' + i + '" style="color:#5F6E58;text-decoration:none;margin-left:8px">轉給員工</a>' : '';
-      return '<div class="msg ' + (ours ? 'out' : 'in') + '"><div class="who">' + who + '</div>' + body + '<div class="ts">' + esc(m.ts) + fwd + '</div></div>';
+      var look = bubbleLook(m, ours, internalChat);
+      return '<div class="msg ' + look.cls + '" data-who="' + look.who + '"><div class="who">' + look.label + '</div>' + body + '<div class="ts">' + esc(m.ts) + fwd + '</div></div>';
     }).join('');
     chat.scrollTop = chat.scrollHeight;
     var cidP = t.contactId;
