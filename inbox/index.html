@@ -1810,7 +1810,7 @@ var yzNs = (function () {
         if (isGone(e)) { close(); return; }
         if (!isTimeout(e)) { render(); say(where, '沒有存成功（' + friendlyErr(e && e.message) + '），已改回原本的設定。', 'err'); return; }
         S.locked = true; render(); say(where, '網路逾時：還在確認剛才的修改有沒有存成功，確認完之前先不能改設定。', 'err');
-        return real.then(function (r) { return r && r.ok === true && r.settings ? 'saved' : 'failed'; }, function (e2) { return isGone(e2) ? 'gone' : 'failed'; }).then(function (outcome) {
+        return real.then(function (r) { return r && r.ok === true && r.settings ? 'saved' : 'failed'; }, function (e2) { return isGone(e2) ? 'gone' : 'unknown'; }).then(function (outcome) {
           S.locked = false;
           if (outcome === 'gone') { close(); return; }
           return reload(where, outcome);
@@ -1820,7 +1820,8 @@ var yzNs = (function () {
     return S.chain;
   }
   function reload(where, outcome) {   // 原本那筆請求已經結束：這時讀到的就是後台實際的值
-    var head = outcome === 'saved' ? '剛才的修改晚了一點，但已經存進去。' : '剛才的修改沒有存成功。';
+    // 後台明確回失敗才說沒存成功；連線中斷或一直沒回應＝結果不明，不下結論
+    var head = outcome === 'saved' ? '剛才的修改晚了一點，但已經存進去。' : (outcome === 'unknown' ? '還是沒有收到後台回應，不確定剛才的修改有沒有存進去，請看一下是不是你要的。' : '剛才的修改沒有存成功。');
     return call({ op: 'pushSettingsGet' }).then(function (r) {
       if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || S.defaults; render(); say(where, head + '畫面上是後台目前的設定。', outcome === 'saved' ? 'ok' : 'err'); return; }
       render(); say(where, head + '重新讀取設定失敗（' + errLabel(r) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
