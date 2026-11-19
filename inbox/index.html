@@ -1585,10 +1585,11 @@ body.ns-open{overflow:hidden}
     return true;
   }
   // 回到前景強制補報一次：後台用 last_seen 判斷這支手機還在不在用（APP_ACTIVE_MS），停在清單頁平常不會報，所以回前景要補。
-  // 同一次回前景會連發 visibilitychange、resume、appStateChange（順序不一定）：等 300 毫秒合併成一次，PAUSED 也已更新，才不會先報「沒在看」再報那位。
-  // 距上次成功回報或上次補報不到 60 秒就不補，只走一般判斷
+  // 一般判斷照舊馬上做；強制補報等 300 毫秒，把同一次回前景連發的 visibilitychange、resume、appStateChange（順序不一定）合併成一次，
+  // 期間一般判斷若已送出（VIEW.at 剛更新）就不再補。距上次成功回報或上次補報不到 60 秒也不補
   var FG_EVERY = 60000, FG_AT = 0, FG_TIMER = null;
   function foreground() {
+    viewTick(false);
     if (FG_TIMER) return;
     FG_TIMER = setTimeout(function () {
       FG_TIMER = null;
