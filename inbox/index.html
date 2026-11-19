@@ -151,6 +151,44 @@
     .yz-sheet-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
   }
 
+/* 通知設定（全螢幕面板：手機與桌機同一套） */
+#nsBox{display:none;position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
+#nsBox.on{display:block}
+body.ns-open{overflow:hidden}
+.ns-bar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:6px;height:50px;padding:0 8px;background:#fff;border-bottom:1px solid var(--line)}
+.ns-bar h2{flex:1;font-size:16px;font-weight:600;text-align:center;color:var(--ink)}
+.ns-bar button{min-width:64px;height:40px;border:none;background:none;font-family:inherit;font-size:14px;color:#4F6147;border-radius:8px;cursor:pointer}
+.ns-bar .ns-sp{min-width:64px}
+.ns-in{max-width:560px;margin:0 auto;padding:12px 10px calc(28px + env(safe-area-inset-bottom))}
+.ns-sec{background:#fff;border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:12px}
+.ns-sec h3{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.ns-now{font-size:13px;color:var(--body);line-height:1.6;padding:8px 10px;background:var(--tint);border-radius:6px;margin:6px 0 2px}
+.ns-mode{display:flex;gap:10px;align-items:flex-start;padding:12px 10px;border:1px solid var(--line);border-radius:6px;margin-top:8px;cursor:pointer}
+.ns-mode.on{border-color:var(--moss);background:#E9EDE3}
+.ns-mode input{margin-top:3px;width:18px;height:18px;accent-color:var(--moss);flex:none}
+.ns-mode b{font-size:15px;color:var(--ink)}
+.ns-d{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.ns-until{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--body)}
+.ns-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.ns-sec h3+.ns-d+.ns-row,.ns-sec h3+.ns-row{border-top:none}
+.ns-t{flex:1;min-width:0;font-size:14px;color:var(--ink)}
+.ns-in input[type=time],.ns-in input[type=datetime-local],.ns-in input[type=number]{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink)}
+.ns-in input[type=number]{width:80px}
+.ns-sw{-webkit-appearance:none;appearance:none;position:relative;flex:none;width:44px;height:26px;border-radius:13px;background:#D9D3C4;cursor:pointer;transition:background .15s;margin:0}
+.ns-sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+.ns-sw:checked{background:var(--moss)}
+.ns-sw:checked::after{left:21px}
+.ns-sw:disabled{opacity:.45;cursor:default}
+.ns-days{display:flex;gap:4px;flex-wrap:wrap}
+.ns-days label{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:34px;border:1px solid var(--line);border-radius:4px;font-size:13px;color:var(--body);cursor:pointer;background:#fff}
+.ns-days label.on{background:var(--moss);border-color:var(--moss);color:#fff}
+.ns-days input{position:absolute;opacity:0;width:1px;height:1px}
+.ns-msg{font-size:12px;line-height:1.5;margin-top:8px;min-height:0}
+.ns-msg:empty{display:none}
+.ns-msg.err{color:var(--brick)}
+.ns-msg.ok{color:#3D6B3A}
+.ns-entry{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-bottom:10px}
+.ns-entry svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 #imgZoomBox{position:fixed;inset:0;z-index:9999;background:rgba(27,26,23,.94);display:none;flex-direction:column}
 #imgZoomBox.on{display:flex}
 #imgZoomBox .bar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;flex:none}
@@ -257,6 +295,10 @@
     <circle cx="12" cy="12" r="3"></circle>
     <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M5.5 18.5l2-2M16.5 7.5l2-2"></path>
   </symbol>
+<symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"></path>
+    <path d="M10 20a2 2 0 0 0 4 0"></path>
+  </symbol>
   <symbol id="yzs-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
   <symbol id="yzs-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="yzs-tray" viewBox="0 0 24 24"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></symbol>
@@ -285,7 +327,7 @@
   <a class="yz-tab" data-page="employees" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=employees"><svg><use href="#icon-calendar"/></svg><span class="yz-tab-label">人事</span></a>
   <a class="yz-tab" data-page="payroll" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=payroll"><svg><use href="#icon-bank"/></svg><span class="yz-tab-label">薪資</span></a>
   <a class="yz-tab" data-page="materials" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=materials"><svg><use href="#icon-plant"/></svg><span class="yz-tab-label">材料</span></a>
-  <span class="yz-tab-end"><a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a><button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button></span>
+  <span class="yz-tab-end"><button type="button" class="yz-tab" id="nsOpen" title="通知設定"><svg><use href="#icon-bell"/></svg><span class="yz-tab-label">通知設定</span></button><a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a><button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button></span>
 </nav>
 <nav class="yz-bottomnav" id="yz-bottomnav">
   <button type="button" data-tab="todo" class="on"><svg><use href="#yzs-tray"/></svg>待處理</button>
@@ -294,7 +336,8 @@
   <button type="button" data-tab="staff"><svg><use href="#icon-client"/></svg>員工</button>
 </nav>
 <div class="yz-sheet-mask" id="yz-sheet-mask"></div>
-<div class="yz-sheet" id="yz-sheet"><h3>全部工具<button type="button" id="yz-sheet-close">關閉</button></h3><div class="yz-sheet-grid" id="yz-sheet-grid"></div><div class="yz-sheet-foot"><span class="small muted">Workspace 工具會另開瀏覽器（需要 Google 登入）</span><button type="button" class="btn link" id="leave2">登出這台裝置</button></div></div>
+<div class="yz-sheet" id="yz-sheet"><h3>全部工具<button type="button" id="yz-sheet-close">關閉</button></h3><button type="button" class="btn ghost ns-entry" id="nsOpen2"><svg><use href="#icon-bell"/></svg>通知設定</button><div class="yz-sheet-grid" id="yz-sheet-grid"></div><div class="yz-sheet-foot"><span class="small muted">Workspace 工具會另開瀏覽器（需要 Google 登入）</span><button type="button" class="btn link" id="leave2">登出這台裝置</button></div></div>
+<div id="nsBox" role="dialog" aria-label="通知設定"><div class="ns-bar"><button type="button" id="nsClose">關閉</button><h2>通知設定</h2><span class="ns-sp"></span></div><div class="ns-in" id="nsBody"></div></div>
 <div class="page">
 <h1>對話收件匣</h1>
 <div class="sub"><span id="counts"></span> <span id="stat"></span></div>
@@ -1528,23 +1571,38 @@
   // 3. 正在看哪位（pushViewing）：開某位、離開、切背景、回前景都回報；開著同一位每 20 秒補報。只有註冊成功的裝置才回報
   var VIEW = { sent: null, at: 0, busy: false, fails: 0, nextAt: 0 };
   function viewingCid() { return (!PAUSED && document.visibilityState === 'visible' && !gateOn() && document.body.classList.contains('view-thread') && cur && CID_OK.test(String(cur))) ? String(cur) : ''; }
-  function viewTick(force) {
-    if (REG.state !== 'ok' || VIEW.busy) return;
-    if (Date.now() < VIEW.nextAt) return;   // 上次沒報成功：退避中（5 秒起跳、連續失敗加倍，最多 60 秒）
+  function viewTick(force) {   // 回傳 true＝這次真的送出了一筆回報
+    if (REG.state !== 'ok' || VIEW.busy) return false;
+    if (Date.now() < VIEW.nextAt) return false;   // 上次沒報成功：退避中（5 秒起跳、連續失敗加倍，最多 60 秒）
     var v = viewingCid();
-    if (!force && v === VIEW.sent && (!v || Date.now() - VIEW.at < VIEW_EVERY)) return;
+    if (!force && v === VIEW.sent && (!v || Date.now() - VIEW.at < VIEW_EVERY)) return false;
     VIEW.busy = true;
     var fail = function () { VIEW.busy = false; VIEW.fails++; VIEW.sent = null; VIEW.nextAt = Date.now() + Math.min(60000, 5000 * Math.pow(2, VIEW.fails - 1)); };
     pushApi({ op: 'pushViewing', deviceId: devId(), contactId: v }).then(function (r) {
       if (!(r && r.ok === true)) { fail(); return; }
       VIEW.busy = false; VIEW.fails = 0; VIEW.nextAt = 0; VIEW.sent = v; VIEW.at = Date.now();
     }, fail);   // 後端 60 秒自動失效：漏報最壞多響一則
+    return true;
+  }
+  // 回到前景強制補報一次：後台用 last_seen 判斷這支手機還在不在用（APP_ACTIVE_MS），停在清單頁平常不會報，所以回前景要補。
+  // 一般判斷照舊馬上做；強制補報等 300 毫秒，把同一次回前景連發的 visibilitychange、resume、appStateChange（順序不一定）合併成一次，
+  // 期間一般判斷若已送出（VIEW.at 剛更新）就不再補。距上次成功回報或上次補報不到 60 秒也不補
+  var FG_EVERY = 60000, FG_AT = 0, FG_TIMER = null;
+  function foreground() {
+    viewTick(false);
+    if (FG_TIMER) return;
+    FG_TIMER = setTimeout(function () {
+      FG_TIMER = null;
+      var now = Date.now();
+      if (now - FG_AT < FG_EVERY || (VIEW.at && now - VIEW.at < FG_EVERY)) { viewTick(false); return; }
+      if (viewTick(true)) FG_AT = now;
+    }, 300);
   }
   setInterval(function () { viewTick(false); }, 1000);
-  document.addEventListener('visibilitychange', function () { viewTick(false); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { PAUSED = false; foreground(); } else viewTick(false); });
   document.addEventListener('pause', function () { PAUSED = true; viewTick(false); });
-  document.addEventListener('resume', function () { PAUSED = false; viewTick(false); });
-  if (APP) APP.addListener('appStateChange', function (s) { PAUSED = !(s && s.isActive); viewTick(false); });
+  document.addEventListener('resume', function () { PAUSED = false; foreground(); });
+  if (APP) APP.addListener('appStateChange', function (s) { PAUSED = !(s && s.isActive); if (PAUSED) viewTick(false); else foreground(); });
 
   // 4. 登出：先在後台取消這台的登記並刪掉手機上的通知代碼，再照原本流程登出；兩邊都沒確定成功才問
   var leaveBtn = document.getElementById('leave'), leaveOrig = leaveBtn && leaveBtn.onclick;
@@ -1566,6 +1624,7 @@
   if (APP) APP.addListener('backButton', function () {
     var z = document.getElementById('imgZoomBox');
     if (z && z.classList.contains('on')) { history.back(); return; }
+    if (window.yzNs && yzNs.isOpen()) { yzNs.close(); return; }
     if (document.body.classList.contains('view-thread')) { document.getElementById('back').click(); return; }
     if (APP.minimizeApp) APP.minimizeApp();
   });
@@ -1595,10 +1654,243 @@
   };
   if (BOOTED) pushStart();   // 已登入時上一段的 getSession 可能在這段載入前就已經開機
 
-  // 之後要做「通知設定」頁時的呼叫點（這次不做介面）：
-  //   讀：api({ app: { op: 'pushSettingsGet' } }) → { ok, settings: { kinds:{msg,approval,overdue,task}, quietEnabled, quietStart, quietEnd, tz, urgentBypass, preview, overdueMin, workStart, workEnd, workDays } }
-  //   存：api({ app: { op: 'pushSettingsSet', settings: { 只放要改的欄位 } } }) → { ok, settings } 或 { ok:false, error:'<欄位>_invalid' }
+  // 通知設定畫面在下一段 script（yzNs），一般瀏覽器也能用。
   // 圖示角標（pushBadge）也還沒接：安卓桌面角標跟著系統通知數走，要顯示待處理件數時再呼叫 api({ app: { op: 'pushBadge' } })。
+})();
+</script>
+<script>
+/* 通知設定（2026-11-19）：三個模式、各類通知開關、安靜時段、工作時段、傳測試通知。一般瀏覽器與 App 殼都能用。
+   後端 cs-run pushq.ts：pushSettingsGet → { ok, settings, modeDefaults:{work,off} }；pushSettingsSet 只送要改的欄位，回同樣格式或 400 { ok:false, error:'<欄位>_invalid' }；
+   pushTest → 排進去 { ok, devices, queued:true, credentials }／沒有裝置 { ok, devices:0, queued:false, reason:'no_device' }／一分鐘內再按 429 { error:'rate_limited', retryAfterSec }。
+   畫面只顯示後台確認過的值：存失敗就用上一次確認的值重畫（等於還原）；逾時不猜，重新讀一次後台。 */
+var yzNs = (function () {
+  var TIMEOUT_MS = 15000, MODE_MAX_MS = 7 * 86400000;
+  var MODES = [
+    { k: 'normal', name: '一般', desc: '照常通知。' },
+    { k: 'work', name: '工作中', desc: '手機降噪，重要的由語音助理轉告。' },
+    { k: 'off', name: '下班', desc: '只推急件，其餘到結束時間一次彙整。' }
+  ];
+  var MODE_NAME = { normal: '一般', work: '工作中', off: '下班' };
+  var KINDS = [
+    ['msg', '客戶新訊息', '客戶傳來新訊息時通知。'],
+    ['approval', '回覆稿等核可', '回覆稿擬好、等你核可時通知。'],
+    ['overdue', '客戶等太久', '工作時段內，客戶等超過下面設定的時間還沒人回就提醒。'],
+    ['task', '交代的事沒做到', '系統沒做到你交代的事時通知，請你打開對話再交代一次。'],
+    ['ack', '客戶的簡短回覆', '我們剛回過話、客戶回一句「好的、謝謝」這類確認話時，也輕輕通知。']
+  ];
+  var DAYS = ['一', '二', '三', '四', '五', '六', '日'];   // 後端 workDays：1＝週一 … 7＝週日
+  var S = { open: false, pushed: false, locked: false, settings: null, defaults: null, loadErr: '', chain: Promise.resolve(), testMsg: null, testUntil: 0, testTimer: null };
+  var box = document.getElementById('nsBox'), body = document.getElementById('nsBody');
+
+  function pad(n) { return ('0' + n).slice(-2); }
+  function fmt(iso) {
+    var d = new Date(iso); if (isNaN(d.getTime())) return '';
+    var now = new Date(), hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+    if (d.toDateString() === new Date(now.getTime() + 86400000).toDateString()) return '明天 ' + hm;
+    return (d.getMonth() + 1) + '/' + d.getDate() + '（' + '日一二三四五六'.charAt(d.getDay()) + '）' + hm;
+  }
+  function toInput(ms) { var d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function isTimeout(e) { return !!(e && e.message === 'ns_timeout'); }
+  function isGone(e) { return /連線已失效|請先進入/.test(String((e && e.message) || '')); }
+  function race(real) {   // 15 秒沒回就先告訴使用者；底下的請求不會因此停（api 要 75 秒才放棄），要等它的地方自己拿 real
+    var t; var to = new Promise(function (res, rej) { t = setTimeout(function () { rej(new Error('ns_timeout')); }, TIMEOUT_MS); });
+    return Promise.race([real, to]).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; });
+  }
+  function call(app) { return race(api({ app: app }, true)); }   // quiet：不寫收件匣狀態列，結果只在這個畫面講
+  function errLabel(r) {
+    var e = String((r && r.error) || '');
+    if (!e) return '後台沒有回明確結果';
+    if (e === 'modeUntil_invalid') return '結束時間要在現在之後、7 天以內';
+    if (e === 'mode_invalid') return '模式不正確';
+    if (/_invalid$/.test(e)) return '格式不正確';
+    if (e === 'push_op_failed') return '後台暫時出錯，請稍後再試';
+    return friendlyErr(r.detail || e);
+  }
+  function say(id, text, cls) { var el = document.getElementById(id); if (!el) return; el.className = 'ns-msg' + (cls ? ' ' + cls : ''); el.textContent = text || ''; }
+
+  function sw(attr, on, title, desc) {
+    return '<label class="ns-row"><span class="ns-t">' + esc(title) + '<div class="ns-d">' + esc(desc) + '</div></span><input type="checkbox" class="ns-sw" ' + attr + (on ? ' checked' : '') + '></label>';
+  }
+  function render() {
+    if (!body) return;
+    var s = S.settings;
+    if (!s) {
+      body.innerHTML = S.loadErr
+        ? '<div class="ns-sec"><div class="ns-msg err">讀不到通知設定（' + esc(S.loadErr) + '）。</div><div class="row"><button type="button" class="btn small" id="nsRetry">再試一次</button></div></div>'
+        : '<div class="loading"><span class="spin"></span>讀取通知設定中</div>';
+      var rt = document.getElementById('nsRetry'); if (rt) rt.onclick = function () { load(); };
+      return;
+    }
+    var d = S.defaults || {}, mode = MODE_NAME[s.mode] ? s.mode : 'normal', h = '';
+    h += '<div class="ns-sec" id="nsModeSec"><h3>通知模式</h3>';
+    h += '<div class="ns-now" id="nsModeNow">目前：<b>' + esc(MODE_NAME[mode]) + '</b>' + (mode !== 'normal' && s.modeUntil ? '，到 ' + esc(fmt(s.modeUntil)) + ' 自動回到一般' : '，照常通知') + '</div>';
+    MODES.forEach(function (m) {
+      var hint = (m.k !== 'normal' && m.k !== mode && d[m.k]) ? '（現在選，預設到 ' + fmt(d[m.k]) + '）' : '';
+      h += '<label class="ns-mode' + (m.k === mode ? ' on' : '') + '"><input type="radio" name="nsMode" value="' + m.k + '"' + (m.k === mode ? ' checked' : '') + '><span><b>' + esc(m.name) + '</b><div class="ns-d">' + esc(m.desc + hint) + '</div></span></label>';
+    });
+    if (mode !== 'normal') {
+      var now = Date.now(), until = Date.parse(s.modeUntil || '') || Date.parse(d[mode] || '') || now + 3600000;
+      h += '<div class="ns-until"><span>到幾點結束</span><input type="datetime-local" id="nsUntil" value="' + toInput(until) + '" min="' + toInput(now + 60000) + '" max="' + toInput(now + MODE_MAX_MS) + '">' +
+        '<button type="button" class="btn small" id="nsUntilSave">改結束時間</button><button type="button" class="btn ghost small" id="nsNormal">回到一般</button></div>';
+      h += '<div class="ns-d">結束時間最多設到 7 天後，到時間自動回到一般。</div>';
+    }
+    h += '<div class="ns-msg" id="nsModeMsg"></div></div>';
+
+    h += '<div class="ns-sec" id="nsKindSec"><h3>要通知哪些事</h3>';
+    KINDS.forEach(function (k) { h += sw('data-kind="' + k[0] + '"', !!(s.kinds && s.kinds[k[0]]), k[1], k[2]); });
+    h += sw('data-bool="preview"', !!s.preview, '通知顯示訊息內容', '關掉後通知只寫「傳來新訊息」，不露出客戶寫了什麼。');
+    h += sw('data-bool="ackRelay"', !!s.ackRelay, '簡短回覆也由語音助理轉告', '客戶回確認話時，同時請語音助理告訴你。');
+    h += '<div class="ns-row"><span class="ns-t">等多久算太久<div class="ns-d">工作時段內累計，15 到 1440 分鐘。</div></span><span><input type="number" id="nsOverdue" min="15" max="1440" step="1" value="' + esc(s.overdueMin) + '"> 分鐘</span></div>';
+    h += '<div class="ns-msg" id="nsKindMsg"></div></div>';
+
+    h += '<div class="ns-sec" id="nsQuietSec"><h3>安靜時段</h3>';
+    h += sw('data-bool="quietEnabled"', !!s.quietEnabled, '開啟安靜時段', '這段時間手機不響，累積的通知到結束時一次彙整。');
+    h += '<div class="ns-row"><span class="ns-t">從幾點到幾點<div class="ns-d">可以跨午夜，例如 21:00 到 09:00。</div></span><span><input type="time" data-hm="quietStart" value="' + esc(s.quietStart) + '"> 到 <input type="time" data-hm="quietEnd" value="' + esc(s.quietEnd) + '"></span></div>';
+    h += sw('data-bool="urgentBypass"', !!s.urgentBypass, '急件照樣通知', '安靜時段內遇到急件，還是馬上通知。');
+    h += '<div class="ns-msg" id="nsQuietMsg"></div></div>';
+
+    h += '<div class="ns-sec" id="nsWorkSec"><h3>工作時段</h3><div class="ns-d">用來算「客戶等太久」，以及「工作中」「下班」模式的預設結束時間。</div>';
+    h += '<div class="ns-row"><span class="ns-t">上班時間</span><span><input type="time" data-hm="workStart" value="' + esc(s.workStart) + '"> 到 <input type="time" data-hm="workEnd" value="' + esc(s.workEnd) + '"></span></div>';
+    h += '<div class="ns-row"><span class="ns-t">上班日</span><span class="ns-days">' + DAYS.map(function (n, i) { var on = (s.workDays || []).indexOf(i + 1) >= 0; return '<label class="' + (on ? 'on' : '') + '"><input type="checkbox" data-day="' + (i + 1) + '"' + (on ? ' checked' : '') + '>' + n + '</label>'; }).join('') + '</span></div>';
+    if (s.tz) h += '<div class="ns-d">時區：' + esc(s.tz) + '</div>';
+    h += '<div class="ns-msg" id="nsWorkMsg"></div></div>';
+
+    var waiting = Date.now() < S.testUntil;
+    h += '<div class="ns-sec" id="nsTestSec"><h3>測試通知</h3><div class="ns-d">傳一則測試通知到你登記過的手機，確認收得到。不受模式、開關與安靜時段影響。</div>';
+    h += '<div class="row"><button type="button" class="btn" id="nsTest"' + (waiting ? ' disabled' : '') + '>傳一則測試通知</button></div>';
+    h += '<div class="ns-msg' + (S.testMsg && S.testMsg.cls ? ' ' + S.testMsg.cls : '') + '" id="nsTestMsg">' + esc(S.testMsg ? S.testMsg.text : '') + '</div></div>';
+    body.innerHTML = h;
+    bind();
+    if (S.locked) body.querySelectorAll('#nsModeSec input, #nsModeSec button, #nsKindSec input, #nsQuietSec input, #nsWorkSec input').forEach(function (x) { x.disabled = true; });
+  }
+
+  function bind() {
+    body.querySelectorAll('input[name=nsMode]').forEach(function (r) { r.onchange = function () { if (r.checked) save({ mode: r.value }, 'nsModeMsg'); }; });
+    var us = document.getElementById('nsUntilSave');
+    if (us) us.onclick = function () {
+      var v = (document.getElementById('nsUntil') || {}).value || '', t = v ? new Date(v).getTime() : NaN, now = Date.now();
+      if (!isFinite(t)) { render(); say('nsModeMsg', '結束時間格式不對，請重選。', 'err'); return; }
+      if (t <= now) { render(); say('nsModeMsg', '結束時間要在現在之後。', 'err'); return; }
+      if (t > now + MODE_MAX_MS) { render(); say('nsModeMsg', '結束時間最多只能設到 7 天後。', 'err'); return; }
+      save({ mode: S.settings.mode, modeUntil: new Date(t).toISOString() }, 'nsModeMsg');
+    };
+    var bn = document.getElementById('nsNormal'); if (bn) bn.onclick = function () { save({ mode: 'normal' }, 'nsModeMsg'); };
+    body.querySelectorAll('input[data-kind]').forEach(function (c) { c.onchange = function () { var k = {}; k[c.getAttribute('data-kind')] = c.checked; save({ kinds: k }, 'nsKindMsg'); }; });
+    body.querySelectorAll('input[data-bool]').forEach(function (c) { c.onchange = function () { var p = {}, f = c.getAttribute('data-bool'); p[f] = c.checked; save(p, f === 'quietEnabled' || f === 'urgentBypass' ? 'nsQuietMsg' : 'nsKindMsg'); }; });
+    body.querySelectorAll('input[data-hm]').forEach(function (c) { c.onchange = function () {
+      var f = c.getAttribute('data-hm'), where = /^quiet/.test(f) ? 'nsQuietMsg' : 'nsWorkMsg';
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(c.value)) { render(); say(where, '時間格式不對，已改回原本的設定。', 'err'); return; }
+      var p = {}; p[f] = c.value; save(p, where);
+    }; });
+    var od = document.getElementById('nsOverdue');
+    if (od) od.onchange = function () {
+      var n = Number(od.value);
+      if (!(n % 1 === 0 && n >= 15 && n <= 1440)) { render(); say('nsKindMsg', '等多久要填 15 到 1440 之間的整數分鐘，已改回原本的設定。', 'err'); return; }
+      save({ overdueMin: n }, 'nsKindMsg');
+    };
+    body.querySelectorAll('input[data-day]').forEach(function (c) { c.onchange = function () {
+      var days = []; body.querySelectorAll('input[data-day]').forEach(function (x) { if (x.checked) days.push(Number(x.getAttribute('data-day'))); });
+      if (c.parentNode) c.parentNode.classList.toggle('on', c.checked);
+      save({ workDays: days }, 'nsWorkMsg');
+    }; });
+    var tb = document.getElementById('nsTest'); if (tb) tb.onclick = test;
+  }
+
+  // 存：一次一筆排隊送（後台每次回完整設定，照順序套才不會被舊回應蓋掉）。
+  // 逾時：後台是整列讀出合併寫回、以抵達順序為準，所以要等原本那筆請求真的結束（成功或失敗）才重讀、才放行下一筆；等待期間設定鎖住不能改
+  function save(patch, where) {
+    say(where, '儲存中…', '');
+    S.chain = S.chain.then(function () {
+      var real = api({ app: { op: 'pushSettingsSet', settings: patch } }, true);
+      return race(real).then(function (r) {
+        if (r && r.ok === true && r.settings) { S.settings = r.settings; if (r.modeDefaults) S.defaults = r.modeDefaults; render(); say(where, '已儲存。', 'ok'); return; }
+        render(); say(where, '沒有存成功（' + errLabel(r) + '），已改回原本的設定。', 'err');
+      }, function (e) {
+        if (isGone(e)) { close(); return; }
+        if (!isTimeout(e)) { render(); say(where, '沒有存成功（' + friendlyErr(e && e.message) + '），已改回原本的設定。', 'err'); return; }
+        S.locked = true; render(); say(where, '網路逾時：還在確認剛才的修改有沒有存成功，確認完之前先不能改設定。', 'err');
+        return real.then(function (r) { return r && r.ok === true && r.settings ? 'saved' : 'failed'; }, function (e2) { return isGone(e2) ? 'gone' : 'unknown'; }).then(function (outcome) {
+          S.locked = false;
+          if (outcome === 'gone') { close(); return; }
+          return reload(where, outcome);
+        });
+      });
+    });
+    return S.chain;
+  }
+  function reload(where, outcome) {   // 原本那筆請求已經結束：這時讀到的就是後台實際的值
+    // 後台明確回失敗才說沒存成功；連線中斷或一直沒回應＝結果不明，不下結論
+    var head = outcome === 'saved' ? '剛才的修改晚了一點，但已經存進去。' : (outcome === 'unknown' ? '還是沒有收到後台回應，不確定剛才的修改有沒有存進去，請看一下是不是你要的。' : '剛才的修改沒有存成功。');
+    return call({ op: 'pushSettingsGet' }).then(function (r) {
+      if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || S.defaults; render(); say(where, head + '畫面上是後台目前的設定。', outcome === 'saved' ? 'ok' : 'err'); return; }
+      render(); say(where, head + '重新讀取設定失敗（' + errLabel(r) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
+    }, function (e) {
+      if (isGone(e)) { close(); return; }
+      render(); say(where, head + '重新讀取設定失敗（' + (isTimeout(e) ? '網路逾時' : friendlyErr(e && e.message)) + '），畫面上的值可能不是最新，請關掉再打開。', 'err');
+    });
+  }
+  function load() {   // 也排進同一條隊伍：前一筆存檔還沒結束時讀，會讀到舊值
+    S.settings = null; S.loadErr = ''; render();
+    S.chain = S.chain.then(function () {
+      return call({ op: 'pushSettingsGet' }).then(function (r) {
+        if (r && r.ok === true && r.settings) { S.settings = r.settings; S.defaults = r.modeDefaults || null; } else S.loadErr = errLabel(r);
+        render();
+      }, function (e) {
+        if (isGone(e)) { close(); return; }
+        S.loadErr = isTimeout(e) ? '網路逾時，請確認網路後再試' : friendlyErr(e && e.message); render();
+      });
+    });
+    return S.chain;
+  }
+
+  // 測試通知
+  function setTest(text, cls) { S.testMsg = { text: text, cls: cls || '' }; say('nsTestMsg', text, cls); }
+  function wait(sec) {
+    S.testUntil = Date.now() + sec * 1000; clearInterval(S.testTimer);
+    var tick = function () {
+      var left = Math.ceil((S.testUntil - Date.now()) / 1000), b = document.getElementById('nsTest');
+      if (left <= 0) { clearInterval(S.testTimer); S.testTimer = null; S.testUntil = 0; if (b) b.disabled = false; setTest('可以再試一次了。', ''); return; }
+      if (b) b.disabled = true; setTest('剛剛才傳過，請一分鐘後再試（還要 ' + left + ' 秒）。', 'err');
+    };
+    tick(); S.testTimer = setInterval(tick, 1000);
+  }
+  function test() {
+    var b = document.getElementById('nsTest');
+    if (!b || Date.now() < S.testUntil || b.classList.contains('busy')) return;
+    busy(b, true, '傳送中'); setTest('', '');
+    call({ op: 'pushTest' }).then(function (r) {
+      busy(b, false);
+      if (r && r.error === 'rate_limited') { wait(Math.max(1, Number(r.retryAfterSec) || 60)); return; }
+      var cred = (r && r.credentials === false) ? ' 另外，系統端的推播憑證有問題，通知暫時送不出去，請通知管理者。' : '';
+      if (r && r.ok === true && r.queued) { setTest('已送出，請看手機有沒有收到「測試通知」' + (Number(r.devices) > 1 ? '（會送到 ' + Number(r.devices) + ' 支手機）' : '') + '。' + cred, cred ? 'err' : 'ok'); return; }
+      if (r && r.ok === true && r.reason === 'no_device') { setTest('這支手機還沒登記通知：你的帳號目前沒有可以收通知的手機。請在手機 App 登入並允許通知，再試一次。' + cred, 'err'); return; }
+      setTest('測試通知沒有送出（' + errLabel(r) + '）。' + cred, 'err');
+    }, function (e) {
+      busy(b, false);
+      if (isGone(e)) { close(); return; }
+      setTest(isTimeout(e) ? '網路逾時：沒有收到回應，不確定測試通知有沒有送出。請等一分鐘看手機，沒收到再按一次。' : '測試通知沒有送出（' + friendlyErr(e && e.message) + '）。', 'err');
+    });
+  }
+
+  function hide() { S.open = false; if (box) box.classList.remove('on'); document.body.classList.remove('ns-open'); }
+  function open() {
+    if (!box) return;
+    var sh = document.getElementById('yz-sheet'), mk = document.getElementById('yz-sheet-mask');
+    if (sh) sh.classList.remove('on'); if (mk) mk.classList.remove('on');
+    if (!S.open) { S.open = true; box.classList.add('on'); document.body.classList.add('ns-open'); box.scrollTop = 0; try { history.pushState({ yzNs: 1 }, ''); S.pushed = true; } catch (e) { S.pushed = false; } }
+    load();
+  }
+  function close() {
+    if (!S.open) return;
+    if (S.pushed) { S.pushed = false; try { history.back(); return; } catch (e) {} }
+    hide();
+  }
+  window.addEventListener('popstate', function () { if (S.open) { S.pushed = false; hide(); } });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && S.open) close(); });
+  ['nsOpen', 'nsOpen2'].forEach(function (id) { var el = document.getElementById(id); if (el) el.onclick = open; });
+  var cb = document.getElementById('nsClose'); if (cb) cb.onclick = close;
+  return { open: open, close: close, isOpen: function () { return S.open; } };
 })();
 </script>
 
