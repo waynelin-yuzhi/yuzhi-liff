@@ -5,6 +5,7 @@
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>植間 - 對話收件匣</title>
+<script>/* App 殼（智能客服）偵測：Capacitor 在文件開頭就注入 window.Capacitor，這裡先掛 html.yz-native，隱藏有植內部導覽不會先閃一下；一般瀏覽器不受影響 */try { var YZC = window.Capacitor; if (YZC && typeof YZC.isNativePlatform === 'function' && YZC.isNativePlatform()) document.documentElement.classList.add('yz-native'); } catch (eYzn) {}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
 <style>
   /* 關掉手機瀏覽器的下拉重新整理：改稿時在框裡往上捲到頂再往下拉，會被當成整頁重新整理（2026-10-21 Wayne 回報） */
@@ -150,6 +151,25 @@
     .yz-sheet-grid a.active{background:#E9EDE3;border-color:var(--moss)}
     .yz-sheet-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
   }
+  /* App 殼（智能客服）只留客服自己的東西（2026-11-20）：拿掉有植主系統沿用來的首頁、各模組分頁、設定中心、☰ 全部工具；
+     通知設定與登出收進收件匣自己的「設定」（#stBox）。一般瀏覽器照舊。 */
+  html.yz-native .yz-tab-home,html.yz-native .yz-tab[data-page],html.yz-native #nsOpen,html.yz-native #leave,html.yz-native #yz-home,html.yz-native #yz-more{display:none !important}
+  html:not(.yz-native) .yz-native-only{display:none !important}
+
+/* 收件匣設定（App 殼）：可再加項目的清單；外框沿用通知設定的 .ns-bar／.ns-in */
+#stBox{display:none;position:fixed;inset:0;z-index:79;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
+#stBox.on{display:block}
+body.st-open{overflow:hidden}
+.st-list{background:#fff;border:1px solid var(--line);border-radius:6px;margin-bottom:12px}
+.st-list>*+*{border-top:1px solid var(--line)}
+.st-go{display:flex;width:100%;align-items:center;gap:10px;min-height:52px;padding:0 14px;border:none;background:none;font-family:inherit;font-size:15px;color:var(--ink);text-align:left;cursor:pointer}
+.st-go:active{background:var(--tint)}
+.st-go svg{width:20px;height:20px;stroke:#4F6147;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.st-go span{flex:1}
+.st-go i{font-style:normal;color:var(--muted);font-size:18px}
+.st-info{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;font-size:14px;color:var(--body)}
+.st-info b{font-weight:500;color:var(--ink)}
+.st-out{color:var(--brick)}
 
 /* 通知設定（全螢幕面板：手機與桌機同一套） */
 #nsBox{display:none;position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
@@ -327,16 +347,22 @@ body.ns-open{overflow:hidden}
   <a class="yz-tab" data-page="employees" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=employees"><svg><use href="#icon-calendar"/></svg><span class="yz-tab-label">人事</span></a>
   <a class="yz-tab" data-page="payroll" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=payroll"><svg><use href="#icon-bank"/></svg><span class="yz-tab-label">薪資</span></a>
   <a class="yz-tab" data-page="materials" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=materials"><svg><use href="#icon-plant"/></svg><span class="yz-tab-label">材料</span></a>
-  <span class="yz-tab-end"><button type="button" class="yz-tab" id="nsOpen" title="通知設定"><svg><use href="#icon-bell"/></svg><span class="yz-tab-label">通知設定</span></button><a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a><button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button></span>
+  <span class="yz-tab-end"><button type="button" class="yz-tab yz-native-only" id="stOpen" title="設定"><svg><use href="#icon-settings"/></svg><span class="yz-tab-label">設定</span></button><button type="button" class="yz-tab" id="nsOpen" title="通知設定"><svg><use href="#icon-bell"/></svg><span class="yz-tab-label">通知設定</span></button><a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a><button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button></span>
 </nav>
 <nav class="yz-bottomnav" id="yz-bottomnav">
   <button type="button" data-tab="todo" class="on"><svg><use href="#yzs-tray"/></svg>待處理</button>
   <button type="button" data-tab="sched"><svg><use href="#icon-clock"/></svg>已排程</button>
   <button type="button" data-tab="all"><svg><use href="#icon-menu"/></svg>全部</button>
   <button type="button" data-tab="staff"><svg><use href="#icon-client"/></svg>員工</button>
+  <button type="button" class="yz-native-only" id="stOpen2"><svg><use href="#icon-settings"/></svg>設定</button>
 </nav>
 <div class="yz-sheet-mask" id="yz-sheet-mask"></div>
 <div class="yz-sheet" id="yz-sheet"><h3>全部工具<button type="button" id="yz-sheet-close">關閉</button></h3><button type="button" class="btn ghost ns-entry" id="nsOpen2"><svg><use href="#icon-bell"/></svg>通知設定</button><div class="yz-sheet-grid" id="yz-sheet-grid"></div><div class="yz-sheet-foot"><span class="small muted">Workspace 工具會另開瀏覽器（需要 Google 登入）</span><button type="button" class="btn link" id="leave2">登出這台裝置</button></div></div>
+<div id="stBox" role="dialog" aria-label="設定"><div class="ns-bar"><button type="button" id="stClose">關閉</button><h2>設定</h2><span class="ns-sp"></span></div><div class="ns-in">
+  <div class="st-list"><button type="button" class="st-go" id="stNs"><svg><use href="#icon-bell"/></svg><span>通知設定</span><i>›</i></button></div>
+  <div class="st-list"><div class="st-info">登入信箱<b id="stEmail">讀取中</b></div><div class="st-info">App 版本<b id="stVer">讀取中</b></div></div>
+  <div class="st-list"><button type="button" class="st-go st-out" id="stLeave"><span>登出這台裝置</span></button></div>
+</div></div>
 <div id="nsBox" role="dialog" aria-label="通知設定"><div class="ns-bar"><button type="button" id="nsClose">關閉</button><h2>通知設定</h2><span class="ns-sp"></span></div><div class="ns-in" id="nsBody"></div></div>
 <div class="page">
 <h1>對話收件匣</h1>
@@ -1445,11 +1471,11 @@ body.ns-open{overflow:hidden}
     mask.onclick = function () { toggle(false); };
     document.getElementById('leave2').onclick = function () { document.getElementById('leave').click(); };
     document.getElementById('yz-back').onclick = function () { document.getElementById('back').click(); };
-    document.querySelectorAll('#yz-bottomnav button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); window.scrollTo(0, 0); }; });
+    document.querySelectorAll('#yz-bottomnav button[data-tab]').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); window.scrollTo(0, 0); }; });
     var syncBar = function () {
       var th = document.body.classList.contains('view-thread'), hb = document.querySelector('#head b');
       document.getElementById('yz-appbar-t').textContent = th ? ((hb && hb.textContent.trim()) || '對話') : '對話收件匣';
-      document.querySelectorAll('#yz-bottomnav button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === TAB); });
+      document.querySelectorAll('#yz-bottomnav button[data-tab]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === TAB); });
     };
     if (window.MutationObserver) {
       new MutationObserver(syncBar).observe(document.body, { attributes: true, attributeFilter: ['class'] });
@@ -1484,6 +1510,7 @@ body.ns-open{overflow:hidden}
 (function () {
   var CAP = window.Capacitor;
   if (!CAP || typeof CAP.isNativePlatform !== 'function' || !CAP.isNativePlatform()) return;
+  document.documentElement.classList.add('yz-native');   // 開頭偵測的備援
   var PN = CAP.Plugins && CAP.Plugins.PushNotifications, APP = CAP.Plugins && CAP.Plugins.App;
   var VIEW_EVERY = 20000;   // 後端 VIEW_MS＝60 秒沒回報就當沒在看：每 20 秒補報一次
   var CID_OK = /^[A-Za-z0-9]{1,40}$/;   // 與網址 cid 參數同一套清洗
@@ -1522,7 +1549,7 @@ body.ns-open{overflow:hidden}
       var s = p && p.receive;
       return (s === 'prompt' || s === 'prompt-with-rationale') ? PN.requestPermissions() : p;
     }).then(function (p) {
-      if (!p || p.receive !== 'granted') { REG.state = 'denied'; bar('通知權限沒有打開，這支手機收不到新訊息通知。請到手機「設定 > 應用程式 > 有植客服 > 通知」打開，再按重試。', true); return; }
+      if (!p || p.receive !== 'granted') { REG.state = 'denied'; bar('通知權限沒有打開，這支手機收不到新訊息通知。請到手機「設定 > 應用程式 > 智能客服（舊版叫有植客服）> 通知」打開，再按重試。', true); return; }
       clearTimeout(REG.tokenWait);
       REG.tokenWait = setTimeout(function () { if (REG.state === 'working') { REG.state = 'failed'; bar('推播註冊失敗：手機一直拿不到通知代碼（可能沒有 Google Play 服務或網路不穩）。', true); } }, 30000);
       return PN.register();
@@ -1625,6 +1652,7 @@ body.ns-open{overflow:hidden}
     var z = document.getElementById('imgZoomBox');
     if (z && z.classList.contains('on')) { history.back(); return; }
     if (window.yzNs && yzNs.isOpen()) { yzNs.close(); return; }
+    if (window.yzSt && yzSt.isOpen()) { yzSt.close(); return; }
     if (document.body.classList.contains('view-thread')) { document.getElementById('back').click(); return; }
     if (APP.minimizeApp) APP.minimizeApp();
   });
@@ -1891,6 +1919,37 @@ var yzNs = (function () {
   ['nsOpen', 'nsOpen2'].forEach(function (id) { var el = document.getElementById(id); if (el) el.onclick = open; });
   var cb = document.getElementById('nsClose'); if (cb) cb.onclick = close;
   return { open: open, close: close, isOpen: function () { return S.open; } };
+})();
+
+/* 收件匣設定（App 殼才有入口）：通知設定、登入信箱（前兩碼＋遮罩）、App 版本、登出。之後的帳號、客服規則等往 .st-list 加列。 */
+var yzSt = (function () {
+  var box = document.getElementById('stBox'), isOpen = false, pushed = false;
+  if (!box) return { open: function () {}, close: function () {}, isOpen: function () { return false; } };
+  function maskEmail(e) { e = String(e || ''); return e ? e.substring(0, 2) + '••••••' : '讀不到'; }
+  function fill() {
+    var em = document.getElementById('stEmail'), ver = document.getElementById('stVer');
+    try { sb.auth.getSession().then(function (r) { var u = r && r.data && r.data.session && r.data.session.user; em.textContent = maskEmail(u && u.email); }, function () { em.textContent = '讀不到'; }); } catch (e) { em.textContent = '讀不到'; }
+    var A = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
+    if (A && A.getInfo) A.getInfo().then(function (i) { ver.textContent = (i && i.version) ? i.version + (i.build ? '（' + i.build + '）' : '') : '讀不到'; }, function () { ver.textContent = '讀不到'; });
+    else ver.textContent = '網頁版';
+  }
+  function hide() { isOpen = false; box.classList.remove('on'); document.body.classList.remove('st-open'); }
+  function open() {
+    if (!isOpen) { isOpen = true; box.classList.add('on'); document.body.classList.add('st-open'); box.scrollTop = 0; try { history.pushState({ yzSt: 1 }, ''); pushed = true; } catch (e) { pushed = false; } }
+    fill();
+  }
+  function close() {
+    if (!isOpen) return;
+    if (pushed) { pushed = false; try { history.back(); return; } catch (e) {} }
+    hide();
+  }
+  window.addEventListener('popstate', function (ev) { if (isOpen && !(ev.state && ev.state.yzSt)) { pushed = false; hide(); } });   // 從通知設定返回時回到設定這一層（state 仍是 yzSt），不跟著關
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && isOpen && !(window.yzNs && yzNs.isOpen())) close(); });
+  ['stOpen', 'stOpen2'].forEach(function (id) { var el = document.getElementById(id); if (el) el.onclick = open; });
+  document.getElementById('stClose').onclick = close;
+  document.getElementById('stNs').onclick = function () { yzNs.open(); };
+  document.getElementById('stLeave').onclick = function () { document.getElementById('leave').click(); };
+  return { open: open, close: close, isOpen: function () { return isOpen; } };
 })();
 </script>
 
