@@ -809,7 +809,7 @@ body.ns-open{overflow:hidden}
         if (d.publishAt) {   // 比照 pasteBack：框裡已經有不同的時間先問，不默默蓋掉他剛改的
           var sa = document.getElementById('sendAt'), wb = document.getElementById('whenBox'), want = d.publishAt.replace(' ', 'T'), curAt = sa ? String(sa.value || '') : '';
           if (sa && curAt && curAt !== want && !confirm('預定時間框裡現在是 ' + curAt.replace('T', ' ') + '，要換成上次的 ' + d.publishAt + ' 嗎？')) d.atKept = curAt.replace('T', ' ');
-          else if (sa) { sa.value = want; sa.defaultValue = want; KEEP_AT[cid] = d.publishAt; }   /* 程式帶入的時間當基準值：不然稿區會一直被當成編輯中而不重畫 */
+          else if (sa) { sa.value = want; KEEP_AT[cid] = d.publishAt; }   /* 不設 defaultValue：寫回的時間跟稿的建議時間不同時要維持「編輯中」，稿區才不會被背景重畫畫回建議時間；相同時本來就等於基準值 */
           if (wb) wb.classList.add('on');
         }
         try { var oR = unsureGet(cid); if (oR.draft) { oR.draft.resend = true; oR.draft.atKept = d.atKept; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(oR)); } } catch (eR) {}
@@ -1246,7 +1246,12 @@ body.ns-open{overflow:hidden}
     document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
     (function () {   // 新稿沒有預定時間、但你先前為這位設過（還在未來）：帶回來並明講，不要默默變成現在送
       var sa0 = document.getElementById('sendAt'), kept = KEEP_AT[cur];
-      if (sa0 && !p.publishAt && kept && Date.parse(kept.replace(' ', 'T')) > Date.now() + 2 * 60000) {
+      var uR = unsureGet(cur).draft, uOn = !!(uR && uR.ap === p.id && uR.resend), rAt = uOn ? String(uR.atKept || uR.publishAt || '') : '';
+      if (uOn) {   // 確定沒送、他按過「再送一次」：之後任何重畫（含整頁重開）框裡都要跟紅框說的一致，不可以畫回稿的原文與建議時間
+        if (sa0 && rAt) { sa0.value = rAt.replace(' ', 'T'); document.getElementById('whenBox').classList.add('on'); KEEP_AT[cur] = rAt; }
+        if (uR.text && ta.value === ta.defaultValue && ta.value !== uR.text) { ta.value = uR.text; ta.oninput(); }
+      }
+      else if (sa0 && !p.publishAt && kept && Date.parse(kept.replace(' ', 'T')) > Date.now() + 2 * 60000) {
         sa0.value = kept.replace(' ', 'T'); sa0.defaultValue = sa0.value; document.getElementById('whenBox').classList.add('on');   // 程式帶入的時間當基準值：不然稿區會一直被當成「編輯中」而不再更新
         var pmK = document.getElementById('pendMsg'); if (pmK && !pmK.textContent) pmK.textContent = '已帶入你先前為這位設的預定時間 ' + kept + '；不要的話把時間清掉再送';
       }
