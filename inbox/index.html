@@ -1549,7 +1549,7 @@ body.ns-open{overflow:hidden}
       var s = p && p.receive;
       return (s === 'prompt' || s === 'prompt-with-rationale') ? PN.requestPermissions() : p;
     }).then(function (p) {
-      if (!p || p.receive !== 'granted') { REG.state = 'denied'; bar('通知權限沒有打開，這支手機收不到新訊息通知。請到手機「設定 > 應用程式 > 智能客服（舊版叫有植客服）> 通知」打開，再按重試。', true); return; }
+      if (!p || p.receive !== 'granted') { REG.state = 'denied'; bar('通知權限沒有打開，這支手機收不到新訊息通知。請到手機「設定 > 應用程式 > 本 App > 通知」打開，再按重試。', true); return; }
       clearTimeout(REG.tokenWait);
       REG.tokenWait = setTimeout(function () { if (REG.state === 'working') { REG.state = 'failed'; bar('推播註冊失敗：手機一直拿不到通知代碼（可能沒有 Google Play 服務或網路不穩）。', true); } }, 30000);
       return PN.register();
