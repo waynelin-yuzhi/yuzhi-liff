@@ -63,6 +63,7 @@ select{font-family:inherit;font-size:14px;padding:8px;border:1px solid #E3DCCB;b
 .stgnext{font-size:12.5px;line-height:1.7;color:#8A8F86;margin-top:9px;padding-top:9px;border-top:1px dashed #E3DCCB;}
 .links a{display:block;color:#4A6FA5;font-size:14px;margin:6px 0;word-break:break-all;}
 .note{font-size:13px;color:#8A8F86;line-height:1.6;margin-top:12px;}
+.alert-line{margin:8px 0;color:#B3261E;font-weight:700;font-size:14px;line-height:1.6;}
 .ctx{margin:10px 0;padding:10px 12px;background:#F4F1E7;border-radius:8px;font-size:13px;color:#8A8F86;line-height:1.6;}
 .brief{margin:10px 0;padding:10px 12px;background:#EEF2E6;border-radius:8px;white-space:pre-wrap;font-size:13px;color:#8A8F86;line-height:1.6;}
 .btn-home{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;background:#5F6E58;color:#FFFCF5;border-radius:10px;padding:13px 0;font-size:15px;font-weight:600;letter-spacing:2px;margin:16px 0 0;}
@@ -195,6 +196,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     html += '<div class="meta">' + esc(id) + ' · ' + esc(TYPES[type] || type) + ' · 來源 ' + esc(from) + ' · ' + esc(it.ts || '') + '</div>';
     html += '<div id="ph-stage" class="ph"></div>';
     if (pl.context) html += '<div class="ctx"><b>客戶脈絡</b>：' + esc(pl.context) + '</div>';
+    (Array.isArray(pl.alertLines) ? pl.alertLines : []).forEach(function (al) { al = String(al == null ? '' : al).trim(); if (al) html += '<div class="alert-line">' + esc(al) + '</div>'; });
     if (pl.brief) html += '<div class="brief">' + esc(pl.brief) + '</div>';
     if (pl.previewImages && pl.previewImages.length) html += '<div id="ph-preview" style="margin:8px 0;">' + pl.previewImages.map(function (pi) { return '<span class="pimg"><i></i>' + esc(pi.label) + '</span>'; }).join('') + '</div>';
     if (pl.lineReplyTo && status === '待核可') html += '<div class="note" style="margin:6px 0 10px;"><a style="color:#5F6E58;font-size:14px;" href="' + esc(INBOX + '?cid=' + pl.lineReplyTo + '&t=' + Date.now() + '&openExternalBrowser=1') + '" target="_top">到對話收件匣處理這位（看整段對話、改稿、給意見、排程）</a></div>';

@@ -550,7 +550,7 @@ body.ns-open{overflow:hidden}
     if (OV.stale) return null;
     var mine = ovPendingAll(cid), ovp = mine[0];
     if (!ovp || !ovp.text) return null;
-    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], queued: mine.length - 1, attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [], attachWarnings: ovp.attachWarnings, inheritedFrom: ovp.inheritedFrom };
+    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], queued: mine.length - 1, attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [], alertLines: ovp.alertLines || [], attachWarnings: ovp.attachWarnings, inheritedFrom: ovp.inheritedFrom };
   }
   // 「正在編輯」一律掃描畫面上的輸入元件，不靠寫死的 id 清單：新加的欄位才不會漏（2026-11-18 Wayne 回報改到一半被重畫）
   var REGION_BOX = { dossier: 'dossier', pend: 'pendBox', compose: 'manualBox' };
@@ -573,6 +573,9 @@ body.ns-open{overflow:hidden}
     var tc = document.querySelector('.threadcard'), ae = document.activeElement;
     return !!(dirty || ATT.draft.length || ATT.compose.length || (ae && tc && tc.contains(ae) && editableEl(ae)) || fieldsIn(tc).some(fieldEdited));
   }
+  // 核可件的紅字提醒（payload.alertLines，例：金額有疑慮）：每行一則、紅色粗體、直接攤在稿的上方；純文字，一律 esc
+  function alertLinesList(a) { return (Array.isArray(a) ? a : []).map(function (x) { return String(x == null ? '' : x).trim(); }).filter(Boolean); }
+  function alertLinesHtml(a) { return alertLinesList(a).map(function (x) { return '<div class="alertLine" style="color:#B3261E;font-weight:700;font-size:14px;line-height:1.5;margin:6px 0">' + esc(x) + '</div>'; }).join(''); }
   function shownAp() { var d = document.getElementById('draft'); return d ? (d.getAttribute('data-ap') || '') : ''; }
   // 某一區有沒送出的輸入就整區不重畫，記下來等他離開編輯再補畫；動作完成後要刷新的那一區用 FORCE_PAINT 指定（照樣保留輸入）
   var REDRAW_DUE = {}, FORCE_PAINT = {}, SHOWN_P = null;
@@ -972,7 +975,7 @@ body.ns-open{overflow:hidden}
       if (x.pending && apHidden(x.pending.id)) x.pending = null;   // 後台還沒更新完，剛處理掉的稿不可以畫回來
       var pendSame = !!(t.pending && x.pending && t.pending.id === x.pending.id);
       var textGrew = pendSame && String(x.pending.text || '').length > String(t.pending.text || '').length;   // 總覽版的稿被截到 4000 字，補件版才是完整的
-      var modsSig = function (p) { return ((p && p.mods) || []).map(function (m) { return m.key; }).join('|'); }; var modsNew = pendSame && modsSig(x.pending) !== modsSig(t.pending);   // 補件版的附掛清單和畫面上的不同 → 重畫出勾選框
+      var modsSig = function (p) { return ((p && p.mods) || []).map(function (m) { return m.key; }).join('|'); }; var modsNew = pendSame && (modsSig(x.pending) !== modsSig(t.pending) || alertLinesList(x.pending.alertLines).join('\n') !== alertLinesList(t.pending.alertLines).join('\n'));   // 補件版的附掛清單和畫面上的不同 → 重畫出勾選框
       if (!pendSame) t.pending = x.pending || null; else if (x.pending) t.pending = x.pending;
       t.scheduled = x.scheduled || []; t.extrasLoaded = true;
       if (x.members) (t.members || []).forEach(function (u) { var m = x.members[u.userId]; if (!m) return; u.lineName = m.lineName || u.lineName; u.name = m.name || u.name; u.role = m.role || u.role; });
@@ -1241,6 +1244,7 @@ body.ns-open{overflow:hidden}
       + '<div class="draft"><div class="lab"><span>客服擬的回覆・' + esc(p.from) + (p.confidence != null ? '・信心 ' + Math.round(Number(p.confidence) * 100) + '%' : '') + '</span><span>' + esc(p.id) + '</span></div>'
       + '<div id="addArea">' + addAreaHtml(p) + '</div>'
       + (/^規格卡沒附上/.test(p.context || '') ? '<div class="small" style="color:#B85A3D;font-weight:600;margin:6px 0">' + esc(String(p.context).split('\n')[0]) + '</div>' : '')
+      + alertLinesHtml(p.alertLines)
       + ((p.ownerQuestions || []).length ? '<div class="fbbox on" id="oqBox" style="margin-bottom:8px"><div class="small" style="margin-bottom:4px"><b>客服想問你</b>：答了就用你的答案重擬完整回覆（下面是目前的過渡稿，也可以直接核可）</div>' + p.ownerQuestions.map(function (q, i) { return '<div class="row"><span class="small" style="flex:1">' + (i + 1) + '. ' + esc(q) + '</span></div><input id="oqA' + i + '" placeholder="你的答案" style="width:100%;box-sizing:border-box;margin-bottom:6px">'; }).join('') + '<div class="row"><label class="small"><input type="checkbox" id="oqLearn"> 這些資訊以後也適用（學成常見問答）</label></div><div class="row"><button class="btn" id="oqSend">回答並重擬</button></div></div>' : '')
       + '<textarea id="draft" rows="6" data-ap="' + esc(p.id) + '">' + esc(p.text) + '</textarea><div class="small muted" style="margin-top:4px"><a href="#" class="splitBtn" data-for="draft" style="color:#5F6E58;font-weight:600;text-decoration:none">＋ 切下一則泡泡</a>　游標處插入「---」一行＝客戶會收到下一則泡泡（同一次送出）' + (String(p.text || '').indexOf('\n---') >= 0 ? '；引用回覆會自動帶' : '') + '</div>' + ((p.quickReplies || []).length ? '<div class="small muted" style="margin-top:4px">客戶端快速回覆按鈕：' + p.quickReplies.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join(' ') + '</div>' : '')
       + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + modsHtml + cards
@@ -1263,7 +1267,8 @@ body.ns-open{overflow:hidden}
     var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = (dirty ? '修改後送出' : '送出') + (p.exec && p.exec.short ? '並' + p.exec.short : ''); try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} resendTextSync(cur, p.id, ta.value); };
     try {   // 上一份稿改到一半被換掉：本機還留著他的字，給一鍵貼回（2026-10-05 臻實案後加）
       var savedD = JSON.parse(localStorage.getItem('yz_draft:' + cur) || 'null');
-      if (savedD && savedD.text && Date.now() - Number(savedD.at || 0) < 6 * 3600000 && savedD.text !== p.text) {   // 同一張稿也問：整頁重載後框裡會是原稿（2026-11-18）
+      var unsR = unsureGet(cur).draft, mineOn = !!(unsR && unsR.ap === p.id && unsR.resend && typeof unsR.textMine === 'string');   /* 再送一次後他改過的字已經由不明紀錄帶回框裡：不再問要不要貼回 */
+      if (!mineOn && savedD && savedD.text && Date.now() - Number(savedD.at || 0) < 6 * 3600000 && savedD.text !== p.text) {   // 同一張稿也問：整頁重載後框裡會是原稿（2026-11-18）
         var unsD = unsureGet(cur).draft, unsSame = !!(unsD && unsD.text === savedD.text);
         var pmR0 = document.getElementById('pendMsg'); pmR0.innerHTML = (unsSame ? esc(UNSURE_MSG) + '。要的話可以' : (savedD.ap !== p.id ? '上一份稿（' + esc(savedD.ap) + '）你改到一半的文字還在這支手機裡：' : '這張稿你上次改到一半的文字還在這支手機裡：')) + '<a href="#" id="restoreDraft">貼回來</a>　<a href="#" id="dropDraft">不用了</a>' + (unsSame ? '<div style="margin-top:4px;padding:6px;background:#FFF6F3;border-radius:4px;white-space:pre-wrap">' + esc(savedD.text) + '</div>' : ''); if (savedD.ap === p.id) pmR0.setAttribute('data-same-ap', '1'); else pmR0.removeAttribute('data-same-ap');
         document.getElementById('restoreDraft').onclick = function (ev) { ev.preventDefault(); ta.value = savedD.text; if (unsSame) unsureClear(cur, 'draft'); ta.oninput(); pmR0.textContent = '已貼回你上次改的文字，確認後按「修改後送出」。'; };
