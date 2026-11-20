@@ -189,9 +189,12 @@ body.ns-open{overflow:hidden}
 .ns-mode b{font-size:15px;color:var(--ink)}
 .ns-d{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
 .ns-until{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--body)}
-.ns-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.ns-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 12px;padding:10px 0;border-top:1px solid var(--line)}
 .ns-sec h3+.ns-d+.ns-row,.ns-sec h3+.ns-row{border-top:none}
-.ns-t{flex:1;min-width:0;font-size:14px;color:var(--ink)}
+/* 標題欄至少 160px：右邊的控制項放不下（兩個時間、星期幾）就整組換到下一行，標題不會被擠成一個字一行；只有開關的列照舊左右排 */
+.ns-t{flex:1 1 160px;min-width:0;font-size:14px;color:var(--ink)}
+.ns-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%;font-size:14px;color:var(--body)}
+.ns-in select.ns-hm{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink);min-width:88px}
 .ns-in input[type=time],.ns-in input[type=datetime-local],.ns-in input[type=number]{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink)}
 .ns-in input[type=number]{width:80px}
 .ns-sw{-webkit-appearance:none;appearance:none;position:relative;flex:none;width:44px;height:26px;border-radius:13px;background:#D9D3C4;cursor:pointer;transition:background .15s;margin:0}
@@ -1849,6 +1852,14 @@ var yzNs = (function () {
   }
   function say(id, text, cls) { var el = document.getElementById(id); if (!el) return; el.className = 'ns-msg' + (cls ? ' ' + cls : ''); el.textContent = text || ''; }
 
+  // 時間一律自己畫下拉、24 小時制（原生 time 欄位在十二小時制的手機上不顯示上午下午，21:00 與 09:00 都顯示 9:00）；半小時一格，值仍是 HH:MM
+  // 既有設定不在半點整點上（例如 08:15）就多一個選項保留它，不可以因為打開這頁就被改掉
+  function hmSelect(field, val) {
+    val = String(val == null ? '' : val); if (/^\d\d:\d\d:\d\d$/.test(val)) val = val.slice(0, 5); var ok = /^([01]\d|2[0-3]):[0-5]\d$/.test(val), opts = [], seen = false;
+    for (var m = 0; m < 1440; m += 30) { var v = ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); if (v === val) seen = true; opts.push(v); }
+    if (ok && !seen) { opts.push(val); opts.sort(); }
+    return '<select class="ns-hm" data-hm="' + esc(field) + '">' + (ok ? '' : '<option value="" selected>未設定</option>') + opts.map(function (v) { return '<option value="' + v + '"' + (v === val ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select>';
+  }
   function sw(attr, on, title, desc) {
     return '<label class="ns-row"><span class="ns-t">' + esc(title) + '<div class="ns-d">' + esc(desc) + '</div></span><input type="checkbox" class="ns-sw" ' + attr + (on ? ' checked' : '') + '></label>';
   }
@@ -1881,17 +1892,17 @@ var yzNs = (function () {
     KINDS.forEach(function (k) { h += sw('data-kind="' + k[0] + '"', !!(s.kinds && s.kinds[k[0]]), k[1], k[2]); });
     h += sw('data-bool="preview"', !!s.preview, '通知顯示訊息內容', '關掉後通知只寫「傳來新訊息」，不露出客戶寫了什麼。');
     h += sw('data-bool="ackRelay"', !!s.ackRelay, '簡短回覆也由語音助理轉告', '客戶回確認話時，同時請語音助理告訴你。');
-    h += '<div class="ns-row"><span class="ns-t">等多久算太久<div class="ns-d">工作時段內累計，15 到 1440 分鐘。</div></span><span><input type="number" id="nsOverdue" min="15" max="1440" step="1" value="' + esc(s.overdueMin) + '"> 分鐘</span></div>';
+    h += '<div class="ns-row"><span class="ns-t">等多久算太久<div class="ns-d">工作時段內累計，15 到 1440 分鐘。</div></span><span class="ns-ctl"><input type="number" id="nsOverdue" min="15" max="1440" step="1" value="' + esc(s.overdueMin) + '"> 分鐘</span></div>';
     h += '<div class="ns-msg" id="nsKindMsg"></div></div>';
 
     h += '<div class="ns-sec" id="nsQuietSec"><h3>安靜時段</h3>';
     h += sw('data-bool="quietEnabled"', !!s.quietEnabled, '開啟安靜時段', '這段時間手機不響，累積的通知到結束時一次彙整。');
-    h += '<div class="ns-row"><span class="ns-t">從幾點到幾點<div class="ns-d">可以跨午夜，例如 21:00 到 09:00。</div></span><span><input type="time" data-hm="quietStart" value="' + esc(s.quietStart) + '"> 到 <input type="time" data-hm="quietEnd" value="' + esc(s.quietEnd) + '"></span></div>';
+    h += '<div class="ns-row"><span class="ns-t">從幾點到幾點<div class="ns-d">可以跨午夜，例如 21:00 到 09:00。</div></span><span class="ns-ctl">' + hmSelect('quietStart', s.quietStart) + '<span>到</span>' + hmSelect('quietEnd', s.quietEnd) + '</span></div>';
     h += sw('data-bool="urgentBypass"', !!s.urgentBypass, '急件照樣通知', '安靜時段內遇到急件，還是馬上通知。');
     h += '<div class="ns-msg" id="nsQuietMsg"></div></div>';
 
     h += '<div class="ns-sec" id="nsWorkSec"><h3>工作時段</h3><div class="ns-d">用來算「客戶等太久」，以及「工作中」「下班」模式的預設結束時間。</div>';
-    h += '<div class="ns-row"><span class="ns-t">上班時間</span><span><input type="time" data-hm="workStart" value="' + esc(s.workStart) + '"> 到 <input type="time" data-hm="workEnd" value="' + esc(s.workEnd) + '"></span></div>';
+    h += '<div class="ns-row"><span class="ns-t">上班時間</span><span class="ns-ctl">' + hmSelect('workStart', s.workStart) + '<span>到</span>' + hmSelect('workEnd', s.workEnd) + '</span></div>';
     h += '<div class="ns-row"><span class="ns-t">上班日</span><span class="ns-days">' + DAYS.map(function (n, i) { var on = (s.workDays || []).indexOf(i + 1) >= 0; return '<label class="' + (on ? 'on' : '') + '"><input type="checkbox" data-day="' + (i + 1) + '"' + (on ? ' checked' : '') + '>' + n + '</label>'; }).join('') + '</span></div>';
     if (s.tz) h += '<div class="ns-d">時區：' + esc(s.tz) + '</div>';
     h += '<div class="ns-msg" id="nsWorkMsg"></div></div>';
@@ -1902,7 +1913,7 @@ var yzNs = (function () {
     h += '<div class="ns-msg' + (S.testMsg && S.testMsg.cls ? ' ' + S.testMsg.cls : '') + '" id="nsTestMsg">' + esc(S.testMsg ? S.testMsg.text : '') + '</div></div>';
     body.innerHTML = h;
     bind();
-    if (S.locked) body.querySelectorAll('#nsModeSec input, #nsModeSec button, #nsKindSec input, #nsQuietSec input, #nsWorkSec input').forEach(function (x) { x.disabled = true; });
+    if (S.locked) body.querySelectorAll('#nsModeSec input, #nsModeSec button, #nsKindSec input, #nsQuietSec input, #nsQuietSec select, #nsWorkSec input, #nsWorkSec select').forEach(function (x) { x.disabled = true; });
   }
 
   function bind() {
@@ -1918,7 +1929,7 @@ var yzNs = (function () {
     var bn = document.getElementById('nsNormal'); if (bn) bn.onclick = function () { save({ mode: 'normal' }, 'nsModeMsg'); };
     body.querySelectorAll('input[data-kind]').forEach(function (c) { c.onchange = function () { var k = {}; k[c.getAttribute('data-kind')] = c.checked; save({ kinds: k }, 'nsKindMsg'); }; });
     body.querySelectorAll('input[data-bool]').forEach(function (c) { c.onchange = function () { var p = {}, f = c.getAttribute('data-bool'); p[f] = c.checked; save(p, f === 'quietEnabled' || f === 'urgentBypass' ? 'nsQuietMsg' : 'nsKindMsg'); }; });
-    body.querySelectorAll('input[data-hm]').forEach(function (c) { c.onchange = function () {
+    body.querySelectorAll('select[data-hm]').forEach(function (c) { c.onchange = function () {
       var f = c.getAttribute('data-hm'), where = /^quiet/.test(f) ? 'nsQuietMsg' : 'nsWorkMsg';
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(c.value)) { render(); say(where, '時間格式不對，已改回原本的設定。', 'err'); return; }
       var p = {}; p[f] = c.value; save(p, where);
