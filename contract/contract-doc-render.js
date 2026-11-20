@@ -26,6 +26,13 @@ function _contractEsc_(s) {
   });
 }
 
+function _contractSignDateOf_(p, eSig) {
+  const given = String((p && p.簽訂日期) == null ? '' : p.簽訂日期).trim();
+  if (given) return given;
+  const m = String((eSig && eSig.at) || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : '';
+}
+
 function _contractRenderHtml_(p, stampUri, opts) {
   opts = opts || {};   // { draft:bool 未定版預覽, finalNo:string 定版編號戳, signature:{uri,name,at} 甲方電子簽 }
   const E = _contractEsc_;
@@ -154,38 +161,42 @@ function _contractRenderHtml_(p, stampUri, opts) {
     _specialList.forEach(function(t, i) { b += pp((_cn[i] || (i + 1)) + '、' + E(t)); });
   }
 
-  const stampHtml = stampUri ? '<img class="stamp" src="' + stampUri + '" alt="合約專用章">' : '';
-  // 中華民國日期：簽訂日期有值則帶入、否則留空格供現場手填（參逸琳外包合約樣式）
+  // 列印用印版（opts.paperPrint）：拿掉植間電子章、留空白蓋章欄給 Wayne 親手用印；客戶的線上簽名照留，另留客戶蓋章欄
+  const paperPrint = !!opts.paperPrint;
+  const stampHtml = (stampUri && !paperPrint) ? '<img class="stamp" src="' + stampUri + '" alt="合約專用章">' : '';
+  const eSig = opts.signature || null;
+  const signDate = _contractSignDateOf_(p, eSig);
+  // 中華民國日期：簽訂日期有值則帶入；線上簽回的用客戶回簽日；都沒有（純紙本）留空格供現場手填
   const rocLine = (function() {
-    const m = String(p.簽訂日期 == null ? '' : p.簽訂日期).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const m = String(signDate).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (m) return '中華民國　' + (Number(m[1]) - 1911) + '　年　' + Number(m[2]) + '　月　' + Number(m[3]) + '　日';
     return '中華民國　＿＿＿　年　＿＿　月　＿＿　日';
   })();
   // 甲方電子簽（零登入簽收頁送回）→ 簽名圖＋簽署紀錄合成進簽名欄
-  const eSig = opts.signature || null;
-  const partyASigBlock = eSig && eSig.uri
+  const partyASigBlock = (eSig && eSig.uri
     ? '<div class="sp"><img class="stamp" src="' + eSig.uri + '" alt="甲方簽名"></div>'
       + '<div class="esign-note">電子簽署：' + E(eSig.name || '') + '　' + E(eSig.at || '') + '</div>'
-    : '<div class="sp"></div>';
+    : '<div class="sp"></div>')
+    + (paperPrint && eSig ? '<div class="sgp">蓋章：（請用印）</div><div class="sp seal-box"></div>' : '');
   const sig = '<div class="sigwrap"><table class="sig"><tr>'
     + '<td class="sc">'
     +   '<div class="st">甲方（委託人）　簽署</div>'
     +   '<div class="sn">客戶名稱：' + v(p.客戶名稱) + '<br>統一編號：' + v(p.甲方統編) + '<br>代表人：' + v(p.甲方代表人) + '<br>聯絡地址：' + v(p.甲方地址) + '<br>聯絡電話：' + v(p.甲方電話) + '</div>'
-    +   '<div class="sgp">簽名 / 蓋章：' + (eSig ? '（已電子簽署）' : '（請親簽並用印）') + '</div>'
+    +   '<div class="sgp">' + (paperPrint && eSig ? '簽名：（已電子簽署）' : '簽名 / 蓋章：' + (eSig ? '（已電子簽署）' : '（請親簽並用印）')) + '</div>'
     +   partyASigBlock
     + '</td>'
     + '<td class="sc">'
     +   '<div class="st">乙方（服務方）　簽署</div>'
     +   '<div class="sn">植間設計股份有限公司<br>統一編號：90877240<br>代表人：林瑋恒　<span class="seal">（合約專用章）</span><br>聯絡地址：新北市中和區連城路569巷9弄26號1樓<br>聯絡電話：02-2221-0318</div>'
     +   '<div class="sgp">簽名 / 蓋章：（請親簽並用印）</div>'
-    +   '<div class="sp">' + stampHtml + '</div>'
+    +   '<div class="sp' + (paperPrint ? ' seal-box' : '') + '">' + stampHtml + '</div>'
     + '</td>'
     + '</tr></table>'
     + '<p class="rocdate">' + rocLine + '</p></div>';
 
   // 封面簽訂日期：有值走 rd() 轉民國格式；空值 fallback 手填佔位（比照簽章欄 rocLine 的設計），
   // 避免前端漏檢／舊呼叫路徑略過必填時，封面直接印出空白格。
-  const coverSignDate = p.簽訂日期 ? rd(p.簽訂日期) : '中華民國　　年　　月　　日';
+  const coverSignDate = signDate ? rd(signDate) : '中華民國　　年　　月　　日';
   // 版本戳：未定版預覽（琥珀 badge）／正式定版（含編號、產生時間）
   const versionStamp = opts.draft
     ? '<div class="draftmark">未定版預覽　·　僅供確認內容、不可簽署</div>'
@@ -201,7 +212,7 @@ function _contractRenderHtml_(p, stampUri, opts) {
     +   '<tr><td class="k">簽訂日期</td><td class="vv">' + coverSignDate + '</td></tr>'
     +   '<tr><td class="k">合約編號</td><td class="vv">' + v(p.合約編號) + '</td></tr>'
     + '</table>'
-    + '<div class="cver">2026-07 修訂版（評估期／低消／服務量調整／違約金級距）</div>'
+    + '<div class="cver">2026-07 修訂版</div>'   // 改版重點（評估期、低消、服務量調整、違約金級距）只留內部，Wayne 2026-11-20：給客戶的版本不印括弧
     + versionStamp
     + '</div>';   // named page（coverpg→預設）切換自帶分頁；再放 page-break div 會夾出整張空白頁（2026-08-28 實案）
 
@@ -257,6 +268,7 @@ function _contractCss_() {
     + '.sig .sgp{font-size:9.5pt;color:#8c8c84;margin-top:4mm;letter-spacing:0.5pt;}'
     + '.sig .sp{height:34mm;text-align:center;font-size:0;}'
     + '.sig .sp .stamp{max-width:34mm;max-height:34mm;margin-top:3mm;}'
+    + '.sig .sp.seal-box{height:44mm;}'   // 列印用印版的空白蓋章欄：公司大章約 4 公分見方
     + '.rocdate{text-align:center;font-size:11pt;letter-spacing:1.5pt;color:#2d342a;margin-top:9mm;}'
     + '.draftmark{margin:14mm auto 0;display:inline-block;border:0.6mm solid #b8893e;color:#8a5a00;background:#fbf3e4;font-size:11pt;letter-spacing:2pt;padding:3mm 8mm;}'
     + '.finalmark{margin-top:14mm;font-size:8.5pt;color:#5f6e58;letter-spacing:1pt;}'
@@ -270,6 +282,7 @@ function _contractCss_() {
     + '.ax th{background:#eef0e9;border:0.3mm solid #dcdcd4;padding:1.4mm 2.2mm;font-size:9pt;font-weight:normal;color:#3e4a38;text-align:left;letter-spacing:0.8pt;}'
     + '.ax td{border:0.3mm solid #dcdcd4;padding:1.2mm 2.2mm;vertical-align:top;color:#2d342a;}'
     + '.ax tr{page-break-inside:avoid;}'
+    + '.ax tbody.axg{break-inside:avoid;page-break-inside:avoid;}'
     + '.ax .r{text-align:right;white-space:nowrap;}.ax .c{text-align:center;}'
     + '.ax .spec{font-size:8.5pt;color:#6b6b63;margin-left:1.5mm;}'
     + '.ax td.area{background:#f3f4ef;font-weight:normal;color:#3e4a38;letter-spacing:1.2pt;padding:0.9mm 2.2mm;font-size:9pt;}'
@@ -318,14 +331,16 @@ function _contractQuoteAppendixHtml_(p) {
   // 月費與一次性各自四捨五入可能與 grand（合併算稅）差 1 元：差額併入一次性費用顯示列、使逐列加總等於合計
   const oneShow = (function() { const df = grand - ((fp ? fpAmt : monthly) + deposit + oneTimeTax); return (oneTime > 0 && Math.abs(df) <= 1) ? oneTimeTax + df : oneTimeTax; })();
 
-  let rows = '', lastArea = null, no = 0;
+  // 區域標題跟該區第一個品項包在同一個 tbody（break-inside:avoid），標題不會單獨落在頁尾（2026-11-20 列印版實案）
+  let rows = '<tbody>', lastArea = null, no = 0, inGroup = false;
   items.forEach(function(it) {
     const area = String(it.area || '').trim();
-    if (area && area !== lastArea) { rows += '<tr><td class="area" colspan="6">' + E(area) + '</td></tr>'; lastArea = area; }
+    if (area && area !== lastArea) { rows += '</tbody><tbody class="axg"><tr><td class="area" colspan="6">' + E(area) + '</td></tr>'; lastArea = area; inGroup = true; }
     no++;
     const total = Number(it.total != null ? it.total : (Number(it.qty) || 0) * (Number(it.price) || 0)) || 0;
     rows += '<tr><td class="c">' + no + '</td><td>' + E(it.name || '') + (it.spec ? '<span class="spec">' + E(it.spec) + '</span>' : '') + '</td>'
       + '<td class="c">' + E(it.qty) + (it.unit ? ' ' + E(it.unit) : '') + '</td><td class="r">' + money(it.price) + '</td><td class="r">' + money(total) + '</td><td class="c">每月</td></tr>';
+    if (inGroup) { rows += '</tbody><tbody>'; inGroup = false; }
   });
   fees.forEach(function(f) {
     const a = feeAmt(f); no++;
@@ -333,6 +348,7 @@ function _contractQuoteAppendixHtml_(p) {
     rows += '<tr><td class="c">' + no + '</td><td>' + E(f.name || f.label || '其他費用') + (f.spec ? '<span class="spec">' + E(f.spec) + '</span>' : '') + '</td>'
       + '<td class="c">1 式</td><td class="r">' + money(a) + '</td><td class="r">' + money(a) + '</td><td class="c">' + kind + '</td></tr>';
   });
+  rows += '</tbody>';
 
   const sumRow = function(k, vv, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="k">' + k + '</td><td class="v">' + vv + '</td></tr>'; };
   let sums = sumRow('每月品項小計（未稅）', money(itemsSum));
@@ -360,7 +376,7 @@ function _contractQuoteAppendixHtml_(p) {
     + '<div class="axmeta">合約編號 ' + E(p.合約編號 || '') + '　·　設置地點 ' + E(p.設置地點 || '') + '　·　報價單 ' + E(rec.quoteNo || p.報價單號) + '</div>'
     + '<table class="ax"><colgroup><col style="width:9mm"><col><col style="width:16mm"><col style="width:23mm"><col style="width:25mm"><col style="width:17mm"></colgroup>'
     + '<thead><tr><th class="c">#</th><th>品項／規格</th><th class="c">數量</th><th class="r">單價</th><th class="r">小計</th><th class="c">性質</th></tr></thead>'
-    + '<tbody>' + rows + '</tbody></table>'
+    + rows + '</table>'
     + '<table class="axsum"><tr><td style="width:44%"></td><td style="width:56%;padding:0"><table class="axsum" style="margin:0">' + sums + '</table></td></tr></table>'
     + '<div class="axnote">' + notes.map(function(t, i) { return (i + 1) + '. ' + t; }).join('<br>') + '</div>'
     + '</div>';
@@ -464,8 +480,9 @@ function _contractRenderOutsourcingHtml_(p, stampUri, opts) {
     ? '<div class="sp"><img class="stamp" src="' + eSig.uri + '" alt="乙方簽名"></div>'
       + '<div class="esign-note">電子簽署：' + E(eSig.name || '') + '　' + E(eSig.at || '') + '</div>'
     : '<div class="sp"></div>';
+  const signDate = _contractSignDateOf_(p, eSig);
   const rocLine = (function() {
-    const m = String(p.簽訂日期 == null ? '' : p.簽訂日期).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const m = String(signDate).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (m) return '中華民國　' + (Number(m[1]) - 1911) + '　年　' + Number(m[2]) + '　月　' + Number(m[3]) + '　日';
     return '中華民國　＿＿＿　年　＿＿　月　＿＿　日';
   })();
@@ -485,7 +502,7 @@ function _contractRenderOutsourcingHtml_(p, stampUri, opts) {
     + '</tr></table>'
     + '<p class="rocdate">' + rocLine + '</p></div>';
 
-  const coverSignDate = p.簽訂日期 ? rd(p.簽訂日期) : '中華民國　　年　　月　　日';
+  const coverSignDate = signDate ? rd(signDate) : '中華民國　　年　　月　　日';
   const versionStamp = opts.draft
     ? '<div class="draftmark">未定版預覽　·　僅供確認內容、不可簽署</div>'
     : (opts.finalNo
@@ -501,7 +518,7 @@ function _contractRenderOutsourcingHtml_(p, stampUri, opts) {
     +   '<tr><td class="k">簽訂日期</td><td class="vv">' + coverSignDate + '</td></tr>'
     +   '<tr><td class="k">合約編號</td><td class="vv">' + v(p.合約編號) + '</td></tr>'
     + '</table>'
-    + '<div class="cver">2026-07 v4（報酬總覽先講總額／付款次月十日／協同前提／責任界線）</div>'
+    + '<div class="cver">2026-07 v4</div>'   // 改版重點（報酬總覽先講總額、付款次月十日、協同前提、責任界線）只留內部，對外不印括弧
     + versionStamp
     + '</div>';   // named page（coverpg→預設）切換自帶分頁；再放 page-break div 會夾出整張空白頁（2026-08-28 實案）
 

@@ -65,6 +65,7 @@ var HASH = new URLSearchParams(location.search).get('h') || '';
 })();
 var NEED_BANK = false;
 var PARTY_FILL = [];
+var SUBJECT = '';
 var app = document.getElementById('app');
 
 function esc(s) {
@@ -117,6 +118,7 @@ function render(d) {
       + '<div class="field"><label>戶名</label><input id="bankHolder" placeholder="與身分證相符之戶名"></div></div>'
     : '';
   PARTY_FILL = Array.isArray(d.partyFill) ? d.partyFill : [];
+  SUBJECT = String(d.subject || '');
   var partyCard = PARTY_FILL.length
     ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">請確認貴公司資料</div>'
       + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下資料將載入合約簽署欄，如有不符請直接更正；尚未填寫之欄位請補齊後再簽署。</div>'
@@ -170,6 +172,13 @@ function vatOk(v) {
   for (var i = 0; i < 8; i++) { var p = Number(v.charAt(i)) * w[i]; sum += Math.floor(p / 10) + (p % 10); }
   return sum % 5 === 0 || (v.charAt(6) === '7' && (sum + 1) % 5 === 0);
 }
+// 與 GAS _contractRepLooksCompany_ 同規則（後端也擋；前端先擋，全頁送出失敗會丟掉簽名）
+function repLooksCompany(v, clientName) {
+  var a = String(v || '').replace(/\s+/g, ''), c = String(clientName || '').replace(/\s+/g, '');
+  if (!a) return false;
+  if (c && (a === c || (a.length >= 4 && c.indexOf(a) >= 0))) return true;
+  return /(公司|企業社|商行|商號|工作室|事務所|協會|基金會)$/.test(a) || /股份有限|有限公司/.test(a);
+}
 function collectPartyFill() {
   var out = {};
   for (var i = 0; i < PARTY_FILL.length; i++) {
@@ -184,6 +193,7 @@ function collectPartyFill() {
     // 系統帶入的原值沒改就原樣送回、不擋（後端同規則：沒改不重驗）
     if (f.editable && v === String(f.value == null ? '' : f.value).replace(/\s+/g, ' ').trim()) { out[f.key] = v; continue; }
     if (f.format === 'name' && (v.length < 2 || v.length > 30)) return bad('甲方' + f.label + '請填 2 到 30 個字');
+    if (f.key === '甲方代表人' && repLooksCompany(v, SUBJECT)) return bad('甲方代表人請填負責人姓名，不是公司名稱');
     if (f.format === 'vat') {
       v = halfWidth(v).replace(/[\s-]/g, '');
       if (!/^[0-9]{8}$/.test(v)) return bad('統一編號須為 8 碼數字');
