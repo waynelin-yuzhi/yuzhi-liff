@@ -65,6 +65,8 @@ var HASH = new URLSearchParams(location.search).get('h') || '';
 })();
 var NEED_BANK = false;
 var PARTY_FILL = [];
+var SUBJECT = '';
+var PARTY_IS_COMPANY = false;
 var app = document.getElementById('app');
 
 function esc(s) {
@@ -117,6 +119,8 @@ function render(d) {
       + '<div class="field"><label>戶名</label><input id="bankHolder" placeholder="與身分證相符之戶名"></div></div>'
     : '';
   PARTY_FILL = Array.isArray(d.partyFill) ? d.partyFill : [];
+  SUBJECT = String(d.subject || '');
+  PARTY_IS_COMPANY = d.partyIsCompany === true;
   var partyCard = PARTY_FILL.length
     ? '<div class="card"><div style="font-size:13px;color:#4A4A45;margin-bottom:2px">請確認貴公司資料</div>'
       + '<div style="font-size:11.5px;color:#8a8275;margin-bottom:10px">以下資料將載入合約簽署欄，如有不符請直接更正；尚未填寫之欄位請補齊後再簽署。</div>'
@@ -170,6 +174,29 @@ function vatOk(v) {
   for (var i = 0; i < 8; i++) { var p = Number(v.charAt(i)) * w[i]; sum += Math.floor(p / 10) + (p % 10); }
   return sum % 5 === 0 || (v.charAt(6) === '7' && (sum + 1) % 5 === 0);
 }
+// 與 GAS _contractRepLooksCompany_ 同規則（後端也擋；前端先擋，全頁送出失敗會丟掉簽名）
+// 個人戶（沒統編、名稱不像公司）只看公司字尾；公司戶再擋「等於客戶名稱」與「客戶名稱開頭 5 字以上的簡稱」
+function looksCompanyName(x) {
+  var a = String(x || '').replace(/\s+/g, '');
+  return !!a && (/(公司|企業社|商行|商號|工作室|事務所|協會|基金會)$/.test(a) || /股份有限|有限公司/.test(a));
+}
+function repLooksCompany(v, clientName, isCompany) {
+  var a = String(v || '').replace(/\s+/g, ''), c = String(clientName || '').replace(/\s+/g, '');
+  if (!a) return false;
+  if (looksCompanyName(a)) return true;
+  if (!c || !(isCompany || looksCompanyName(c))) return false;
+  if (a === c) return true;
+  return a.length >= 5 && !/[A-Za-z·．・]/.test(a) && c.indexOf(a) === 0;
+}
+// 客戶這次在頁面上填的統編（原本空白才會出這一欄）；後端同樣用它判斷公司戶
+function typedVat() {
+  for (var i = 0; i < PARTY_FILL.length; i++) {
+    if (PARTY_FILL[i].key !== '甲方統編') continue;
+    var el = document.getElementById('pf' + i);
+    return halfWidth(String((el && el.value) || '')).replace(/[\s-]/g, '');
+  }
+  return '';
+}
 function collectPartyFill() {
   var out = {};
   for (var i = 0; i < PARTY_FILL.length; i++) {
@@ -184,6 +211,7 @@ function collectPartyFill() {
     // 系統帶入的原值沒改就原樣送回、不擋（後端同規則：沒改不重驗）
     if (f.editable && v === String(f.value == null ? '' : f.value).replace(/\s+/g, ' ').trim()) { out[f.key] = v; continue; }
     if (f.format === 'name' && (v.length < 2 || v.length > 30)) return bad('甲方' + f.label + '請填 2 到 30 個字');
+    if (f.key === '甲方代表人' && repLooksCompany(v, SUBJECT, PARTY_IS_COMPANY || typedVat().length === 8)) return bad('甲方代表人請填負責人姓名，不是公司名稱');
     if (f.format === 'vat') {
       v = halfWidth(v).replace(/[\s-]/g, '');
       if (!/^[0-9]{8}$/.test(v)) return bad('統一編號須為 8 碼數字');
