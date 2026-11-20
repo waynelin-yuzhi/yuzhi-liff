@@ -773,18 +773,29 @@ body.ns-open{overflow:hidden}
   }
   function unsureHtml(u, clue, idp) { return esc(u.msg || UNSURE_MSG) + clue + '：<div style="margin:4px 0;padding:6px;background:#FFF6F3;border-radius:4px;white-space:pre-wrap;color:#4A4A45">' + esc(u.text) + '</div><a href="#" id="' + idp + 'Ok">已經送到了（清掉這段）</a>　<a href="#" id="' + idp + 'Back">沒送到，貼回框裡</a>' + (u.msg ? '' : '　<a href="#" id="' + idp + 'Re">重新確認</a>'); }   // LINE 沒回應的不給重新確認：那種情況系統不寫對話紀錄，查也查不出來
   function bindRecheck(id, cid) { var a = document.getElementById(id); if (a) a.onclick = function (ev) { ev.preventDefault(); RECHECK.at[cid] = 0; a.textContent = unsureRecheck(cid) ? '確認中…' : '重新確認'; }; }
-  function resendReadyHtml(d) {   // 按過「再送一次」之後紅框的字：框裡是什麼就寫什麼（上次的預定時間／上次是立刻送／他後來自己填的時間）
+  function resendReadyHtml(d) {   // 按過「再送一次」之後紅框的字：框裡是什麼就寫什麼（上次的內容或他後來改的；上次的預定時間／上次是立刻送／他後來填的或清空的）
     var last = d.publishAt ? '上次是 ' + esc(d.publishAt) : (d.sentNow ? '上次是立刻送' : '');
-    return '<b>確定沒有送出</b>：已把上次要送的內容' + (d.publishAt && !d.atKept ? '與預定時間 ' + esc(d.publishAt) : '') + '貼回下面的框'
-      + (d.atKept ? '；預定時間保留你現在填的 ' + esc(d.atKept) + (last ? '（' + last + '）' : '') : (d.sentNow && !d.publishAt ? '；上次是立刻送，預定時間已清空' : '')) + '，確認後按送出。';
+    var mine = typeof d.textMine === 'string', sameAt = !!(d.publishAt && !d.atKept && !d.atCleared);
+    var head = mine ? '下面框裡是你改過的內容（跟上次要送的不同）' : '已把上次要送的內容' + (sameAt ? '與預定時間 ' + esc(d.publishAt) : '') + '貼回下面的框';
+    var when = d.atKept ? '；預定時間保留你現在填的 ' + esc(d.atKept) + (last ? '（' + last + '）' : '')
+      : d.atCleared ? '；預定時間已清空，會立刻送（' + last + '）'
+      : (d.sentNow && !d.publishAt) ? '；上次是立刻送，預定時間已清空'
+      : (mine && sameAt) ? '；預定時間是上次的 ' + esc(d.publishAt) : '';
+    return '<b>確定沒有送出</b>：' + head + when + '，確認後按送出。';
   }
-  function resendAtSync(cid, ap, v) {   // 按過「再送一次」之後他自己改預定時間：記進不明紀錄（atKept），之後重畫、重開都以他填的為準
+  function resendSync(cid, ap, fn) {   // 按過「再送一次」之後他又改了東西：記進不明紀錄，之後重畫、換人再回來、整頁重開都以他最後改的為準；紅框文字跟著更新
     try {
       var o = unsureGet(cid), d = o.draft; if (!d || d.ap !== ap || !d.resend) return;
-      var keep = (v && v !== d.publishAt) ? v : ''; if (String(d.atKept || '') === keep) return;
-      d.atKept = keep; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(o));
+      var before = JSON.stringify(d); fn(d); if (JSON.stringify(d) === before) return;
+      localStorage.setItem('yz_unsure:' + cid, JSON.stringify(o));
       var box = document.getElementById('unsureNote'); if (box && cur === cid && box.getAttribute('data-st') === 'notSent') box.innerHTML = resendReadyHtml(d);
     } catch (eRs) {}
+  }
+  function resendAtSync(cid, ap, v) {   // 預定時間：填了不同的時間＝atKept；上次有時間、他清空＝atCleared（想改成立刻送）；跟上次一樣＝兩個都不記
+    resendSync(cid, ap, function (d) { d.atKept = (v && v !== d.publishAt) ? v : ''; d.atCleared = !v && !!d.publishAt; });
+  }
+  function resendTextSync(cid, ap, v) {   // 文字：跟上次要送的不同才記（textMine，空字串也算他改的）；d.text 維持上次送的原文，查「已送達」還要用它比對
+    resendSync(cid, ap, function (d) { if (String(v) !== String(d.text)) d.textMine = String(v); else delete d.textMine; });
   }
   function unsureResolve(cid, t, extrasPending) {   // extrasPending 只在補件真的回來時傳
     if (cur !== cid) return; var o = unsureGet(cid);
@@ -818,7 +829,7 @@ body.ns-open{overflow:hidden}
         ev.preventDefault(); var ta = document.getElementById('draft');
         if (!ta || shownAp() !== d.ap) { box.textContent = '稿區已經換了，請看下面目前的稿再決定。'; return; }
         if (ta.value !== d.text) { if (!pasteBack(ta, d.text)) return; if (ta.oninput) ta.oninput(); }
-        d.atKept = '';
+        d.atKept = ''; d.atCleared = false;
         if (d.publishAt) {   // 比照 pasteBack：框裡已經有不同的時間先問，不默默蓋掉他剛改的
           var sa = document.getElementById('sendAt'), wb = document.getElementById('whenBox'), want = d.publishAt.replace(' ', 'T'), curAt = sa ? String(sa.value || '') : '';
           if (sa && curAt && curAt !== want && !confirm('預定時間框裡現在是 ' + curAt.replace('T', ' ') + '，要換成上次的 ' + d.publishAt + ' 嗎？')) d.atKept = curAt.replace('T', ' ');
@@ -829,7 +840,7 @@ body.ns-open{overflow:hidden}
           if (saN && curN && curN !== String(saN.defaultValue || '') && !confirm('預定時間框裡現在是 ' + curN.replace('T', ' ') + '，上次是立刻送，要清掉這個時間嗎？')) d.atKept = curN.replace('T', ' ');
           else if (saN && curN) { saN.value = ''; delete KEEP_AT[cid]; }   /* 不動 defaultValue：稿有建議時間時，空白要算編輯中 */
         }
-        try { var oR = unsureGet(cid); if (oR.draft) { oR.draft.resend = true; oR.draft.atKept = d.atKept; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(oR)); } } catch (eR) {}
+        try { var oR = unsureGet(cid); if (oR.draft) { oR.draft.resend = true; oR.draft.atKept = d.atKept; oR.draft.atCleared = false; delete oR.draft.textMine; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(oR)); } } catch (eR) {}
         d.resend = true; box.innerHTML = ready(); stashSave(); try { ta.focus({ preventScroll: true }); } catch (eF) {}
       };
       return;
@@ -1249,7 +1260,7 @@ body.ns-open{overflow:hidden}
     var cl = document.getElementById('cardsLazy');
     if (cl) cl.ontoggle = function () { if (!cl.open || cl.getAttribute('data-loaded')) return; cl.setAttribute('data-loaded', '1'); var cb0 = document.getElementById('cardsBox'); if (cb0) cb0.innerHTML = '<span class="spin"></span>載入中…小卡預覽要向後台取，後台慢的時候會等比較久。預覽只是給你看的，載不出來不影響送出。'; var cfail = function (m) { var b = document.getElementById('cardsBox'); if (!b) return; cl.removeAttribute('data-loaded'); b.innerHTML = esc(m) + ' <a href="#" id="cardsRetry">再試一次</a>'; var rt = document.getElementById('cardsRetry'); if (rt) rt.onclick = function (ev) { ev.preventDefault(); cl.ontoggle(); }; }; api({ app: { op: 'cardsPreview', apId: p.id } }).then(function (r) { var box = document.getElementById('cardsBox'); if (!box) return; if (!r || !r.ok) { cfail('小卡預覽讀取失敗（' + friendlyErr((r && (r.detail || r.error)) || '後台沒回應') + '）。'); return; } p.cards = r.cards || []; box.innerHTML = p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') || '（沒有可預覽的小卡）'; }).catch(function (e) { cfail('小卡預覽讀取失敗（' + friendlyErr(e && e.message) + '）。'); }); };
     bindAddArea(p);
-    var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = (dirty ? '修改後送出' : '送出') + (p.exec && p.exec.short ? '並' + p.exec.short : ''); try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} };
+    var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = (dirty ? '修改後送出' : '送出') + (p.exec && p.exec.short ? '並' + p.exec.short : ''); try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} resendTextSync(cur, p.id, ta.value); };
     try {   // 上一份稿改到一半被換掉：本機還留著他的字，給一鍵貼回（2026-10-05 臻實案後加）
       var savedD = JSON.parse(localStorage.getItem('yz_draft:' + cur) || 'null');
       if (savedD && savedD.text && Date.now() - Number(savedD.at || 0) < 6 * 3600000 && savedD.text !== p.text) {   // 同一張稿也問：整頁重載後框裡會是原稿（2026-11-18）
@@ -1263,11 +1274,12 @@ body.ns-open{overflow:hidden}
     document.getElementById('btnWhen').onclick = function () { document.getElementById('whenBox').classList.toggle('on'); };
     (function () {   // 新稿沒有預定時間、但你先前為這位設過（還在未來）：帶回來並明講，不要默默變成現在送
       var sa0 = document.getElementById('sendAt'), kept = KEEP_AT[cur];
-      var uR = unsureGet(cur).draft, uOn = !!(uR && uR.ap === p.id && uR.resend), rAt = uOn ? String(uR.atKept || uR.publishAt || '') : '';
+      var uR = unsureGet(cur).draft, uOn = !!(uR && uR.ap === p.id && uR.resend), rAt = uOn ? String(uR.atKept || (uR.atCleared ? '' : uR.publishAt) || '') : '';
       if (uOn) {   // 確定沒送、他按過「再送一次」：之後任何重畫（含整頁重開）框裡都要跟紅框說的一致，不可以畫回稿的原文與建議時間
         if (sa0 && rAt) { sa0.value = rAt.replace(' ', 'T'); document.getElementById('whenBox').classList.add('on'); KEEP_AT[cur] = rAt; }
-        else if (sa0 && uR.sentNow) { sa0.value = ''; delete KEEP_AT[cur]; }   /* 上次是立刻送：不可以畫回稿的建議時間 */
-        if (uR.text && ta.value === ta.defaultValue && ta.value !== uR.text) { ta.value = uR.text; ta.oninput(); }
+        else if (sa0 && (uR.sentNow || uR.atCleared)) { sa0.value = ''; delete KEEP_AT[cur]; }   /* 上次是立刻送、或他按過再送一次後把時間清空：不可以畫回稿的建議時間或上次的時間 */
+        var uTxt = typeof uR.textMine === 'string' ? uR.textMine : uR.text;   /* 他按過再送一次後又改的字優先 */
+        if ((uTxt || typeof uR.textMine === 'string') && ta.value === ta.defaultValue && ta.value !== uTxt) { ta.value = uTxt; ta.oninput(); }
       }
       else if (sa0 && !p.publishAt && kept && Date.parse(kept.replace(' ', 'T')) > Date.now() + 2 * 60000) {
         sa0.value = kept.replace(' ', 'T'); sa0.defaultValue = sa0.value; document.getElementById('whenBox').classList.add('on');   // 程式帶入的時間當基準值：不然稿區會一直被當成「編輯中」而不再更新
