@@ -799,15 +799,21 @@ body.ns-open{overflow:hidden}
     var pb = document.getElementById('pendBox'); if (!pb) return;
     var box = document.createElement('div'); box.id = 'unsureNote'; box.setAttribute('data-st', state); box.className = 'small'; box.style.cssText = 'margin-top:8px;padding:8px 10px;border:1px solid #B85A3D;border-radius:8px;background:#F5DDD2;color:#8C3B25';
     if (state === 'notSent') {   // 確定沒送：留紅框、給再送一次（照樣走送出前的確認視窗）
-      var READY = '<b>確定沒有送出</b>：已把上次要送的內容' + (d.publishAt ? '與預定時間 ' + esc(d.publishAt) : '') + '貼回下面的框，確認後按送出。';
-      box.innerHTML = d.resend ? READY : '<b>確定沒有送出</b>：這張稿還在待核可，客戶沒有收到。<a href="#" id="unsDAgain" style="color:#8C3B25;font-weight:600">再送一次</a>'; pb.insertBefore(box, pb.firstChild);
+      var ready = function () { return '<b>確定沒有送出</b>：已把上次要送的內容' + (d.publishAt && !d.atKept ? '與預定時間 ' + esc(d.publishAt) : '') + '貼回下面的框' + (d.atKept ? '；預定時間保留你現在填的 ' + esc(d.atKept) + '（上次是 ' + esc(d.publishAt) + '）' : '') + '，確認後按送出。'; };
+      box.innerHTML = d.resend ? ready() : '<b>確定沒有送出</b>：這張稿還在待核可，客戶沒有收到。<a href="#" id="unsDAgain" style="color:#8C3B25;font-weight:600">再送一次</a>'; pb.insertBefore(box, pb.firstChild);
       var ag = document.getElementById('unsDAgain'); if (ag) ag.onclick = function (ev) {   // 只把上次的字與預定時間放回框裡，由他自己按送出；標記等送出真的發出去才清
         ev.preventDefault(); var ta = document.getElementById('draft');
         if (!ta || shownAp() !== d.ap) { box.textContent = '稿區已經換了，請看下面目前的稿再決定。'; return; }
         if (ta.value !== d.text) { if (!pasteBack(ta, d.text)) return; if (ta.oninput) ta.oninput(); }
-        if (d.publishAt) { var sa = document.getElementById('sendAt'), wb = document.getElementById('whenBox'); if (sa) sa.value = d.publishAt.replace(' ', 'T'); if (wb) wb.classList.add('on'); KEEP_AT[cid] = d.publishAt; }
-        try { var oR = unsureGet(cid); if (oR.draft) { oR.draft.resend = true; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(oR)); } } catch (eR) {}
-        d.resend = true; box.innerHTML = READY; stashSave(); try { ta.focus({ preventScroll: true }); } catch (eF) {}
+        d.atKept = '';
+        if (d.publishAt) {   // 比照 pasteBack：框裡已經有不同的時間先問，不默默蓋掉他剛改的
+          var sa = document.getElementById('sendAt'), wb = document.getElementById('whenBox'), want = d.publishAt.replace(' ', 'T'), curAt = sa ? String(sa.value || '') : '';
+          if (sa && curAt && curAt !== want && !confirm('預定時間框裡現在是 ' + curAt.replace('T', ' ') + '，要換成上次的 ' + d.publishAt + ' 嗎？')) d.atKept = curAt.replace('T', ' ');
+          else if (sa) { sa.value = want; sa.defaultValue = want; KEEP_AT[cid] = d.publishAt; }   /* 程式帶入的時間當基準值：不然稿區會一直被當成編輯中而不重畫 */
+          if (wb) wb.classList.add('on');
+        }
+        try { var oR = unsureGet(cid); if (oR.draft) { oR.draft.resend = true; oR.draft.atKept = d.atKept; localStorage.setItem('yz_unsure:' + cid, JSON.stringify(oR)); } } catch (eR) {}
+        d.resend = true; box.innerHTML = ready(); stashSave(); try { ta.focus({ preventScroll: true }); } catch (eF) {}
       };
       return;
     }
