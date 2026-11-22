@@ -2215,6 +2215,7 @@ var yzOc = (function () {
   }
   function applyLoad(d, older) {
     var list = arr(d.messages).filter(function (m) { return m && typeof m === 'object'; }).map(normMsg);
+    if (!older) list.forEach(function (m) { m.proposals.forEach(function (np) { var op = np && np.id ? findProp(np.id) : null; if (op && (op._edit || op._err)) { np._edit = !!op._edit; np._err = op._err || ''; } }); });
     S.msgs = older ? list.concat(S.msgs) : list; S.hasMore = !!d.hasMore; S.loaded = true;
     if (!older) S.lookupErr = d.pendingLookup === 'error'; else if (d.pendingLookup === 'error') S.lookupErr = true;
     applyMeta(d, !older);
@@ -2338,6 +2339,7 @@ var yzOc = (function () {
   }
 
   // ── 畫面
+  function didSome(m) { return m.actions.length > 0 || m.actionItems.some(function (x) { return x && x.ok === true; }); }
   function msgHtml(m, i) {
     var mine = m.role === 'user', h = '';
     var ment = mine && m.mentions.length ? '<div>' + m.mentions.map(function (x) { return '<span class="oc-ment">@' + esc((x && (x.name || cname(x.contactId))) || '') + '</span>'; }).join('') + '</div>' : '';
@@ -2355,7 +2357,8 @@ var yzOc = (function () {
       return pendHtml(it, i, res);
     }).join('');
     if (waiting) under += '<div class="oc-act">還在進行，做完會補一句在下面。</div>';
-    if (m.timedOut && !pend.length && m.retry) under += '<div class="oc-act"><a href="#" class="oc-retry" data-i="' + i + '">再問一次</a></div>';
+    if (m.timedOut && !pend.length && didSome(m)) under += '<div class="oc-act oc-didnote">上面的動作已經做了，要繼續請換句話問。</div>';
+    else if (m.timedOut && !pend.length && m.retry) under += '<div class="oc-act"><a href="#" class="oc-retry" data-i="' + i + '">再問一次</a></div>';
     if (m.unsaved) under += '<div class="oc-act oc-err oc-unsaved">這則沒存到對話紀錄，重開 App 會看不到。</div>';
     under += m.known.map(function (k) { return '<div class="oc-act">這條已經記過：<span class="oc-cat">' + esc((k && k.category) || '其他') + '</span>' + esc((k && k.content) || '') + '</div>'; }).join('');
     under += m.proposals.map(propHtml).join('');
@@ -2369,9 +2372,11 @@ var yzOc = (function () {
   }
   function render(toBottom) {
     var el = $('ocList'); if (!el) return;
-    var keep = el.scrollHeight - el.scrollTop;
+    var keep = el.scrollHeight - el.scrollTop, drafts = {};
+    el.querySelectorAll('.oc-prop.oc-edit[data-prop]').forEach(function (c) { var t = c.querySelector('.oc-pe-text'), k = c.querySelector('.oc-pe-cat'); if (t && k) drafts[c.getAttribute('data-prop')] = { txt: t.value, cat: k.value }; });
     el.innerHTML = (S.hasMore ? '<button type="button" class="btn ghost small oc-more" id="ocMore">看更早的對話</button>' : '')
       + (S.msgs.length ? S.msgs.map(msgHtml).join('') : '<div class="oc-empty">' + (S.loaded ? '想問收件匣的狀況、交代某一件怎麼處理，或告訴它你的習慣，直接打字就可以。<br>它聽到像習慣的話會先問你要不要記下來。' : '<span class="spin"></span>讀取對話中') + '</div>');
+    el.querySelectorAll('.oc-prop.oc-edit[data-prop]').forEach(function (c) { var dr = drafts[c.getAttribute('data-prop')]; if (!dr) return; c.querySelector('.oc-pe-text').value = dr.txt; var k = c.querySelector('.oc-pe-cat'); if ([].some.call(k.options, function (o) { return o.value === dr.cat; })) k.value = dr.cat; });
     if (toBottom !== false) el.scrollTop = el.scrollHeight; else el.scrollTop = el.scrollHeight - keep;
     renderCost();
     var sb0 = $('ocSend'); if (sb0) { if (S.busy && !sb0.classList.contains('busy')) busy(sb0, true, '等回覆'); if (!S.busy && sb0.classList.contains('busy')) busy(sb0, false); sb0.disabled = !!S.busy; }
@@ -2417,7 +2422,7 @@ var yzOc = (function () {
       if (d.ok === true) {
         delete mine.local;
         var m = normMsg({ id: d.messageId, role: 'assistant', text: d.reply, at: new Date().toISOString(), actions: d.actions, actionItems: d.actionItems, proposals: d.proposals, known: d.known, pendingActions: d.pendingActions, pendingActionItems: d.pendingActionItems, timedOut: d.timedOut, tier: d.tier });
-        if (m.timedOut) { m.retry = true; m.payload = p; }
+        if (m.timedOut && !didSome(m)) { m.retry = true; m.payload = p; }
         if (d.saved === false) m.unsaved = true;
         S.msgs.push(m);
         if (costOk(d.costAlert)) S.cost = d.costAlert;
@@ -2487,7 +2492,7 @@ var yzOc = (function () {
       if ((a = t.closest && t.closest('[data-pa]'))) { var card = a.closest('.oc-prop'); propAct(card.getAttribute('data-prop'), a.getAttribute('data-pa'), a); return; }
       if ((a = t.closest && t.closest('.oc-goto'))) { ev.preventDefault(); var cid = a.getAttribute('data-cid'); hide(); try { if (S.pushed) { S.pushed = false; history.back(); } } catch (e) {} setTimeout(function () { openThread(cid); }, 0); return; }
       if ((a = t.closest && t.closest('.oc-hbgo'))) { ev.preventDefault(); if (window.yzHb) yzHb.open({ focus: a.getAttribute('data-hid') }); return; }
-      if ((a = t.closest && t.closest('.oc-retry'))) { ev.preventDefault(); var m = S.msgs[Number(a.getAttribute('data-i'))]; if (!m || !m.payload || S.busy) return; var pl = m.payload; if (m.role === 'user') S.msgs.splice(S.msgs.indexOf(m), 1); else m.retry = false; send(pl); return; }
+      if ((a = t.closest && t.closest('.oc-retry'))) { ev.preventDefault(); var m = S.msgs[Number(a.getAttribute('data-i'))]; if (!m || !m.payload || S.busy || (m.role !== 'user' && didSome(m))) return; var pl = m.payload; if (m.role === 'user') S.msgs.splice(S.msgs.indexOf(m), 1); else m.retry = false; send(pl); return; }
       if ((a = t.closest && t.closest('.oc-reload'))) { ev.preventDefault(); load(false); return; }
       if (t.id === 'ocMore') { var first = S.msgs.filter(function (x) { return x.at && !x.local; })[0]; if (first) load(false, first.at); }
     };
@@ -2558,8 +2563,10 @@ var yzHb = (function () {
     h += '<div class="st-list" style="margin-top:16px"><div class="oc-usage" id="hbUsage"></div></div>';
     var keepEd = null, edEl = H.edit ? body.querySelector('.hb-it.oc-edit[data-hb]') : null;   /* 重畫時保留編輯框裡還沒存的字 */
     if (edEl && edEl.getAttribute('data-hb') === H.edit) keepEd = { txt: edEl.querySelector('.hb-e-text').value, cat: edEl.querySelector('.hb-e-cat').value };
+    var addT = document.getElementById('hbAddText'), addC = document.getElementById('hbAddCat'), keepAdd = H.adding && addT && addC ? { txt: addT.value, cat: addC.value } : null;
     body.innerHTML = h; yzOc.usageInto('hbUsage');
     if (keepEd) keepDraft(H.edit, keepEd);
+    if (keepAdd && (addT = document.getElementById('hbAddText'))) { addT.value = keepAdd.txt; document.getElementById('hbAddCat').value = keepAdd.cat; }
     if (H.flash && H.flash.scroll) { H.flash.scroll = false; var el = body.querySelector('.hb-flash'); if (el && el.scrollIntoView) try { el.scrollIntoView({ block: 'center' }); } catch (e) {} }
   }
   function load() {
@@ -2596,15 +2603,15 @@ var yzHb = (function () {
     yzOc.call(app).then(function (d) {
       delete H.busy[id];
       if (d.ok === true) {
-        H.edit = ''; H.picking = false;
+        if (H.edit === id) { H.edit = ''; H.picking = false; }
         if (app.op === 'habitConfirm' && d.habit && APPLIED[d.applied]) flashOn(d.habit.id, APPLIED[d.applied]); else flashOn(null);
         load(); return;   /* 以後台為準重讀（併入、取代會動到別筆） */
       }
       if (d.error === 'owner_only') return;
       H.msg[id] = yzOc.errText(d);
       if (d.error === 'duplicate' && d.existingId) H.dup[id] = String(d.existingId);
-      if (d.error === 'not_found') { H.notice = d.goneReason ? '剛剛那一條已經不在了：' + yzOc.goneText(d.goneReason) : yzOc.ERR.not_found; H.edit = ''; load(); return; }
-      if (d.error === 'not_pending' || d.error === 'is_pending') { H.edit = ''; load(); return; }
+      if (d.error === 'not_found') { H.notice = d.goneReason ? '剛剛那一條已經不在了：' + yzOc.goneText(d.goneReason) : yzOc.ERR.not_found; if (H.edit === id) H.edit = ''; load(); return; }
+      if (d.error === 'not_pending' || d.error === 'is_pending') { if (H.edit === id) H.edit = ''; load(); return; }
       render(); keepDraft(id, draft);
     }, function (e) { delete H.busy[id]; H.msg[id] = yzOc.errText(e); render(); keepDraft(id, draft); });
   }
