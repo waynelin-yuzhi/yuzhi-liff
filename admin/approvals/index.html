@@ -94,7 +94,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     function write(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) {} }
     function prune(a, now) {
       now = now || Date.now();
-      a = a.filter(function (r) { return !((r.state === 'done' || r.state === 'note') && now - (r.doneAt || r.at || 0) > DONE_TTL); });
+      a = a.filter(function (r) { return !((r.state === 'done' || r.state === 'note' || r.state === 'partial') && now - (r.doneAt || r.at || 0) > DONE_TTL); });
       a.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
       return a.slice(0, MAX);
     }
@@ -113,30 +113,35 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       if (action === 'ecpayIssue') return !/^(已開立|已發「發票資料確認卡」|夜間核可：發票資料確認卡|這筆 10 分鐘內剛開過)/.test(t);
       if (action === 'invoiceNotify') return /^(失敗|部分沒發)|：沒發/.test(t);
       if (action === 'ecpayVoid') return !/^(已作廢|已照綠界作廢狀態回寫)/.test(t);
-      return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
+      if (/^沒有要銷的帳/.test(t)) return false;
+      return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|沒送出|送不出去|沒有銷帳|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
     }
-    function errText(res) {
+    var SIDE = { cardsError: '附掛卡', caseCardsError: '案例卡', attachCardsFail: '附掛卡', quoteCardsError: '報價卡', attachQuoteFail: '報價卡', imageError: '圖片', materialCardsError: '材料卡', proposalCardsError: '提案卡', reminderError: '提醒', intakeCardError: '資料卡', linkCardError: '連結卡', fbError: 'FB 貼文', emailError: 'email' };
+    function sideText(res) {
       var out = [];
       Object.keys(res).forEach(function (k) {
-        if (k === 'lineSendError' || !(k === 'error' || /(Error|Fail)$/.test(k))) return;
+        if (k === 'lineSendError' || k === 'error' || !/(Error|Fail)$/.test(k)) return;
         var v = res[k]; if (!v || (Array.isArray(v) && !v.length)) return;
-        out.push(typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120));
+        out.push((SIDE[k] || '附屬項目') + '沒送出：' + (typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120)));
       });
       return out.join('；');
     }
+    function lineCode(t) { var m = /HTTP\s*(-?\d+)/.exec(String(t || '')); return m ? Number(m[1]) : -1; }
+    function finish(main, res) { var sx = sideText(res); return sx ? { state: 'partial', text: main + '，但' + sx } : { state: 'done', text: main }; }
     function judge(r, it) {
       if (!it || !it.status) return null;
       var res = (it.result && typeof it.result === 'object') ? it.result : {}, pl = (it.payload && typeof it.payload === 'object') ? it.payload : {};
       var st = it.status, dry = !!pl.dryRun, cs = !!(pl.lineReplyTo && String(pl.text || '').trim()) && !dry;
+      var fresh = !r.sig || sig(res) !== r.sig;
+      if (!fresh) res = {};
       if (st === r.from) {
-        if (r.state === 'done' || (res.lineSendError && sig(res) !== r.sig)) return { state: 'fail', text: '沒送出，已退回' + st + '，請重開這張卡' + (res.lineSendError ? '（' + res.lineSendError + '）' : '') };
+        if (r.decision === 'approve' && r.from === '待核可' && (r.state !== 'run' || res.lineSendError)) return { state: 'fail', text: '沒送出，已退回待核可，請重開這張卡' + (res.lineSendError ? '（' + res.lineSendError + '）' : '') };
         return null;
       }
-      if (r.sig && sig(res) === r.sig) res = {};
-      if (st === '失敗') return { state: 'fail', text: String(res.error || errText(res) || '狀態變成「失敗」') };
-      if (res.lineSendError) return { state: 'unsure', text: 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按（' + res.lineSendError + '）' };
-      var et = errText(res);
-      if (et) return { state: 'fail', text: et };
+      if (st === '待核可' && res.lineSendError) return { state: 'fail', text: '沒送出，已退回待核可，請重開這張卡（' + res.lineSendError + '）' };
+      if (st === '失敗') return { state: 'fail', text: String(res.error || '狀態變成「失敗」') };
+      if (res.error) return { state: 'fail', text: String(res.error) };
+      if (res.lineSendError) return lineCode(res.lineSendError) < 0 ? { state: 'unsure', text: 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按（' + res.lineSendError + '）' } : null;
       if (st === '已核可') {
         if (pl.execAction && !dry) {
           if (!res.execResult) return null;
@@ -147,8 +152,9 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
           if (res.ok === false) return { state: 'fail', text: String(res.text || '核可後動作沒成功') };
         }
         if (cs && !res.lineSent && !(pl.onApprove && res.hook)) return null;
-        return { state: 'done', text: String(res.execResult || (res.lineSent ? '已送給客戶' + (res.sentAt ? ' ' + res.sentAt : '') : '') || res.text || '狀態：已核可') };
+        return finish(String(res.execResult || (res.lineSent ? '已送給客戶' + (res.sentAt ? ' ' + res.sentAt : '') : '') || res.text || '狀態：已核可'), res);
       }
+      if (st === '已發佈') return finish('已發佈', res);
       if (st === '已排程') return { state: 'done', text: '已排程' + (it.publishAt ? ' ' + it.publishAt : '') };
       if (st === '發佈中') return { state: 'done', text: '已進入自動發佈，完成後會 LINE 通知你' };
       if (st === '已略過') return { state: 'done', text: res.skipped === 'customer_replied' ? '客戶已經回訊，這則沒送' : '已略過' };
@@ -164,7 +170,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     }
     function due(r, now) {
       if (r.state === 'run') return now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500);
-      if (r.state === 'done') return now - (r.checkedAt || 0) >= 30000;
+      if (r.state === 'done' || r.state === 'partial' || r.state === 'unsure') return now - (r.doneAt || r.at || 0) < DONE_TTL && now - (r.checkedAt || 0) >= 30000;
       return false;
     }
     function cycle() {
@@ -178,6 +184,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       var x = '<button type="button" class="sbar-x" data-id="' + esc(r.id) + '">知道了</button>';
       if (st === 'run') return '<div class="sbar-row run">' + head + '<div>還在執行，已過 ' + esc(Math.max(0, Math.round((now - r.at) / 1000))) + ' 秒</div></div>';
       if (st === 'done') return '<div class="sbar-row done">' + head + '<div>已完成：' + esc(r.text || '') + '</div></div>';
+      if (st === 'partial') return '<div class="sbar-row unknown">' + head + '<div>' + esc(r.text || '') + '</div><div class="sbar-a">' + x + '</div></div>';
       if (st === 'note') return '<div class="sbar-row done">' + head + '<div>後台回覆：' + esc(r.text || '') + '</div></div>';
       if (st === 'fail') return '<div class="sbar-row fail">' + head + '<div>失敗：' + esc(r.text || '後台沒回報原因') + '</div><div class="sbar-a">' + card + x + '</div></div>';
       if (st === 'unsure') return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到：' + esc(r.text || '') + '</div><div class="sbar-a">' + card + x + '</div></div>';

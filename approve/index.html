@@ -129,7 +129,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     function write(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) {} }
     function prune(a, now) {
       now = now || Date.now();
-      a = a.filter(function (r) { return !((r.state === 'done' || r.state === 'note') && now - (r.doneAt || r.at || 0) > DONE_TTL); });
+      a = a.filter(function (r) { return !((r.state === 'done' || r.state === 'note' || r.state === 'partial') && now - (r.doneAt || r.at || 0) > DONE_TTL); });
       a.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
       return a.slice(0, MAX);
     }
@@ -148,30 +148,35 @@ form.busy button{opacity:.5;pointer-events:none;}
       if (action === 'ecpayIssue') return !/^(已開立|已發「發票資料確認卡」|夜間核可：發票資料確認卡|這筆 10 分鐘內剛開過)/.test(t);
       if (action === 'invoiceNotify') return /^(失敗|部分沒發)|：沒發/.test(t);
       if (action === 'ecpayVoid') return !/^(已作廢|已照綠界作廢狀態回寫)/.test(t);
-      return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
+      if (/^沒有要銷的帳/.test(t)) return false;
+      return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|沒送出|送不出去|沒有銷帳|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
     }
-    function errText(res) {
+    var SIDE = { cardsError: '附掛卡', caseCardsError: '案例卡', attachCardsFail: '附掛卡', quoteCardsError: '報價卡', attachQuoteFail: '報價卡', imageError: '圖片', materialCardsError: '材料卡', proposalCardsError: '提案卡', reminderError: '提醒', intakeCardError: '資料卡', linkCardError: '連結卡', fbError: 'FB 貼文', emailError: 'email' };
+    function sideText(res) {
       var out = [];
       Object.keys(res).forEach(function (k) {
-        if (k === 'lineSendError' || !(k === 'error' || /(Error|Fail)$/.test(k))) return;
+        if (k === 'lineSendError' || k === 'error' || !/(Error|Fail)$/.test(k)) return;
         var v = res[k]; if (!v || (Array.isArray(v) && !v.length)) return;
-        out.push(typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120));
+        out.push((SIDE[k] || '附屬項目') + '沒送出：' + (typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120)));
       });
       return out.join('；');
     }
+    function lineCode(t) { var m = /HTTP\s*(-?\d+)/.exec(String(t || '')); return m ? Number(m[1]) : -1; }
+    function finish(main, res) { var sx = sideText(res); return sx ? { state: 'partial', text: main + '，但' + sx } : { state: 'done', text: main }; }
     function judge(r, it) {
       if (!it || !it.status) return null;
       var res = (it.result && typeof it.result === 'object') ? it.result : {}, pl = (it.payload && typeof it.payload === 'object') ? it.payload : {};
       var st = it.status, dry = !!pl.dryRun, cs = !!(pl.lineReplyTo && String(pl.text || '').trim()) && !dry;
+      var fresh = !r.sig || sig(res) !== r.sig;
+      if (!fresh) res = {};
       if (st === r.from) {
-        if (r.state === 'done' || (res.lineSendError && sig(res) !== r.sig)) return { state: 'fail', text: '沒送出，已退回' + st + '，請重開這張卡' + (res.lineSendError ? '（' + res.lineSendError + '）' : '') };
+        if (r.decision === 'approve' && r.from === '待核可' && (r.state !== 'run' || res.lineSendError)) return { state: 'fail', text: '沒送出，已退回待核可，請重開這張卡' + (res.lineSendError ? '（' + res.lineSendError + '）' : '') };
         return null;
       }
-      if (r.sig && sig(res) === r.sig) res = {};
-      if (st === '失敗') return { state: 'fail', text: String(res.error || errText(res) || '狀態變成「失敗」') };
-      if (res.lineSendError) return { state: 'unsure', text: 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按（' + res.lineSendError + '）' };
-      var et = errText(res);
-      if (et) return { state: 'fail', text: et };
+      if (st === '待核可' && res.lineSendError) return { state: 'fail', text: '沒送出，已退回待核可，請重開這張卡（' + res.lineSendError + '）' };
+      if (st === '失敗') return { state: 'fail', text: String(res.error || '狀態變成「失敗」') };
+      if (res.error) return { state: 'fail', text: String(res.error) };
+      if (res.lineSendError) return lineCode(res.lineSendError) < 0 ? { state: 'unsure', text: 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按（' + res.lineSendError + '）' } : null;
       if (st === '已核可') {
         if (pl.execAction && !dry) {
           if (!res.execResult) return null;
@@ -182,8 +187,9 @@ form.busy button{opacity:.5;pointer-events:none;}
           if (res.ok === false) return { state: 'fail', text: String(res.text || '核可後動作沒成功') };
         }
         if (cs && !res.lineSent && !(pl.onApprove && res.hook)) return null;
-        return { state: 'done', text: String(res.execResult || (res.lineSent ? '已送給客戶' + (res.sentAt ? ' ' + res.sentAt : '') : '') || res.text || '狀態：已核可') };
+        return finish(String(res.execResult || (res.lineSent ? '已送給客戶' + (res.sentAt ? ' ' + res.sentAt : '') : '') || res.text || '狀態：已核可'), res);
       }
+      if (st === '已發佈') return finish('已發佈', res);
       if (st === '已排程') return { state: 'done', text: '已排程' + (it.publishAt ? ' ' + it.publishAt : '') };
       if (st === '發佈中') return { state: 'done', text: '已進入自動發佈，完成後會 LINE 通知你' };
       if (st === '已略過') return { state: 'done', text: res.skipped === 'customer_replied' ? '客戶已經回訊，這則沒送' : '已略過' };
@@ -199,7 +205,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     }
     function due(r, now) {
       if (r.state === 'run') return now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500);
-      if (r.state === 'done') return now - (r.checkedAt || 0) >= 30000;
+      if (r.state === 'done' || r.state === 'partial' || r.state === 'unsure') return now - (r.doneAt || r.at || 0) < DONE_TTL && now - (r.checkedAt || 0) >= 30000;
       return false;
     }
     function cycle() {
@@ -213,6 +219,7 @@ form.busy button{opacity:.5;pointer-events:none;}
       var x = '<button type="button" class="sbar-x" data-id="' + esc(r.id) + '">知道了</button>';
       if (st === 'run') return '<div class="sbar-row run">' + head + '<div>還在執行，已過 ' + esc(Math.max(0, Math.round((now - r.at) / 1000))) + ' 秒</div></div>';
       if (st === 'done') return '<div class="sbar-row done">' + head + '<div>已完成：' + esc(r.text || '') + '</div></div>';
+      if (st === 'partial') return '<div class="sbar-row unknown">' + head + '<div>' + esc(r.text || '') + '</div><div class="sbar-a">' + x + '</div></div>';
       if (st === 'note') return '<div class="sbar-row done">' + head + '<div>後台回覆：' + esc(r.text || '') + '</div></div>';
       if (st === 'fail') return '<div class="sbar-row fail">' + head + '<div>失敗：' + esc(r.text || '後台沒回報原因') + '</div><div class="sbar-a">' + card + x + '</div></div>';
       if (st === 'unsure') return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到：' + esc(r.text || '') + '</div><div class="sbar-a">' + card + x + '</div></div>';
@@ -438,7 +445,16 @@ form.busy button{opacity:.5;pointer-events:none;}
   function showDone(j, label) {
     var st = j.status || '', changed = !!st && st !== LOADED_STATUS;
     var desc = (j.desc || '') + (j.execResult && (j.desc || '').indexOf(j.execResult.substring(0, 20)) < 0 ? '　' + j.execResult : '') + (j.hookText && (j.desc || '').indexOf(j.hookText.substring(0, 20)) < 0 ? '　' + j.hookText : '');
+    if (!j.ok && j.error === 'line_send_unknown') {
+      SENT = true; lockAll(true);
+      var txU = String(j.desc || 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按。');
+      addNext(statusBox('warn', j.title || '不確定客戶有沒有收到', txU));
+      SENTLOG.update(CUR.id, { state: 'unsure', text: txU });
+      Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
+      return;
+    }
     if (!j.ok) {   // 後台中途丟例外：狀態可能已變、客戶可能沒收到；原文照給、不說成功
+      if (j.error === 'line_send_failed' && j.desc) j.error = String(j.desc);
       var el0 = statusBox('warn', '執行中斷', (j.error || '後台沒回報原因') + (st ? '　目前狀態：' + st : '') + '　請到核可中心確認，再決定要不要重送。');
       addNext(el0);
       SENTLOG.update(CUR.id, { state: 'fail', text: String(j.error || '後台沒回報原因') });
@@ -457,12 +473,12 @@ form.busy button{opacity:.5;pointer-events:none;}
     SENTLOG.update(CUR.id, { state: 'done', text: String(j.execResult || j.desc || ('狀態：' + st)) });
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
   }
-  function pollStatus(label, startedAt) {
+  function pollStatus(label, startedAt, decision) {
     fetch(GW + '?action=approvalView&h=' + encodeURIComponent(h), { method: 'GET' })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        var it = j && j.item, p = it ? SENTLOG.judge({ from: LOADED_STATUS, sig: LOADED_SIG, state: 'run' }, it) : null;
-        if (p && p.state === 'done') { showDone({ ok: true, status: it.status, title: label + '完成', desc: p.text, execResult: '' }, label); return; }
+        var it = j && j.item, p = it ? SENTLOG.judge({ from: LOADED_STATUS, sig: LOADED_SIG, state: 'run', decision: decision }, it) : null;
+        if (p && (p.state === 'done' || p.state === 'partial')) { showDone({ ok: true, status: it.status, title: label + '完成', desc: p.text, execResult: '' }, label); if (p.state === 'partial') SENTLOG.update(CUR.id, { state: 'partial', text: p.text }); return; }
         if (p && p.state === 'fail') { showDone({ ok: false, status: it.status, error: p.text }, label); return; }
         if (p && p.state === 'unsure') {
           SENT = true; lockAll(true); addNext(statusBox('warn', '不確定有沒有送到', p.text));
@@ -476,9 +492,9 @@ form.busy button{opacity:.5;pointer-events:none;}
           addNext(statusBox('warn', '沒收到回應', moved ? '狀態已經變成「' + it.status + '」，但 3 分鐘內沒看到執行結果，不確定有沒有做完。系統會擋重複執行，請稍後開這張卡確認，不要重按。' : '狀態仍是「' + LOADED_STATUS + '」、不確定剛才有沒有送到。系統會擋重複執行（不會重複開票、重複發送），請重新整理確認後再決定要不要再按一次。'));
           return;
         }
-        setTimeout(function () { pollStatus(label, startedAt); }, 5000);
+        setTimeout(function () { pollStatus(label, startedAt, decision); }, 5000);
       })
-      .catch(function () { setTimeout(function () { pollStatus(label, startedAt); }, 5000); });
+      .catch(function () { setTimeout(function () { pollStatus(label, startedAt, decision); }, 5000); });
   }
   function formDecision(f, btn) { if (btn && btn.name === 'decision' && btn.value) return btn.value; var hd = f.querySelector('input[name=decision]'); return hd ? hd.value : ''; }
   function submitViaFetch(f, btn) {
@@ -505,7 +521,7 @@ form.busy button{opacity:.5;pointer-events:none;}
       .catch(function () {
         clearInterval(tick);
         addNext(statusBox('run', label + '已送出、等後台回報…', '網路沒把結果帶回來，正在每 5 秒查一次狀態。不用留在這頁，可以直接看下一張。'));
-        pollStatus(label, t0);
+        pollStatus(label, t0, decision);
       });
   }
   function wire() {
