@@ -148,7 +148,7 @@ form.busy button{opacity:.5;pointer-events:none;}
       if (action === 'ecpayIssue') return !/^(已開立|已發「發票資料確認卡」|夜間核可：發票資料確認卡|這筆 10 分鐘內剛開過)/.test(t);
       if (action === 'invoiceNotify') return /^(失敗|部分沒發)|：沒發/.test(t);
       if (action === 'ecpayVoid') return !/^(已作廢|已照綠界作廢狀態回寫)/.test(t);
-      if (/^沒有要銷的帳/.test(t)) return false;
+      if (/^沒有要銷的帳/.test(t)) return /失敗|沒寫成|沒完成|沒成功|沒送出|送不出去/.test(t);
       return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|沒送出|送不出去|沒有銷帳|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
     }
     var SIDE = { cardsError: '附掛卡', caseCardsError: '案例卡', attachCardsFail: '附掛卡', quoteCardsError: '報價卡', attachQuoteFail: '報價卡', imageError: '圖片', materialCardsError: '材料卡', proposalCardsError: '提案卡', reminderError: '提醒', intakeCardError: '資料卡', linkCardError: '連結卡', fbError: 'FB 貼文', emailError: 'email' };
@@ -478,7 +478,8 @@ form.busy button{opacity:.5;pointer-events:none;}
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var it = j && j.item, p = it ? SENTLOG.judge({ from: LOADED_STATUS, sig: LOADED_SIG, state: 'run', decision: decision }, it) : null;
-        if (p && (p.state === 'done' || p.state === 'partial')) { showDone({ ok: true, status: it.status, title: label + '完成', desc: p.text, execResult: '' }, label); if (p.state === 'partial') SENTLOG.update(CUR.id, { state: 'partial', text: p.text }); return; }
+        if (p && p.state === 'partial') { SENT = true; lockAll(true); addNext(statusBox('warn', label + '完成，但有東西沒送成', p.text)); SENTLOG.update(CUR.id, { state: 'partial', text: p.text }); Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; }); return; }
+        if (p && p.state === 'done') { showDone({ ok: true, status: it.status, title: label + '完成', desc: p.text, execResult: '' }, label); return; }
         if (p && p.state === 'fail') { showDone({ ok: false, status: it.status, error: p.text }, label); return; }
         if (p && p.state === 'unsure') {
           SENT = true; lockAll(true); addNext(statusBox('warn', '不確定有沒有送到', p.text));
