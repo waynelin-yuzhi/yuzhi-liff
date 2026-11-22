@@ -224,6 +224,15 @@ body.oc-open,body.hb-open{overflow:hidden}
 .hb-meta{margin-top:4px;font-size:12px;line-height:1.6;color:var(--muted)}
 .oc-usage{font-size:13px;line-height:1.8;color:var(--body);padding:10px 14px}
 .oc-usage b{color:var(--ink);font-weight:600}
+.oc-note{color:var(--muted)}
+.oc-fail,.oc-warn-t{color:#8C3B25}
+.oc-fail .oc-note{color:#8C3B25}
+.hb-it.hb-flash{border-color:var(--moss);box-shadow:0 0 0 2px #E9EDE3}
+.hb-note{margin-top:6px;font-size:12px;line-height:1.6;color:var(--moss)}
+.hb-scope{margin-top:6px;font-size:13px;line-height:1.8;color:var(--body);overflow-wrap:anywhere}
+.hb-scope b{font-weight:600;color:var(--ink);margin-right:4px}
+.hb-pick{margin-top:6px;border:1px solid var(--line);border-radius:6px;padding:0 8px 4px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;background:#fff}
+.hb-pick .oc-pick-top{top:0;padding:8px 0}
 
 /* 通知設定（全螢幕面板：手機與桌機同一套） */
 #nsBox{display:none;position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
@@ -2150,97 +2159,149 @@ var yzSt = (function () {
 })();
 </script>
 <script>
-/* 跟 AI 討論與我的習慣（2026-11-20）。後端 cs-run ownerapp.ts／habits.ts：
-   ownerChatSend／ownerChatLoad／ownerChatUsage、habitConfirm／habitDiscard／habitList／habitUpdate／habitDisable／habitEnable／habitDelete。
-   只有核可人能用：開機用 ownerChatLoad 探一次，回 ok 且帶 messages 才顯示入口（html.oc-owner）；不是核可人（403 owner_only）或後端還沒有這個功能就不顯示。
+/* 跟 AI 討論與我的習慣（2026-11-20，2026-11-22 對齊 cs-run 1.81.0 契約）。後端 cs-run ownerapp.ts／habits.ts：
+   ownerChatWho／ownerChatSend／ownerChatLoad／ownerChatUsage、habitAdd／habitConfirm／habitDiscard／habitList／habitUpdate／habitDisable／habitEnable／habitDelete。
+   登入後先問 ownerChatWho：isOwner 才顯示入口（html.oc-owner），等級選項、預設等級、花費提醒也從這裡先拿。
+   不是核可人時後端回 HTTP 200＋owner_only，只把入口收掉，不登出、不顯示錯誤；真的登入失效（401／403）照主程式 api() 的規矩登出。
    這裡沒有任何直接發給客戶的動作；對話做了事（照發、退回、重擬、擬新稿）只是把結果顯示出來並刷新收件匣。後端來的字一律 esc。 */
 var yzOc = (function () {
-  var TIER_NAME = { fast: '快', standard: '標準', deep: '深入' }, SEND_MS = 60000;
-  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: ['fast', 'standard', 'deep'], defTier: 'standard', tier: '', busy: false, mentions: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0 };
+  var TIER_NAME = { fast: '快', standard: '標準', deep: '深入' }, TIERS0 = ['fast', 'standard', 'deep'];
+  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: TIERS0.slice(), defTier: 'standard', tier: '', busy: false, mentions: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0, canAdd: false, lookupErr: false };
   var box = document.getElementById('ocBox');
   function $(id) { return document.getElementById(id); }
+  function arr(x) { return Array.isArray(x) ? x : []; }
+  function objs(x) { return arr(x).filter(function (v) { return v && typeof v === 'object'; }); }
   function hhmm(at) { var ms = Date.parse(at || ''); return ms ? tpeMinute(ms).slice(5) : ''; }
   function money(twd, usd) { return '約 NT$' + Math.round(Number(twd) || 0) + '（US$' + (Math.round((Number(usd) || 0) * 100) / 100) + '）'; }
+  function costOk(a) { return !!(a && typeof a === 'object' && Number(a.thresholdUsd) > 0); }
 
-  // 自己的呼叫：不走主程式的 api()（那邊把 403 一律當登入失效、會把人登出；這裡 403 owner_only 只是「不是核可人」）
-  function call(app, ms) {
-    return sb.auth.getSession().then(function (r) {
-      var s = r && r.data && r.data.session; if (!s) throw new Error('no_session');
-      var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null, timer = ac ? setTimeout(function () { ac.abort(); }, ms || 45000) : null;
-      return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify({ tenant: CFG.tenant, app: app }), signal: ac ? ac.signal : undefined })
-        .then(function (res) { return res.text().then(function (t) { if (timer) clearTimeout(timer); var d = null; try { d = JSON.parse(t); } catch (e) {} return { status: res.status, d: (d && typeof d === 'object') ? d : {} }; }); }, function (e) { if (timer) clearTimeout(timer); throw e; });
+  function call(app) {
+    return api({ app: app }, true).then(function (d) {
+      d = (d && typeof d === 'object') ? d : {};
+      if (d.ok === false && d.error === 'owner_only') lostOwner();
+      return d;
     });
   }
+  function isAuthErr(e) { return /請先進入|連線已失效/.test(String((e && e.message) || '')); }
   var ERR = { text_required: '還沒打字。', text_too_long: '這段太長了，請縮到 2000 字以內。', mentions_invalid: '點名的對象有問題，請移除後重新選。', mention_unknown: '點名的對象找不到，請移除後重新選。', tier_invalid: '回答方式選項有問題，請重新選。',
-    owner_only: '這個功能只有核可人可以用。', ai_unavailable: 'AI 暫時沒有回應，請稍後再試。', db_error: '系統暫時出錯，請稍後再試。', internal_error: '系統暫時出錯，請稍後再試。',
-    id_invalid: '找不到這一條，請重新整理。', status_invalid: '篩選條件有問題。', content_invalid: '內容要 4 到 200 個字。', category_invalid: '分類不在清單裡，請重新選。', scope_invalid: '適用對象有問題。', nothing_to_update: '沒有要改的內容。',
-    not_found: '找不到這一條，可能已經刪掉了。', scope_contact_not_found: '找不到那位對象。', not_pending: '這條已經處理過了。', is_pending: '這條還在等你確認，請先按記下或不用。', duplicate: '改完會跟另一條已經記下的一樣，不用重複記。', too_many: '已記下的習慣到上限（200 條）了，請先刪掉不用的。' };
-  function errText(r) {   // r＝call() 的結果或例外
-    if (!r || !r.d) { var m = String((r && r.message) || ''); return /no_session/.test(m) ? '登入已失效，請重新進入。' : '連線中斷或等太久，沒有收到回應。'; }
-    var d = r.d; if (d.message) return String(d.message);
+    owner_only: '', ai_unavailable: 'AI 暫時沒有回應，請稍後再試。', db_error: '系統暫時出錯，請稍後再試。', internal_error: '系統暫時出錯，請稍後再試。',
+    id_invalid: '找不到這一條，請重新整理。', status_invalid: '篩選條件有問題。', content_invalid: '內容要 4 到 200 個字。', category_invalid: '分類不在清單裡，請重新選。', scope_invalid: '適用對象沒有選好，請重新選一次。', nothing_to_update: '沒有要改的內容。',
+    not_found: '找不到這一條，可能已經刪掉了。', scope_contact_not_found: '找不到你選的那位客戶，可能已經不在名單裡，請重新選。', not_pending: '這條已經處理過了。', is_pending: '這條還在等你確認，請先按記下或不用。', duplicate: '這樣改會跟另一條已經記下的一樣（同樣的適用對象、同樣的內容），所以這條維持原樣。', too_many: '已記下的習慣到上限（200 條）了，請先刪掉不用的。' };
+  var LOCAL_FIRST = { owner_only: 1, content_invalid: 1, category_invalid: 1, scope_invalid: 1, scope_contact_not_found: 1, not_found: 1, not_pending: 1, is_pending: 1, duplicate: 1, too_many: 1 };
+  function errText(d) {   /* d＝call() 的回應物件或例外 */
+    if (!d || d instanceof Error || typeof d !== 'object' || d.ok === undefined && !d.error) return isAuthErr(d) ? '登入已失效，請重新進入。' : '連線中斷或等太久，沒有收到回應。';
+    if (LOCAL_FIRST[d.error]) return ERR[d.error];
+    if (d.message) return String(d.message);
     if (d.error === 'busy') return '上一句還在處理' + (Number(d.retryAfterSec) > 0 ? '，約 ' + Math.ceil(Number(d.retryAfterSec)) + ' 秒後再試。' : '，請稍等再送。');
-    if (r.status === 401) return '登入已失效，請重新進入。';
     return ERR[d.error] || '沒有成功，請稍後再試。';
   }
   function say(t, kind) { var e = $('ocMsg'); if (!e) return; e.textContent = t || ''; e.className = 'ns-msg' + (kind ? ' ' + kind : ''); }
 
   // ── 核可人判斷與讀對話
   function setOwner(on) { S.owner = !!on; document.documentElement.classList.toggle('oc-owner', S.owner); try { if (S.owner) localStorage.setItem('yz_oc_owner', '1'); else localStorage.removeItem('yz_oc_owner'); } catch (e) {} }
+  function lostOwner() { setOwner(false); S.canAdd = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); }
+  function applyMeta(d, withCost) {
+    if (Array.isArray(d.categories) && d.categories.length) S.cats = d.categories.map(String);
+    var t = arr(d.tiers).map(String).filter(function (x) { return TIER_NAME[x]; }); if (t.length) S.tiers = t;
+    if (TIER_NAME[d.defaultTier]) S.defTier = d.defaultTier;
+    if (!S.tier || S.tiers.indexOf(S.tier) < 0) S.tier = S.tiers.indexOf(S.defTier) >= 0 ? S.defTier : S.tiers[0];
+    if (withCost) S.cost = costOk(d.costAlert) ? d.costAlert : null;
+  }
   function normMsg(m) {
-    var t = m.tier, o = { id: String(m.id || ''), role: m.role === 'user' ? 'user' : 'assistant', text: String(m.text == null ? '' : m.text), at: String(m.at || ''), mentions: Array.isArray(m.mentions) ? m.mentions : [], actions: Array.isArray(m.actions) ? m.actions : [],
-      proposals: Array.isArray(m.proposals) ? m.proposals : [], known: Array.isArray(m.known) ? m.known : [], pendingActions: Array.isArray(m.pendingActions) ? m.pendingActions : [], timedOut: !!m.timedOut, late: !!m.late, error: !!m.error };
+    var t = m.tier, o = { id: String(m.id || ''), role: m.role === 'user' ? 'user' : 'assistant', text: String(m.text == null ? '' : m.text), at: String(m.at || ''), mentions: arr(m.mentions), actions: arr(m.actions), actionItems: objs(m.actionItems),
+      proposals: objs(m.proposals), known: arr(m.known), pendingActions: arr(m.pendingActions), pendingActionItems: objs(m.pendingActionItems), pendingResults: objs(m.pendingResults), timedOut: !!m.timedOut, late: !!m.late, lateFor: String(m.lateFor || ''), error: !!m.error };
     if (t && typeof t === 'object') { o.tier = String(t.used || ''); o.tierAuto = !!t.auto; } else o.tier = String(t || '');
     return o;
   }
   function applyLoad(d, older) {
-    var list = (d.messages || []).map(normMsg);
+    var list = arr(d.messages).filter(function (m) { return m && typeof m === 'object'; }).map(normMsg);
     S.msgs = older ? list.concat(S.msgs) : list; S.hasMore = !!d.hasMore; S.loaded = true;
-    if (Array.isArray(d.categories) && d.categories.length) S.cats = d.categories.map(String);
-    if (Array.isArray(d.tiers) && d.tiers.length) S.tiers = d.tiers.map(String).filter(function (x) { return TIER_NAME[x]; });
-    if (TIER_NAME[d.defaultTier]) S.defTier = d.defaultTier;
-    if (!S.tier || S.tiers.indexOf(S.tier) < 0) S.tier = S.tiers.indexOf(S.defTier) >= 0 ? S.defTier : S.tiers[0];
+    if (!older) S.lookupErr = d.pendingLookup === 'error'; else if (d.pendingLookup === 'error') S.lookupErr = true;
+    applyMeta(d, !older);
   }
-  function probe() {   // 登入後探一次：是核可人就把入口打開、順便把最近的對話放好
+  function probe() {   /* 登入後問一次身分：是核可人才把入口打開；不讀對話內容 */
     var cached = false; try { cached = localStorage.getItem('yz_oc_owner') === '1'; } catch (e) {}
     if (cached) document.documentElement.classList.add('oc-owner');
-    return load(true).then(function (r) { if (r === 'ok') return; if (r === 'net' && cached) { S.owner = true; return; } setOwner(false); });
+    return call({ op: 'ownerChatWho' }).then(function (d) {
+      if (d.ok === true && d.isOwner === true) { setOwner(true); S.canAdd = d.canAdd === true; applyMeta(d, true); if (S.open) { renderTier(); render(); } return; }
+      setOwner(false);
+    }, function () { if (cached) S.owner = true; });
   }
-  function load(quiet, before) {   // 回 'ok'／'no'（不是核可人或沒有這個功能）／'net'（連不上）
-    return call(Object.assign({ op: 'ownerChatLoad', limit: 30 }, before ? { before: before } : {}), 30000).then(function (r) {
-      if (r.status === 200 && r.d.ok === true && Array.isArray(r.d.messages)) { setOwner(true); if (S.busy) return 'ok';   /* 有一句正在等回覆：先不換掉畫面上的對話，回覆回來後下一次再讀 */
-        applyLoad(r.d, !!before); if (S.open) { render(!before); renderTier(); } return 'ok'; }
-      if (!quiet) say(errText(r), 'err');
+  function load(quiet, before) {   /* 回 'ok'／'no'／'net' */
+    return call(Object.assign({ op: 'ownerChatLoad', limit: 30 }, before ? { before: before } : {})).then(function (d) {
+      if (d.ok === true && Array.isArray(d.messages)) { setOwner(true); if (S.busy) return 'ok';   /* 有一句正在等回覆：先不換掉畫面上的對話，回覆回來後下一次再讀 */
+        applyLoad(d, !!before); if (S.open) { render(!before); renderTier(); } return 'ok'; }
+      if (!quiet && errText(d)) say(errText(d), 'err');
       return 'no';
     }, function (e) { if (!quiet) say(errText(e), 'err'); return 'net'; });
   }
 
-  // ── 件號與對象：做了事的件要能點過去
+  // ── AI 做了什麼：件號與對象要能點過去
   function apMap() { try { return JSON.parse(sessionStorage.getItem('yz_oc_ap') || '{}') || {}; } catch (e) { return {}; } }
-  function rememberAps() {   // 現在待核可、已排程的件號對到哪位：照發或退回之後總覽就沒有這件了，先記在這個分頁
+  function rememberAps() {   /* 舊紀錄沒有 contactId 時用：現在待核可、已排程的件號對到哪位，先記在這個分頁 */
     try { var m = apMap(); (OV.pending || []).concat(OV.scheduled || []).forEach(function (x) { if (x && x.id && x.contactId) m[x.id] = x.contactId; }); (LIST || []).forEach(function (c) { if (c && c.pending && c.pending.id) m[c.pending.id] = c.contactId; });
       sessionStorage.setItem('yz_oc_ap', JSON.stringify(m)); } catch (e) {}
   }
   function cidOfAp(ap, idx) {
     var m = apMap(); if (m[ap]) return m[ap];
-    for (var i = idx; i >= 0 && i >= idx - 1; i--) { var u = S.msgs[i]; if (u && u.role === 'user' && u.mentions.length === 1) return String(u.mentions[0].contactId || ''); }   // 那一句只點名一位：就是他
+    for (var i = idx; i >= 0 && i >= idx - 1; i--) { var u = S.msgs[i]; if (u && u.role === 'user' && u.mentions.length === 1) return String(u.mentions[0].contactId || ''); }
     return '';
   }
   function cidOfName(name) { var hit = (LIST || []).filter(function (c) { return c && c.name === name; }); return hit.length === 1 ? hit[0].contactId : ''; }
-  function actionHtml(a, idx, pending) {
-    a = String(a || ''); var k = a.split(':')[0], v = a.slice(k.length + 1), label = { decide: '核可件已照你說的處理（照發或退回）', redraft: '已交給客服重擬', compose: '已交代客服擬一則新稿給' }[k];
-    if (pending) label = { decide: '正在處理核可件', redraft: '正在交重擬', compose: '正在交代擬新稿給' }[k];
-    if (!label) return '<div class="oc-act">' + esc(a) + '</div>';
-    var cid = k === 'compose' ? cidOfName(v) : cidOfAp(v, idx);
-    return '<div class="oc-act">' + (pending ? '<span class="spin"></span>' : '') + esc(label) + '　' + (cid ? '<a href="#" class="oc-goto" data-cid="' + esc(cid) + '">' + esc(v) + '</a>' : '<b>' + esc(v) + '</b>') + '</div>';
+  var KIND_NAME = { approve: '照發', reject: '退回', redraft: '重擬', compose: '擬新稿', decide: '照發或退回' };
+  var KIND_DONE = { approve: '已照發', reject: '已退回', redraft: '已交給客服重擬', compose: '已交代客服擬新稿', decide: '已照發或退回' };
+  var KIND_DOING = { approve: '照發進行中', reject: '退回進行中', redraft: '交重擬進行中', compose: '交代擬新稿進行中', decide: '處理核可件進行中' };
+  var KIND_FAIL = { approve: '照發沒有成功', reject: '退回沒有成功', redraft: '重擬沒有交出去', compose: '擬新稿沒有交出去', decide: '核可件沒有處理成功' };
+  function strItem(a, pending) {   /* 舊紀錄只有字串（decide:AP-1、redraft:AP-2、compose:名稱）：轉成同一種明細 */
+    a = String(a || ''); var k = a.split(':')[0], v = a.slice(k.length + 1);
+    if (!KIND_NAME[k] || !v) return { raw: a };
+    var it = { kind: k, ok: pending ? null : true, note: '' }; if (pending) it.pending = true;
+    if (k === 'compose') it.name = v; else it.apId = v;
+    return it;
   }
+  function itemKey(it) { var k = it.kind === 'approve' || it.kind === 'reject' ? 'decide' : String(it.kind || ''); return k + ':' + String(it.apId || it.name || ''); }
+  function itemTarget(it, idx) {
+    var ap = String(it.apId || ''), nm = String(it.name || ''), label = ap && nm ? ap + '・' + nm : (ap || nm);
+    if (!label) return '<b>（查不到是哪一件）</b>';
+    var cid = String(it.contactId || '') || (ap ? cidOfAp(ap, idx) : cidOfName(nm));
+    return cid ? '<a href="#" class="oc-goto" data-cid="' + esc(cid) + '">' + esc(label) + '</a>' : '<b>' + esc(label) + '</b>';
+  }
+  function note(t, pre) { return t ? '<div class="oc-note">' + esc((pre || '') + t) + '</div>' : ''; }
+  function itemHtml(it, idx) {
+    if (it.raw !== undefined) return '<div class="oc-act">' + esc(it.raw) + '</div>';
+    var k = KIND_NAME[it.kind] ? it.kind : '', kd = ' data-kind="' + esc(k || 'other') + '"';
+    if (it.pending === true || it.ok === null) return '<div class="oc-act oc-pend"' + kd + '><span class="spin"></span>' + esc(KIND_DOING[k] || '處理中') + '　' + itemTarget(it, idx) + note(String(it.note || '')) + '</div>';
+    if (it.ok === false) return '<div class="oc-act oc-fail"' + kd + '>' + esc(KIND_FAIL[k] || '沒有處理成功') + '　' + itemTarget(it, idx) + note(String(it.note || '沒有說明'), '原因：') + '</div>';
+    return '<div class="oc-act oc-done"' + kd + '>' + esc(KIND_DONE[k] || '已處理') + '　' + itemTarget(it, idx) + note(String(it.note || '')) + '</div>';
+  }
+  function pendResult(m, idx, key) {   /* 逾時那則的動作後來怎樣：後面有 late 補句就看那則；沒有就看 pendingResults */
+    for (var j = idx + 1; j < S.msgs.length; j++) if (S.msgs[j].late && S.msgs[j].lateFor === key) return { late: true };
+    var pr = m.pendingResults.filter(function (p) { return String(p.action || '') === key; })[0];
+    return pr ? { pr: pr } : null;
+  }
+  function pendHtml(it, idx, res) {
+    if (!res || it.raw !== undefined) return itemHtml(it, idx);
+    var k = KIND_NAME[it.kind] ? it.kind : '', head = esc(KIND_NAME[k] || '動作') + '　' + itemTarget(it, idx), kd = ' data-kind="' + esc(k || 'other') + '"';
+    if (res.late) return '<div class="oc-act oc-settled"' + kd + '>' + head + '：結果補在下面。</div>';
+    var p = res.pr, src = String(p.source || ''), stt = String(p.status || '');
+    if (src === 'record' && p.ok === true) return '<div class="oc-act oc-done"' + kd + ' data-src="record">' + head + '：後來做成了。</div>';
+    if (src === 'record' && p.ok === false) return '<div class="oc-act oc-fail"' + kd + ' data-src="record">' + head + '：後來確認沒有做成，請到收件匣看一下。</div>';
+    if (src === 'draft') return '<div class="oc-act' + (p.settled ? ' oc-done' : '') + '"' + kd + ' data-src="draft">' + head + '：那份稿現在是「' + esc(stt || '不明') + '」' + (p.settled ? '，應該已經處理好了。' : '，可能還沒處理完，請到收件匣確認。') + '</div>';
+    if (S.lookupErr) return '<div class="oc-act oc-warn-t"' + kd + ' data-src="lookup-error">' + head + '：暫時查不到結果（不是沒有結果），請稍後重新整理。</div>';
+    return '<div class="oc-act oc-warn-t"' + kd + ' data-src="none">' + head + '：結果不明，請到收件匣確認。</div>';
+  }
+  function lateLabel(s) { var it = strItem(s, false); return it.raw !== undefined ? String(s) : (KIND_NAME[it.kind] + ' ' + (it.apId || it.name)); }
 
   // ── 習慣提議卡
   function findProp(id) { for (var i = 0; i < S.msgs.length; i++) { var ps = S.msgs[i].proposals; for (var j = 0; j < ps.length; j++) if (ps[j] && ps[j].id === id) return ps[j]; } return null; }
   function scopeText(sc) { return (sc && sc.type === 'contact') ? ('只用在 ' + (sc.name || cname(sc.contactId))) : '所有對象'; }
   function catOptions(sel) { var cs = S.cats.slice(); if (sel && cs.indexOf(sel) < 0) cs.unshift(sel); return cs.map(function (c) { return '<option value="' + esc(c) + '"' + (c === sel ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join(''); }
+  var GONE = { discarded: '這條當時按了「不用」，沒有記下。', deleted: '這條記下後又刪掉了。', expired: '這條太久沒處理，系統已經清掉，沒有記下。', merged: '這條已經併進另一條記下的習慣，沒有重複記。', unknown: '這條已經處理過了。' };
+  function goneText(r) { return GONE[GONE[r] ? r : 'unknown']; }
   function propHtml(p) {
     var id = esc(p.id || ''), st = p._local || p.status;
-    if (st === 'gone') return '<div class="oc-prop done" data-prop="' + id + '" data-st="gone">這條沒有記下來（已略過或已刪除）。</div>';
+    if (st === 'gone') { var gr = GONE[p.goneReason] ? p.goneReason : 'unknown';
+      return '<div class="oc-prop done" data-prop="' + id + '" data-st="gone" data-gone="' + gr + '">' + GONE[gr] + (gr === 'merged' && p.intoId ? '　<a href="#" class="oc-hbgo" data-hid="' + esc(p.intoId) + '">看那一條</a>' : '') + '</div>'; }
     if (st === 'discarded') return '<div class="oc-prop done" data-prop="' + id + '" data-st="discarded">已略過，不記。</div>';
     var line = '<span class="oc-cat">' + esc(p.category || '其他') + '</span>' + esc(p.content || '');
     if (st === 'confirmed' || st === 'disabled') return '<div class="oc-prop done" data-prop="' + id + '" data-st="' + st + '"><h4>' + (st === 'confirmed' ? '已記下' : '已記下（目前停用）') + '</h4>' + line + (p._note ? '<div class="hb-meta">' + esc(p._note) + '</div>' : '') + '</div>';
@@ -2250,7 +2311,7 @@ var yzOc = (function () {
     return '<div class="oc-prop" data-prop="' + id + '" data-st="pending"><h4>要記下來嗎</h4>' + line + '<div class="hb-meta">適用：' + esc(scopeText(p.scope)) + '</div>' + old + (p._err ? '<div class="ns-msg err">' + esc(p._err) + '</div>' : '')
       + '<div class="oc-btns"><button type="button" class="btn small" data-pa="yes">記下</button><button type="button" class="btn ghost small" data-pa="no">不用</button><button type="button" class="btn ghost small" data-pa="edit">改一下再記</button></div></div>';
   }
-  var APPLIED = { update: '已更新原本那一條。', replace: '已取代舊的那一條（舊的停用）。', merged: '跟已經記下的一樣，沒有重複記。' };
+  var APPLIED = { update: '已更新原本那一條。', replace: '已取代舊的那一條（舊的停用）。', merged: '已經有一樣的，併進原本那一條，沒有重複記。' };
   function propAct(id, act, el) {
     var p = findProp(id); if (!p || p._busy) return;
     if (act === 'edit') { p._edit = true; p._err = ''; render(); return; }
@@ -2262,15 +2323,17 @@ var yzOc = (function () {
       app.content = txt; app.category = cat;
     }
     p._busy = true; busy(el, true, act === 'no' ? '處理中' : '記下中');
-    call(app).then(function (r) {
+    call(app).then(function (d) {
       p._busy = false;
-      if (r.status === 200 && r.d.ok === true) {
+      if (d.ok === true) {
         if (act === 'no') { p._local = 'discarded'; p._edit = false; }
-        else { var h = r.d.habit || {}; p.status = 'confirmed'; p.content = h.content || app.content || p.content; p.category = h.category || app.category || p.category; p._edit = false; p._err = ''; p._note = APPLIED[r.d.applied] || ''; }
+        else { var h = d.habit || {}; p.status = 'confirmed'; p.content = h.content || app.content || p.content; p.category = h.category || app.category || p.category; p._edit = false; p._err = ''; p._note = APPLIED[d.applied] || ''; }
         render(); return;
       }
-      if (r.d.error === 'not_pending' || r.d.error === 'not_found') { load(true).then(function () { render(); say(errText(r), 'err'); }); return; }   // 別處已經按過：以後台現在的狀態為準
-      p._err = errText(r); render();
+      if (d.error === 'owner_only') return;
+      if (d.error === 'not_found' && d.goneReason) { p.status = 'gone'; p.goneReason = String(d.goneReason); delete p._local; p._edit = false; render(); return; }
+      if (d.error === 'not_pending' || d.error === 'not_found') { load(true).then(function () { render(); say(errText(d), 'err'); }); return; }   /* 別處已經按過：以後台現在的狀態為準 */
+      p._err = errText(d); render();
     }, function (e) { p._busy = false; p._err = errText(e); render(); });
   }
 
@@ -2280,16 +2343,29 @@ var yzOc = (function () {
     var ment = mine && m.mentions.length ? '<div>' + m.mentions.map(function (x) { return '<span class="oc-ment">@' + esc((x && (x.name || cname(x.contactId))) || '') + '</span>'; }).join('') + '</div>' : '';
     if (m.thinking) return '<div class="msg in oc-think" data-i="' + i + '"><span class="spin"></span>思考中</div>';
     var tierT = (!mine && TIER_NAME[m.tier]) ? '・' + TIER_NAME[m.tier] + (m.tierAuto ? '（簡單的事自動用快的）' : '') : '';
-    h += '<div class="msg ' + (mine ? 'out' : 'in') + (m.timedOut || m.error ? ' oc-warn' : '') + '" data-i="' + i + '" data-role="' + m.role + '">' + ment + '<div class="oc-text">' + esc(m.text) + '</div><div class="ts">' + esc(hhmm(m.at)) + (m.late ? '・補回的結果' : '') + '<span class="oc-tierlab">' + esc(tierT) + '</span></div></div>';
+    var lateT = m.late ? '・補回的結果' + (m.lateFor ? '（' + lateLabel(m.lateFor) + '）' : '') : '';
+    h += '<div class="msg ' + (mine ? 'out' : 'in') + (m.timedOut || m.error ? ' oc-warn' : '') + '" data-i="' + i + '" data-role="' + m.role + '">' + ment + '<div class="oc-text">' + esc(m.text) + '</div><div class="ts">' + esc(hhmm(m.at) + lateT) + '<span class="oc-tierlab">' + esc(tierT) + '</span></div></div>';
     var under = '';
-    under += m.actions.map(function (a) { return actionHtml(a, i, false); }).join('') + m.pendingActions.map(function (a) { return actionHtml(a, i, true); }).join('');
-    if (m.pendingActions.length) under += '<div class="oc-act">還在進行，做完會補一句在下面。</div>';
-    if (m.timedOut && !m.pendingActions.length && m.retry) under += '<div class="oc-act"><a href="#" class="oc-retry" data-i="' + i + '">再問一次</a></div>';
+    var done = m.actionItems.length ? m.actionItems : m.actions.map(function (a) { return strItem(a, false); });
+    under += done.map(function (it) { return itemHtml(it, i); }).join('');
+    var pend = m.pendingActionItems.length ? m.pendingActionItems : m.pendingActions.map(function (a) { return strItem(a, true); }), waiting = 0;
+    under += pend.map(function (it, j) {
+      var key = (m.pendingActions.length === pend.length && m.pendingActions[j]) ? String(m.pendingActions[j]) : (it.raw !== undefined ? it.raw : itemKey(it)), res = pendResult(m, i, key);
+      if (!res) waiting++;
+      return pendHtml(it, i, res);
+    }).join('');
+    if (waiting) under += '<div class="oc-act">還在進行，做完會補一句在下面。</div>';
+    if (m.timedOut && !pend.length && m.retry) under += '<div class="oc-act"><a href="#" class="oc-retry" data-i="' + i + '">再問一次</a></div>';
+    if (m.unsaved) under += '<div class="oc-act oc-err oc-unsaved">這則沒存到對話紀錄，重開 App 會看不到。</div>';
     under += m.known.map(function (k) { return '<div class="oc-act">這條已經記過：<span class="oc-cat">' + esc((k && k.category) || '其他') + '</span>' + esc((k && k.content) || '') + '</div>'; }).join('');
     under += m.proposals.map(propHtml).join('');
     if (m.failed) under += '<div class="oc-act oc-err">' + esc(m.failed) + '</div><div class="oc-act">' + (m.unsure ? '<a href="#" class="oc-reload">看看有沒有回覆</a>　' : '') + '<a href="#" class="oc-retry" data-i="' + i + '">再送一次</a></div>';
     if (under) h += '<div class="oc-under' + (mine ? ' mine' : '') + '" data-i="' + i + '">' + under + '</div>';
     return h;
+  }
+  function renderCost() {
+    var c = $('ocCost'), a = S.cost; if (!c) return;
+    if (costOk(a)) { c.style.display = ''; c.textContent = '本月 AI 討論已花 ' + money(a.monthTwd, a.monthUsd) + '，超過你設的提醒門檻 US$' + a.thresholdUsd + '。這只是提醒，還是可以繼續用。'; } else c.style.display = 'none';
   }
   function render(toBottom) {
     var el = $('ocList'); if (!el) return;
@@ -2297,8 +2373,7 @@ var yzOc = (function () {
     el.innerHTML = (S.hasMore ? '<button type="button" class="btn ghost small oc-more" id="ocMore">看更早的對話</button>' : '')
       + (S.msgs.length ? S.msgs.map(msgHtml).join('') : '<div class="oc-empty">' + (S.loaded ? '想問收件匣的狀況、交代某一件怎麼處理，或告訴它你的習慣，直接打字就可以。<br>它聽到像習慣的話會先問你要不要記下來。' : '<span class="spin"></span>讀取對話中') + '</div>');
     if (toBottom !== false) el.scrollTop = el.scrollHeight; else el.scrollTop = el.scrollHeight - keep;
-    var c = $('ocCost'), a = S.cost;
-    if (c) { if (a && Number(a.thresholdUsd) > 0) { c.style.display = ''; c.textContent = '本月 AI 討論已花 ' + money(a.monthTwd, a.monthUsd) + '，超過你設的提醒門檻 US$' + a.thresholdUsd + '。這只是提醒，還是可以繼續用。'; } else c.style.display = 'none'; }
+    renderCost();
     var sb0 = $('ocSend'); if (sb0) { if (S.busy && !sb0.classList.contains('busy')) busy(sb0, true, '等回覆'); if (!S.busy && sb0.classList.contains('busy')) busy(sb0, false); sb0.disabled = !!S.busy; }
   }
   function renderTier() { var t = $('ocTier'); if (!t) return; t.innerHTML = S.tiers.map(function (k) { return '<option value="' + k + '"' + (k === S.tier ? ' selected' : '') + '>' + TIER_NAME[k] + (k === S.defTier ? '（預設）' : '') + '</option>'; }).join(''); }
@@ -2324,49 +2399,48 @@ var yzOc = (function () {
   }
 
   // ── 送出
-  function send(payload) {   // payload＝重送時帶原本那句
+  function send(payload) {   /* payload＝重送時帶原本那句 */
     if (S.busy) return;
     var ta = $('ocText'), p = payload || { text: String(ta.value || '').trim(), mentions: S.mentions.slice(), tier: S.tier };
     if (!p.text) { say(ERR.text_required, 'err'); return; }
     if (p.text.length > 2000) { say(ERR.text_too_long, 'err'); return; }
     say(''); rememberAps();
-    var mine = { role: 'user', text: p.text, at: new Date().toISOString(), mentions: p.mentions.slice(), actions: [], proposals: [], known: [], pendingActions: [], local: true, payload: p };
-    var think = { role: 'assistant', thinking: true, mentions: [], actions: [], proposals: [], known: [], pendingActions: [] };
+    var mine = normMsg({ role: 'user', text: p.text, at: new Date().toISOString(), mentions: p.mentions.slice() }); mine.local = true; mine.payload = p;
+    var think = normMsg({ role: 'assistant' }); think.thinking = true;
     S.msgs.push(mine, think); S.busy = true; var my = ++S.seq;
     if (!payload) { ta.value = ''; S.mentions = []; renderChips(); }
     render();
     var done = function () { S.busy = false; var k = S.msgs.indexOf(think); if (k >= 0) S.msgs.splice(k, 1); };
-    call(Object.assign({ op: 'ownerChatSend', text: p.text, tier: p.tier }, p.mentions.length ? { mentions: p.mentions.map(function (m) { return m.contactId; }) } : {}), SEND_MS).then(function (r) {
+    var putBack = function () { var k = S.msgs.indexOf(mine); if (k >= 0) S.msgs.splice(k, 1); if (!String(ta.value || '').trim()) { ta.value = p.text; S.mentions = p.mentions.slice(); renderChips(); } };
+    call(Object.assign({ op: 'ownerChatSend', text: p.text, tier: p.tier }, p.mentions.length ? { mentions: p.mentions.map(function (m) { return m.contactId; }) } : {})).then(function (d) {
       if (my !== S.seq) return; done();
-      var d = r.d;
-      if (r.status === 200 && d.ok === true) {
+      if (d.ok === true) {
         delete mine.local;
-        var m = normMsg({ id: d.messageId, role: 'assistant', text: d.reply, at: new Date().toISOString(), actions: d.actions, proposals: d.proposals, known: d.known, pendingActions: d.pendingActions, timedOut: d.timedOut, tier: d.tier });
+        var m = normMsg({ id: d.messageId, role: 'assistant', text: d.reply, at: new Date().toISOString(), actions: d.actions, actionItems: d.actionItems, proposals: d.proposals, known: d.known, pendingActions: d.pendingActions, pendingActionItems: d.pendingActionItems, timedOut: d.timedOut, tier: d.tier });
         if (m.timedOut) { m.retry = true; m.payload = p; }
+        if (d.saved === false) m.unsaved = true;
         S.msgs.push(m);
-        if (d.costAlert && Number(d.costAlert.thresholdUsd) > 0) S.cost = d.costAlert;
+        if (costOk(d.costAlert)) S.cost = d.costAlert;
         render();
-        if (m.actions.length || m.pendingActions.length) { try { refreshAll(true); } catch (e) {} }   // 做了事：收件匣跟著刷新
-        if (m.pendingActions.length) lateWatch();
+        var did = m.actions.length || m.pendingActions.length || m.pendingActionItems.length || m.actionItems.some(function (x) { return x.ok === true; });
+        if (did) { try { refreshAll(true); } catch (e) {} }   /* 做了事：收件匣跟著刷新 */
+        if (m.pendingActions.length || m.pendingActionItems.length) lateWatch();
         return;
       }
-      if (r.status === 401) { say(errText(r), 'err'); try { showGate(); } catch (e) {} }
-      if (d.error === 'owner_only') setOwner(false);
-      S.msgs.splice(S.msgs.indexOf(mine), 1);   // 後端明確沒收：這句不留在對話裡，字放回輸入框
-      if (!String(ta.value || '').trim()) { ta.value = p.text; S.mentions = p.mentions.slice(); renderChips(); }
-      render(); say(errText(r), 'err');
-    }, function (e) {   // 斷線或等太久：不確定後端有沒有收到，不可以自動重送
+      putBack(); render();   /* 後端明確沒收：這句不留在對話裡，字放回輸入框；不是核可人（owner_only）時畫面已經收掉，不顯示錯誤 */
+      if (d.error !== 'owner_only') say(errText(d), 'err');
+    }, function (e) {   /* 斷線或等太久：不確定後端有沒有收到，不可以自動重送 */
       if (my !== S.seq) return; done();
-      if (/no_session/.test(String((e && e.message) || ''))) { S.msgs.splice(S.msgs.indexOf(mine), 1); ta.value = p.text; render(); say(errText(e), 'err'); try { showGate(); } catch (e2) {} return; }
+      if (isAuthErr(e)) { putBack(); render(); say(errText(e), 'err'); return; }
       mine.failed = '沒有收到回應，不確定 AI 有沒有收到這一句。'; mine.unsure = true; render();
     });
   }
-  function lateWatch() {   // 有動作還在跑：過幾秒重讀，等後端補上 late 那一則
+  function lateWatch() {   /* 有動作還在跑：過幾秒重讀，等後端補上 late 那一則 */
     S.late.forEach(clearTimeout); S.late = [6000, 15000, 30000].map(function (ms) { return setTimeout(function () { if (S.busy) return; load(true); }, ms); });
   }
 
   // ── 開關
-  function hide() { S.open = false; box.classList.remove('on'); document.body.classList.remove('oc-open'); pick(false); }
+  function hide() { S.open = false; if (box) box.classList.remove('on'); document.body.classList.remove('oc-open'); pick(false); }
   function open(opt) {
     if (!box || !S.owner) return;
     if (!S.open) { S.open = true; box.classList.add('on'); document.body.classList.add('oc-open'); try { history.pushState({ yzOc: 1 }, ''); S.pushed = true; } catch (e) { S.pushed = false; } }
@@ -2393,7 +2467,7 @@ var yzOc = (function () {
   function usageInto(id) {
     var el = $(id); if (!el || !S.owner) return;
     el.innerHTML = usageHtml(S.usage && !S.usage.err ? S.usage : null);
-    call({ op: 'ownerChatUsage' }, 30000).then(function (r) { S.usage = (r.status === 200 && r.d.ok === true) ? r.d : { err: '讀不到本月花費（' + errText(r) + '）' }; }, function (e) { S.usage = { err: '讀不到本月花費（' + errText(e) + '）' }; }).then(function () { var e2 = $(id); if (e2) e2.innerHTML = usageHtml(S.usage); });
+    call({ op: 'ownerChatUsage' }).then(function (d) { S.usage = d.ok === true ? d : { err: '讀不到本月花費（' + (errText(d) || '沒有權限') + '）' }; }, function (e) { S.usage = { err: '讀不到本月花費（' + errText(e) + '）' }; }).then(function () { var e2 = $(id); if (e2) e2.innerHTML = usageHtml(S.usage); });
   }
 
   // ── 綁定
@@ -2412,49 +2486,68 @@ var yzOc = (function () {
       var t = ev.target, a;
       if ((a = t.closest && t.closest('[data-pa]'))) { var card = a.closest('.oc-prop'); propAct(card.getAttribute('data-prop'), a.getAttribute('data-pa'), a); return; }
       if ((a = t.closest && t.closest('.oc-goto'))) { ev.preventDefault(); var cid = a.getAttribute('data-cid'); hide(); try { if (S.pushed) { S.pushed = false; history.back(); } } catch (e) {} setTimeout(function () { openThread(cid); }, 0); return; }
+      if ((a = t.closest && t.closest('.oc-hbgo'))) { ev.preventDefault(); if (window.yzHb) yzHb.open({ focus: a.getAttribute('data-hid') }); return; }
       if ((a = t.closest && t.closest('.oc-retry'))) { ev.preventDefault(); var m = S.msgs[Number(a.getAttribute('data-i'))]; if (!m || !m.payload || S.busy) return; var pl = m.payload; if (m.role === 'user') S.msgs.splice(S.msgs.indexOf(m), 1); else m.retry = false; send(pl); return; }
       if ((a = t.closest && t.closest('.oc-reload'))) { ev.preventDefault(); load(false); return; }
       if (t.id === 'ocMore') { var first = S.msgs.filter(function (x) { return x.at && !x.local; })[0]; if (first) load(false, first.at); }
     };
   }
-  // 登入後才探；登入失效或登出時把入口與畫面收掉。看 #app 顯示與否（showApp／showGate 切換的那個），不去包主程式的 boot
+  /* 登入後才問身分；登入失效或登出時把入口與畫面收掉。看 #app 顯示與否（showApp／showGate 切換的那個），不去包主程式的 boot */
   try {
     var appEl = $('app'), authSeen = false;
     var authView = function () {
       var on = !!(appEl && appEl.style.display !== 'none' && !gateOn());
       if (on && !authSeen) { authSeen = true; probe(); }
-      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.usage = null; S.owner = false; document.documentElement.classList.remove('oc-owner'); }
+      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.usage = null; S.cost = null; S.owner = false; S.canAdd = false; document.documentElement.classList.remove('oc-owner'); }
     };
     if (appEl && window.MutationObserver) new MutationObserver(authView).observe(appEl, { attributes: true, attributeFilter: ['style'] });
     authView();
   } catch (eB) {}
-  return { open: open, close: close, back: back, isOpen: function () { return S.open; }, usageInto: usageInto, call: call, errText: errText, cats: function () { return S.cats.slice(); }, setCats: function (c) { if (Array.isArray(c) && c.length) S.cats = c.map(String); }, isOwner: function () { return S.owner; }, scopeText: scopeText, catOptions: catOptions, ERR: ERR };
+  return { open: open, close: close, back: back, isOpen: function () { return S.open; }, usageInto: usageInto, call: call, errText: errText, goneText: goneText, cats: function () { return S.cats.slice(); }, setCats: function (c) { if (Array.isArray(c) && c.length) S.cats = c.map(String); }, isOwner: function () { return S.owner; }, scopeText: scopeText, catOptions: catOptions, ERR: ERR };
 })();
 
-/* 我的習慣：AI 記下的規矩，依分類分組；已確認、待確認、已停用都列。可改內容與分類、停用、啟用、刪除（刪除要確認）；待確認的可記下、不用、改一下再記。 */
+/* 我的習慣：AI 記下的規矩，依分類分組；已確認、待確認、已停用都列。可改內容、分類與適用對象，停用、啟用、刪除（刪除要確認）；待確認的可記下、不用、改一下再記；後端說可以（canAdd）時可以自己新增一筆。 */
 var yzHb = (function () {
-  var box = document.getElementById('hbBox'), body = document.getElementById('hbBody'), H = { open: false, pushed: false, list: null, err: '', edit: '', msg: {}, busy: {}, canAdd: false, adding: false, addErr: '', addBusy: false };
+  var box = document.getElementById('hbBox'), body = document.getElementById('hbBody'), H = { open: false, pushed: false, list: null, err: '', edit: '', msg: {}, dup: {}, busy: {}, canAdd: false, adding: false, addErr: '', addBusy: false, flash: null, notice: '', sc: null, picking: false };
   var ST = { confirmed: '已確認', pending: '待確認', disabled: '已停用' }, ORDER = { pending: 0, confirmed: 1, disabled: 2 };
   function day(x) { var ms = Date.parse(x || ''); return ms ? tpeMinute(ms).slice(0, 10) : ''; }
+  function normScope(sc) { return (sc && sc.type === 'contact' && sc.contactId) ? { type: 'contact', contactId: String(sc.contactId), name: String(sc.name || '') } : { type: 'all' }; }
+  function sameScope(a, b) { a = normScope(a); b = normScope(b); return a.type === b.type && (a.type !== 'contact' || a.contactId === b.contactId); }
+  function scopeParam(sc) { sc = normScope(sc); return sc.type === 'contact' ? { type: 'contact', contactId: sc.contactId } : { type: 'all' }; }
+  function pickRows(q) {
+    q = String(q || '').trim().toLowerCase();
+    var rows = (LIST || []).filter(function (c) { return c && c.contactId && !c.isEmp && (!q || String(c.name || '').toLowerCase().indexOf(q) >= 0); }).slice(0, 30);
+    return rows.length ? rows.map(function (c) { return '<button type="button" class="oc-pick-it hb-pick-it" data-cid="' + esc(c.contactId) + '" data-name="' + esc(c.name || '') + '">' + esc(c.name || String(c.contactId).substring(0, 8)) + '<small>' + esc(c.role || '') + '</small></button>'; }).join('')
+      : '<div class="oc-empty">' + (q ? '找不到名稱裡有這幾個字的客戶。' : '客戶清單還沒載入。') + '</div>';
+  }
+  function scopeEd() {
+    var s = normScope(H.sc), h = '<div class="hb-scope">適用：<b class="hb-sc-cur">' + esc(yzOc.scopeText(s)) + '</b>';
+    h += s.type === 'contact' ? '<button type="button" class="btn link" data-sc="all">改成所有對象</button><button type="button" class="btn link" data-sc="pick">換一位</button>' : '<button type="button" class="btn link" data-sc="pick">只用在某一位客戶</button>';
+    if (H.picking) h += '<div class="hb-pick"><div class="oc-pick-top"><input type="search" class="hb-pick-q" placeholder="打客戶名稱的幾個字" aria-label="找客戶"><button type="button" class="btn ghost small" data-sc="cancel">不改</button></div><div class="hb-pick-list">' + pickRows('') + '</div></div>';
+    return h + '</div>';
+  }
+  function redrawScope() { var el = body && body.querySelector('.hb-scope'); if (!el) return; el.outerHTML = scopeEd(); var q = body.querySelector('.hb-pick-q'); if (q) try { q.focus({ preventScroll: true }); } catch (e) {} }
   function itemHtml(h) {
-    var id = esc(h.id), st = ST[h.status] ? h.status : 'confirmed', msg = H.msg[h.id] ? '<div class="ns-msg err">' + esc(H.msg[h.id]) + '</div>' : '';
-    var meta = '<div class="hb-meta">' + (h.sourceText ? '你當時說：' + esc(h.sourceText) + '<br>' : '') + esc(day(h.confirmedAt || h.updatedAt || h.createdAt)) + '　適用：' + esc(yzOc.scopeText(h.scope)) + '</div>';
-    if (H.edit === h.id) return '<div class="hb-it oc-edit" data-hb="' + id + '" data-st="' + st + '"><textarea class="hb-e-text" maxlength="200">' + esc(h.content || '') + '</textarea><select class="hb-e-cat" aria-label="分類">' + yzOc.catOptions(h.category || '') + '</select>' + msg
+    var id = esc(h.id), st = ST[h.status] ? h.status : 'confirmed', fl = H.flash && H.flash.id === h.id ? H.flash : null;
+    var msg = H.msg[h.id] ? '<div class="ns-msg err">' + esc(H.msg[h.id]) + (H.dup[h.id] ? '　<a href="#" class="hb-goto" data-hid="' + esc(H.dup[h.id]) + '">看那一條</a>' : '') + '</div>' : '';
+    var flash = fl ? '<div class="hb-note">' + esc(fl.text) + '</div>' : '';
+    var meta = '<div class="hb-meta">' + (h.sourceText ? (h.sourceText === '手動新增' ? '自己新增的' : '你當時說：' + esc(h.sourceText)) + '<br>' : '') + esc(day(h.confirmedAt || h.updatedAt || h.createdAt)) + '　適用：' + esc(yzOc.scopeText(h.scope)) + '</div>';
+    if (H.edit === h.id) return '<div class="hb-it oc-edit" data-hb="' + id + '" data-st="' + st + '"><textarea class="hb-e-text" maxlength="200">' + esc(h.content || '') + '</textarea><select class="hb-e-cat" aria-label="分類">' + yzOc.catOptions(h.category || '') + '</select>' + scopeEd() + msg
       + '<div class="oc-btns"><button type="button" class="btn small" data-ha="save">' + (st === 'pending' ? '記下' : '存起來') + '</button><button type="button" class="btn ghost small" data-ha="cancel">取消</button></div></div>';
     var btns = st === 'pending' ? [['yes', '記下', ''], ['no', '不用', 'ghost'], ['edit', '改一下再記', 'ghost']]
       : st === 'disabled' ? [['enable', '重新啟用', ''], ['del', '刪除', 'ghost']] : [['edit', '修改', 'ghost'], ['disable', '停用', 'ghost'], ['del', '刪除', 'ghost']];
-    return '<div class="hb-it' + (st === 'disabled' ? ' off' : '') + '" data-hb="' + id + '" data-st="' + st + '"><span class="hb-st ' + st + '">' + ST[st] + '</span><span class="hb-content">' + esc(h.content || '') + '</span>' + meta + msg
+    return '<div class="hb-it' + (st === 'disabled' ? ' off' : '') + (fl ? ' hb-flash' : '') + '" data-hb="' + id + '" data-st="' + st + '"><span class="hb-st ' + st + '">' + ST[st] + '</span><span class="hb-content">' + esc(h.content || '') + '</span>' + meta + flash + msg
       + '<div class="oc-btns">' + btns.map(function (b) { return '<button type="button" class="btn small ' + b[2] + '" data-ha="' + b[0] + '">' + b[1] + '</button>'; }).join('') + '</div></div>';
   }
   function render() {
     if (!body) return;
     if (!H.list) { body.innerHTML = H.err ? '<div class="ns-sec"><div class="ns-msg err">' + esc(H.err) + '</div><div class="row"><button type="button" class="btn small" id="hbRetry">再試一次</button></div></div>' : '<div class="loading"><span class="spin"></span>讀取我的習慣中</div>'; return; }
-    var cats = yzOc.cats(), seen = {}, h = '';
+    var cats = yzOc.cats(), h = '';
     H.list.forEach(function (x) { var c = String(x.category || '其他'); if (cats.indexOf(c) < 0) cats.push(c); });
     h += '<div class="ns-d" style="margin:2px 2px 8px">跟 AI 討論時它聽到像習慣的話，會先問你要不要記；記下的在這裡。只有「已確認」的會被拿來用。</div>';
-    // 手動新增：後端的 habitList 回 canAdd:true 才出現（habitAdd 還沒進契約，後端準備好再打開）
-    if (H.canAdd && !H.adding) h += '<div style="margin:0 2px 10px"><button type="button" class="btn ghost small" id="hbAdd">＋ 自己新增一條</button></div>';
-    if (H.canAdd && H.adding) h += '<div class="hb-it oc-edit" id="hbAddBox"><textarea id="hbAddText" maxlength="200" placeholder="一句話寫下你的規矩或偏好"></textarea><select id="hbAddCat" aria-label="分類">' + yzOc.catOptions('') + '</select><div class="ns-msg err" id="hbAddMsg">' + esc(H.addErr) + '</div>'
+    if (H.notice) h += '<div class="ns-msg hb-notice" style="margin:0 2px 10px">' + esc(H.notice) + '</div>';
+    if (H.canAdd && !H.adding) h += '<div style="margin:0 2px 10px"><button type="button" class="btn ghost small" id="hbAdd">＋ 新增一筆</button></div>';
+    if (H.canAdd && H.adding) h += '<div class="hb-it oc-edit" id="hbAddBox"><textarea id="hbAddText" maxlength="200" placeholder="一句話寫下你的規矩或偏好（4 到 200 字）"></textarea><select id="hbAddCat" aria-label="分類">' + yzOc.catOptions('') + '</select>' + scopeEd() + '<div class="ns-msg err" id="hbAddMsg">' + esc(H.addErr) + '</div>'
       + '<div class="oc-btns"><button type="button" class="btn small" id="hbAddSave">記下</button><button type="button" class="btn ghost small" id="hbAddCancel">取消</button></div></div>';
     if (!H.list.length) h += '<div class="oc-empty">還沒有記下任何習慣。到「AI 討論」跟它說你的做法或偏好就可以。</div>';
     cats.forEach(function (c) {
@@ -2463,64 +2556,109 @@ var yzHb = (function () {
       h += '<div class="hb-cat" data-cat="' + esc(c) + '">' + esc(c) + '（' + items.length + '）</div>' + items.map(itemHtml).join('');
     });
     h += '<div class="st-list" style="margin-top:16px"><div class="oc-usage" id="hbUsage"></div></div>';
+    var keepEd = null, edEl = H.edit ? body.querySelector('.hb-it.oc-edit[data-hb]') : null;   /* 重畫時保留編輯框裡還沒存的字 */
+    if (edEl && edEl.getAttribute('data-hb') === H.edit) keepEd = { txt: edEl.querySelector('.hb-e-text').value, cat: edEl.querySelector('.hb-e-cat').value };
     body.innerHTML = h; yzOc.usageInto('hbUsage');
+    if (keepEd) keepDraft(H.edit, keepEd);
+    if (H.flash && H.flash.scroll) { H.flash.scroll = false; var el = body.querySelector('.hb-flash'); if (el && el.scrollIntoView) try { el.scrollIntoView({ block: 'center' }); } catch (e) {} }
   }
   function load() {
     H.err = ''; if (!H.list) render();
-    yzOc.call({ op: 'habitList', status: 'all' }, 30000).then(function (r) {
-      if (r.status === 200 && r.d.ok === true && Array.isArray(r.d.habits)) { H.list = r.d.habits; yzOc.setCats(r.d.categories); H.err = ''; H.canAdd = r.d.canAdd === true; }
-      else { H.list = null; H.err = '讀不到我的習慣（' + yzOc.errText(r) + '）'; }
+    return yzOc.call({ op: 'habitList', status: 'all' }).then(function (d) {
+      if (d.ok === true && Array.isArray(d.habits)) { H.list = d.habits.filter(function (x) { return x && typeof x === 'object'; }); yzOc.setCats(d.categories); H.err = ''; H.canAdd = d.canAdd === true; }
+      else if (d.error === 'owner_only') return;
+      else { H.list = null; H.err = '讀不到我的習慣（' + yzOc.errText(d) + '）'; }
       render();
     }, function (e) { H.list = null; H.err = '讀不到我的習慣（' + yzOc.errText(e) + '）'; render(); });
   }
+  function flashOn(id, text) { H.flash = id ? { id: String(id), text: text, scroll: true } : null; }
+  var APPLIED = { update: '已套用到原本這一條。', replace: '已記下，舊的那一條已停用。', merged: '已經有一樣的，已併入這一條，沒有重複記。' };
   function act(id, a, el) {
     var h = (H.list || []).filter(function (x) { return x.id === id; })[0]; if (!h || H.busy[id]) return;
-    H.msg[id] = '';
-    if (a === 'edit') { H.edit = id; render(); return; }
-    if (a === 'cancel') { H.edit = ''; render(); return; }
+    H.msg[id] = ''; delete H.dup[id]; H.notice = '';
+    if (a === 'edit') { H.edit = id; H.adding = false; H.sc = normScope(h.scope); H.picking = false; render(); return; }
+    if (a === 'cancel') { H.edit = ''; H.picking = false; render(); return; }
     if (a === 'del' && !confirm('刪除這條習慣？\n\n' + String(h.content || '') + '\n\n刪掉就不會再用，也救不回來。')) return;
     var app = { yes: { op: 'habitConfirm', id: id }, no: { op: 'habitDiscard', id: id }, disable: { op: 'habitDisable', id: id }, enable: { op: 'habitEnable', id: id }, del: { op: 'habitDelete', id: id } }[a];
+    var draft = null;
     if (a === 'save') {
       var card = el.closest('.hb-it'), txt = String(card.querySelector('.hb-e-text').value || '').trim(), cat = card.querySelector('.hb-e-cat').value;
-      if (txt.length < 4 || txt.length > 200) { H.msg[id] = yzOc.ERR.content_invalid; render(); return; }
+      draft = { txt: txt, cat: cat };
+      if (txt.length < 4 || txt.length > 200) { H.msg[id] = yzOc.ERR.content_invalid; render(); keepDraft(id, draft); return; }
       app = { op: h.status === 'pending' ? 'habitConfirm' : 'habitUpdate', id: id };
-      if (txt !== String(h.content || '')) app.content = txt; if (cat !== String(h.category || '')) app.category = cat;
-      if (app.op === 'habitUpdate' && app.content === undefined && app.category === undefined) { H.edit = ''; render(); return; }   // 沒改任何東西
+      if (txt !== String(h.content || '')) app.content = txt;
+      if (cat !== String(h.category || '')) app.category = cat;
+      if (!sameScope(H.sc, h.scope)) app.scope = scopeParam(H.sc);
+      if (app.op === 'habitUpdate' && app.content === undefined && app.category === undefined && app.scope === undefined) { H.edit = ''; render(); return; }
     }
+    if (!app) return;
     H.busy[id] = true; busy(el, true, '處理中');
-    yzOc.call(app, 30000).then(function (r) {
+    yzOc.call(app).then(function (d) {
       delete H.busy[id];
-      if (r.status === 200 && r.d.ok === true) { H.edit = ''; load(); return; }   // 以後台為準重讀（併入、取代會動到別筆）
-      H.msg[id] = yzOc.errText(r);
-      if (r.d.error === 'not_found' || r.d.error === 'not_pending' || r.d.error === 'is_pending') { load(); return; }
-      render();
-    }, function (e) { delete H.busy[id]; H.msg[id] = yzOc.errText(e); render(); });
+      if (d.ok === true) {
+        H.edit = ''; H.picking = false;
+        if (app.op === 'habitConfirm' && d.habit && APPLIED[d.applied]) flashOn(d.habit.id, APPLIED[d.applied]); else flashOn(null);
+        load(); return;   /* 以後台為準重讀（併入、取代會動到別筆） */
+      }
+      if (d.error === 'owner_only') return;
+      H.msg[id] = yzOc.errText(d);
+      if (d.error === 'duplicate' && d.existingId) H.dup[id] = String(d.existingId);
+      if (d.error === 'not_found') { H.notice = d.goneReason ? '剛剛那一條已經不在了：' + yzOc.goneText(d.goneReason) : yzOc.ERR.not_found; H.edit = ''; load(); return; }
+      if (d.error === 'not_pending' || d.error === 'is_pending') { H.edit = ''; load(); return; }
+      render(); keepDraft(id, draft);
+    }, function (e) { delete H.busy[id]; H.msg[id] = yzOc.errText(e); render(); keepDraft(id, draft); });
+  }
+  function keepDraft(id, draft) {   /* 存不成功時把剛打的字與分類放回編輯框 */
+    if (!draft || H.edit !== id) return;
+    var cards = body.querySelectorAll('.hb-it[data-hb]');
+    for (var i = 0; i < cards.length; i++) if (cards[i].getAttribute('data-hb') === id) { var t = cards[i].querySelector('.hb-e-text'), c = cards[i].querySelector('.hb-e-cat'); if (t) t.value = draft.txt; if (c) c.value = draft.cat; }
   }
   function addSave(el) {
     if (H.addBusy) return;
     var txt = String(document.getElementById('hbAddText').value || '').trim(), cat = document.getElementById('hbAddCat').value;
-    if (txt.length < 4 || txt.length > 200) { H.addErr = yzOc.ERR.content_invalid; document.getElementById('hbAddMsg').textContent = H.addErr; return; }
+    var setErr = function (t) { H.addErr = t; var m = document.getElementById('hbAddMsg'); if (m) m.textContent = t; };
+    if (txt.length < 4 || txt.length > 200) { setErr(yzOc.ERR.content_invalid); return; }
+    var app = { op: 'habitAdd', category: cat, content: txt }; if (normScope(H.sc).type === 'contact') app.scope = scopeParam(H.sc);
     H.addBusy = true; busy(el, true, '記下中');
-    yzOc.call({ op: 'habitAdd', content: txt, category: cat }, 30000).then(function (r) {
+    yzOc.call(app).then(function (d) {
       H.addBusy = false;
-      if (r.status === 200 && r.d.ok === true) { H.adding = false; H.addErr = ''; load(); return; }
-      H.addErr = yzOc.errText(r); busy(el, false); var m = document.getElementById('hbAddMsg'); if (m) m.textContent = H.addErr;
-    }, function (e) { H.addBusy = false; H.addErr = yzOc.errText(e); busy(el, false); var m = document.getElementById('hbAddMsg'); if (m) m.textContent = H.addErr; });
+      if (d.ok === true) {
+        var sim = arr2(d.similar);
+        H.adding = false; H.addErr = ''; H.picking = false;
+        flashOn(d.habit && d.habit.id, sim.length ? '已記下。跟這幾筆很像，要不要停用舊的：' + sim.map(function (x) { return '「' + String(x.content || '') + '」'; }).join('、') : '已記下。');
+        load(); return;
+      }
+      if (d.error === 'owner_only') return;
+      if (d.error === 'duplicate') { H.adding = false; H.addErr = ''; H.picking = false; flashOn(d.existingId, '已經有一樣的了（就是這一條），沒有重複新增。'); load(); return; }
+      busy(el, false); setErr(yzOc.errText(d));
+    }, function (e) { H.addBusy = false; busy(el, false); setErr(yzOc.errText(e)); });
   }
+  function arr2(x) { return Array.isArray(x) ? x.filter(function (v) { return v && typeof v === 'object'; }) : []; }
   function hide() { H.open = false; if (box) box.classList.remove('on'); document.body.classList.remove('hb-open'); }
-  function open() {
+  function open(opt) {
     if (!box || !yzOc.isOwner()) return;
     if (!H.open) { H.open = true; box.classList.add('on'); document.body.classList.add('hb-open'); box.scrollTop = 0; try { history.pushState({ yzHb: 1 }, ''); H.pushed = true; } catch (e) { H.pushed = false; } }
-    H.edit = ''; H.msg = {}; H.adding = false; H.addErr = ''; load();
+    H.edit = ''; H.msg = {}; H.dup = {}; H.adding = false; H.addErr = ''; H.picking = false; H.notice = '';
+    flashOn(opt && opt.focus, '就是這一條。');
+    load();
   }
   function close() { if (!H.open) return; if (H.pushed) { H.pushed = false; try { history.back(); return; } catch (e) {} } hide(); }
   window.addEventListener('popstate', function (ev) { if (H.open && !(ev.state && ev.state.yzHb)) { H.pushed = false; hide(); } });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && H.open) close(); });
   if (box) {
     document.getElementById('hbClose').onclick = close;
-    body.onclick = function (ev) { var t = ev.target; if (t.id === 'hbRetry') { load(); return; }
-      if (t.id === 'hbAdd') { H.adding = true; H.addErr = ''; render(); return; } if (t.id === 'hbAddCancel') { H.adding = false; render(); return; } if (t.id === 'hbAddSave') { addSave(t); return; }
-      var b = t.closest && t.closest('[data-ha]'); if (!b) return; act(b.closest('.hb-it').getAttribute('data-hb'), b.getAttribute('data-ha'), b); };
+    body.onclick = function (ev) {
+      var t = ev.target, b;
+      if (t.id === 'hbRetry') { load(); return; }
+      if (t.id === 'hbAdd') { H.adding = true; H.addErr = ''; H.edit = ''; H.sc = { type: 'all' }; H.picking = false; render(); return; }
+      if (t.id === 'hbAddCancel') { H.adding = false; H.picking = false; render(); return; }
+      if (t.id === 'hbAddSave') { addSave(t); return; }
+      if ((b = t.closest && t.closest('[data-sc]'))) { var w = b.getAttribute('data-sc'); if (w === 'all') { H.sc = { type: 'all' }; H.picking = false; } else if (w === 'pick') H.picking = true; else H.picking = false; redrawScope(); return; }
+      if ((b = t.closest && t.closest('.hb-pick-it'))) { H.sc = { type: 'contact', contactId: b.getAttribute('data-cid'), name: b.getAttribute('data-name') || '' }; H.picking = false; redrawScope(); return; }
+      if ((b = t.closest && t.closest('.hb-goto'))) { ev.preventDefault(); flashOn(b.getAttribute('data-hid'), '就是這一條。'); render(); return; }
+      b = t.closest && t.closest('[data-ha]'); if (!b) return; act(b.closest('.hb-it').getAttribute('data-hb'), b.getAttribute('data-ha'), b);
+    };
+    body.oninput = function (ev) { var t = ev.target; if (t && t.classList && t.classList.contains('hb-pick-q')) { var l = body.querySelector('.hb-pick-list'); if (l) l.innerHTML = pickRows(t.value); } };
   }
   return { open: open, close: close, hide: hide, isOpen: function () { return H.open; } };
 })();
