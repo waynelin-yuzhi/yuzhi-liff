@@ -69,6 +69,14 @@ select{font-family:inherit;font-size:14px;padding:8px;border:1px solid #E3DCCB;b
 .btn-home{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;background:#5F6E58;color:#FFFCF5;border-radius:10px;padding:13px 0;font-size:15px;font-weight:600;letter-spacing:2px;margin:16px 0 0;}
 .btn-home.ghost{background:transparent;color:#5F6E58;border:1px solid #C9D2C5;margin-top:8px;}
 .btn-home span{display:block;font-size:11px;font-weight:400;letter-spacing:0;opacity:.85;margin-top:2px;}
+.sbar{background:#FFFCF5;border:1px solid #E3DCCB;border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:13px;}
+.sbar-h{font-size:11px;letter-spacing:1.5px;color:#8A8F86;margin-bottom:2px;}
+.sbar-row{padding:7px 0;border-top:1px dashed #E3DCCB;line-height:1.6;color:#2E332C;word-break:break-word;}
+.sbar-h+.sbar-row{border-top:0;}
+.sbar-row b{color:#5F6E58;font-weight:600;margin-right:6px;}.sbar-t{color:#8A8F86;}
+.sbar-row.done>div{color:#5F6E58;}.sbar-row.fail>div:not(.sbar-a){color:#B3261E;font-weight:700;}.sbar-row.unknown>div:not(.sbar-a){color:#B98A2F;}
+.sbar-a{display:flex;align-items:center;gap:10px;margin-top:4px;}.sbar-a a{color:#4A6FA5;}
+.sbar-x{font-family:inherit;font-size:12px;background:transparent;border:1px solid #C9D2C5;border-radius:6px;color:#5F6E58;padding:2px 10px;cursor:pointer;}
 .decide .elapsed{font-size:12px;color:#8A8F86;margin-top:4px;}
 .ft{text-align:center;font-size:11px;color:#A9AC9F;letter-spacing:1px;margin-top:22px;}
 .ft a{color:#A9AC9F;}
@@ -98,6 +106,7 @@ form.busy button{opacity:.5;pointer-events:none;}
 <body>
 <div class="wrap">
   <div class="brand"><b>植間設計</b><span>核可中心</span></div>
+  <div id="sentBar" class="sbar" style="display:none"></div>
   <div id="app" class="card"><div class="note">載入中…</div></div>
   <div class="ft">YUZHI PLANT DESIGN · <span id="ver">Pages</span> · <a id="gasLink" href="#" target="_top">舊版頁面</a></div>
 </div>
@@ -114,6 +123,67 @@ form.busy button{opacity:.5;pointer-events:none;}
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); };
   var linkify = function (escaped) { var i = 0; return escaped.replace(/https?:\/\/[^\s<>"']+/g, function (u) { i++; return '<a class="txt-btn" target="_blank" rel="noopener" href="' + u + '">開啟連結 ' + i + '</a>'; }); };
   var chip = function (st) { var cls = { '待核可': 'chip-wait', '已排程': 'chip-run', '發佈中': 'chip-run', '已發佈': 'chip-done', '已核可': 'chip-done', '已略過': 'chip-done', '已過期': 'chip-no', '退回': 'chip-no', '失敗': 'chip-no' }[st] || 'chip-wait'; return '<span class="chip ' + cls + '">' + esc(st) + '</span>'; };
+  function sentLog(api, esc) {
+    var KEY = 'yz_sent_approvals', MAX = 10, DONE_TTL = 600000, STALE = 180000, opt = { el: null, hide: '', onChange: null }, timer = null;
+    function read() { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (r) { return r && r.id && r.h; }) : []; } catch (eR) { return []; } }
+    function write(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) {} }
+    function prune(a, now) {
+      now = now || Date.now();
+      a = a.filter(function (r) { return !((r.state === 'done' || r.state === 'note') && now - (r.doneAt || r.at || 0) > DONE_TTL); });
+      a.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
+      return a.slice(0, MAX);
+    }
+    function list() { var a = prune(read()); write(a); return a; }
+    function add(r) { var a = read().filter(function (x) { return x.id !== r.id; }); r.state = 'run'; r.at = r.at || Date.now(); a.unshift(r); write(prune(a)); draw(); }
+    function update(id, patch) {
+      var a = read();
+      a.forEach(function (r) { if (r.id !== id) return; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== 'run') r.doneAt = Date.now(); });
+      write(prune(a)); draw();
+    }
+    function remove(id) { write(read().filter(function (r) { return r.id !== id; })); draw(); }
+    function shown(r, now) { return r.state === 'run' && (now || Date.now()) - (r.at || 0) > STALE ? 'unknown' : r.state; }
+    function judge(r, it) {
+      if (!it || !it.status || it.status === r.from) return null;
+      if (it.status === '失敗' || it.error || it.lineSendError) return { state: 'fail', text: String(it.error || it.lineSendError || '狀態變成「' + it.status + '」') };
+      return { state: 'done', text: it.execResult ? String(it.execResult) : '狀態：' + it.status };
+    }
+    function check(r) {
+      r.checkedAt = Date.now(); update(r.id, { checkedAt: r.checkedAt });
+      return fetch(api + '?action=approvalView&h=' + encodeURIComponent(r.h), { method: 'GET' })
+        .then(function (res) { return res.json(); })
+        .then(function (j) { var p = judge(r, j && j.item); if (p) { update(r.id, p); if (opt.onChange) opt.onChange(r.id, p.state); } })
+        .catch(function () {});
+    }
+    function cycle() {
+      var now = Date.now();
+      if (!document.hidden) list().forEach(function (r) { if (r.state === 'run' && now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500)) check(r); });
+      draw();
+    }
+    function line(r, now) {
+      var st = shown(r, now), head = '<b>' + esc(r.id + ' ' + (r.label || '')) + '</b>' + (r.title ? '<span class="sbar-t">' + esc(r.title) + '</span>' : '');
+      var card = /^\/[^\/]/.test(String(r.url || '')) ? '<a href="' + esc(r.url) + '" target="_top">開那張卡</a>' : '';
+      var x = '<button type="button" class="sbar-x" data-id="' + esc(r.id) + '">知道了</button>';
+      if (st === 'run') return '<div class="sbar-row run">' + head + '<div>還在執行，已過 ' + esc(Math.max(0, Math.round((now - r.at) / 1000))) + ' 秒</div></div>';
+      if (st === 'done') return '<div class="sbar-row done">' + head + '<div>已完成：' + esc(r.text || '') + '</div></div>';
+      if (st === 'note') return '<div class="sbar-row done">' + head + '<div>後台回覆：' + esc(r.text || '') + '</div></div>';
+      if (st === 'fail') return '<div class="sbar-row fail">' + head + '<div>失敗：' + esc(r.text || '後台沒回報原因') + '</div><div class="sbar-a">' + card + x + '</div></div>';
+      return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到，系統會擋重複執行，請開那張卡確認</div><div class="sbar-a">' + card + x + '</div></div>';
+    }
+    function draw() {
+      if (!opt.el) return;
+      var now = Date.now(), a = list().filter(function (r) { return r.id !== opt.hide; });
+      opt.el.style.display = a.length ? 'block' : 'none';
+      opt.el.innerHTML = a.length ? '<div class="sbar-h">剛送出的件</div>' + a.map(function (r) { return line(r, now); }).join('') : '';
+    }
+    function start(el, o) {
+      opt.el = el; opt.hide = (o && o.hide) || ''; opt.onChange = (o && o.onChange) || null;
+      el.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('.sbar-x') : null; if (b) remove(b.getAttribute('data-id')); });
+      if (!timer) timer = setInterval(cycle, 5000);
+      cycle();
+    }
+    return { list: list, add: add, update: update, remove: remove, shown: shown, start: start, hide: function (id) { opt.hide = id || ''; draw(); } };
+  }
+  var SENTLOG = sentLog(GW, esc);
   var gasPage = GAS + '?page=approve&h=' + encodeURIComponent(h);
   document.getElementById('gasLink').href = gasPage;
   var msg = function (t, d) { app.innerHTML = '<div class="title">' + esc(t) + '</div><div class="note">' + esc(d) + '</div><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>'; };
@@ -180,6 +250,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
     LOADED_STATUS = status || '';
     CUR = { id: String(it.id || ''), title: String(it.title || ''), isCs: !!pl.lineReplyTo };
+    SENTLOG.start(document.getElementById('sentBar'), { hide: CUR.id });
     HAS_PRESELECT = choiceList(pl).some(function (c) { return preIdx(c) >= 0; });
     var title = it.title || '', id = it.id, from = it.from;
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
@@ -277,7 +348,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     try { var s = JSON.parse(localStorage.getItem(SB_KEY) || 'null'); if (s && s.access_token && Number(s.expires_at || 0) * 1000 > Date.now() + 60000) return String(s.access_token); } catch (eT) {}
     return '';
   }
-  function skipIds() { var o = {}; o[CUR.id] = 1; if (typeof SENTLOG !== 'undefined') SENTLOG.list().forEach(function (r) { o[r.id] = 1; }); return o; }
+  function skipIds() { var o = {}; o[CUR.id] = 1; SENTLOG.list().forEach(function (r) { o[r.id] = 1; }); return o; }
   function findNext() {
     if (NEXT) return NEXT;
     var tok = sessionToken();
@@ -320,17 +391,20 @@ form.busy button{opacity:.5;pointer-events:none;}
     if (!j.ok) {   // 後台中途丟例外：狀態可能已變、客戶可能沒收到；原文照給、不說成功
       var el0 = statusBox('warn', '執行中斷', (j.error || '後台沒回報原因') + (st ? '　目前狀態：' + st : '') + '　請到核可中心確認，再決定要不要重送。');
       addNext(el0);
+      SENTLOG.update(CUR.id, { state: 'fail', text: String(j.error || '後台沒回報原因') });
       if (changed) { SENT = true; lockAll(true); Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; }); } else { SENT = false; lockAll(false); }
       return;
     }
     if (!changed) {   // 狀態沒變（內容有更新請重新整理／改期失敗／已改期…）：訊息照顯示、表單留著可再操作
       statusBox('', j.title || (label + '：後台已回覆'), desc);
+      SENTLOG.update(CUR.id, { state: 'note', text: String(j.title || desc || '後台已回覆') });
       SENT = false; lockAll(false);
       return;
     }
     SENT = true; lockAll(true);
     var el = statusBox('ok', (j.title || label + '完成') + ((j.title || '').indexOf(st) < 0 ? '　' + st : ''), desc);
     addNext(el);
+    SENTLOG.update(CUR.id, { state: 'done', text: String(j.execResult || j.desc || ('狀態：' + st)) });
     Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
   }
   function pollStatus(label, startedAt) {
@@ -355,6 +429,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     var body = new URLSearchParams(); Array.prototype.forEach.call(f.elements, function (el) { if (!el.name || el.name === 'decision' || el.disabled || el.type === 'submit' || el.type === 'button') return; if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return; body.append(el.name, el.value); });
     body.append('decision', decision); body.append('respond', 'json');
     SENT = true; lockAll(true);
+    SENTLOG.add({ id: CUR.id, h: h, label: label, decision: decision, from: LOADED_STATUS, title: CUR.title, url: location.pathname + '?h=' + encodeURIComponent(h), at: Date.now() });
     var t0 = Date.now(), box = addNext(statusBox('run', label + '已送出，系統在背景執行', '不用留在這頁，可以直接看下一張。留在這頁的話，做完會在這裡顯示結果。'));
     box.querySelector('.dtitle').insertAdjacentHTML('afterend', '<div class="elapsed">已過 0 秒</div>');
     var tick = setInterval(function () { var d = box.querySelector('.elapsed'); if (d) d.textContent = '已過 ' + Math.round((Date.now() - t0) / 1000) + ' 秒'; }, 1000);
@@ -367,7 +442,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         clearInterval(tick);
         if (j && j.ok === false && !j.status && j.error) { showDone(j, label); return; }
         if (!j || (!j.ok && !j.status)) throw new Error((j && j.error) || 'bad');
-        if (j.needsPage) { statusBox('warn', '這個動作要用整頁送出', '請改用舊版頁面操作。'); SENT = false; lockAll(false); return; }
+        if (j.needsPage) { SENTLOG.remove(CUR.id); statusBox('warn', '這個動作要用整頁送出', '請改用舊版頁面操作。'); SENT = false; lockAll(false); return; }
         showDone(j, label);
       })
       .catch(function () {
