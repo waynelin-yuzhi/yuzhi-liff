@@ -171,6 +171,60 @@ body.st-open{overflow:hidden}
 .st-info b{font-weight:500;color:var(--ink)}
 .st-out{color:var(--brick)}
 
+/* 跟 AI 討論（#ocBox）與我的習慣（#hbBox）：只有核可人看得到入口（html.oc-owner）；外框沿用 .ns-bar／.ns-in，泡泡沿用 .msg */
+html:not(.oc-owner) .oc-only{display:none !important}
+#ocBox{display:none;position:fixed;inset:0;z-index:78;background:var(--paper);flex-direction:column}
+#ocBox.on{display:flex}
+#hbBox{display:none;position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
+#hbBox.on{display:block}
+body.oc-open,body.hb-open{overflow:hidden}
+#ocBox .ns-bar,#hbBox .ns-bar{flex:none}
+.oc-cost{flex:none;padding:8px 12px;font-size:12px;line-height:1.5;background:#F5DDD2;color:#8C3B25;border-bottom:1px solid #E4B9A8}
+.oc-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:8px 10px}
+.oc-list .msg{max-width:88%}
+.oc-empty{padding:28px 12px;text-align:center;font-size:13px;line-height:1.7;color:var(--muted)}
+.oc-more{display:block;margin:4px auto 8px}
+.oc-under{max-width:88%;margin:-2px 0 10px;font-size:12px;line-height:1.6;color:var(--body);overflow-wrap:anywhere}
+.oc-under.mine{margin-left:auto;text-align:right}
+.oc-under a{color:var(--moss);font-weight:600}
+.oc-act{padding:2px 0}
+.oc-err{color:#8C3B25}
+.oc-ment{display:inline-block;max-width:100%;padding:0 6px;margin:0 4px 3px 0;border-radius:8px;background:rgba(255,255,255,.7);font-size:11px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.oc-prop{margin:6px 0;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;line-height:1.6;color:var(--ink)}
+.oc-prop.done{background:var(--tint);color:var(--body)}
+.oc-prop h4{font-size:13px;font-weight:600;margin:0 0 4px}
+.oc-prop .oc-old{margin-top:4px;padding:6px 8px;border-radius:4px;background:#F7F4EC;color:var(--body);font-size:12px}
+.oc-cat{display:inline-block;padding:0 7px;margin-right:6px;border-radius:9px;background:#E9EDE3;color:#4B5A42;font-size:11px;line-height:18px;white-space:nowrap}
+.oc-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.oc-edit textarea{width:100%;box-sizing:border-box;min-height:64px;padding:8px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:14px;line-height:1.5}
+.oc-edit select{max-width:100%;margin-top:6px;font-size:14px}
+.oc-foot{flex:none;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+.oc-chips{display:flex;flex-wrap:wrap;gap:6px}
+.oc-chips:empty{display:none}
+.oc-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 4px 2px 9px;border-radius:12px;background:#E9EDE3;color:#4B5A42;font-size:12px;line-height:20px}
+.oc-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oc-chip button{flex:none;width:22px;height:22px;margin-left:2px;border:none;background:none;color:#4B5A42;font-size:15px;line-height:1;cursor:pointer}
+.oc-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0;font-size:12px;color:var(--body)}
+.oc-tools select{font-size:13px;padding:5px 6px}
+.oc-inrow{display:flex;gap:8px;align-items:flex-end}
+.oc-inrow textarea{flex:1;min-width:0;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:15px;line-height:1.5;max-height:30vh}
+.oc-inrow .btn{flex:none;min-width:64px;padding:11px 12px}
+.oc-pick{display:none;position:absolute;left:0;right:0;bottom:0;max-height:70%;overflow-y:auto;background:#fff;border-top:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -4px 14px rgba(0,0,0,.18);padding:10px 10px calc(10px + env(safe-area-inset-bottom));z-index:2}
+.oc-pick.on{display:block}
+.oc-pick-top{display:flex;gap:8px;align-items:center;position:sticky;top:-10px;background:#fff;padding:4px 0 8px}
+.oc-pick-top input{flex:1;min-width:0;font-size:15px;padding:8px}
+.oc-pick-it{display:block;width:100%;padding:11px 6px;border:none;border-top:1px solid var(--line);background:none;font-family:inherit;font-size:14px;color:var(--ink);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.oc-pick-it small{color:var(--muted);margin-left:6px}
+.hb-cat{margin:14px 2px 6px;font-size:13px;font-weight:600;color:var(--body)}
+.hb-it{background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:8px;font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.hb-it.off{background:#F7F4EC;color:var(--body)}
+.hb-st{display:inline-block;padding:0 7px;margin-right:6px;border-radius:9px;font-size:11px;line-height:18px;white-space:nowrap;background:#E9EDE3;color:#4B5A42}
+.hb-st.pending{background:#FFF1E6;color:#9A4E1E}
+.hb-st.disabled{background:#EEE9DD;color:#5A5344}
+.hb-meta{margin-top:4px;font-size:12px;line-height:1.6;color:var(--muted)}
+.oc-usage{font-size:13px;line-height:1.8;color:var(--body);padding:10px 14px}
+.oc-usage b{color:var(--ink);font-weight:600}
+
 /* 通知設定（全螢幕面板：手機與桌機同一套） */
 #nsBox{display:none;position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
 #nsBox.on{display:block}
@@ -324,6 +378,7 @@ body.ns-open{overflow:hidden}
   </symbol>
   <symbol id="yzs-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
   <symbol id="yzs-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="yzs-chat" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 10h8M8 13.5h5"/></symbol>
   <symbol id="yzs-tray" viewBox="0 0 24 24"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></symbol>
 </svg>
 <div class="yz-appbar" id="yz-appbar">
@@ -350,22 +405,36 @@ body.ns-open{overflow:hidden}
   <a class="yz-tab" data-page="employees" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=employees"><svg><use href="#icon-calendar"/></svg><span class="yz-tab-label">人事</span></a>
   <a class="yz-tab" data-page="payroll" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=payroll"><svg><use href="#icon-bank"/></svg><span class="yz-tab-label">薪資</span></a>
   <a class="yz-tab" data-page="materials" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=materials"><svg><use href="#icon-plant"/></svg><span class="yz-tab-label">材料</span></a>
-  <span class="yz-tab-end"><button type="button" class="yz-tab yz-native-only" id="stOpen" title="設定"><svg><use href="#icon-settings"/></svg><span class="yz-tab-label">設定</span></button><button type="button" class="yz-tab" id="nsOpen" title="通知設定"><svg><use href="#icon-bell"/></svg><span class="yz-tab-label">通知設定</span></button><a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a><button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button></span>
+  <span class="yz-tab-end"><button type="button" class="yz-tab oc-only" id="ocOpen" title="跟 AI 討論"><svg style="stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round"><use href="#yzs-chat"/></svg><span class="yz-tab-label">AI 討論</span></button><button type="button" class="yz-tab yz-native-only" id="stOpen" title="設定"><svg><use href="#icon-settings"/></svg><span class="yz-tab-label">設定</span></button><button type="button" class="yz-tab" id="nsOpen" title="通知設定"><svg><use href="#icon-bell"/></svg><span class="yz-tab-label">通知設定</span></button><a class="yz-tab yz-tab-settings" data-page="settings" href="https://script.google.com/macros/s/AKfycbynzrz0je8qvKDVPboArvJqvl0M6L9Xr0cZL5t0lyo/exec?page=settings" title="設定中心"><svg><use href="#icon-settings"/></svg></a><button type="button" class="yz-tab yz-tab-out" id="leave" title="登出這台裝置">登出</button></span>
 </nav>
 <nav class="yz-bottomnav" id="yz-bottomnav">
   <button type="button" data-tab="todo" class="on"><svg><use href="#yzs-tray"/></svg>待處理</button>
   <button type="button" data-tab="sched"><svg><use href="#icon-clock"/></svg>已排程</button>
   <button type="button" data-tab="all"><svg><use href="#icon-menu"/></svg>全部</button>
   <button type="button" data-tab="staff"><svg><use href="#icon-client"/></svg>員工</button>
+  <button type="button" class="oc-only" id="ocOpen2"><svg><use href="#yzs-chat"/></svg>AI 討論</button>
   <button type="button" class="yz-native-only" id="stOpen2"><svg><use href="#icon-settings"/></svg>設定</button>
 </nav>
 <div class="yz-sheet-mask" id="yz-sheet-mask"></div>
 <div class="yz-sheet" id="yz-sheet"><h3>全部工具<button type="button" id="yz-sheet-close">關閉</button></h3><button type="button" class="btn ghost ns-entry" id="nsOpen2"><svg><use href="#icon-bell"/></svg>通知設定</button><div class="yz-sheet-grid" id="yz-sheet-grid"></div><div class="yz-sheet-foot"><span class="small muted">Workspace 工具會另開瀏覽器（需要 Google 登入）</span><button type="button" class="btn link" id="leave2">登出這台裝置</button></div></div>
 <div id="stBox" role="dialog" aria-label="設定"><div class="ns-bar"><button type="button" id="stClose">關閉</button><h2>設定</h2><span class="ns-sp"></span></div><div class="ns-in">
   <div class="st-list"><button type="button" class="st-go" id="stNs"><svg><use href="#icon-bell"/></svg><span>通知設定</span><i>›</i></button></div>
+  <div class="st-list oc-only"><button type="button" class="st-go" id="stHb"><svg><use href="#yzs-chat"/></svg><span>我的習慣（AI 記下的規矩）</span><i>›</i></button><div class="oc-usage" id="stOcUsage"></div></div>
   <div class="st-list"><div class="st-info">登入信箱<b id="stEmail">讀取中</b></div><div class="st-info">App 版本<b id="stVer">讀取中</b></div></div>
   <div class="st-list"><button type="button" class="st-go st-out" id="stLeave"><span>登出這台裝置</span></button></div>
 </div></div>
+<div id="ocBox" role="dialog" aria-label="AI 討論"><div class="ns-bar"><button type="button" id="ocClose">關閉</button><h2>AI 討論</h2><button type="button" id="ocHabits">我的習慣</button></div>
+  <div class="oc-cost" id="ocCost" style="display:none"></div>
+  <div class="oc-list" id="ocList"></div>
+  <div class="oc-foot">
+    <div class="oc-chips" id="ocChips"></div>
+    <div class="ns-msg" id="ocMsg"></div>
+    <div class="oc-tools"><button type="button" class="btn ghost small" id="ocAt">@ 客戶</button><label>回答方式 <select id="ocTier" aria-label="回答方式"></select></label></div>
+    <div class="oc-inrow"><textarea id="ocText" rows="2" maxlength="2000" placeholder="想問什麼、想交代什麼，直接打"></textarea><button type="button" class="btn" id="ocSend">送出</button></div>
+  </div>
+  <div class="oc-pick" id="ocPick"><div class="oc-pick-top"><input type="text" id="ocPickQ" placeholder="找客戶、廠商或員工名稱"><button type="button" class="btn ghost small" id="ocPickClose">關閉</button></div><div id="ocPickList"></div></div>
+</div>
+<div id="hbBox" role="dialog" aria-label="我的習慣"><div class="ns-bar"><button type="button" id="hbClose">關閉</button><h2>我的習慣</h2><span class="ns-sp"></span></div><div class="ns-in" id="hbBody"></div></div>
 <div id="nsBox" role="dialog" aria-label="通知設定"><div class="ns-bar"><button type="button" id="nsClose">關閉</button><h2>通知設定</h2><span class="ns-sp"></span></div><div class="ns-in" id="nsBody"></div></div>
 <div class="page">
 <h1>對話收件匣</h1>
@@ -1392,7 +1461,7 @@ body.ns-open{overflow:hidden}
       + '<div class="att" id="att-compose"></div>'
       + '<div class="actions"><button class="btn main" id="manualSend"' + (t.extrasLoaded === false ? ' disabled' : '') + '>' + (t.extrasLoaded === false ? '確認稿件中' : '發送') + '</button><button class="btn ghost" id="manualWhen">預定時間</button><button class="btn ghost attbtn" id="manualAtt">附加照片／檔案</button></div>'
       + '<div class="when" id="manualWhenBox"><span>預定送出</span><input type="datetime-local" id="manualAt"><span class="muted">留空＝現在送</span></div>'
-      + '<div class="secondary">' + (t.manual ? '<button class="btn link" id="manualOff">恢復 AI 擬稿</button>' : '<button class="btn link" id="manualOn">此客戶改手動（暫停 AI）</button>') + '<button class="btn link" id="btnSelf2">補記我在 LINE 回過的話</button><button class="btn link" id="btnNoReply">不用回（結案）</button><button class="btn link" id="btnBrief">主動聯繫客戶（請客服擬稿）</button><span class="small muted" id="manualMsg"></span></div>' + selfBoxHtml('2', false)
+      + '<div class="secondary">' + (t.manual ? '<button class="btn link" id="manualOff">恢復 AI 擬稿</button>' : '<button class="btn link" id="manualOn">此客戶改手動（暫停 AI）</button>') + '<button class="btn link" id="btnSelf2">補記我在 LINE 回過的話</button><button class="btn link" id="btnNoReply">不用回（結案）</button><button class="btn link" id="btnBrief">主動聯繫客戶（請客服擬稿）</button><button class="btn link oc-only" id="btnAskAi">跟 AI 討論這位</button><span class="small muted" id="manualMsg"></span></div>' + selfBoxHtml('2', false)
       + '<div class="fbbox" id="briefBox"><div class="small" style="margin-bottom:4px">要主動聯繫這位？寫下要傳達的事和要求，客服會用這位的檔案與語氣規則擬一則訊息，進到待核可讓你改、核可或排程。上面「附加照片／檔案」附的東西會一起帶進稿。</div><textarea id="briefText" rows="3" placeholder="例：提醒週二下午兩點半場勘，請他們先拍好要放植栽的位置，語氣輕鬆，最後問那天是否方便"></textarea><div class="row"><span class="small">預定送出</span><input type="datetime-local" id="briefAt"><span class="small muted">留空＝核可後即發</span></div><div class="row"><button class="btn" id="briefSend">送出需求、開始擬稿</button><button class="btn ghost small" id="briefCancel">取消</button><span class="small muted" id="briefMsg"></span></div></div></div>';
     document.getElementById('manualWhen').onclick = function () { document.getElementById('manualWhenBox').classList.toggle('on'); };
     renderAtt('compose'); document.getElementById('manualAtt').onclick = function () { pickAtt('compose', 'manualMsg'); };
@@ -1423,6 +1492,7 @@ body.ns-open{overflow:hidden}
       }, function (e) { inflightOff('m:' + cid0); busy(mBtn, false); if (noSession(e)) return; unsureMark(cid0, 'manual', txt, '', '', tSendM); clearSent(); if (here()) sayIn(cid0, 'manualMsg', NO_REPLY_MSG); else toast('（' + cname(cid0) + '）送出沒有收到結果，回到這位時會自動確認'); laterRefresh(cid0, null, 3000); }); }; sendManual(false, '', false); };
     inflightPaint('m:' + cur, document.getElementById('manualSend'), '發送中');
     document.getElementById('btnBrief').onclick = function () { document.getElementById('briefBox').classList.toggle('on'); };
+    var askAi = document.getElementById('btnAskAi'); if (askAi) askAi.onclick = function () { if (window.yzOc) yzOc.open({ mention: cur }); };
     document.getElementById('btnNoReply').onclick = function () { if (!confirm('把這位標成「不用回」？清單不再顯示待回；客戶再來訊會重新判斷。')) return; var bN = this; busy(bN, true, '結案中'); run('csInboxNoReply', [{ contactId: cur }], function (r) { busy(bN, false); document.getElementById('manualMsg').textContent = r.ok ? '已標不用回' : ('失敗：' + friendlyErr(r.detail || r.error)); if (r.ok) setTimeout(function () { refreshAll(true); }, 800); }, function () { busy(bN, false); }); };
     if ((t.queue || []).length) { var bbQ = document.getElementById('btnBrief'); bbQ.disabled = true; bbQ.title = '客服擬稿中，等稿出來再說'; }
     document.getElementById('briefCancel').onclick = function () { document.getElementById('briefBox').classList.remove('on'); };
@@ -1767,6 +1837,8 @@ body.ns-open{overflow:hidden}
     var z = document.getElementById('imgZoomBox');
     if (z && z.classList.contains('on')) { history.back(); return; }
     if (window.yzNs && yzNs.isOpen()) { yzNs.close(); return; }
+    if (window.yzHb && yzHb.isOpen()) { yzHb.close(); return; }
+    if (window.yzOc && yzOc.isOpen()) { yzOc.back(); return; }
     if (window.yzSt && yzSt.isOpen()) { yzSt.close(); return; }
     if (document.body.classList.contains('view-thread')) { document.getElementById('back').click(); return; }
     if (APP.minimizeApp) APP.minimizeApp();
@@ -2055,6 +2127,7 @@ var yzSt = (function () {
     var A = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
     if (A && A.getInfo) A.getInfo().then(function (i) { ver.textContent = (i && i.version) ? i.version + (i.build ? '（' + i.build + '）' : '') : '讀不到'; }, function () { ver.textContent = '讀不到'; });
     else ver.textContent = '網頁版';
+    if (window.yzOc) yzOc.usageInto('stOcUsage');
   }
   function hide() { isOpen = false; box.classList.remove('on'); document.body.classList.remove('st-open'); }
   function open() {
@@ -2071,8 +2144,385 @@ var yzSt = (function () {
   ['stOpen', 'stOpen2'].forEach(function (id) { var el = document.getElementById(id); if (el) el.onclick = open; });
   document.getElementById('stClose').onclick = close;
   document.getElementById('stNs').onclick = function () { yzNs.open(); };
+  document.getElementById('stHb').onclick = function () { if (window.yzHb) yzHb.open(); };
   document.getElementById('stLeave').onclick = function () { document.getElementById('leave').click(); };
   return { open: open, close: close, isOpen: function () { return isOpen; } };
+})();
+</script>
+<script>
+/* 跟 AI 討論與我的習慣（2026-11-20）。後端 cs-run ownerapp.ts／habits.ts：
+   ownerChatSend／ownerChatLoad／ownerChatUsage、habitConfirm／habitDiscard／habitList／habitUpdate／habitDisable／habitEnable／habitDelete。
+   只有核可人能用：開機用 ownerChatLoad 探一次，回 ok 且帶 messages 才顯示入口（html.oc-owner）；不是核可人（403 owner_only）或後端還沒有這個功能就不顯示。
+   這裡沒有任何直接發給客戶的動作；對話做了事（照發、退回、重擬、擬新稿）只是把結果顯示出來並刷新收件匣。後端來的字一律 esc。 */
+var yzOc = (function () {
+  var TIER_NAME = { fast: '快', standard: '標準', deep: '深入' }, SEND_MS = 60000;
+  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: ['fast', 'standard', 'deep'], defTier: 'standard', tier: '', busy: false, mentions: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0 };
+  var box = document.getElementById('ocBox');
+  function $(id) { return document.getElementById(id); }
+  function hhmm(at) { var ms = Date.parse(at || ''); return ms ? tpeMinute(ms).slice(5) : ''; }
+  function money(twd, usd) { return '約 NT$' + Math.round(Number(twd) || 0) + '（US$' + (Math.round((Number(usd) || 0) * 100) / 100) + '）'; }
+
+  // 自己的呼叫：不走主程式的 api()（那邊把 403 一律當登入失效、會把人登出；這裡 403 owner_only 只是「不是核可人」）
+  function call(app, ms) {
+    return sb.auth.getSession().then(function (r) {
+      var s = r && r.data && r.data.session; if (!s) throw new Error('no_session');
+      var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null, timer = ac ? setTimeout(function () { ac.abort(); }, ms || 45000) : null;
+      return fetch(CFG.engine, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify({ tenant: CFG.tenant, app: app }), signal: ac ? ac.signal : undefined })
+        .then(function (res) { return res.text().then(function (t) { if (timer) clearTimeout(timer); var d = null; try { d = JSON.parse(t); } catch (e) {} return { status: res.status, d: (d && typeof d === 'object') ? d : {} }; }); }, function (e) { if (timer) clearTimeout(timer); throw e; });
+    });
+  }
+  var ERR = { text_required: '還沒打字。', text_too_long: '這段太長了，請縮到 2000 字以內。', mentions_invalid: '點名的對象有問題，請移除後重新選。', mention_unknown: '點名的對象找不到，請移除後重新選。', tier_invalid: '回答方式選項有問題，請重新選。',
+    owner_only: '這個功能只有核可人可以用。', ai_unavailable: 'AI 暫時沒有回應，請稍後再試。', db_error: '系統暫時出錯，請稍後再試。', internal_error: '系統暫時出錯，請稍後再試。',
+    id_invalid: '找不到這一條，請重新整理。', status_invalid: '篩選條件有問題。', content_invalid: '內容要 4 到 200 個字。', category_invalid: '分類不在清單裡，請重新選。', scope_invalid: '適用對象有問題。', nothing_to_update: '沒有要改的內容。',
+    not_found: '找不到這一條，可能已經刪掉了。', scope_contact_not_found: '找不到那位對象。', not_pending: '這條已經處理過了。', is_pending: '這條還在等你確認，請先按記下或不用。', duplicate: '改完會跟另一條已經記下的一樣，不用重複記。', too_many: '已記下的習慣到上限（200 條）了，請先刪掉不用的。' };
+  function errText(r) {   // r＝call() 的結果或例外
+    if (!r || !r.d) { var m = String((r && r.message) || ''); return /no_session/.test(m) ? '登入已失效，請重新進入。' : '連線中斷或等太久，沒有收到回應。'; }
+    var d = r.d; if (d.message) return String(d.message);
+    if (d.error === 'busy') return '上一句還在處理' + (Number(d.retryAfterSec) > 0 ? '，約 ' + Math.ceil(Number(d.retryAfterSec)) + ' 秒後再試。' : '，請稍等再送。');
+    if (r.status === 401) return '登入已失效，請重新進入。';
+    return ERR[d.error] || '沒有成功，請稍後再試。';
+  }
+  function say(t, kind) { var e = $('ocMsg'); if (!e) return; e.textContent = t || ''; e.className = 'ns-msg' + (kind ? ' ' + kind : ''); }
+
+  // ── 核可人判斷與讀對話
+  function setOwner(on) { S.owner = !!on; document.documentElement.classList.toggle('oc-owner', S.owner); try { if (S.owner) localStorage.setItem('yz_oc_owner', '1'); else localStorage.removeItem('yz_oc_owner'); } catch (e) {} }
+  function normMsg(m) {
+    var t = m.tier, o = { id: String(m.id || ''), role: m.role === 'user' ? 'user' : 'assistant', text: String(m.text == null ? '' : m.text), at: String(m.at || ''), mentions: Array.isArray(m.mentions) ? m.mentions : [], actions: Array.isArray(m.actions) ? m.actions : [],
+      proposals: Array.isArray(m.proposals) ? m.proposals : [], known: Array.isArray(m.known) ? m.known : [], pendingActions: Array.isArray(m.pendingActions) ? m.pendingActions : [], timedOut: !!m.timedOut, late: !!m.late, error: !!m.error };
+    if (t && typeof t === 'object') { o.tier = String(t.used || ''); o.tierAuto = !!t.auto; } else o.tier = String(t || '');
+    return o;
+  }
+  function applyLoad(d, older) {
+    var list = (d.messages || []).map(normMsg);
+    S.msgs = older ? list.concat(S.msgs) : list; S.hasMore = !!d.hasMore; S.loaded = true;
+    if (Array.isArray(d.categories) && d.categories.length) S.cats = d.categories.map(String);
+    if (Array.isArray(d.tiers) && d.tiers.length) S.tiers = d.tiers.map(String).filter(function (x) { return TIER_NAME[x]; });
+    if (TIER_NAME[d.defaultTier]) S.defTier = d.defaultTier;
+    if (!S.tier || S.tiers.indexOf(S.tier) < 0) S.tier = S.tiers.indexOf(S.defTier) >= 0 ? S.defTier : S.tiers[0];
+  }
+  function probe() {   // 登入後探一次：是核可人就把入口打開、順便把最近的對話放好
+    var cached = false; try { cached = localStorage.getItem('yz_oc_owner') === '1'; } catch (e) {}
+    if (cached) document.documentElement.classList.add('oc-owner');
+    return load(true).then(function (r) { if (r === 'ok') return; if (r === 'net' && cached) { S.owner = true; return; } setOwner(false); });
+  }
+  function load(quiet, before) {   // 回 'ok'／'no'（不是核可人或沒有這個功能）／'net'（連不上）
+    return call(Object.assign({ op: 'ownerChatLoad', limit: 30 }, before ? { before: before } : {}), 30000).then(function (r) {
+      if (r.status === 200 && r.d.ok === true && Array.isArray(r.d.messages)) { setOwner(true); if (S.busy) return 'ok';   /* 有一句正在等回覆：先不換掉畫面上的對話，回覆回來後下一次再讀 */
+        applyLoad(r.d, !!before); if (S.open) { render(!before); renderTier(); } return 'ok'; }
+      if (!quiet) say(errText(r), 'err');
+      return 'no';
+    }, function (e) { if (!quiet) say(errText(e), 'err'); return 'net'; });
+  }
+
+  // ── 件號與對象：做了事的件要能點過去
+  function apMap() { try { return JSON.parse(sessionStorage.getItem('yz_oc_ap') || '{}') || {}; } catch (e) { return {}; } }
+  function rememberAps() {   // 現在待核可、已排程的件號對到哪位：照發或退回之後總覽就沒有這件了，先記在這個分頁
+    try { var m = apMap(); (OV.pending || []).concat(OV.scheduled || []).forEach(function (x) { if (x && x.id && x.contactId) m[x.id] = x.contactId; }); (LIST || []).forEach(function (c) { if (c && c.pending && c.pending.id) m[c.pending.id] = c.contactId; });
+      sessionStorage.setItem('yz_oc_ap', JSON.stringify(m)); } catch (e) {}
+  }
+  function cidOfAp(ap, idx) {
+    var m = apMap(); if (m[ap]) return m[ap];
+    for (var i = idx; i >= 0 && i >= idx - 1; i--) { var u = S.msgs[i]; if (u && u.role === 'user' && u.mentions.length === 1) return String(u.mentions[0].contactId || ''); }   // 那一句只點名一位：就是他
+    return '';
+  }
+  function cidOfName(name) { var hit = (LIST || []).filter(function (c) { return c && c.name === name; }); return hit.length === 1 ? hit[0].contactId : ''; }
+  function actionHtml(a, idx, pending) {
+    a = String(a || ''); var k = a.split(':')[0], v = a.slice(k.length + 1), label = { decide: '核可件已照你說的處理（照發或退回）', redraft: '已交給客服重擬', compose: '已交代客服擬一則新稿給' }[k];
+    if (pending) label = { decide: '正在處理核可件', redraft: '正在交重擬', compose: '正在交代擬新稿給' }[k];
+    if (!label) return '<div class="oc-act">' + esc(a) + '</div>';
+    var cid = k === 'compose' ? cidOfName(v) : cidOfAp(v, idx);
+    return '<div class="oc-act">' + (pending ? '<span class="spin"></span>' : '') + esc(label) + '　' + (cid ? '<a href="#" class="oc-goto" data-cid="' + esc(cid) + '">' + esc(v) + '</a>' : '<b>' + esc(v) + '</b>') + '</div>';
+  }
+
+  // ── 習慣提議卡
+  function findProp(id) { for (var i = 0; i < S.msgs.length; i++) { var ps = S.msgs[i].proposals; for (var j = 0; j < ps.length; j++) if (ps[j] && ps[j].id === id) return ps[j]; } return null; }
+  function scopeText(sc) { return (sc && sc.type === 'contact') ? ('只用在 ' + (sc.name || cname(sc.contactId))) : '所有對象'; }
+  function catOptions(sel) { var cs = S.cats.slice(); if (sel && cs.indexOf(sel) < 0) cs.unshift(sel); return cs.map(function (c) { return '<option value="' + esc(c) + '"' + (c === sel ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join(''); }
+  function propHtml(p) {
+    var id = esc(p.id || ''), st = p._local || p.status;
+    if (st === 'gone') return '<div class="oc-prop done" data-prop="' + id + '" data-st="gone">這條沒有記下來（已略過或已刪除）。</div>';
+    if (st === 'discarded') return '<div class="oc-prop done" data-prop="' + id + '" data-st="discarded">已略過，不記。</div>';
+    var line = '<span class="oc-cat">' + esc(p.category || '其他') + '</span>' + esc(p.content || '');
+    if (st === 'confirmed' || st === 'disabled') return '<div class="oc-prop done" data-prop="' + id + '" data-st="' + st + '"><h4>' + (st === 'confirmed' ? '已記下' : '已記下（目前停用）') + '</h4>' + line + (p._note ? '<div class="hb-meta">' + esc(p._note) + '</div>' : '') + '</div>';
+    var old = (p.target && p.target.content && (p.action === 'update' || p.action === 'replace')) ? '<div class="oc-old">' + (p.action === 'update' ? '會更新原本這條：' : '會取代原本這條（舊的停用）：') + esc(p.target.content) + '</div>' : '';
+    if (p._edit) return '<div class="oc-prop oc-edit" data-prop="' + id + '" data-st="edit"><h4>改一下再記</h4><textarea class="oc-pe-text" maxlength="200">' + esc(p.content || '') + '</textarea><select class="oc-pe-cat" aria-label="分類">' + catOptions(p.category || '') + '</select>' + old
+      + '<div class="ns-msg err oc-pe-msg">' + esc(p._err || '') + '</div><div class="oc-btns"><button type="button" class="btn small" data-pa="save">記下</button><button type="button" class="btn ghost small" data-pa="cancel">取消</button></div></div>';
+    return '<div class="oc-prop" data-prop="' + id + '" data-st="pending"><h4>要記下來嗎</h4>' + line + '<div class="hb-meta">適用：' + esc(scopeText(p.scope)) + '</div>' + old + (p._err ? '<div class="ns-msg err">' + esc(p._err) + '</div>' : '')
+      + '<div class="oc-btns"><button type="button" class="btn small" data-pa="yes">記下</button><button type="button" class="btn ghost small" data-pa="no">不用</button><button type="button" class="btn ghost small" data-pa="edit">改一下再記</button></div></div>';
+  }
+  var APPLIED = { update: '已更新原本那一條。', replace: '已取代舊的那一條（舊的停用）。', merged: '跟已經記下的一樣，沒有重複記。' };
+  function propAct(id, act, el) {
+    var p = findProp(id); if (!p || p._busy) return;
+    if (act === 'edit') { p._edit = true; p._err = ''; render(); return; }
+    if (act === 'cancel') { p._edit = false; p._err = ''; render(); return; }
+    var app = act === 'no' ? { op: 'habitDiscard', id: id } : { op: 'habitConfirm', id: id };
+    if (act === 'save') {
+      var card = el.closest('.oc-prop'), txt = String(card.querySelector('.oc-pe-text').value || '').trim(), cat = card.querySelector('.oc-pe-cat').value;
+      if (txt.length < 4 || txt.length > 200) { p._err = ERR.content_invalid; p.content = txt; p.category = cat; render(); return; }
+      app.content = txt; app.category = cat;
+    }
+    p._busy = true; busy(el, true, act === 'no' ? '處理中' : '記下中');
+    call(app).then(function (r) {
+      p._busy = false;
+      if (r.status === 200 && r.d.ok === true) {
+        if (act === 'no') { p._local = 'discarded'; p._edit = false; }
+        else { var h = r.d.habit || {}; p.status = 'confirmed'; p.content = h.content || app.content || p.content; p.category = h.category || app.category || p.category; p._edit = false; p._err = ''; p._note = APPLIED[r.d.applied] || ''; }
+        render(); return;
+      }
+      if (r.d.error === 'not_pending' || r.d.error === 'not_found') { load(true).then(function () { render(); say(errText(r), 'err'); }); return; }   // 別處已經按過：以後台現在的狀態為準
+      p._err = errText(r); render();
+    }, function (e) { p._busy = false; p._err = errText(e); render(); });
+  }
+
+  // ── 畫面
+  function msgHtml(m, i) {
+    var mine = m.role === 'user', h = '';
+    var ment = mine && m.mentions.length ? '<div>' + m.mentions.map(function (x) { return '<span class="oc-ment">@' + esc((x && (x.name || cname(x.contactId))) || '') + '</span>'; }).join('') + '</div>' : '';
+    if (m.thinking) return '<div class="msg in oc-think" data-i="' + i + '"><span class="spin"></span>思考中</div>';
+    var tierT = (!mine && TIER_NAME[m.tier]) ? '・' + TIER_NAME[m.tier] + (m.tierAuto ? '（簡單的事自動用快的）' : '') : '';
+    h += '<div class="msg ' + (mine ? 'out' : 'in') + (m.timedOut || m.error ? ' oc-warn' : '') + '" data-i="' + i + '" data-role="' + m.role + '">' + ment + '<div class="oc-text">' + esc(m.text) + '</div><div class="ts">' + esc(hhmm(m.at)) + (m.late ? '・補回的結果' : '') + '<span class="oc-tierlab">' + esc(tierT) + '</span></div></div>';
+    var under = '';
+    under += m.actions.map(function (a) { return actionHtml(a, i, false); }).join('') + m.pendingActions.map(function (a) { return actionHtml(a, i, true); }).join('');
+    if (m.pendingActions.length) under += '<div class="oc-act">還在進行，做完會補一句在下面。</div>';
+    if (m.timedOut && !m.pendingActions.length && m.retry) under += '<div class="oc-act"><a href="#" class="oc-retry" data-i="' + i + '">再問一次</a></div>';
+    under += m.known.map(function (k) { return '<div class="oc-act">這條已經記過：<span class="oc-cat">' + esc((k && k.category) || '其他') + '</span>' + esc((k && k.content) || '') + '</div>'; }).join('');
+    under += m.proposals.map(propHtml).join('');
+    if (m.failed) under += '<div class="oc-act oc-err">' + esc(m.failed) + '</div><div class="oc-act">' + (m.unsure ? '<a href="#" class="oc-reload">看看有沒有回覆</a>　' : '') + '<a href="#" class="oc-retry" data-i="' + i + '">再送一次</a></div>';
+    if (under) h += '<div class="oc-under' + (mine ? ' mine' : '') + '" data-i="' + i + '">' + under + '</div>';
+    return h;
+  }
+  function render(toBottom) {
+    var el = $('ocList'); if (!el) return;
+    var keep = el.scrollHeight - el.scrollTop;
+    el.innerHTML = (S.hasMore ? '<button type="button" class="btn ghost small oc-more" id="ocMore">看更早的對話</button>' : '')
+      + (S.msgs.length ? S.msgs.map(msgHtml).join('') : '<div class="oc-empty">' + (S.loaded ? '想問收件匣的狀況、交代某一件怎麼處理，或告訴它你的習慣，直接打字就可以。<br>它聽到像習慣的話會先問你要不要記下來。' : '<span class="spin"></span>讀取對話中') + '</div>');
+    if (toBottom !== false) el.scrollTop = el.scrollHeight; else el.scrollTop = el.scrollHeight - keep;
+    var c = $('ocCost'), a = S.cost;
+    if (c) { if (a && Number(a.thresholdUsd) > 0) { c.style.display = ''; c.textContent = '本月 AI 討論已花 ' + money(a.monthTwd, a.monthUsd) + '，超過你設的提醒門檻 US$' + a.thresholdUsd + '。這只是提醒，還是可以繼續用。'; } else c.style.display = 'none'; }
+    var sb0 = $('ocSend'); if (sb0) { if (S.busy && !sb0.classList.contains('busy')) busy(sb0, true, '等回覆'); if (!S.busy && sb0.classList.contains('busy')) busy(sb0, false); sb0.disabled = !!S.busy; }
+  }
+  function renderTier() { var t = $('ocTier'); if (!t) return; t.innerHTML = S.tiers.map(function (k) { return '<option value="' + k + '"' + (k === S.tier ? ' selected' : '') + '>' + TIER_NAME[k] + (k === S.defTier ? '（預設）' : '') + '</option>'; }).join(''); }
+  function renderChips() {
+    var el = $('ocChips'); if (!el) return;
+    el.innerHTML = S.mentions.map(function (m, i) { return '<span class="oc-chip" data-cid="' + esc(m.contactId) + '"><span>@' + esc(m.name) + '</span><button type="button" data-rm="' + i + '" aria-label="移除 ' + esc(m.name) + '">×</button></span>'; }).join('');
+  }
+  function addMention(cid) {
+    cid = String(cid || ''); if (!cid) return false;
+    if (S.mentions.some(function (m) { return m.contactId === cid; })) return true;
+    if (S.mentions.length >= 5) { say('一次最多點名 5 位。', 'err'); return false; }
+    S.mentions.push({ contactId: cid, name: cname(cid) }); renderChips(); return true;
+  }
+  function pick(on) {
+    var p = $('ocPick'); if (!p) return; p.classList.toggle('on', !!on); if (!on) return;
+    var q = $('ocPickQ'); q.value = ''; pickList(''); try { q.focus({ preventScroll: true }); } catch (e) {}
+  }
+  function pickList(q) {
+    q = String(q || '').trim().toLowerCase();
+    var rows = (LIST || []).filter(function (c) { return c && c.contactId && (!q || String(c.name || '').toLowerCase().indexOf(q) >= 0); }).slice(0, 60);
+    $('ocPickList').innerHTML = rows.length ? rows.map(function (c) { return '<button type="button" class="oc-pick-it" data-cid="' + esc(c.contactId) + '">' + esc(c.name || String(c.contactId).substring(0, 8)) + '<small>' + esc(c.isEmp ? '員工' : (c.role || '')) + '</small></button>'; }).join('')
+      : '<div class="oc-empty">' + (q ? '找不到名稱裡有這幾個字的對象。' : '清單還沒載入。') + '</div>';
+  }
+
+  // ── 送出
+  function send(payload) {   // payload＝重送時帶原本那句
+    if (S.busy) return;
+    var ta = $('ocText'), p = payload || { text: String(ta.value || '').trim(), mentions: S.mentions.slice(), tier: S.tier };
+    if (!p.text) { say(ERR.text_required, 'err'); return; }
+    if (p.text.length > 2000) { say(ERR.text_too_long, 'err'); return; }
+    say(''); rememberAps();
+    var mine = { role: 'user', text: p.text, at: new Date().toISOString(), mentions: p.mentions.slice(), actions: [], proposals: [], known: [], pendingActions: [], local: true, payload: p };
+    var think = { role: 'assistant', thinking: true, mentions: [], actions: [], proposals: [], known: [], pendingActions: [] };
+    S.msgs.push(mine, think); S.busy = true; var my = ++S.seq;
+    if (!payload) { ta.value = ''; S.mentions = []; renderChips(); }
+    render();
+    var done = function () { S.busy = false; var k = S.msgs.indexOf(think); if (k >= 0) S.msgs.splice(k, 1); };
+    call(Object.assign({ op: 'ownerChatSend', text: p.text, tier: p.tier }, p.mentions.length ? { mentions: p.mentions.map(function (m) { return m.contactId; }) } : {}), SEND_MS).then(function (r) {
+      if (my !== S.seq) return; done();
+      var d = r.d;
+      if (r.status === 200 && d.ok === true) {
+        delete mine.local;
+        var m = normMsg({ id: d.messageId, role: 'assistant', text: d.reply, at: new Date().toISOString(), actions: d.actions, proposals: d.proposals, known: d.known, pendingActions: d.pendingActions, timedOut: d.timedOut, tier: d.tier });
+        if (m.timedOut) { m.retry = true; m.payload = p; }
+        S.msgs.push(m);
+        if (d.costAlert && Number(d.costAlert.thresholdUsd) > 0) S.cost = d.costAlert;
+        render();
+        if (m.actions.length || m.pendingActions.length) { try { refreshAll(true); } catch (e) {} }   // 做了事：收件匣跟著刷新
+        if (m.pendingActions.length) lateWatch();
+        return;
+      }
+      if (r.status === 401) { say(errText(r), 'err'); try { showGate(); } catch (e) {} }
+      if (d.error === 'owner_only') setOwner(false);
+      S.msgs.splice(S.msgs.indexOf(mine), 1);   // 後端明確沒收：這句不留在對話裡，字放回輸入框
+      if (!String(ta.value || '').trim()) { ta.value = p.text; S.mentions = p.mentions.slice(); renderChips(); }
+      render(); say(errText(r), 'err');
+    }, function (e) {   // 斷線或等太久：不確定後端有沒有收到，不可以自動重送
+      if (my !== S.seq) return; done();
+      if (/no_session/.test(String((e && e.message) || ''))) { S.msgs.splice(S.msgs.indexOf(mine), 1); ta.value = p.text; render(); say(errText(e), 'err'); try { showGate(); } catch (e2) {} return; }
+      mine.failed = '沒有收到回應，不確定 AI 有沒有收到這一句。'; mine.unsure = true; render();
+    });
+  }
+  function lateWatch() {   // 有動作還在跑：過幾秒重讀，等後端補上 late 那一則
+    S.late.forEach(clearTimeout); S.late = [6000, 15000, 30000].map(function (ms) { return setTimeout(function () { if (S.busy) return; load(true); }, ms); });
+  }
+
+  // ── 開關
+  function hide() { S.open = false; box.classList.remove('on'); document.body.classList.remove('oc-open'); pick(false); }
+  function open(opt) {
+    if (!box || !S.owner) return;
+    if (!S.open) { S.open = true; box.classList.add('on'); document.body.classList.add('oc-open'); try { history.pushState({ yzOc: 1 }, ''); S.pushed = true; } catch (e) { S.pushed = false; } }
+    say(''); renderTier(); renderChips(); render();
+    if (opt && opt.mention) addMention(opt.mention);
+    rememberAps();
+    if (!S.busy) load(false);
+  }
+  function close() { if (!S.open) return; if (S.pushed) { S.pushed = false; try { history.back(); return; } catch (e) {} } hide(); }
+  function back() { var p = $('ocPick'); if (p && p.classList.contains('on')) { pick(false); return; } close(); }
+  window.addEventListener('popstate', function (ev) { if (S.open && !(ev.state && (ev.state.yzOc || ev.state.yzHb))) { S.pushed = false; hide(); } });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && S.open && !(window.yzHb && yzHb.isOpen())) back(); });
+
+  // ── 花費（設定頁、習慣頁共用）
+  function usageHtml(u) {
+    if (!u) return '<span class="spin"></span>讀取本月花費中';
+    if (u.err) return '<span class="oc-err">' + esc(u.err) + '</span>';
+    var c = u.chat || {}, bt = c.byTier || {}, e = u.engine || {}, al = u.alert || {};
+    var tiers = (Array.isArray(u.tiers) ? u.tiers : S.tiers).filter(function (k) { return TIER_NAME[k]; }).map(function (k) { return TIER_NAME[k] + ' ' + (Number((bt[k] || {}).turns) || 0) + ' 則'; }).join('、');
+    return '<div><b>本月 AI 討論</b>（' + esc(u.month || '') + '）：' + esc(money(c.twd, c.usd)) + '，共 ' + (Number(c.turns) || 0) + ' 則</div><div>' + esc(tiers) + '</div>'
+      + '<div><b>系統本月全部 AI 花費</b>（含客服擬稿）：' + esc(money(e.twd, e.usd)) + '</div>'
+      + (Number(al.thresholdUsd) > 0 ? '<div' + (al.over ? ' class="oc-err"' : '') + '>提醒門檻 US$' + esc(al.thresholdUsd) + (al.over ? '，本月已超過' : '，本月還沒到') + '</div>' : '');
+  }
+  function usageInto(id) {
+    var el = $(id); if (!el || !S.owner) return;
+    el.innerHTML = usageHtml(S.usage && !S.usage.err ? S.usage : null);
+    call({ op: 'ownerChatUsage' }, 30000).then(function (r) { S.usage = (r.status === 200 && r.d.ok === true) ? r.d : { err: '讀不到本月花費（' + errText(r) + '）' }; }, function (e) { S.usage = { err: '讀不到本月花費（' + errText(e) + '）' }; }).then(function () { var e2 = $(id); if (e2) e2.innerHTML = usageHtml(S.usage); });
+  }
+
+  // ── 綁定
+  if (box) {
+    ['ocOpen', 'ocOpen2'].forEach(function (id) { var el = $(id); if (el) el.onclick = function () { open(); }; });
+    $('ocClose').onclick = close;
+    $('ocHabits').onclick = function () { if (window.yzHb) yzHb.open(); };
+    $('ocSend').onclick = function () { send(); };
+    $('ocTier').onchange = function () { if (TIER_NAME[this.value]) S.tier = this.value; };
+    $('ocAt').onclick = function () { pick(true); };
+    $('ocPickClose').onclick = function () { pick(false); };
+    $('ocPickQ').oninput = function () { pickList(this.value); };
+    $('ocPickList').onclick = function (ev) { var b = ev.target.closest && ev.target.closest('.oc-pick-it'); if (!b) return; if (addMention(b.getAttribute('data-cid'))) pick(false); };
+    $('ocChips').onclick = function (ev) { var b = ev.target.closest && ev.target.closest('[data-rm]'); if (!b) return; S.mentions.splice(Number(b.getAttribute('data-rm')), 1); renderChips(); };
+    $('ocList').onclick = function (ev) {
+      var t = ev.target, a;
+      if ((a = t.closest && t.closest('[data-pa]'))) { var card = a.closest('.oc-prop'); propAct(card.getAttribute('data-prop'), a.getAttribute('data-pa'), a); return; }
+      if ((a = t.closest && t.closest('.oc-goto'))) { ev.preventDefault(); var cid = a.getAttribute('data-cid'); hide(); try { if (S.pushed) { S.pushed = false; history.back(); } } catch (e) {} setTimeout(function () { openThread(cid); }, 0); return; }
+      if ((a = t.closest && t.closest('.oc-retry'))) { ev.preventDefault(); var m = S.msgs[Number(a.getAttribute('data-i'))]; if (!m || !m.payload || S.busy) return; var pl = m.payload; if (m.role === 'user') S.msgs.splice(S.msgs.indexOf(m), 1); else m.retry = false; send(pl); return; }
+      if ((a = t.closest && t.closest('.oc-reload'))) { ev.preventDefault(); load(false); return; }
+      if (t.id === 'ocMore') { var first = S.msgs.filter(function (x) { return x.at && !x.local; })[0]; if (first) load(false, first.at); }
+    };
+  }
+  // 登入後才探；登入失效或登出時把入口與畫面收掉。看 #app 顯示與否（showApp／showGate 切換的那個），不去包主程式的 boot
+  try {
+    var appEl = $('app'), authSeen = false;
+    var authView = function () {
+      var on = !!(appEl && appEl.style.display !== 'none' && !gateOn());
+      if (on && !authSeen) { authSeen = true; probe(); }
+      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.usage = null; S.owner = false; document.documentElement.classList.remove('oc-owner'); }
+    };
+    if (appEl && window.MutationObserver) new MutationObserver(authView).observe(appEl, { attributes: true, attributeFilter: ['style'] });
+    authView();
+  } catch (eB) {}
+  return { open: open, close: close, back: back, isOpen: function () { return S.open; }, usageInto: usageInto, call: call, errText: errText, cats: function () { return S.cats.slice(); }, setCats: function (c) { if (Array.isArray(c) && c.length) S.cats = c.map(String); }, isOwner: function () { return S.owner; }, scopeText: scopeText, catOptions: catOptions, ERR: ERR };
+})();
+
+/* 我的習慣：AI 記下的規矩，依分類分組；已確認、待確認、已停用都列。可改內容與分類、停用、啟用、刪除（刪除要確認）；待確認的可記下、不用、改一下再記。 */
+var yzHb = (function () {
+  var box = document.getElementById('hbBox'), body = document.getElementById('hbBody'), H = { open: false, pushed: false, list: null, err: '', edit: '', msg: {}, busy: {}, canAdd: false, adding: false, addErr: '', addBusy: false };
+  var ST = { confirmed: '已確認', pending: '待確認', disabled: '已停用' }, ORDER = { pending: 0, confirmed: 1, disabled: 2 };
+  function day(x) { var ms = Date.parse(x || ''); return ms ? tpeMinute(ms).slice(0, 10) : ''; }
+  function itemHtml(h) {
+    var id = esc(h.id), st = ST[h.status] ? h.status : 'confirmed', msg = H.msg[h.id] ? '<div class="ns-msg err">' + esc(H.msg[h.id]) + '</div>' : '';
+    var meta = '<div class="hb-meta">' + (h.sourceText ? '你當時說：' + esc(h.sourceText) + '<br>' : '') + esc(day(h.confirmedAt || h.updatedAt || h.createdAt)) + '　適用：' + esc(yzOc.scopeText(h.scope)) + '</div>';
+    if (H.edit === h.id) return '<div class="hb-it oc-edit" data-hb="' + id + '" data-st="' + st + '"><textarea class="hb-e-text" maxlength="200">' + esc(h.content || '') + '</textarea><select class="hb-e-cat" aria-label="分類">' + yzOc.catOptions(h.category || '') + '</select>' + msg
+      + '<div class="oc-btns"><button type="button" class="btn small" data-ha="save">' + (st === 'pending' ? '記下' : '存起來') + '</button><button type="button" class="btn ghost small" data-ha="cancel">取消</button></div></div>';
+    var btns = st === 'pending' ? [['yes', '記下', ''], ['no', '不用', 'ghost'], ['edit', '改一下再記', 'ghost']]
+      : st === 'disabled' ? [['enable', '重新啟用', ''], ['del', '刪除', 'ghost']] : [['edit', '修改', 'ghost'], ['disable', '停用', 'ghost'], ['del', '刪除', 'ghost']];
+    return '<div class="hb-it' + (st === 'disabled' ? ' off' : '') + '" data-hb="' + id + '" data-st="' + st + '"><span class="hb-st ' + st + '">' + ST[st] + '</span><span class="hb-content">' + esc(h.content || '') + '</span>' + meta + msg
+      + '<div class="oc-btns">' + btns.map(function (b) { return '<button type="button" class="btn small ' + b[2] + '" data-ha="' + b[0] + '">' + b[1] + '</button>'; }).join('') + '</div></div>';
+  }
+  function render() {
+    if (!body) return;
+    if (!H.list) { body.innerHTML = H.err ? '<div class="ns-sec"><div class="ns-msg err">' + esc(H.err) + '</div><div class="row"><button type="button" class="btn small" id="hbRetry">再試一次</button></div></div>' : '<div class="loading"><span class="spin"></span>讀取我的習慣中</div>'; return; }
+    var cats = yzOc.cats(), seen = {}, h = '';
+    H.list.forEach(function (x) { var c = String(x.category || '其他'); if (cats.indexOf(c) < 0) cats.push(c); });
+    h += '<div class="ns-d" style="margin:2px 2px 8px">跟 AI 討論時它聽到像習慣的話，會先問你要不要記；記下的在這裡。只有「已確認」的會被拿來用。</div>';
+    // 手動新增：後端的 habitList 回 canAdd:true 才出現（habitAdd 還沒進契約，後端準備好再打開）
+    if (H.canAdd && !H.adding) h += '<div style="margin:0 2px 10px"><button type="button" class="btn ghost small" id="hbAdd">＋ 自己新增一條</button></div>';
+    if (H.canAdd && H.adding) h += '<div class="hb-it oc-edit" id="hbAddBox"><textarea id="hbAddText" maxlength="200" placeholder="一句話寫下你的規矩或偏好"></textarea><select id="hbAddCat" aria-label="分類">' + yzOc.catOptions('') + '</select><div class="ns-msg err" id="hbAddMsg">' + esc(H.addErr) + '</div>'
+      + '<div class="oc-btns"><button type="button" class="btn small" id="hbAddSave">記下</button><button type="button" class="btn ghost small" id="hbAddCancel">取消</button></div></div>';
+    if (!H.list.length) h += '<div class="oc-empty">還沒有記下任何習慣。到「AI 討論」跟它說你的做法或偏好就可以。</div>';
+    cats.forEach(function (c) {
+      var items = H.list.filter(function (x) { return String(x.category || '其他') === c; }).sort(function (a, b) { return (ORDER[a.status] || 0) - (ORDER[b.status] || 0); });
+      if (!items.length) return;
+      h += '<div class="hb-cat" data-cat="' + esc(c) + '">' + esc(c) + '（' + items.length + '）</div>' + items.map(itemHtml).join('');
+    });
+    h += '<div class="st-list" style="margin-top:16px"><div class="oc-usage" id="hbUsage"></div></div>';
+    body.innerHTML = h; yzOc.usageInto('hbUsage');
+  }
+  function load() {
+    H.err = ''; if (!H.list) render();
+    yzOc.call({ op: 'habitList', status: 'all' }, 30000).then(function (r) {
+      if (r.status === 200 && r.d.ok === true && Array.isArray(r.d.habits)) { H.list = r.d.habits; yzOc.setCats(r.d.categories); H.err = ''; H.canAdd = r.d.canAdd === true; }
+      else { H.list = null; H.err = '讀不到我的習慣（' + yzOc.errText(r) + '）'; }
+      render();
+    }, function (e) { H.list = null; H.err = '讀不到我的習慣（' + yzOc.errText(e) + '）'; render(); });
+  }
+  function act(id, a, el) {
+    var h = (H.list || []).filter(function (x) { return x.id === id; })[0]; if (!h || H.busy[id]) return;
+    H.msg[id] = '';
+    if (a === 'edit') { H.edit = id; render(); return; }
+    if (a === 'cancel') { H.edit = ''; render(); return; }
+    if (a === 'del' && !confirm('刪除這條習慣？\n\n' + String(h.content || '') + '\n\n刪掉就不會再用，也救不回來。')) return;
+    var app = { yes: { op: 'habitConfirm', id: id }, no: { op: 'habitDiscard', id: id }, disable: { op: 'habitDisable', id: id }, enable: { op: 'habitEnable', id: id }, del: { op: 'habitDelete', id: id } }[a];
+    if (a === 'save') {
+      var card = el.closest('.hb-it'), txt = String(card.querySelector('.hb-e-text').value || '').trim(), cat = card.querySelector('.hb-e-cat').value;
+      if (txt.length < 4 || txt.length > 200) { H.msg[id] = yzOc.ERR.content_invalid; render(); return; }
+      app = { op: h.status === 'pending' ? 'habitConfirm' : 'habitUpdate', id: id };
+      if (txt !== String(h.content || '')) app.content = txt; if (cat !== String(h.category || '')) app.category = cat;
+      if (app.op === 'habitUpdate' && app.content === undefined && app.category === undefined) { H.edit = ''; render(); return; }   // 沒改任何東西
+    }
+    H.busy[id] = true; busy(el, true, '處理中');
+    yzOc.call(app, 30000).then(function (r) {
+      delete H.busy[id];
+      if (r.status === 200 && r.d.ok === true) { H.edit = ''; load(); return; }   // 以後台為準重讀（併入、取代會動到別筆）
+      H.msg[id] = yzOc.errText(r);
+      if (r.d.error === 'not_found' || r.d.error === 'not_pending' || r.d.error === 'is_pending') { load(); return; }
+      render();
+    }, function (e) { delete H.busy[id]; H.msg[id] = yzOc.errText(e); render(); });
+  }
+  function addSave(el) {
+    if (H.addBusy) return;
+    var txt = String(document.getElementById('hbAddText').value || '').trim(), cat = document.getElementById('hbAddCat').value;
+    if (txt.length < 4 || txt.length > 200) { H.addErr = yzOc.ERR.content_invalid; document.getElementById('hbAddMsg').textContent = H.addErr; return; }
+    H.addBusy = true; busy(el, true, '記下中');
+    yzOc.call({ op: 'habitAdd', content: txt, category: cat }, 30000).then(function (r) {
+      H.addBusy = false;
+      if (r.status === 200 && r.d.ok === true) { H.adding = false; H.addErr = ''; load(); return; }
+      H.addErr = yzOc.errText(r); busy(el, false); var m = document.getElementById('hbAddMsg'); if (m) m.textContent = H.addErr;
+    }, function (e) { H.addBusy = false; H.addErr = yzOc.errText(e); busy(el, false); var m = document.getElementById('hbAddMsg'); if (m) m.textContent = H.addErr; });
+  }
+  function hide() { H.open = false; if (box) box.classList.remove('on'); document.body.classList.remove('hb-open'); }
+  function open() {
+    if (!box || !yzOc.isOwner()) return;
+    if (!H.open) { H.open = true; box.classList.add('on'); document.body.classList.add('hb-open'); box.scrollTop = 0; try { history.pushState({ yzHb: 1 }, ''); H.pushed = true; } catch (e) { H.pushed = false; } }
+    H.edit = ''; H.msg = {}; H.adding = false; H.addErr = ''; load();
+  }
+  function close() { if (!H.open) return; if (H.pushed) { H.pushed = false; try { history.back(); return; } catch (e) {} } hide(); }
+  window.addEventListener('popstate', function (ev) { if (H.open && !(ev.state && ev.state.yzHb)) { H.pushed = false; hide(); } });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && H.open) close(); });
+  if (box) {
+    document.getElementById('hbClose').onclick = close;
+    body.onclick = function (ev) { var t = ev.target; if (t.id === 'hbRetry') { load(); return; }
+      if (t.id === 'hbAdd') { H.adding = true; H.addErr = ''; render(); return; } if (t.id === 'hbAddCancel') { H.adding = false; render(); return; } if (t.id === 'hbAddSave') { addSave(t); return; }
+      var b = t.closest && t.closest('[data-ha]'); if (!b) return; act(b.closest('.hb-it').getAttribute('data-hb'), b.getAttribute('data-ha'), b); };
+  }
+  return { open: open, close: close, hide: hide, isOpen: function () { return H.open; } };
 })();
 </script>
 
