@@ -137,26 +137,74 @@ form.busy button{opacity:.5;pointer-events:none;}
     function add(r) { var a = read().filter(function (x) { return x.id !== r.id; }); r.state = 'run'; r.at = r.at || Date.now(); a.unshift(r); write(prune(a)); draw(); }
     function update(id, patch) {
       var a = read();
-      a.forEach(function (r) { if (r.id !== id) return; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== 'run') r.doneAt = Date.now(); });
+      a.forEach(function (r) { if (r.id !== id) return; var was = r.state; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== 'run' && patch.state !== was) r.doneAt = Date.now(); });
       write(prune(a)); draw();
     }
     function remove(id) { write(read().filter(function (r) { return r.id !== id; })); draw(); }
     function shown(r, now) { return r.state === 'run' && (now || Date.now()) - (r.at || 0) > STALE ? 'unknown' : r.state; }
+    function sig(o) { var s = JSON.stringify(o || {}), n = 5381; for (var i = 0; i < s.length; i++) n = ((n * 33) ^ s.charCodeAt(i)) >>> 0; return String(n); }
+    function execFailed(s, action) {
+      var t = String(s || '');
+      if (action === 'ecpayIssue') return !/^(已開立|已發「發票資料確認卡」|夜間核可：發票資料確認卡|這筆 10 分鐘內剛開過)/.test(t);
+      if (action === 'invoiceNotify') return /^(失敗|部分沒發)|：沒發/.test(t);
+      if (action === 'ecpayVoid') return !/^(已作廢|已照綠界作廢狀態回寫)/.test(t);
+      return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
+    }
+    function errText(res) {
+      var out = [];
+      Object.keys(res).forEach(function (k) {
+        if (k === 'lineSendError' || !(k === 'error' || /(Error|Fail)$/.test(k))) return;
+        var v = res[k]; if (!v || (Array.isArray(v) && !v.length)) return;
+        out.push(typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120));
+      });
+      return out.join('；');
+    }
     function judge(r, it) {
-      if (!it || !it.status || it.status === r.from) return null;
-      if (it.status === '失敗' || it.error || it.lineSendError) return { state: 'fail', text: String(it.error || it.lineSendError || '狀態變成「' + it.status + '」') };
-      return { state: 'done', text: it.execResult ? String(it.execResult) : '狀態：' + it.status };
+      if (!it || !it.status) return null;
+      var res = (it.result && typeof it.result === 'object') ? it.result : {}, pl = (it.payload && typeof it.payload === 'object') ? it.payload : {};
+      var st = it.status, dry = !!pl.dryRun, cs = !!(pl.lineReplyTo && String(pl.text || '').trim()) && !dry;
+      if (st === r.from) {
+        if (r.state === 'done' || (res.lineSendError && sig(res) !== r.sig)) return { state: 'fail', text: '沒送出，已退回' + st + '，請重開這張卡' + (res.lineSendError ? '（' + res.lineSendError + '）' : '') };
+        return null;
+      }
+      if (r.sig && sig(res) === r.sig) res = {};
+      if (st === '失敗') return { state: 'fail', text: String(res.error || errText(res) || '狀態變成「失敗」') };
+      if (res.lineSendError) return { state: 'unsure', text: 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按（' + res.lineSendError + '）' };
+      var et = errText(res);
+      if (et) return { state: 'fail', text: et };
+      if (st === '已核可') {
+        if (pl.execAction && !dry) {
+          if (!res.execResult) return null;
+          if (execFailed(res.execResult, pl.execAction)) return { state: 'fail', text: String(res.execResult) };
+        }
+        if (pl.onApprove && !dry) {
+          if (!res.hook) return null;
+          if (res.ok === false) return { state: 'fail', text: String(res.text || '核可後動作沒成功') };
+        }
+        if (cs && !res.lineSent && !(pl.onApprove && res.hook)) return null;
+        return { state: 'done', text: String(res.execResult || (res.lineSent ? '已送給客戶' + (res.sentAt ? ' ' + res.sentAt : '') : '') || res.text || '狀態：已核可') };
+      }
+      if (st === '已排程') return { state: 'done', text: '已排程' + (it.publishAt ? ' ' + it.publishAt : '') };
+      if (st === '發佈中') return { state: 'done', text: '已進入自動發佈，完成後會 LINE 通知你' };
+      if (st === '已略過') return { state: 'done', text: res.skipped === 'customer_replied' ? '客戶已經回訊，這則沒送' : '已略過' };
+      if (st === '退回') return { state: 'done', text: '已退回' };
+      return { state: 'done', text: '狀態：' + st };
     }
     function check(r) {
       r.checkedAt = Date.now(); update(r.id, { checkedAt: r.checkedAt });
       return fetch(api + '?action=approvalView&h=' + encodeURIComponent(r.h), { method: 'GET' })
         .then(function (res) { return res.json(); })
-        .then(function (j) { var p = judge(r, j && j.item); if (p) { update(r.id, p); if (opt.onChange) opt.onChange(r.id, p.state); } })
+        .then(function (j) { var p = judge(r, j && j.item); if (p && p.state !== r.state) { update(r.id, p); if (opt.onChange) opt.onChange(r.id, p.state); } })
         .catch(function () {});
+    }
+    function due(r, now) {
+      if (r.state === 'run') return now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500);
+      if (r.state === 'done') return now - (r.checkedAt || 0) >= 30000;
+      return false;
     }
     function cycle() {
       var now = Date.now();
-      if (!document.hidden) list().forEach(function (r) { if (r.state === 'run' && now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500)) check(r); });
+      if (!document.hidden) list().forEach(function (r) { if (due(r, now)) check(r); });
       draw();
     }
     function line(r, now) {
@@ -167,6 +215,7 @@ form.busy button{opacity:.5;pointer-events:none;}
       if (st === 'done') return '<div class="sbar-row done">' + head + '<div>已完成：' + esc(r.text || '') + '</div></div>';
       if (st === 'note') return '<div class="sbar-row done">' + head + '<div>後台回覆：' + esc(r.text || '') + '</div></div>';
       if (st === 'fail') return '<div class="sbar-row fail">' + head + '<div>失敗：' + esc(r.text || '後台沒回報原因') + '</div><div class="sbar-a">' + card + x + '</div></div>';
+      if (st === 'unsure') return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到：' + esc(r.text || '') + '</div><div class="sbar-a">' + card + x + '</div></div>';
       return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到，系統會擋重複執行，請開那張卡確認</div><div class="sbar-a">' + card + x + '</div></div>';
     }
     function draw() {
@@ -181,7 +230,7 @@ form.busy button{opacity:.5;pointer-events:none;}
       if (!timer) timer = setInterval(cycle, 5000);
       cycle();
     }
-    return { list: list, add: add, update: update, remove: remove, shown: shown, start: start, hide: function (id) { opt.hide = id || ''; draw(); } };
+    return { list: list, add: add, update: update, remove: remove, shown: shown, judge: judge, sig: sig, start: start, hide: function (id) { opt.hide = id || ''; draw(); } };
   }
   var SENTLOG = sentLog(GW, esc);
   var gasPage = GAS + '?page=approve&h=' + encodeURIComponent(h);
@@ -249,6 +298,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   function render(it) {
     var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
     LOADED_STATUS = status || '';
+    LOADED_SIG = SENTLOG.sig(it.result || {});
     CUR = { id: String(it.id || ''), title: String(it.title || ''), isCs: !!pl.lineReplyTo };
     SENTLOG.start(document.getElementById('sentBar'), { hide: CUR.id });
     HAS_PRESELECT = choiceList(pl).some(function (c) { return preIdx(c) >= 0; });
@@ -339,7 +389,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   window.addEventListener('pageshow', function () { if (SENT) return; Array.prototype.forEach.call(document.querySelectorAll('form.busy'), function (f) { f.classList.remove('busy'); }); });   // 從 GAS 結果頁按返回（bfcache）時解鎖
   var FETCH_DECISIONS = { approve: 1, skip: 1, reject: 1, publishnow: 1, reschedule: 1, cancel: 1 };
   var DECISION_LABEL = { approve: '核可', skip: '略過', reject: '退回', publishnow: '改為立即發佈', reschedule: '改期', cancel: '取消排程' };
-  var SENT = false, LOADED_STATUS = '', HAS_PRESELECT = false, CUR = { id: '', title: '', isCs: false }, NEXT = null;
+  var SENT = false, LOADED_STATUS = '', LOADED_SIG = '', HAS_PRESELECT = false, CUR = { id: '', title: '', isCs: false }, NEXT = null;
   function nextButtons() {
     return '<a class="btn-home js-next" href="' + esc(LIST) + '" target="_top">下一張待核可</a>'
       + (CUR.isCs ? '<a class="btn-home ghost" href="' + esc(INBOX) + '" target="_top">回收件匣</a>' : '');
@@ -397,7 +447,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     }
     if (!changed) {   // 狀態沒變（內容有更新請重新整理／改期失敗／已改期…）：訊息照顯示、表單留著可再操作
       statusBox('', j.title || (label + '：後台已回覆'), desc);
-      SENTLOG.update(CUR.id, { state: 'note', text: String(j.title || desc || '後台已回覆') });
+      if (label === DECISION_LABEL.reschedule) SENTLOG.update(CUR.id, { state: 'note', text: String(j.title || desc || '後台已回覆') });
       SENT = false; lockAll(false);
       return;
     }
@@ -411,14 +461,21 @@ form.busy button{opacity:.5;pointer-events:none;}
     fetch(GW + '?action=approvalView&h=' + encodeURIComponent(h), { method: 'GET' })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        var it = j && j.item;
-        if (it && it.status && it.status !== LOADED_STATUS) {
-          var bad = it.status === '失敗' || it.error || it.lineSendError;
-          if (bad) showDone({ ok: false, status: it.status, error: String(it.error || it.lineSendError || '狀態變成「' + it.status + '」') }, label);
-          else showDone({ ok: true, status: it.status, title: label + '完成', desc: '狀態：' + it.status + (it.execResult ? '　' + it.execResult : '') }, label);
+        var it = j && j.item, p = it ? SENTLOG.judge({ from: LOADED_STATUS, sig: LOADED_SIG, state: 'run' }, it) : null;
+        if (p && p.state === 'done') { showDone({ ok: true, status: it.status, title: label + '完成', desc: p.text, execResult: '' }, label); return; }
+        if (p && p.state === 'fail') { showDone({ ok: false, status: it.status, error: p.text }, label); return; }
+        if (p && p.state === 'unsure') {
+          SENT = true; lockAll(true); addNext(statusBox('warn', '不確定有沒有送到', p.text));
+          SENTLOG.update(CUR.id, { state: 'unsure', text: p.text });
+          Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) { f.style.display = 'none'; });
           return;
         }
-        if (Date.now() - startedAt > 180000) { SENT = false; lockAll(false); addNext(statusBox('warn', '沒收到回應', '狀態仍是「' + LOADED_STATUS + '」、不確定剛才有沒有送到。系統會擋重複執行（不會重複開票、重複發送），請重新整理確認後再決定要不要再按一次。')); return; }
+        if (Date.now() - startedAt > 180000) {
+          var moved = it && it.status && it.status !== LOADED_STATUS;
+          if (!moved) { SENT = false; lockAll(false); }
+          addNext(statusBox('warn', '沒收到回應', moved ? '狀態已經變成「' + it.status + '」，但 3 分鐘內沒看到執行結果，不確定有沒有做完。系統會擋重複執行，請稍後開這張卡確認，不要重按。' : '狀態仍是「' + LOADED_STATUS + '」、不確定剛才有沒有送到。系統會擋重複執行（不會重複開票、重複發送），請重新整理確認後再決定要不要再按一次。'));
+          return;
+        }
         setTimeout(function () { pollStatus(label, startedAt); }, 5000);
       })
       .catch(function () { setTimeout(function () { pollStatus(label, startedAt); }, 5000); });
@@ -429,7 +486,7 @@ form.busy button{opacity:.5;pointer-events:none;}
     var body = new URLSearchParams(); Array.prototype.forEach.call(f.elements, function (el) { if (!el.name || el.name === 'decision' || el.disabled || el.type === 'submit' || el.type === 'button') return; if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return; body.append(el.name, el.value); });
     body.append('decision', decision); body.append('respond', 'json');
     SENT = true; lockAll(true);
-    SENTLOG.add({ id: CUR.id, h: h, label: label, decision: decision, from: LOADED_STATUS, title: CUR.title, url: location.pathname + '?h=' + encodeURIComponent(h), at: Date.now() });
+    SENTLOG.add({ id: CUR.id, h: h, label: label, decision: decision, from: LOADED_STATUS, sig: LOADED_SIG, title: CUR.title, url: location.pathname + '?h=' + encodeURIComponent(h), at: Date.now() });
     var t0 = Date.now(), box = addNext(statusBox('run', label + '已送出，系統在背景執行', '不用留在這頁，可以直接看下一張。留在這頁的話，做完會在這裡顯示結果。'));
     box.querySelector('.dtitle').insertAdjacentHTML('afterend', '<div class="elapsed">已過 0 秒</div>');
     var tick = setInterval(function () { var d = box.querySelector('.elapsed'); if (d) d.textContent = '已過 ' + Math.round((Date.now() - t0) / 1000) + ' 秒'; }, 1000);

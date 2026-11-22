@@ -102,26 +102,74 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     function add(r) { var a = read().filter(function (x) { return x.id !== r.id; }); r.state = 'run'; r.at = r.at || Date.now(); a.unshift(r); write(prune(a)); draw(); }
     function update(id, patch) {
       var a = read();
-      a.forEach(function (r) { if (r.id !== id) return; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== 'run') r.doneAt = Date.now(); });
+      a.forEach(function (r) { if (r.id !== id) return; var was = r.state; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== 'run' && patch.state !== was) r.doneAt = Date.now(); });
       write(prune(a)); draw();
     }
     function remove(id) { write(read().filter(function (r) { return r.id !== id; })); draw(); }
     function shown(r, now) { return r.state === 'run' && (now || Date.now()) - (r.at || 0) > STALE ? 'unknown' : r.state; }
+    function sig(o) { var s = JSON.stringify(o || {}), n = 5381; for (var i = 0; i < s.length; i++) n = ((n * 33) ^ s.charCodeAt(i)) >>> 0; return String(n); }
+    function execFailed(s, action) {
+      var t = String(s || '');
+      if (action === 'ecpayIssue') return !/^(已開立|已發「發票資料確認卡」|夜間核可：發票資料確認卡|這筆 10 分鐘內剛開過)/.test(t);
+      if (action === 'invoiceNotify') return /^(失敗|部分沒發)|：沒發/.test(t);
+      if (action === 'ecpayVoid') return !/^(已作廢|已照綠界作廢狀態回寫)/.test(t);
+      return /沒開|沒寫回|沒完成|沒寫成|沒成功|沒發|未更新|失敗|查無|^缺 |^例外|^未知的執行動作|^參數不全|^沒/.test(t);
+    }
+    function errText(res) {
+      var out = [];
+      Object.keys(res).forEach(function (k) {
+        if (k === 'lineSendError' || !(k === 'error' || /(Error|Fail)$/.test(k))) return;
+        var v = res[k]; if (!v || (Array.isArray(v) && !v.length)) return;
+        out.push(typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120));
+      });
+      return out.join('；');
+    }
     function judge(r, it) {
-      if (!it || !it.status || it.status === r.from) return null;
-      if (it.status === '失敗' || it.error || it.lineSendError) return { state: 'fail', text: String(it.error || it.lineSendError || '狀態變成「' + it.status + '」') };
-      return { state: 'done', text: it.execResult ? String(it.execResult) : '狀態：' + it.status };
+      if (!it || !it.status) return null;
+      var res = (it.result && typeof it.result === 'object') ? it.result : {}, pl = (it.payload && typeof it.payload === 'object') ? it.payload : {};
+      var st = it.status, dry = !!pl.dryRun, cs = !!(pl.lineReplyTo && String(pl.text || '').trim()) && !dry;
+      if (st === r.from) {
+        if (r.state === 'done' || (res.lineSendError && sig(res) !== r.sig)) return { state: 'fail', text: '沒送出，已退回' + st + '，請重開這張卡' + (res.lineSendError ? '（' + res.lineSendError + '）' : '') };
+        return null;
+      }
+      if (r.sig && sig(res) === r.sig) res = {};
+      if (st === '失敗') return { state: 'fail', text: String(res.error || errText(res) || '狀態變成「失敗」') };
+      if (res.lineSendError) return { state: 'unsure', text: 'LINE 沒有回應，可能已送到，請先看對話紀錄，不要重按（' + res.lineSendError + '）' };
+      var et = errText(res);
+      if (et) return { state: 'fail', text: et };
+      if (st === '已核可') {
+        if (pl.execAction && !dry) {
+          if (!res.execResult) return null;
+          if (execFailed(res.execResult, pl.execAction)) return { state: 'fail', text: String(res.execResult) };
+        }
+        if (pl.onApprove && !dry) {
+          if (!res.hook) return null;
+          if (res.ok === false) return { state: 'fail', text: String(res.text || '核可後動作沒成功') };
+        }
+        if (cs && !res.lineSent && !(pl.onApprove && res.hook)) return null;
+        return { state: 'done', text: String(res.execResult || (res.lineSent ? '已送給客戶' + (res.sentAt ? ' ' + res.sentAt : '') : '') || res.text || '狀態：已核可') };
+      }
+      if (st === '已排程') return { state: 'done', text: '已排程' + (it.publishAt ? ' ' + it.publishAt : '') };
+      if (st === '發佈中') return { state: 'done', text: '已進入自動發佈，完成後會 LINE 通知你' };
+      if (st === '已略過') return { state: 'done', text: res.skipped === 'customer_replied' ? '客戶已經回訊，這則沒送' : '已略過' };
+      if (st === '退回') return { state: 'done', text: '已退回' };
+      return { state: 'done', text: '狀態：' + st };
     }
     function check(r) {
       r.checkedAt = Date.now(); update(r.id, { checkedAt: r.checkedAt });
       return fetch(api + '?action=approvalView&h=' + encodeURIComponent(r.h), { method: 'GET' })
         .then(function (res) { return res.json(); })
-        .then(function (j) { var p = judge(r, j && j.item); if (p) { update(r.id, p); if (opt.onChange) opt.onChange(r.id, p.state); } })
+        .then(function (j) { var p = judge(r, j && j.item); if (p && p.state !== r.state) { update(r.id, p); if (opt.onChange) opt.onChange(r.id, p.state); } })
         .catch(function () {});
+    }
+    function due(r, now) {
+      if (r.state === 'run') return now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500);
+      if (r.state === 'done') return now - (r.checkedAt || 0) >= 30000;
+      return false;
     }
     function cycle() {
       var now = Date.now();
-      if (!document.hidden) list().forEach(function (r) { if (r.state === 'run' && now - (r.checkedAt || 0) >= (shown(r, now) === 'unknown' ? 30000 : 4500)) check(r); });
+      if (!document.hidden) list().forEach(function (r) { if (due(r, now)) check(r); });
       draw();
     }
     function line(r, now) {
@@ -132,6 +180,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       if (st === 'done') return '<div class="sbar-row done">' + head + '<div>已完成：' + esc(r.text || '') + '</div></div>';
       if (st === 'note') return '<div class="sbar-row done">' + head + '<div>後台回覆：' + esc(r.text || '') + '</div></div>';
       if (st === 'fail') return '<div class="sbar-row fail">' + head + '<div>失敗：' + esc(r.text || '後台沒回報原因') + '</div><div class="sbar-a">' + card + x + '</div></div>';
+      if (st === 'unsure') return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到：' + esc(r.text || '') + '</div><div class="sbar-a">' + card + x + '</div></div>';
       return '<div class="sbar-row unknown">' + head + '<div>不確定有沒有送到，系統會擋重複執行，請開那張卡確認</div><div class="sbar-a">' + card + x + '</div></div>';
     }
     function draw() {
@@ -146,7 +195,7 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       if (!timer) timer = setInterval(cycle, 5000);
       cycle();
     }
-    return { list: list, add: add, update: update, remove: remove, shown: shown, start: start, hide: function (id) { opt.hide = id || ''; draw(); } };
+    return { list: list, add: add, update: update, remove: remove, shown: shown, judge: judge, sig: sig, start: start, hide: function (id) { opt.hide = id || ''; draw(); } };
   }
   var SENTLOG = sentLog(CFG.engine, esc);
   $('gasLink').href = CFG.gas + '?page=publish';
@@ -175,7 +224,14 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     if (D.q) { var hay = [it.title, it.id, it.from, it.context].join(' ').toLowerCase(); if (hay.indexOf(D.q) < 0) return false; }
     return true;
   }
-  function sentMark(it, byId) { var r = byId[it.id]; if (!r || it.status !== r.from) return false; var st = SENTLOG.shown(r); return st === 'run' || st === 'unknown' || st === 'done'; }
+  function sentMark(it, byId) {
+    var r = byId[it.id]; if (!r) return '';
+    var st = SENTLOG.shown(r);
+    if (st === 'fail') return 'fail';
+    if (st === 'unknown' || st === 'unsure') return 'unsure';
+    if (st === 'run' && it.status === r.from) return 'run';
+    return '';
+  }
   function row(it, isPending, sent) {
     var meta = [esc(it.id), esc(TYPES[it.type] || it.type), esc(it.from), esc(String(it.ts || '').slice(5, 16))];
     if (it.publishAt && (it.status === '已排程' || isPending)) meta.push('排程 ' + esc(it.publishAt));
@@ -186,8 +242,8 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
       if (it.contactId) acts += '<a href="#" data-cid="' + esc(it.contactId) + '">收件匣</a>';
     } else acts += '<a href="' + esc(it.goUrl) + '" target="_blank">看結果</a>';
     var r = resultLine(it);
-    var chip = sent ? '<span class="chip run">已送出，執行中</span>' : '<span class="chip ' + chipCls(it.status) + '">' + esc(it.status) + '</span>';
-    return '<div class="row' + (sent ? ' sent' : '') + '"><div class="n"><div class="t">' + chip + ' ' + esc(it.title || '(無標題)') + '</div>'
+    var chip = sent === 'run' ? '<span class="chip run">已送出，執行中</span>' : sent === 'unsure' ? '<span class="chip warn">不確定，請開卡確認</span>' : sent === 'fail' ? '<span class="chip bad">沒送成，請重開這張卡</span>' : '<span class="chip ' + chipCls(it.status) + '">' + esc(it.status) + '</span>';
+    return '<div class="row' + (sent === 'run' ? ' sent' : '') + '"><div class="n"><div class="t">' + chip + ' ' + esc(it.title || '(無標題)') + '</div>'
       + '<div class="m">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('') + '</div>'
       + (it.context ? '<div class="r">' + esc(it.context) + '</div>' : '')
       + (r ? '<div class="r"><b>' + esc(r) + '</b></div>' : '')
@@ -200,10 +256,10 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     Array.prototype.forEach.call($('filters').querySelectorAll('button'), function (b) { b.onclick = function () { D.filter = b.getAttribute('data-f'); render(); }; });
     var byId = {}; SENTLOG.list().forEach(function (x) { byId[x.id] = x; });
     var p = (D.pending || []).filter(pass), r = (D.recent || []).filter(pass);
-    var pSent = p.filter(function (it) { return sentMark(it, byId); });
-    p = p.filter(function (it) { return !sentMark(it, byId); }).concat(pSent);
+    var pSent = p.filter(function (it) { return sentMark(it, byId) === 'run'; });
+    p = p.filter(function (it) { return sentMark(it, byId) !== 'run'; }).concat(pSent);
     $('meta').textContent = '待處理 ' + (D.pending || []).length + ' 件・最近 ' + (D.recent || []).length + ' 件';
-    $('pending').innerHTML = p.length ? p.map(function (it) { return row(it, true, pSent.indexOf(it) >= 0); }).join('') : '<div class="ld">' + ((D.pending || []).length ? '沒有符合條件的件' : '目前沒有待處理件') + '</div>';
+    $('pending').innerHTML = p.length ? p.map(function (it) { return row(it, true, sentMark(it, byId)); }).join('') : '<div class="ld">' + ((D.pending || []).length ? '沒有符合條件的件' : '目前沒有待處理件') + '</div>';
     $('recent').innerHTML = r.length ? r.map(function (it) { return row(it, false); }).join('') : '<div class="ld">沒有符合條件的件</div>';
     Array.prototype.forEach.call($('pending').querySelectorAll('a[data-cid]'), function (a) { a.onclick = function (ev) { ev.preventDefault(); window.open(CFG.inbox + '?cid=' + encodeURIComponent(a.getAttribute('data-cid')) + '&t=' + Date.now(), '_blank'); }; });   // t 在點擊時算（收件匣只認 20 分內的 t）
   }
