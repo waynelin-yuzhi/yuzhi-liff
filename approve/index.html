@@ -108,7 +108,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   <div class="brand"><b>植間設計</b><span>核可中心</span></div>
   <div id="sentBar" class="sbar" style="display:none"></div>
   <div id="app" class="card"><div class="note">載入中…</div></div>
-  <div class="ft">YUZHI PLANT DESIGN · <span id="ver">Pages</span> · <a id="gasLink" href="#" target="_top">舊版頁面</a></div>
+  <div class="ft">YUZHI PLANT DESIGN · <span id="ver">Pages</span> · <a id="gasLink" href="#" target="_top">備用頁面</a></div>
 </div>
 <script>
 (function () {
@@ -242,7 +242,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   var SENTLOG = sentLog(GW, esc);
   var gasPage = GAS + '?page=approve&h=' + encodeURIComponent(h);
   document.getElementById('gasLink').href = gasPage;
-  var msg = function (t, d) { app.innerHTML = '<div class="title">' + esc(t) + '</div><div class="note">' + esc(d) + '</div><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>'; };
+  var msg = function (t, d) { app.innerHTML = '<div class="title">' + esc(t) + '</div><div class="note">' + esc(d) + '</div><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">用備用頁面開</a>'; };
   if (!h || h.length < 20) { msg('連結無效', '找不到這筆核可件，或連結已失效。'); return; }
 
   var hidden = function (n, v) { return '<input type="hidden" name="' + n + '" value="' + esc(v) + '">'; };
@@ -313,7 +313,11 @@ form.busy button{opacity:.5;pointer-events:none;}
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
       var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
       if (ru && ru.protocol === 'https:' && ['waynelin-yuzhi.github.io', 'script.google.com'].indexOf(ru.hostname) >= 0) { location.replace(ru.href); return; }
-      app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬審核頁處理。</div><a class="btn-home" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>';
+      if (ru && ru.protocol === 'https:' && ru.hostname === 'liff.line.me') {
+        app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬的審核頁處理（可以看月曆、直接調整、核可或退回），按下面的按鈕會用 LINE 開啟。</div><a class="btn-home" href="' + esc(ru.href) + '" target="_top">' + esc(pl.reviewLabel || '開啟審核頁') + '</a><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">打不開時改用備用頁面</a>';
+        return;
+      }
+      app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬審核頁處理。</div><a class="btn-home" href="' + esc(gasPage) + '" target="_top">用備用頁面開</a>';
       return;
     }
     if (skipMode && status === '待核可' && !isPub) {
@@ -525,7 +529,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         clearInterval(tick);
         if (j && j.ok === false && !j.status && j.error) { showDone(j, label); return; }
         if (!j || (!j.ok && !j.status)) throw new Error((j && j.error) || 'bad');
-        if (j.needsPage) { SENTLOG.remove(CUR.id); statusBox('warn', '這個動作要用整頁送出', '請改用舊版頁面操作。'); SENT = false; lockAll(false); return; }
+        if (j.needsPage) { SENTLOG.remove(CUR.id); statusBox('warn', '這個動作要用整頁送出', '請改用最下面的備用頁面操作。'); SENT = false; lockAll(false); return; }
         showDone(j, label);
       })
       .catch(function () {
@@ -565,15 +569,15 @@ form.busy button{opacity:.5;pointer-events:none;}
         var failNote = HAS_PRESELECT
           ? '附掛項目這次沒載到，核可鈕先鎖住；這張對帳卡的選項只能在這頁核可，請重新整理再試。退回與略過仍可在這裡按。'
           : '';
-        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = failNote ? '<div class="note">' + esc(failNote) + '</div>' : '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
+        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = failNote ? '<div class="note">' + esc(failNote) + '</div>' : '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">備用頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
         var bh = document.getElementById('approveHint'); if (bh) bh.textContent = '附掛項目沒載到、這裡不能核可';
       });
   }
 
   fetch(GW + '?action=approvalView&h=' + encodeURIComponent(h), { method: 'GET' })
     .then(function (r) { return r.json(); })
-    .then(function (j) { if (!j || !j.ok || !j.item) { msg(j && j.error === 'not_found' ? '連結無效' : '暫時載不到', j && j.error === 'not_found' ? '找不到這筆核可件，或連結已失效。' : '引擎沒回應，請用下方舊版頁面。'); return; } render(j.item); })
-    .catch(function () { msg('暫時載不到', '引擎沒回應，請用下方舊版頁面。'); });
+    .then(function (j) { if (!j || !j.ok || !j.item) { msg(j && j.error === 'not_found' ? '連結無效' : '暫時載不到', j && j.error === 'not_found' ? '找不到這筆核可件，或連結已失效。' : '系統暫時沒回應，請用下方的備用頁面。'); return; } render(j.item); })
+    .catch(function () { msg('暫時載不到', '系統暫時沒回應，請用下方的備用頁面。'); });
 })();
 </script>
 </body>
