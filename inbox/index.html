@@ -228,6 +228,15 @@ body.oc-open,body.hb-open{overflow:hidden}
 .oc-fail,.oc-warn-t{color:#8C3B25}
 .oc-fail .oc-note{color:#8C3B25}
 .hb-it.hb-flash{border-color:var(--moss);box-shadow:0 0 0 2px #E9EDE3}
+/* 擬稿進度（2026-11-23，cs-run 1.83.0 ownerChatDraftStatus）：交重擬或擬新稿後，動作列顯示擬稿中與秒數，新稿好了變小卡 */
+.oc-prow{padding:2px 0}
+.oc-prog{color:var(--muted)}
+.oc-prog .spin{vertical-align:-2px;margin-right:4px}
+.oc-pcard{margin:4px 0 2px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--moss);border-radius:8px;background:#fff;color:var(--ink);text-align:left;overflow-wrap:anywhere}
+.oc-pcard h4{margin:0 0 2px;font-size:13px;font-weight:600}
+.oc-pc-t{font-size:12px;line-height:1.6;color:var(--body)}
+.oc-pcard .oc-btns{margin-top:6px}
+.oc-pwarn{color:#8C3B25}
 /* 引用問 AI（2026-11-23，cs-run 1.82.0 quotes）：輸入框上方的引用小卡、泡泡上方的引用說明、泡泡旁的「問 AI」「引用」小按鈕與長按選單 */
 .oc-quotes{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
 .oc-quotes:empty{display:none}
@@ -2189,7 +2198,7 @@ var yzSt = (function () {
    這裡沒有任何直接發給客戶的動作；對話做了事（照發、退回、重擬、擬新稿）只是把結果顯示出來並刷新收件匣。後端來的字一律 esc。 */
 var yzOc = (function () {
   var TIER_NAME = { fast: '快', standard: '標準', deep: '深入' }, TIERS0 = ['fast', 'standard', 'deep'];
-  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: TIERS0.slice(), defTier: 'standard', tier: '', busy: false, mentions: [], quotes: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0, canAdd: false, lookupErr: false };
+  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: TIERS0.slice(), defTier: 'standard', tier: '', busy: false, mentions: [], quotes: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0, canAdd: false, lookupErr: false, prog: {}, progT: 0, progOff: false };
   var box = document.getElementById('ocBox');
   function $(id) { return document.getElementById(id); }
   function arr(x) { return Array.isArray(x) ? x : []; }
@@ -2241,7 +2250,7 @@ var yzOc = (function () {
     if (!older) list.forEach(function (m) { m.proposals.forEach(function (np) { var op = np && np.id ? findProp(np.id) : null; if (op && (op._edit || op._err)) { np._edit = !!op._edit; np._err = op._err || ''; } }); });
     S.msgs = older ? list.concat(S.msgs) : list; S.hasMore = !!d.hasMore; S.loaded = true;
     if (!older) S.lookupErr = d.pendingLookup === 'error'; else if (d.pendingLookup === 'error') S.lookupErr = true;
-    applyMeta(d, !older);
+    applyMeta(d, !older); progScan();
   }
   function probe() {   /* 登入後問一次身分：是核可人才把入口打開；不讀對話內容 */
     var cached = false; try { cached = localStorage.getItem('yz_oc_owner') === '1'; } catch (e) {}
@@ -2314,6 +2323,85 @@ var yzOc = (function () {
     if (S.lookupErr) return '<div class="oc-act oc-warn-t"' + kd + ' data-src="lookup-error">' + head + '：暫時查不到結果（不是沒有結果），請稍後重新整理。</div>';
     return '<div class="oc-act oc-warn-t"' + kd + ' data-src="none">' + head + '：結果不明，請到收件匣確認。</div>';
   }
+  // ── 擬稿進度：交重擬或擬新稿之後，每 10 秒問一次那一則的擬稿狀態，最多 5 分鐘；對話框關著或頁面在背景時不問，回來補問一次。舊版後端沒有這支就整個不顯示
+  var PROG_POLL = 10000, PROG_MAX = 300000;
+  function isTrack(x) { return !!x && (x.kind === 'redraft' || x.kind === 'compose') && x.ok === true; }
+  function progTrackable(m) { return m.role === 'assistant' && !m.local && !m.thinking && /^\d+$/.test(m.id) && m.actionItems.some(isTrack); }
+  function progAdd(m, fresh) {
+    if (S.progOff || !progTrackable(m) || S.prog[m.id]) return;
+    var at = Date.parse(m.at) || Date.now(); if (at > Date.now()) at = Date.now();
+    if (!fresh && Date.now() - at >= PROG_MAX) return;
+    S.prog[m.id] = { at: at, last: 0, busy: false, final: false, items: null, fresh: !!fresh };
+    if (!S.progT) S.progT = setInterval(progTick, 1000);
+  }
+  function progScan() { S.msgs.forEach(function (m) { progAdd(m, false); }); }
+  function secText(ms) { var s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? s + ' 秒' : Math.floor(s / 60) + ' 分 ' + (s % 60) + ' 秒'; }
+  function progTick() {
+    var act = Object.keys(S.prog).filter(function (k) { return !S.prog[k].final; });
+    if (!act.length || S.progOff) { clearInterval(S.progT); S.progT = 0; return; }
+    if (!S.open || document.hidden) return;
+    var now = Date.now(), el = $('ocList');
+    act.forEach(function (id) {
+      var t = S.prog[id];
+      if (el) el.querySelectorAll('.oc-prog[data-pm="' + id + '"] .oc-sec').forEach(function (x) { x.textContent = secText(now - t.at); });
+      if (!t.busy && (now - t.last >= PROG_POLL || now - t.at >= PROG_MAX)) progQuery(id);
+    });
+  }
+  function progQuery(id) {
+    var t = S.prog[id]; if (!t || t.final || t.busy) return;
+    t.busy = true; t.last = Date.now(); var cap = Date.now() - t.at >= PROG_MAX;
+    var stop = function () { if (cap) { t.final = true; t.capped = true; render(false); } };
+    call({ op: 'ownerChatDraftStatus', messageId: id }).then(function (d) {
+      t.busy = false;
+      if (d.ok === true && Array.isArray(d.items)) {
+        var prev = t.items, next = objs(d.items), was = JSON.stringify(prev), allFinal = next.every(function (x) { return x.final === true; });
+        t.items = next; t.final = allFinal || d.done === true;
+        if (!t.final && cap) { t.final = true; t.capped = true; }
+        if (was !== JSON.stringify(next) || t.final) { progNotify(prev, t); render(false); }
+        return;
+      }
+      if (d.error === 'owner_only') return;
+      if (d.error === 'db_error' || d.error === 'internal_error') { stop(); return; }
+      S.progOff = true; render(false);
+    }, function () { t.busy = false; stop(); });
+  }
+  function progWho(r, it) { var ap = String(r.newApId || ''), nm = String(r.name || it.name || ''); return ap && nm ? ap + '（' + nm + '）' : (ap || nm); }
+  function progNotify(prev, t) {
+    if (prev === null && !t.fresh) return;
+    var ready = [], other = [];
+    (t.items || []).forEach(function (r, k) { var p = prev && prev[k]; if (!r.final || (p && p.final)) return; if (r.state === 'ready') ready.push(r); else other.push(r); });
+    var cur = $('ocMsg'); if (cur && /\berr\b/.test(cur.className) && cur.textContent) return;
+    if (ready.length) { say(ready.map(function (r) { return progWho(r, {}); }).join('、') + '的新稿好了，可以直接看稿或引用它。'); try { refreshAll(true); } catch (e) {} }
+    else if (other.length) say('擬稿有結果了：' + other.map(function (r) { return String(r.name || '') + (r.state === 'holding' ? '出的是過渡稿' : r.state === 'unknown' ? '還不確定' : '沒擬成'); }).join('、') + '，詳情寫在對話裡。');
+  }
+  function progHtml(m, it, i, k) {
+    var t = S.prog[m.id]; if (!t || S.progOff) return '';
+    var r = t.items ? t.items[k] : null; if (r && String(r.kind || '') !== it.kind) r = null;
+    var st = r ? String(r.state || '') : '';
+    if (t.capped && (st === '' || st === 'queued' || st === 'drafting')) st = 'unknown';
+    if (!st) { if (t.items) return ''; st = 'drafting'; }
+    var cid = String((r && r.contactId) || it.contactId || '') || (it.apId ? cidOfAp(String(it.apId), i) : cidOfName(String(it.name || '')));
+    var pend = st === 'queued' || st === 'drafting';
+    var head = pend ? itemHtml(it, i) : '<div class="oc-act oc-done" data-kind="' + esc(it.kind) + '">' + esc(KIND_DONE[it.kind]) + '　' + itemTarget(it, i) + '</div>';
+    var look = cid ? '　<a href="#" class="oc-goto" data-cid="' + esc(cid) + '">看那位客戶的對話</a>' : '';
+    var wrap = function (cls, inner) { return head + '<div class="oc-prow ' + cls + '" data-pm="' + esc(m.id) + '" data-pk="' + k + '" data-st="' + esc(st) + '">' + inner + '</div>'; };
+    if (pend) return wrap('oc-prog', '<span class="spin"></span>' + (st === 'queued' ? '排隊等擬稿' : '擬稿中') + '，已過 <span class="oc-sec">' + secText(Date.now() - t.at) + '</span>，好了會直接出現在這裡');
+    if (st === 'ready') {
+      var ap = String(r.newApId || ''), ds = String(r.draftStatus || ''), canQ = /^AP-\d+$/.test(ap) && (!ds || ds === '待核可' || ds === '已排程');
+      return head + '<div class="oc-pcard" data-pm="' + esc(m.id) + '" data-pk="' + k + '" data-st="ready"><h4>新稿好了　' + esc(ap) + (r.name ? '・' + esc(r.name) : '') + (ds && ds !== '待核可' ? '（' + esc(ds) + '）' : '') + '</h4>'
+        + '<div class="oc-pc-t">' + esc(String(r.preview || '')) + '</div><div class="oc-btns">'
+        + (cid ? '<button type="button" class="btn small oc-goto" data-cid="' + esc(cid) + '">看稿</button>' : '')
+        + (canQ ? '<button type="button" class="btn ghost small oc-pq" data-pm="' + esc(m.id) + '" data-pk="' + k + '">引用這張稿</button>' : '') + '</div></div>';
+    }
+    if (st === 'holding') return wrap('oc-pwarn', '這次出的是過渡稿' + (r.newApId ? '（' + esc(r.newApId) + '）' : '') + '，不是正式回覆：' + esc(String(r.reason || '多半是缺資料')) + look);
+    if (st === 'skipped' || st === 'failed') return wrap('oc-pwarn', '沒擬成：' + esc(String(r.reason || '沒有說明')) + look);
+    return wrap('oc-pwarn', '還不確定稿好了沒：' + esc(String((r && r.reason) || '超過 5 分鐘還沒有結果，請到那位客戶的對話確認')) + look);
+  }
+  function progQuote(id, k) {
+    var t = S.prog[id], r = t && t.items ? t.items[Number(k)] : null; if (!r || r.state !== 'ready' || !/^AP-\d+$/.test(String(r.newApId || ''))) return;
+    if (addQuote({ type: 'draft', apId: String(r.newApId), contactId: String(r.contactId || ''), name: String(r.name || ''), short: String(r.preview || '') })) { var ta = $('ocText'); try { if (ta) ta.focus({ preventScroll: true }); } catch (eF) {} }
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && S.open) progTick(); });
   function lateLabel(s) { var it = strItem(s, false); return it.raw !== undefined ? String(s) : (KIND_NAME[it.kind] + ' ' + (it.apId || it.name)); }
 
   // ── 習慣提議卡
@@ -2373,7 +2461,8 @@ var yzOc = (function () {
     h += refsHtml(m, i) + '<div class="msg ' + (mine ? 'out' : 'in') + (m.timedOut || m.error ? ' oc-warn' : '') + '" data-i="' + i + '" data-role="' + m.role + '"' + (qid ? ' data-mid="' + qid + '"' : '') + '>' + ment + '<div class="oc-text">' + esc(m.text) + '</div><div class="ts">' + esc(hhmm(m.at) + lateT) + '<span class="oc-tierlab">' + esc(tierT) + '</span>' + qB + '</div></div>';
     var under = '';
     var done = m.actionItems.length ? m.actionItems : m.actions.map(function (a) { return strItem(a, false); });
-    under += done.map(function (it) { return itemHtml(it, i); }).join('');
+    var tk = 0;
+    under += done.map(function (it) { var ph = isTrack(it) ? progHtml(m, it, i, tk++) : ''; return ph || itemHtml(it, i); }).join('');
     var pend = m.pendingActionItems.length ? m.pendingActionItems : m.pendingActions.map(function (a) { return strItem(a, true); }), waiting = 0;
     under += pend.map(function (it, j) {
       var key = (m.pendingActions.length === pend.length && m.pendingActions[j]) ? String(m.pendingActions[j]) : (it.raw !== undefined ? it.raw : itemKey(it)), res = pendResult(m, i, key);
@@ -2506,7 +2595,7 @@ var yzOc = (function () {
         var m = normMsg({ id: d.messageId, role: 'assistant', text: d.reply, at: new Date().toISOString(), actions: d.actions, actionItems: d.actionItems, proposals: d.proposals, known: d.known, pendingActions: d.pendingActions, pendingActionItems: d.pendingActionItems, timedOut: d.timedOut, tier: d.tier });
         if (m.timedOut && !didSome(m)) { m.retry = true; m.payload = p; }
         if (d.saved === false) m.unsaved = true;
-        S.msgs.push(m);
+        S.msgs.push(m); progAdd(m, true);
         if (costOk(d.costAlert)) S.cost = d.costAlert;
         render();
         var did = m.actions.length || m.pendingActions.length || m.pendingActionItems.length || m.actionItems.some(function (x) { return x.ok === true; });
@@ -2538,6 +2627,7 @@ var yzOc = (function () {
     if (opt && opt.quote) { addQuote(opt.quote); var ta0 = $('ocText'); try { if (ta0) ta0.focus({ preventScroll: true }); } catch (eF) {} }
     rememberAps();
     if (!S.busy) load(false);
+    setTimeout(progTick, 0);
   }
   function close() { if (!S.open) return; if (S.pushed) { S.pushed = false; try { history.back(); return; } catch (e) {} } hide(); }
   function back() { var p = $('ocPick'); if (p && p.classList.contains('on')) { pick(false); return; } close(); }
@@ -2626,6 +2716,7 @@ var yzOc = (function () {
     $('ocList').onclick = function (ev) {
       var t = ev.target, a;
       if ((a = t.closest && t.closest('[data-pa]'))) { var card = a.closest('.oc-prop'); propAct(card.getAttribute('data-prop'), a.getAttribute('data-pa'), a); return; }
+      if ((a = t.closest && t.closest('.oc-pq'))) { ev.preventDefault(); progQuote(a.getAttribute('data-pm'), a.getAttribute('data-pk')); return; }
       if ((a = t.closest && t.closest('.oc-q'))) { ev.preventDefault(); quoteChat(a.getAttribute('data-mid')); return; }
       if ((a = t.closest && t.closest('.oc-qchat'))) { ev.preventDefault(); var tg = $('ocList').querySelector('.msg[data-mid="' + String(a.getAttribute('data-mid')).replace(/[^0-9]/g, '') + '"]'); if (tg) tg.scrollIntoView({ block: 'center' }); else say('那一則在更早的對話裡，請按上面的「看更早的對話」。'); return; }
       if ((a = t.closest && t.closest('.oc-goto'))) { ev.preventDefault(); var cid = a.getAttribute('data-cid'); hide(); try { if (S.pushed) { S.pushed = false; history.back(); } } catch (e) {} setTimeout(function () { openThread(cid); }, 0); return; }
@@ -2641,7 +2732,7 @@ var yzOc = (function () {
     var authView = function () {
       var on = !!(appEl && appEl.style.display !== 'none' && !gateOn());
       if (on && !authSeen) { authSeen = true; probe(); }
-      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.quotes = []; renderQuotes(); S.usage = null; S.cost = null; S.owner = false; S.canAdd = false; document.documentElement.classList.remove('oc-owner'); }
+      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.prog = {}; S.progOff = false; S.quotes = []; renderQuotes(); S.usage = null; S.cost = null; S.owner = false; S.canAdd = false; document.documentElement.classList.remove('oc-owner'); }
     };
     if (appEl && window.MutationObserver) new MutationObserver(authView).observe(appEl, { attributes: true, attributeFilter: ['style'] });
     authView();
