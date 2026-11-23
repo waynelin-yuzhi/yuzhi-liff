@@ -569,7 +569,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         var failNote = HAS_PRESELECT
           ? '附掛項目這次沒載到，核可鈕先鎖住；這張對帳卡的選項只能在這頁核可，請重新整理再試。退回與略過仍可在這裡按。'
           : '';
-        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = failNote ? '<div class="note">' + esc(failNote) + '</div>' : '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">舊版頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
+        ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = failNote ? '<div class="note">' + esc(failNote) + '</div>' : '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">備用頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
         var bh = document.getElementById('approveHint'); if (bh) bh.textContent = '附掛項目沒載到、這裡不能核可';
       });
   }
