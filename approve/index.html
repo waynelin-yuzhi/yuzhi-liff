@@ -108,7 +108,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   <div class="brand"><b>植間設計</b><span>核可中心</span></div>
   <div id="sentBar" class="sbar" style="display:none"></div>
   <div id="app" class="card"><div class="note">載入中…</div></div>
-  <div class="ft">YUZHI PLANT DESIGN · <span id="ver">Pages</span> · <a id="gasLink" href="#" target="_top">舊版頁面</a></div>
+  <div class="ft">YUZHI PLANT DESIGN · <span id="ver">Pages</span> · <a id="gasLink" href="#" target="_top">備用頁面</a></div>
 </div>
 <script>
 (function () {
@@ -529,7 +529,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         clearInterval(tick);
         if (j && j.ok === false && !j.status && j.error) { showDone(j, label); return; }
         if (!j || (!j.ok && !j.status)) throw new Error((j && j.error) || 'bad');
-        if (j.needsPage) { SENTLOG.remove(CUR.id); statusBox('warn', '這個動作要用整頁送出', '請改用舊版頁面操作。'); SENT = false; lockAll(false); return; }
+        if (j.needsPage) { SENTLOG.remove(CUR.id); statusBox('warn', '這個動作要用整頁送出', '請改用最下面的備用頁面操作。'); SENT = false; lockAll(false); return; }
         showDone(j, label);
       })
       .catch(function () {
@@ -576,8 +576,8 @@ form.busy button{opacity:.5;pointer-events:none;}
 
   fetch(GW + '?action=approvalView&h=' + encodeURIComponent(h), { method: 'GET' })
     .then(function (r) { return r.json(); })
-    .then(function (j) { if (!j || !j.ok || !j.item) { msg(j && j.error === 'not_found' ? '連結無效' : '暫時載不到', j && j.error === 'not_found' ? '找不到這筆核可件，或連結已失效。' : '引擎沒回應，請用下方舊版頁面。'); return; } render(j.item); })
-    .catch(function () { msg('暫時載不到', '引擎沒回應，請用下方舊版頁面。'); });
+    .then(function (j) { if (!j || !j.ok || !j.item) { msg(j && j.error === 'not_found' ? '連結無效' : '暫時載不到', j && j.error === 'not_found' ? '找不到這筆核可件，或連結已失效。' : '系統暫時沒回應，請用下方的備用頁面。'); return; } render(j.item); })
+    .catch(function () { msg('暫時載不到', '系統暫時沒回應，請用下方的備用頁面。'); });
 })();
 </script>
 </body>
