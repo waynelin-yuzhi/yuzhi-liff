@@ -242,7 +242,7 @@ form.busy button{opacity:.5;pointer-events:none;}
   var SENTLOG = sentLog(GW, esc);
   var gasPage = GAS + '?page=approve&h=' + encodeURIComponent(h);
   document.getElementById('gasLink').href = gasPage;
-  var msg = function (t, d) { app.innerHTML = '<div class="title">' + esc(t) + '</div><div class="note">' + esc(d) + '</div><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>'; };
+  var msg = function (t, d) { app.innerHTML = '<div class="title">' + esc(t) + '</div><div class="note">' + esc(d) + '</div><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">用備用頁面開</a>'; };
   if (!h || h.length < 20) { msg('連結無效', '找不到這筆核可件，或連結已失效。'); return; }
 
   var hidden = function (n, v) { return '<input type="hidden" name="' + n + '" value="' + esc(v) + '">'; };
@@ -313,7 +313,11 @@ form.busy button{opacity:.5;pointer-events:none;}
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
       var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
       if (ru && ru.protocol === 'https:' && ['waynelin-yuzhi.github.io', 'script.google.com'].indexOf(ru.hostname) >= 0) { location.replace(ru.href); return; }
-      app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬審核頁處理。</div><a class="btn-home" href="' + esc(gasPage) + '" target="_top">用舊版頁面開</a>';
+      if (ru && ru.protocol === 'https:' && ru.hostname === 'liff.line.me') {
+        app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬的審核頁處理（可以看月曆、直接調整、核可或退回），按下面的按鈕會用 LINE 開啟。</div><a class="btn-home" href="' + esc(ru.href) + '" target="_top">' + esc(pl.reviewLabel || '開啟審核頁') + '</a><a class="btn-home ghost" href="' + esc(gasPage) + '" target="_top">打不開時改用備用頁面</a>';
+        return;
+      }
+      app.innerHTML = chip(status) + '<div class="title">' + esc(title) + '</div><div class="note">這件要在專屬審核頁處理。</div><a class="btn-home" href="' + esc(gasPage) + '" target="_top">用備用頁面開</a>';
       return;
     }
     if (skipMode && status === '待核可' && !isPub) {
