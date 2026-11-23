@@ -2350,10 +2350,11 @@ var yzOc = (function () {
   function progQuery(id) {
     var t = S.prog[id]; if (!t || t.final || t.busy) return;
     t.busy = true; t.last = Date.now(); var cap = Date.now() - t.at >= PROG_MAX;
-    var stop = function () { if (cap) { t.final = true; t.capped = true; render(false); } };
+    var stop = function (err) { if (err) t.errd = true; if (cap) { t.final = true; t.capped = true; render(false); } };
     call({ op: 'ownerChatDraftStatus', messageId: id }).then(function (d) {
       t.busy = false;
       if (d.ok === true && Array.isArray(d.items)) {
+        S.progSeen = true; t.errd = false;
         var prev = t.items, next = objs(d.items), was = JSON.stringify(prev), allFinal = next.every(function (x) { return x.final === true; });
         t.items = next; t.final = allFinal || d.done === true;
         if (!t.final && cap) { t.final = true; t.capped = true; }
@@ -2361,9 +2362,9 @@ var yzOc = (function () {
         return;
       }
       if (d.error === 'owner_only') return;
-      if (d.error === 'db_error' || d.error === 'internal_error') { stop(); return; }
-      S.progOff = true; render(false);
-    }, function () { t.busy = false; stop(); });
+      if ((d.ok === true || /_op_invalid$/.test(String(d.error || ''))) && !S.progSeen) { S.progOff = true; render(false); return; }
+      stop(true);
+    }, function () { t.busy = false; stop(true); });
   }
   function progWho(r, it) { var ap = String(r.newApId || ''), nm = String(r.name || it.name || ''); return ap && nm ? ap + '（' + nm + '）' : (ap || nm); }
   function progNotify(prev, t) {
@@ -2395,7 +2396,7 @@ var yzOc = (function () {
     }
     if (st === 'holding') return wrap('oc-pwarn', '這次出的是過渡稿' + (r.newApId ? '（' + esc(r.newApId) + '）' : '') + '，不是正式回覆：' + esc(String(r.reason || '多半是缺資料')) + look);
     if (st === 'skipped' || st === 'failed') return wrap('oc-pwarn', '沒擬成：' + esc(String(r.reason || '沒有說明')) + look);
-    return wrap('oc-pwarn', '還不確定稿好了沒：' + esc(String((r && r.reason) || '超過 5 分鐘還沒有結果，請到那位客戶的對話確認')) + look);
+    return wrap('oc-pwarn', '還不確定稿好了沒：' + esc(String((r && r.reason) || (t.errd ? '暫時查不到進度（系統暫時出錯），請到那位客戶的對話確認' : '超過 5 分鐘還沒有結果，請到那位客戶的對話確認'))) + look);
   }
   function progQuote(id, k) {
     var t = S.prog[id], r = t && t.items ? t.items[Number(k)] : null; if (!r || r.state !== 'ready' || !/^AP-\d+$/.test(String(r.newApId || ''))) return;
