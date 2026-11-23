@@ -62,6 +62,24 @@
   .stats b{display:block;font-family:"Shippori Mincho","Noto Serif TC",serif;font-size:30px;font-weight:400;font-feature-settings:"tnum"}
   .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--moss);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px;margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
+  select{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:2px;font-family:inherit;font-size:16px;background:#fff;color:var(--ink)}
+  .bsel{margin-top:6px}
+  .exhead{margin-bottom:12px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .pill.red{background:var(--terra-tint);border-color:#E3B7A6;color:#6e2c18}
+  .focus{margin-top:8px;padding:8px 10px;background:var(--amber-tint);border:1px solid #E0CF93;border-radius:2px;font-size:14px;color:#5a4410;overflow-wrap:anywhere}
+  ul.pts{padding-left:20px;overflow-wrap:anywhere}
+  ul.pts li{margin-bottom:4px}
+  .plain{overflow-wrap:anywhere}
+  .classbox{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+  .cbtns{display:flex;gap:10px;margin-top:8px}
+  .cbtn{flex:1;min-height:48px;padding:10px;border-radius:2px;font-family:inherit;font-size:16px;cursor:pointer;border:2px solid var(--moss);background:#fff;color:var(--moss)}
+  .cbtn.no{border-color:var(--terra);color:var(--terra)}
+  .cbtn.on{background:var(--moss);color:#fff}
+  .cbtn.no.on{background:var(--terra);color:#fff}
+  .cbtn:disabled{opacity:.5;cursor:default}
+  .cbtn:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+  .fixbox{margin-top:10px;display:flex;flex-direction:column;gap:8px}
 </style>
 </head>
 <body>
@@ -79,24 +97,52 @@
   <div class="top">
     <div class="line"><h1>AI 客服考題勾選</h1><span class="small muted num" id="progText"></span></div>
     <div class="prog"><i id="progBar"></i></div>
+    <select id="batchSel" class="bsel" aria-label="切換批次" style="display:none"></select>
   </div>
   <div id="shortNote" class="small muted" style="display:none;margin-bottom:8px"></div>
   <div id="loading" class="card"><span class="spin"></span>載入題目中</div>
   <div id="loadErr" class="card" style="display:none"><div id="loadErrText"></div><div class="row"><button class="btn" id="retryLoad" type="button">再試一次</button></div></div>
   <div id="view" style="display:none">
     <div class="card" id="itemCard">
+      <div class="exhead" id="examHead" style="display:none">
+        <div class="tags"><span class="pill" id="kindPill"></span><span class="pill" id="svcPill"></span><span class="pill" id="dirPill"></span></div>
+        <div class="focus" id="focusText"></div>
+      </div>
       <div class="who"><span class="lbl num" id="seqLbl"></span><b id="custName"></b><span class="pill" id="intentPill"></span></div>
-      <div class="sec"><span class="lbl">客戶說</span><div id="custMsgs"></div></div>
-      <div class="sec"><span class="lbl">當時發出的定稿</span><div class="final" id="finalText"></div></div>
-      <details class="ai" id="aiBox"><summary id="aiSum"></summary><div class="in"><div class="legend" id="aiLegend"></div><div id="aiText"></div></div></details>
+      <div id="realBox">
+        <div class="sec"><span class="lbl">客戶說</span><div id="custMsgs"></div></div>
+        <div class="sec"><span class="lbl">當時發出的定稿</span><div class="final" id="finalText"></div></div>
+        <details class="ai" id="aiBox"><summary id="aiSum"></summary><div class="in"><div class="legend" id="aiLegend"></div><div id="aiText"></div></div></details>
+      </div>
+      <div id="scBox" style="display:none">
+        <div class="sec" id="scPersonaSec"><span class="lbl">客戶是誰</span><div class="plain" id="scPersona"></div></div>
+        <div class="sec" id="scContextSec"><span class="lbl">當時的狀況</span><div class="plain" id="scContext"></div></div>
+        <div class="sec"><span class="lbl">客戶說</span><div class="bub" id="scSays"></div></div>
+        <div class="sec" id="scFactSec"><span class="lbl">正確的事實</span><div class="final" id="scFact"></div></div>
+        <div class="sec" id="scMustSec"><span class="lbl" id="scMustLbl">好回覆要做到</span><ul class="pts" id="scMust"></ul></div>
+        <div class="sec" id="scNotSec"><span class="lbl">不可出現的錯誤</span><ul class="pts" id="scNot"></ul></div>
+        <div class="sec" id="scSrcSec"><span class="lbl">出處</span><ul class="pts small muted" id="scSrc"></ul></div>
+      </div>
       <div class="verdicts">
         <button class="vbtn good" id="btnGood" type="button">好，可當標準答案</button>
         <button class="vbtn bad" id="btnBad" type="button">不好，別學這則</button>
       </div>
       <div class="note">
-        <span class="lbl">一句原因（可不填）</span>
+        <span class="lbl" id="noteLbl">一句原因（可不填）</span>
         <input type="text" id="noteIn" maxlength="200" placeholder="例如：語氣太硬、漏講時間">
-        <div class="hint">原因會跟著按下的按鈕一起存；改了原因要再按一次按鈕才會存。</div>
+        <div class="hint" id="noteHint">原因會跟著按下的按鈕一起存；改了原因要再按一次按鈕才會存。</div>
+      </div>
+      <div class="classbox" id="classBox" style="display:none">
+        <span class="lbl">分類對嗎</span>
+        <div class="cur" id="classNow"></div>
+        <div class="cbtns"><button class="cbtn" id="btnClsYes" type="button">對</button><button class="cbtn no" id="btnClsNo" type="button">不對</button></div>
+        <div class="fixbox" id="fixBox" style="display:none">
+          <div class="small muted">應該是哪一類？可以從選單選，也可以自己寫。</div>
+          <select id="fixSvc" aria-label="應該的服務類型"></select>
+          <select id="fixDir" aria-label="應該的回應方向"></select>
+          <input type="text" id="fixText" maxlength="60" placeholder="或自己寫，例如：算設計案">
+          <button class="btn" id="btnFixSave" type="button">存這個分類</button>
+        </div>
       </div>
       <div class="cur" id="curState"></div>
       <div class="msg" id="msg" role="status" aria-live="polite"></div>
@@ -107,7 +153,7 @@
     <h2>全部勾完了</h2>
     <div class="muted small" id="doneSub"></div>
     <div class="stats"><div><span class="lbl">好</span><b id="doneGood">0</b></div><div><span class="lbl">不好</span><b id="doneBad">0</b></div><div><span class="lbl">共</span><b id="doneTotal">0</b></div></div>
-    <div class="small muted">之後改客服引擎，就拿這批題目重跑比對。想改哪一筆，可以回頭逐筆看、重按就會更新。</div>
+    <div class="small muted" id="doneNote">之後改客服引擎，就拿這批題目重跑比對。想改哪一筆，可以回頭逐筆看、重按就會更新。</div>
     <div class="row"><button class="btn" id="reviewBtn" type="button">回頭看第一筆</button></div>
   </div>
   <div id="empty" class="card" style="display:none">目前還沒有可以勾的題目（需要有 AI 擬稿、而且你核可發出過的對話）。</div>
@@ -121,12 +167,14 @@
   var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.anonKey);
   var $ = function (id) { return document.getElementById(id); };
   var ITEMS = [], IDX = 0, SAVING = false, BOOTED = false, FLASH = '';
+  var SET = 'gold', BATCH = 1, BATCHES = [], TAX = null, PICKED = false, LOADSEQ = 0;
 
   var ERR_TEXT = {
     owner_only: '這一頁只有老闆可以用。', not_found: '找不到這一題，請重新整理頁面。', verdict_invalid: '按鈕的值不對，請重新整理頁面。',
     note_too_long: '原因太長了，請縮短到 200 字內。', note_invalid: '原因格式不對。', id_invalid: '題目編號不對，請重新整理頁面。',
     gold_read_failed: '資料庫暫時讀不到，請再試一次。', gold_pick_timeout: '題目還在準備，請稍後再開。', gold_write_failed: '資料庫沒有寫進去，請再按一次。', gold_pick_failed: '挑題時資料庫出錯，請再試一次。',
-    gold_failed: '系統出錯，請再試一次。', forbidden: '這個帳號沒有權限。', unknown_tenant: '系統設定有誤，請找總管。', app_op_invalid: '系統還沒更新到有這個功能，請找總管。'
+    gold_failed: '系統出錯，請再試一次。', forbidden: '這個帳號沒有權限。', unknown_tenant: '系統設定有誤，請找總管。', app_op_invalid: '系統還沒更新到有這個功能，請找總管。',
+    class_invalid: '分類的值不對，請重新整理頁面。', class_fix_too_long: '自己寫的分類太長了，請縮短到 60 字內。', batch_not_found: '找不到這一批題目，請換一批或重新整理頁面。', batch_invalid: '批次編號不對，請重新整理頁面。'
   };
   function errText(code) { return ERR_TEXT[code] || ('系統回了錯誤（' + String(code || '不明').slice(0, 40) + '），請再試一次。'); }
 
@@ -166,11 +214,43 @@
   }
 
   // ── 載入 ──
+  function isExam() { return SET === 'exam'; }
+  function unit() { return isExam() ? '題' : '筆'; }
+  function listReq() { return SET === 'exam' ? { op: 'goldList', set: 'exam', batch: BATCH } : (BATCH === 1 ? { op: 'goldList' } : { op: 'goldList', batch: BATCH }); }
+  function paintBatches() {
+    var sel = $('batchSel'); sel.textContent = '';
+    if (BATCHES.length < 2) { sel.style.display = 'none'; return; }
+    BATCHES.forEach(function (b, i) {
+      var o = document.createElement('option'); o.value = String(i);
+      o.textContent = b.title + '（' + b.total + (b.set === 'exam' ? ' 題' : ' 筆') + '，已勾 ' + b.marked + '）';
+      if (b.set === SET && b.batch === BATCH) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.style.display = 'block';
+  }
+  function readBatches(d) {
+    if (!d || !Array.isArray(d.batches)) return;
+    BATCHES = d.batches.filter(function (b) { return b && (b.set === 'gold' || b.set === 'exam') && Number(b.batch) >= 1; }).map(function (b) { return { set: b.set, batch: Number(b.batch), title: String(b.title || ''), total: Number(b.total) || 0, marked: Number(b.marked) || 0 }; });
+  }
+  function defaultBatch() {
+    for (var i = BATCHES.length - 1; i >= 0; i--) if (BATCHES[i].marked < BATCHES[i].total) return BATCHES[i];
+    return BATCHES.length ? BATCHES[BATCHES.length - 1] : null;
+  }
   function load() {
     $('loading').style.display = 'block'; $('loadErr').style.display = 'none'; $('view').style.display = 'none'; $('done').style.display = 'none'; $('empty').style.display = 'none';
-    api({ op: 'goldList' }).then(function (r) {
+    var my = ++LOADSEQ;
+    api(listReq()).then(function (r) {
+      if (my !== LOADSEQ) return;
       $('loading').style.display = 'none';
-      if (!r.ok) { if (r.kind === 'auth') return; $('loadErrText').textContent = failText(r, false); $('loadErr').style.display = 'block'; $('retryLoad').style.display = r.code === 'owner_only' ? 'none' : ''; return; }
+      if (!r.ok) { if (r.kind === 'auth') return; paintBatches(); $('loadErrText').textContent = failText(r, false); $('loadErr').style.display = 'block'; $('retryLoad').style.display = r.code === 'owner_only' ? 'none' : ''; return; }
+      readBatches(r.data);
+      if (!PICKED) {
+        PICKED = true;
+        var want = defaultBatch();
+        if (want && (want.set !== SET || want.batch !== BATCH)) { SET = want.set; BATCH = want.batch; load(); return; }
+      }
+      TAX = r.data.taxonomy && Array.isArray(r.data.taxonomy.services) ? r.data.taxonomy : TAX;
+      paintBatches();
       ITEMS = Array.isArray(r.data.items) ? r.data.items : [];
       var sn = $('shortNote'), target = Number(r.data.target) || 0;
       if (r.data.short === true && ITEMS.length && target) { sn.textContent = '這批只挑到 ' + ITEMS.length + ' 筆（目標 ' + target + '），符合條件的對話還不夠。'; sn.style.display = 'block'; } else { sn.textContent = ''; sn.style.display = 'none'; }
@@ -183,7 +263,7 @@
   function counts() { var g = 0, b = 0; ITEMS.forEach(function (x) { if (x.verdict === 'good') g++; else if (x.verdict === 'bad') b++; }); return { good: g, bad: b, marked: g + b, total: ITEMS.length }; }
   function progress() {
     var c = counts();
-    $('progText').textContent = ITEMS.length ? ('第 ' + (IDX + 1) + ' / ' + c.total + ' 筆　已勾 ' + c.marked + ' 筆') : '';
+    $('progText').textContent = ITEMS.length ? ('第 ' + (IDX + 1) + ' / ' + c.total + ' ' + unit() + '　已勾 ' + c.marked + ' ' + unit()) : '';
     $('progBar').style.width = c.total ? Math.round(c.marked * 100 / c.total) + '%' : '0';
   }
   function firstOpenFrom(i) { for (var k = 0; k < ITEMS.length; k++) { var j = (i + k) % ITEMS.length; if (!ITEMS[j].verdict) return j; } return -1; }
@@ -216,8 +296,23 @@
     var it = ITEMS[IDX]; if (!it) return;
     $('done').style.display = 'none'; $('view').style.display = 'block';
     $('seqLbl').textContent = 'NO.' + (IDX + 1);
-    $('custName').textContent = it.name || '';
-    $('intentPill').textContent = it.intentLabel || it.intent || '';
+    var exam = isExam(), real = !exam || it.kind === 'real';
+    $('examHead').style.display = exam ? 'block' : 'none';
+    $('classBox').style.display = exam ? 'block' : 'none';
+    $('realBox').style.display = real ? 'block' : 'none';
+    $('scBox').style.display = real ? 'none' : 'block';
+    $('btnGood').textContent = exam ? '好' : '好，可當標準答案';
+    $('btnBad').textContent = exam ? '不好' : '不好，別學這則';
+    $('noteLbl').textContent = exam ? '意見（可不填）' : '一句原因（可不填）';
+    $('prevBtn').textContent = exam ? '上一題' : '上一筆';
+    $('nextBtn').textContent = exam ? '下一題' : '下一筆';
+    $('noteHint').textContent = exam ? '意見會跟著按下的任何按鈕一起存；改了意見要再按一次按鈕才會存。' : '原因會跟著按下的按鈕一起存；改了原因要再按一次按鈕才會存。';
+    $('custName').textContent = real ? (it.name || '') : String(it.key || '');
+    $('intentPill').textContent = exam ? '' : (it.intentLabel || it.intent || '');
+    $('intentPill').style.display = exam ? 'none' : '';
+    $('noteIn').value = it.note || '';
+    if (exam) renderExamHead(it);
+    if (!real) { renderScenario(it); afterRender(); return; }
     var box = $('custMsgs'); box.textContent = '';
     (Array.isArray(it.customer) ? it.customer : []).forEach(function (t) { var d = document.createElement('div'); d.className = 'bub'; d.textContent = t; box.appendChild(d); });
     $('finalText').textContent = it.reply || '';
@@ -231,8 +326,11 @@
       $('aiText').textContent = it.aiDraft || '';
       $('aiLegend').textContent = '這則是 AI 原稿照發，一字沒改。';
     }
-    $('noteIn').value = it.note || '';
+    afterRender();
+  }
+  function afterRender() {
     paintVerdict();
+    if (isExam()) paintClass(true);
     $('prevBtn').disabled = IDX === 0;
     $('nextBtn').disabled = IDX >= ITEMS.length - 1;
     var m = $('msg');
@@ -240,8 +338,73 @@
     progress();
     window.scrollTo(0, 0);
   }
+  function cellText(it) {
+    if (it.serviceLabel || it.directionLabel) return (it.serviceLabel || '服務類型未分') + ' × ' + (it.directionLabel || '回應方向未分');
+    if (it.redlineType) return '紅線「' + it.redlineType + '」（沒有分服務類型與回應方向）';
+    return '還沒分類';
+  }
+  function renderExamHead(it) {
+    var kp = $('kindPill'); kp.textContent = it.kindLabel || ''; kp.className = 'pill' + (it.kind === 'redline' ? ' red' : (it.kind === 'scenario' ? ' warn' : ''));
+    var sp = $('svcPill'), dp = $('dirPill');
+    if (it.kind === 'redline' && !it.serviceLabel) { sp.textContent = it.redlineType ? '紅線類型：' + it.redlineType : ''; sp.style.display = it.redlineType ? '' : 'none'; dp.style.display = 'none'; }
+    else { sp.textContent = '服務：' + (it.serviceLabel || '未分'); dp.textContent = '方向：' + (it.directionLabel || '未分'); sp.style.display = ''; dp.style.display = ''; }
+    $('focusText').textContent = it.focus ? '請你看的重點：' + it.focus : '';
+    $('focusText').style.display = it.focus ? 'block' : 'none';
+  }
+  function fillList(id, arr) {
+    var ul = $(id); ul.textContent = '';
+    (Array.isArray(arr) ? arr : []).forEach(function (t) { var li = document.createElement('li'); li.textContent = String(t); ul.appendChild(li); });
+    return ul.childNodes.length;
+  }
+  function renderScenario(it) {
+    $('scPersona').textContent = it.persona || ''; $('scPersonaSec').style.display = it.persona ? 'block' : 'none';
+    $('scContext').textContent = it.context || ''; $('scContextSec').style.display = it.context ? 'block' : 'none';
+    $('scSays').textContent = it.customerSays || '';
+    $('scFact').textContent = it.correctFact || ''; $('scFactSec').style.display = it.correctFact ? 'block' : 'none';
+    $('scMustLbl').textContent = it.kind === 'redline' ? '要全部做到才算對' : '好回覆要做到';
+    $('scMustSec').style.display = fillList('scMust', it.mustHave) ? 'block' : 'none';
+    $('scNotSec').style.display = fillList('scNot', it.mustNot) ? 'block' : 'none';
+    $('scSrcSec').style.display = fillList('scSrc', it.source) ? 'block' : 'none';
+  }
+  function fillSelect(sel, list, first, cur) {
+    sel.textContent = '';
+    var o0 = document.createElement('option'); o0.value = ''; o0.textContent = first; sel.appendChild(o0);
+    (list || []).forEach(function (x) { if (!x || !x.code) return; var o = document.createElement('option'); o.value = String(x.code); o.textContent = String(x.name || x.code); if (x.code === cur) o.selected = true; sel.appendChild(o); });
+    sel.style.display = list && list.length ? '' : 'none';
+  }
+  function paintClass(fresh) {
+    var it = ITEMS[IDX];
+    $('classNow').textContent = '目前分在：' + cellText(it) + (it.classOk === 'yes' ? '。你說：對。' : (it.classOk === 'no' ? '。你說：不對' + (fixText(it) ? '，應該是 ' + fixText(it) : '') + '。' : '。'));
+    $('btnClsYes').classList.toggle('on', it.classOk === 'yes');
+    $('btnClsNo').classList.toggle('on', it.classOk === 'no');
+    $('btnClsYes').setAttribute('aria-pressed', it.classOk === 'yes' ? 'true' : 'false');
+    $('btnClsNo').setAttribute('aria-pressed', it.classOk === 'no' ? 'true' : 'false');
+    if (fresh) {
+      fillSelect($('fixSvc'), TAX && TAX.services, '服務類型：不用改', it.fixService || '');
+      fillSelect($('fixDir'), TAX && TAX.directions, '回應方向：不用改', it.fixDirection || '');
+      $('fixText').value = it.classFix || '';
+    }
+    $('fixBox').style.display = it.classOk === 'no' ? 'flex' : 'none';
+  }
+  function nameOf(list, code) { var n = ''; (list || []).forEach(function (x) { if (x && x.code === code) n = String(x.name || code); }); return n || code; }
+  function fixText(it) {
+    var p = [];
+    if (it.fixService) p.push(nameOf(TAX && TAX.services, it.fixService));
+    if (it.fixDirection) p.push(nameOf(TAX && TAX.directions, it.fixDirection));
+    var s = p.join(' × ');
+    if (it.classFix) s += (s ? '（' + it.classFix + '）' : it.classFix);
+    return s;
+  }
   function paintVerdict() {
     var it = ITEMS[IDX];
+    if (isExam()) {
+      $('btnGood').classList.toggle('on', it.verdict === 'good');
+      $('btnBad').classList.toggle('on', it.verdict === 'bad');
+      $('btnGood').setAttribute('aria-pressed', it.verdict === 'good' ? 'true' : 'false');
+      $('btnBad').setAttribute('aria-pressed', it.verdict === 'bad' ? 'true' : 'false');
+      $('curState').textContent = it.verdict ? ('目前的判定：' + (it.verdict === 'good' ? '好' : '不好') + (it.note ? '（' + it.note + '）' : '') + (it.markedAt ? '　' + fmtTime(it.markedAt) + ' 存的' : '') + '。可以改，重按就會更新。') : '還沒判定好或不好。';
+      return;
+    }
     $('btnGood').classList.toggle('on', it.verdict === 'good');
     $('btnBad').classList.toggle('on', it.verdict === 'bad');
     $('btnGood').setAttribute('aria-pressed', it.verdict === 'good' ? 'true' : 'false');
@@ -250,12 +413,53 @@
   }
   function setSaving(on, which) {
     SAVING = on;
-    ['btnGood', 'btnBad', 'prevBtn', 'nextBtn'].forEach(function (id) { $(id).disabled = on; });
+    ['btnGood', 'btnBad', 'prevBtn', 'nextBtn', 'btnClsYes', 'btnClsNo', 'btnFixSave', 'fixSvc', 'fixDir', 'fixText', 'batchSel'].forEach(function (id) { $(id).disabled = on; });
     $('noteIn').disabled = on;
-    if (on) { var m = $('msg'); m.className = 'msg busy'; m.textContent = ''; var sp = document.createElement('span'); sp.className = 'spin'; m.appendChild(sp); m.appendChild(document.createTextNode('存檔中（' + (which === 'good' ? '好' : '不好') + '）')); }
+    if (on) { var m = $('msg'); m.className = 'msg busy'; m.textContent = ''; var sp = document.createElement('span'); sp.className = 'spin'; m.appendChild(sp); m.appendChild(document.createTextNode('存檔中（' + (which === 'good' ? '好' : which === 'bad' ? '不好' : which === 'yes' ? '分類對' : '分類不對') + '）')); }
     else { $('prevBtn').disabled = IDX === 0; $('nextBtn').disabled = IDX >= ITEMS.length - 1; }
   }
+  function saveExam(what) {
+    if (SAVING) return;
+    var it = ITEMS[IDX], at = IDX, note = $('noteIn').value.trim(), m0 = $('msg');
+    if (note.length > 200) { m0.className = 'msg err'; m0.textContent = '意見太長了，請縮短到 200 字內。'; return; }
+    var isV = what === 'good' || what === 'bad';
+    var verdict = isV ? what : (it.verdict || null);
+    var classOk = isV ? (it.classOk || '') : what;
+    var req = { op: 'goldMark', set: 'exam', id: it.id, note: note, classOk: classOk, fixService: '', fixDirection: '', classFix: '' };
+    if (verdict) req.verdict = verdict;
+    if (classOk === 'no') {
+      req.fixService = $('fixSvc').value || ''; req.fixDirection = $('fixDir').value || ''; req.classFix = $('fixText').value.trim();
+      if (req.classFix.length > 60) { m0.className = 'msg err'; m0.textContent = '自己寫的分類太長了，請縮短到 60 字內。'; return; }
+    }
+    if (!verdict && !classOk) return;
+    setSaving(true, what);
+    api(req).then(function (r) {
+      setSaving(false);
+      var m = $('msg');
+      if (!r.ok) { if (r.kind === 'auth') return; m.className = 'msg err'; m.textContent = failText(r, true); return; }
+      var saved = r.data.item;
+      if (!saved || saved.id !== it.id || (saved.verdict || null) !== verdict || (saved.classOk || '') !== classOk) { m.className = 'msg err'; m.textContent = '沒有確認存到（回傳內容對不上），請再按一次。'; return; }
+      var reviewing = counts().marked === ITEMS.length;
+      ITEMS[at] = saved;
+      var c = counts();
+      if (r.data.progress && (r.data.progress.marked !== c.marked || r.data.progress.total !== c.total)) { load(); return; }
+      var label = '第 ' + (at + 1) + ' 題已存：' + (isV ? (what === 'good' ? '好' : '不好') : (what === 'yes' ? '分類對' : '分類不對' + (fixText(saved) ? '，應該是 ' + fixText(saved) : ''))) + (r.data.historyLogged === false ? '（已存，但修改歷程沒記到）' : '');
+      bumpBatch();
+      if (!isV) { if (IDX === at) { paintVerdict(); paintClass(what === 'yes'); progress(); m.className = 'msg ok'; m.textContent = label; } return; }
+      if (reviewing && at + 1 < ITEMS.length) { FLASH = label; IDX = at + 1; render(); return; }
+      if (c.marked === c.total) { FLASH = ''; showDone(label); return; }
+      var next = at + 1 < ITEMS.length && !ITEMS[at + 1].verdict ? at + 1 : firstOpenFrom(at + 1);
+      if (next < 0) next = Math.min(at + 1, ITEMS.length - 1);
+      FLASH = label; IDX = next; render();
+    });
+  }
+  function bumpBatch() {
+    var c = counts();
+    BATCHES.forEach(function (b) { if (b.set === SET && b.batch === BATCH) { b.marked = c.marked; b.total = c.total; } });
+    paintBatches();
+  }
   function mark(verdict) {
+    if (isExam()) { saveExam(verdict); return; }
     if (SAVING) return;
     var it = ITEMS[IDX], at = IDX, note = $('noteIn').value.trim();
     if (note.length > 200) { var m0 = $('msg'); m0.className = 'msg err'; m0.textContent = '原因太長了，請縮短到 200 字內。'; return; }
@@ -271,6 +475,7 @@
       var c = counts();
       if (r.data.progress && (r.data.progress.marked !== c.marked || r.data.progress.total !== c.total)) { load(); return; }   // 別的裝置也在勾：以資料庫為準重讀
       var label = '第 ' + (at + 1) + ' 筆已存：' + (verdict === 'good' ? '好' : '不好') + (r.data.historyLogged === false ? '（判定已存，但修改歷程沒記到）' : '');
+      bumpBatch();
       if (reviewing && at + 1 < ITEMS.length) { FLASH = label; IDX = at + 1; render(); return; }
       if (c.marked === c.total) { FLASH = ''; showDone(label); return; }
       var next = at + 1 < ITEMS.length && !ITEMS[at + 1].verdict ? at + 1 : firstOpenFrom(at + 1);
@@ -282,8 +487,11 @@
     var c = counts();
     $('view').style.display = 'none'; $('done').style.display = 'block';
     $('doneGood').textContent = c.good; $('doneBad').textContent = c.bad; $('doneTotal').textContent = c.total;
-    $('doneSub').textContent = (label ? label + '。' : '') + '這一批 ' + c.total + ' 筆都判定好了。';
-    $('progText').textContent = '已勾 ' + c.marked + ' / ' + c.total + ' 筆';
+    var noCls = 0; ITEMS.forEach(function (x) { if (x.classOk === 'no') noCls++; });
+    $('doneSub').textContent = (label ? label + '。' : '') + '這一批 ' + c.total + ' ' + unit() + '都判定好了。' + (isExam() ? '分類你說不對的有 ' + noCls + ' 題。' : '');
+    $('doneNote').textContent = isExam() ? '全部勾完了，謝謝。想改哪一題，可以回頭逐題看，重按就會更新。' : '之後改客服引擎，就拿這批題目重跑比對。想改哪一筆，可以回頭逐筆看、重按就會更新。';
+    $('reviewBtn').textContent = isExam() ? '回頭看第一題' : '回頭看第一筆';
+    $('progText').textContent = '已勾 ' + c.marked + ' / ' + c.total + ' ' + unit();
     $('progBar').style.width = '100%';
     window.scrollTo(0, 0);
   }
@@ -293,6 +501,15 @@
   $('prevBtn').onclick = function () { if (SAVING || IDX === 0) return; IDX--; render(); };
   $('nextBtn').onclick = function () { if (SAVING || IDX >= ITEMS.length - 1) return; IDX++; render(); };
   $('reviewBtn').onclick = function () { IDX = 0; render(); };
+  $('btnClsYes').onclick = function () { saveExam('yes'); };
+  $('btnClsNo').onclick = function () { saveExam('no'); };
+  $('btnFixSave').onclick = function () { saveExam('no'); };
+  $('batchSel').onchange = function () {
+    var b = BATCHES[Number(this.value)];
+    if (!b || SAVING) { paintBatches(); return; }
+    if (b.set === SET && b.batch === BATCH) return;
+    SET = b.set; BATCH = b.batch; IDX = 0; ITEMS = []; FLASH = ''; load();
+  };
   $('retryLoad').onclick = load;
   $('leave').onclick = function () { sb.auth.signOut().then(function () { location.reload(); }); };
 
