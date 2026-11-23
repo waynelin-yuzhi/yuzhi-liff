@@ -2491,11 +2491,14 @@ var yzOc = (function () {
     var done = function () { S.busy = false; var k = S.msgs.indexOf(think); if (k >= 0) S.msgs.splice(k, 1); };
     var putBack = function () {   /* 回 true＝引用小卡也放回去了（順序跟送出時一樣） */
       var k = S.msgs.indexOf(mine); if (k >= 0) S.msgs.splice(k, 1);
-      var empty = !String(ta.value || '').trim(), qBack = p.quotes.length > 0 && !S.quotes.length;
-      if (empty) { ta.value = p.text; S.mentions = p.mentions.slice(); renderChips(); }
-      if (qBack) { S.quotes = p.quotes.map(qCopy); renderQuotes(); }
-      return qBack;
+      var clean = !String(ta.value || '').trim() && !S.quotes.length;
+      notBack = !clean;
+      if (!clean) return false;
+      ta.value = p.text; S.mentions = p.mentions.slice(); renderChips();
+      if (p.quotes.length) { S.quotes = p.quotes.map(qCopy); renderQuotes(); }
+      return p.quotes.length > 0;
     };
+    var notBack = false, LOST_NOTE = '　剛才那句沒有送出，也沒有放回輸入框（你已經在打新的內容或掛了新的引用），需要的話請重新輸入。';
     call(Object.assign({ op: 'ownerChatSend', text: p.text, tier: p.tier }, p.mentions.length ? { mentions: p.mentions.map(function (m) { return m.contactId; }) } : {}, p.quotes.length ? { quotes: p.quotes.map(qApi) } : {})).then(function (d) {
       if (my !== S.seq) return; done();
       if (d.ok === true) {
@@ -2514,10 +2517,10 @@ var yzOc = (function () {
       var qb = putBack(); render();   /* 後端明確沒收：這句不留在對話裡，字放回輸入框；不是核可人（owner_only）時畫面已經收掉，不顯示錯誤 */
       var qe = quoteErr(d, p, qb);
       if (qe) { say(qe, 'err'); return; }
-      if (d.error !== 'owner_only') say(errText(d), 'err');
+      if (d.error !== 'owner_only') say(errText(d) + (notBack ? LOST_NOTE : ''), 'err');
     }, function (e) {   /* 斷線或等太久：不確定後端有沒有收到，不可以自動重送 */
       if (my !== S.seq) return; done();
-      if (isAuthErr(e)) { putBack(); render(); say(errText(e), 'err'); return; }
+      if (isAuthErr(e)) { putBack(); render(); say(errText(e) + (notBack ? LOST_NOTE : ''), 'err'); return; }
       mine.failed = '沒有收到回應，不確定 AI 有沒有收到這一句。'; mine.unsure = true; render();
     });
   }
