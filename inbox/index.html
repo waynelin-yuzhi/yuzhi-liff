@@ -228,6 +228,25 @@ body.oc-open,body.hb-open{overflow:hidden}
 .oc-fail,.oc-warn-t{color:#8C3B25}
 .oc-fail .oc-note{color:#8C3B25}
 .hb-it.hb-flash{border-color:var(--moss);box-shadow:0 0 0 2px #E9EDE3}
+/* 引用問 AI（2026-11-23，cs-run 1.82.0 quotes）：輸入框上方的引用小卡、泡泡上方的引用說明、泡泡旁的「問 AI」「引用」小按鈕與長按選單 */
+.oc-quotes{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.oc-quotes:empty{display:none}
+.oc-qcard{display:flex;align-items:center;gap:4px;min-width:0;padding:1px 2px 1px 8px;border:1px solid var(--line);border-left:3px solid var(--moss);border-radius:6px;background:var(--tint);font-size:12px;line-height:20px;color:var(--body)}
+.oc-qcard.oc-qbad{border-color:#C0705A;border-left-color:#8C3B25;background:#FFF6F3}
+.oc-qcard .oc-qt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oc-qcard button{flex:none;width:24px;height:24px;border:none;background:none;color:var(--body);font-size:15px;line-height:1;cursor:pointer}
+.oc-qk{display:inline-block;margin-right:4px;padding:0 6px;border-radius:8px;background:#fff;color:#4B5A42;font-size:11px;line-height:16px;white-space:nowrap}
+.oc-qhint{font-size:11px;line-height:1.5;color:var(--muted);padding:0 2px}
+.oc-qrefs{max-width:88%;margin:8px 0 -4px;font-size:11px;line-height:1.5;color:var(--body)}
+.oc-qrefs.mine{margin-left:auto}
+.oc-qref{display:block;margin-top:2px;padding:2px 8px;border-left:2px solid var(--moss);border-radius:4px;background:var(--tint);overflow-wrap:anywhere;text-align:left;color:var(--body);text-decoration:none}
+a.oc-qref{color:var(--body)}
+a.oc-qref b{color:var(--moss)}
+.q-btn{margin-left:8px;padding:0;border:none;background:none;font-family:inherit;font-size:11px;color:var(--moss);cursor:pointer;text-decoration:none}
+#qMenu{display:none;position:fixed;z-index:95;min-width:120px;padding:4px;border:1px solid var(--line);border-radius:8px;background:#fff}
+#qMenu.on{display:block}
+#qMenu button{display:block;width:100%;padding:10px 12px;border:none;background:none;font-family:inherit;font-size:14px;color:var(--ink);text-align:left;cursor:pointer}
+#qMenu button+button{border-top:1px solid var(--line);color:var(--muted)}
 .hb-note{margin-top:6px;font-size:12px;line-height:1.6;color:var(--moss)}
 .hb-scope{margin-top:6px;font-size:13px;line-height:1.8;color:var(--body);overflow-wrap:anywhere}
 .hb-scope b{font-weight:600;color:var(--ink);margin-right:4px}
@@ -436,6 +455,7 @@ body.ns-open{overflow:hidden}
   <div class="oc-cost" id="ocCost" style="display:none"></div>
   <div class="oc-list" id="ocList"></div>
   <div class="oc-foot">
+    <div class="oc-quotes" id="ocQuotes"></div>
     <div class="oc-chips" id="ocChips"></div>
     <div class="ns-msg" id="ocMsg"></div>
     <div class="oc-tools"><button type="button" class="btn ghost small" id="ocAt">@ 客戶</button><label>回答方式 <select id="ocTier" aria-label="回答方式"></select></label></div>
@@ -443,6 +463,7 @@ body.ns-open{overflow:hidden}
   </div>
   <div class="oc-pick" id="ocPick"><div class="oc-pick-top"><input type="text" id="ocPickQ" placeholder="找客戶、廠商或員工名稱"><button type="button" class="btn ghost small" id="ocPickClose">關閉</button></div><div id="ocPickList"></div></div>
 </div>
+<div id="qMenu" role="menu"><button type="button" id="qMenuGo"></button><button type="button" id="qMenuNo">取消</button></div>
 <div id="hbBox" role="dialog" aria-label="我的習慣"><div class="ns-bar"><button type="button" id="hbClose">關閉</button><h2>我的習慣</h2><span class="ns-sp"></span></div><div class="ns-in" id="hbBody"></div></div>
 <div id="nsBox" role="dialog" aria-label="通知設定"><div class="ns-bar"><button type="button" id="nsClose">關閉</button><h2>通知設定</h2><span class="ns-sp"></span></div><div class="ns-in" id="nsBody"></div></div>
 <div class="page">
@@ -1214,7 +1235,9 @@ body.ns-open{overflow:hidden}
       var ours = m.side === 'out' || m.side === 'owner' || m.side === 'employee';
       var fwd = (!ours && (m.kind === 'text' || m.kind === 'image')) ? ' <a href="#" class="fwdStaff" data-i="' + i + '" style="color:#5F6E58;text-decoration:none;margin-left:8px">轉給員工</a>' : '';
       var look = bubbleLook(m, ours, internalChat);
-      return '<div class="msg ' + look.cls + '" data-who="' + look.who + '"><div class="who">' + look.label + '</div>' + body + '<div class="ts">' + esc(m.ts) + fwd + '</div></div>';
+      var qid = /^\d+$/.test(String(m.id == null ? '' : m.id)) ? String(m.id) : '';   /* 沒有 id 的泡泡（舊快取）不給問 AI：後端要靠這個 id 找到那一則 */
+      var askB = qid ? '<button type="button" class="q-btn oc-only askQ" data-mid="' + qid + '">問 AI</button>' : '';
+      return '<div class="msg ' + look.cls + '" data-who="' + look.who + '"' + (qid ? ' data-mid="' + qid + '"' : '') + '><div class="who">' + look.label + '</div>' + body + '<div class="ts">' + esc(m.ts) + fwd + askB + '</div></div>';
     }).join('');
     chat.scrollTop = chat.scrollHeight;
     var cidP = t.contactId;
@@ -1334,7 +1357,7 @@ body.ns-open{overflow:hidden}
       + attachWarnHtml(p)
       + '<div class="actions"><button class="btn main" id="btnSend">送出' + (p.exec && p.exec.short ? '並' + esc(p.exec.short) : '') + '</button><button class="btn ghost" id="btnWhen">' + (p.publishAt ? '建議 ' + esc(p.publishAt) : '預定時間') + '</button><button class="btn ghost attbtn" id="btnAtt">附加照片／檔案</button></div>'
       + '<div class="when' + (p.publishAt ? ' on' : '') + '" id="whenBox"><span>預定送出</span><input type="datetime-local" id="sendAt" value="' + esc(p.publishAt ? p.publishAt.replace(' ', 'T') : '') + '"><span class="muted">留空＝現在送</span></div>'
-      + '<div class="secondary"><button class="btn link" id="btnFb">給意見重擬</button><button class="btn link" id="btnReject">退回不用</button><button class="btn link" id="btnManual">改手動回覆</button><button class="btn link" id="btnSelf">已在 LINE 回過</button><span class="small muted" id="pendMsg"></span></div>'
+      + '<div class="secondary"><button class="btn link" id="btnFb">給意見重擬</button><button class="btn link" id="btnReject">退回不用</button><button class="btn link" id="btnManual">改手動回覆</button><button class="btn link" id="btnSelf">已在 LINE 回過</button>' + (/^AP-\d+$/.test(String(p.id || '')) ? '<button class="btn link oc-only" id="btnAskDraft" data-ap="' + esc(p.id) + '">跟 AI 討論這張稿</button>' : '') + '<span class="small muted" id="pendMsg"></span></div>'
       + '<div class="fbbox" id="fbBox"><div class="small" style="margin-bottom:4px">意見會學進規則庫並重擬。分三段寫最準：什麼情況、要怎麼做、為什麼。只填「做法」也可以。</div><span class="stars" id="fbStars">' + [1, 2, 3, 4, 5].map(function (n) { return '<button data-star="' + n + '">★</button>'; }).join('') + '</span>'
       + '<div class="row"><span class="small" style="min-width:4em">情況</span><input id="fbWhen" placeholder="什麼時候適用？例：客戶已經付款／企業客戶／問的是買斷" style="flex:1"></div>'
       + '<div class="row"><span class="small" style="min-width:4em">做法</span><textarea id="fbText" rows="2" placeholder="要怎麼回？例：直接講出貨安排，不要再說報價整理中" style="flex:1"></textarea></div>'
@@ -2166,7 +2189,7 @@ var yzSt = (function () {
    這裡沒有任何直接發給客戶的動作；對話做了事（照發、退回、重擬、擬新稿）只是把結果顯示出來並刷新收件匣。後端來的字一律 esc。 */
 var yzOc = (function () {
   var TIER_NAME = { fast: '快', standard: '標準', deep: '深入' }, TIERS0 = ['fast', 'standard', 'deep'];
-  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: TIERS0.slice(), defTier: 'standard', tier: '', busy: false, mentions: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0, canAdd: false, lookupErr: false };
+  var S = { owner: false, loaded: false, msgs: [], hasMore: false, cats: [], tiers: TIERS0.slice(), defTier: 'standard', tier: '', busy: false, mentions: [], quotes: [], cost: null, open: false, pushed: false, late: [], usage: null, seq: 0, canAdd: false, lookupErr: false };
   var box = document.getElementById('ocBox');
   function $(id) { return document.getElementById(id); }
   function arr(x) { return Array.isArray(x) ? x : []; }
@@ -2209,7 +2232,7 @@ var yzOc = (function () {
   }
   function normMsg(m) {
     var t = m.tier, o = { id: String(m.id || ''), role: m.role === 'user' ? 'user' : 'assistant', text: String(m.text == null ? '' : m.text), at: String(m.at || ''), mentions: arr(m.mentions), actions: arr(m.actions), actionItems: objs(m.actionItems),
-      proposals: objs(m.proposals), known: arr(m.known), pendingActions: arr(m.pendingActions), pendingActionItems: objs(m.pendingActionItems), pendingResults: objs(m.pendingResults), timedOut: !!m.timedOut, late: !!m.late, lateFor: String(m.lateFor || ''), error: !!m.error };
+      proposals: objs(m.proposals), known: arr(m.known), pendingActions: arr(m.pendingActions), pendingActionItems: objs(m.pendingActionItems), pendingResults: objs(m.pendingResults), quotes: objs(m.quotes), timedOut: !!m.timedOut, late: !!m.late, lateFor: String(m.lateFor || ''), error: !!m.error };
     if (t && typeof t === 'object') { o.tier = String(t.used || ''); o.tierAuto = !!t.auto; } else o.tier = String(t || '');
     return o;
   }
@@ -2346,7 +2369,8 @@ var yzOc = (function () {
     if (m.thinking) return '<div class="msg in oc-think" data-i="' + i + '"><span class="spin"></span>思考中</div>';
     var tierT = (!mine && TIER_NAME[m.tier]) ? '・' + TIER_NAME[m.tier] + (m.tierAuto ? '（簡單的事自動用快的）' : '') : '';
     var lateT = m.late ? '・補回的結果' + (m.lateFor ? '（' + lateLabel(m.lateFor) + '）' : '') : '';
-    h += '<div class="msg ' + (mine ? 'out' : 'in') + (m.timedOut || m.error ? ' oc-warn' : '') + '" data-i="' + i + '" data-role="' + m.role + '">' + ment + '<div class="oc-text">' + esc(m.text) + '</div><div class="ts">' + esc(hhmm(m.at) + lateT) + '<span class="oc-tierlab">' + esc(tierT) + '</span></div></div>';
+    var qid = !m.local && /^\d+$/.test(m.id) ? m.id : '', qB = qid ? '<button type="button" class="q-btn oc-q" data-mid="' + qid + '">引用</button>' : '';
+    h += refsHtml(m, i) + '<div class="msg ' + (mine ? 'out' : 'in') + (m.timedOut || m.error ? ' oc-warn' : '') + '" data-i="' + i + '" data-role="' + m.role + '"' + (qid ? ' data-mid="' + qid + '"' : '') + '>' + ment + '<div class="oc-text">' + esc(m.text) + '</div><div class="ts">' + esc(hhmm(m.at) + lateT) + '<span class="oc-tierlab">' + esc(tierT) + '</span>' + qB + '</div></div>';
     var under = '';
     var done = m.actionItems.length ? m.actionItems : m.actions.map(function (a) { return strItem(a, false); });
     under += done.map(function (it) { return itemHtml(it, i); }).join('');
@@ -2403,24 +2427,82 @@ var yzOc = (function () {
       : '<div class="oc-empty">' + (q ? '找不到名稱裡有這幾個字的對象。' : '清單還沒載入。') + '</div>';
   }
 
+  // ── 引用（quotes）：客戶對話的一則、待核可稿、AI 對話裡先前的一則；一次最多 3 個，同一個不重複
+  var Q_MAX = 3, Q_KIND = { message: '訊息', draft: '稿', chat: '對話' };
+  function shortOf(t) { return Array.from(String(t == null ? '' : t).replace(/\s+/g, ' ').trim()).slice(0, 60).join(''); }
+  function qKey(q) { return q.type === 'message' ? 'm:' + q.contactId + ':' + q.messageId : (q.type === 'draft' ? 'd:' + q.apId : 'c:' + q.messageId); }
+  function qApi(q) { return q.type === 'message' ? { type: 'message', contactId: String(q.contactId), messageId: String(q.messageId) } : (q.type === 'draft' ? { type: 'draft', apId: String(q.apId) } : { type: 'chat', messageId: String(q.messageId) }); }
+  function qCopy(q) { var o = {}; Object.keys(q).forEach(function (k) { if (k.charAt(0) !== '_') o[k] = q[k]; }); return o; }
+  function qWho(q) {
+    if (q.type === 'draft') return String(q.apId || '') + (q.name ? '・' + q.name : '');
+    if (q.type === 'chat') return q.role === 'user' ? '我說的' : 'AI 說的';
+    return String(q.name || (q.contactId ? cname(q.contactId) : '') || '');
+  }
+  function qInner(q) { var k = Q_KIND[q.type] || '引用', w = qWho(q); return '<span class="oc-qk">' + esc(k) + '</span>' + (w ? esc(w) + '：' : '') + esc(String(q.short || '')); }
+  function qPlain(q) { var w = qWho(q); return (Q_KIND[q.type] || '引用') + (w ? ' ' + w : ''); }
+  function renderQuotes() {
+    var el = $('ocQuotes'); if (!el) return;
+    var nd = S.quotes.filter(function (q) { return q.type === 'draft'; }).length;
+    el.innerHTML = S.quotes.map(function (q, i) { return '<div class="oc-qcard' + (q._bad ? ' oc-qbad' : '') + '" data-qk="' + esc(qKey(q)) + '"><span class="oc-qt">' + qInner(q) + '</span><button type="button" data-qrm="' + i + '" aria-label="移除這個引用">×</button></div>'; }).join('')
+      + (nd === 1 ? '<div class="oc-qhint">只引用這一張時，直接說「照發」「退回」「改成…」就可以，不用打件號。</div>' : (nd > 1 ? '<div class="oc-qhint">引用了兩張以上的稿，要照發或退回請寫出件號。</div>' : ''));
+  }
+  function addQuote(q) {
+    if (!q || !Q_KIND[q.type]) return false;
+    var k = qKey(q);
+    if (S.quotes.some(function (x) { return qKey(x) === k; })) { say('這一則已經引用了。'); return true; }
+    if (S.quotes.length >= Q_MAX) { say('一次最多引用 ' + Q_MAX + ' 則，請先按 × 移掉一個。', 'err'); return false; }
+    q.short = shortOf(q.short); S.quotes.push(q); say(''); renderQuotes(); return true;
+  }
+  function refsHtml(m, i) {
+    if (!m.quotes.length) return '';
+    return '<div class="oc-qrefs' + (m.role === 'user' ? ' mine' : '') + '" data-i="' + i + '">' + m.quotes.map(function (q) {
+      var t = String(q.type || ''), inner = '引用 ' + qInner(q) + (t === 'draft' && q.status ? '（引用時：' + esc(q.status) + '）' : '');
+      var cid = t === 'message' ? String(q.contactId || '') : (t === 'draft' ? String(q.contactId || '') || cidOfAp(String(q.apId || ''), i) : '');
+      if (cid) return '<a href="#" class="oc-qref oc-goto" data-qt="' + esc(t) + '" data-cid="' + esc(cid) + '">' + inner + '</a>';
+      if (t === 'chat' && q.messageId) return '<a href="#" class="oc-qref oc-qchat" data-qt="chat" data-mid="' + esc(q.messageId) + '">' + inner + '</a>';
+      return '<div class="oc-qref" data-qt="' + esc(t) + '">' + inner + '</div>';
+    }).join('') + '</div>';
+  }
+  function quoteErr(d, p, back) {   /* 引用出錯：說是哪一個、標紅那張小卡；字與其他引用都留著，移掉壞的就能再送 */
+    var e = d && d.error; if (e !== 'quotes_invalid' && e !== 'quote_unknown' && e !== 'quote_draft_closed') return '';
+    var idx = Number(d.index), q = (Number.isInteger(idx) && p.quotes[idx]) || null, live = back && q ? S.quotes[idx] : null;
+    if (live) { live._bad = true; renderQuotes(); }
+    if (e === 'quotes_invalid') return '引用的內容有問題（一次最多 ' + (Number(d.max) || Q_MAX) + ' 則）。' + (back ? '請按 × 移掉引用，重新引用後再送。' : '剛才那句沒有送出，請重新引用後再送一次。');
+    var nth = q ? (back ? '第 ' + (idx + 1) + ' 個引用（' + qPlain(q) + '）' : '剛才那句的引用（' + qPlain(q) + '）') : '有一個引用';
+    var tail = back ? '請按 × 移掉再送。' : '剛才那句沒有送出，請重新引用後再送一次。';
+    if (e === 'quote_unknown') return nth + '已經找不到，可能被清掉了。' + tail;
+    try { refreshAll(true); } catch (eR) {}
+    return '引用的稿 ' + String(d.apId || (q && q.apId) || '') + ' 已經處理過了（狀態：' + String(d.status || '不明') + '）。' + tail;
+  }
+
   // ── 送出
   function send(payload) {   /* payload＝重送時帶原本那句 */
     if (S.busy) return;
-    var ta = $('ocText'), p = payload || { text: String(ta.value || '').trim(), mentions: S.mentions.slice(), tier: S.tier };
+    var ta = $('ocText'), p = payload || { text: String(ta.value || '').trim(), mentions: S.mentions.slice(), quotes: S.quotes.map(qCopy), tier: S.tier };
+    if (!p.quotes) p.quotes = [];
     if (!p.text) { say(ERR.text_required, 'err'); return; }
     if (p.text.length > 2000) { say(ERR.text_too_long, 'err'); return; }
     say(''); rememberAps();
-    var mine = normMsg({ role: 'user', text: p.text, at: new Date().toISOString(), mentions: p.mentions.slice() }); mine.local = true; mine.payload = p;
+    var mine = normMsg({ role: 'user', text: p.text, at: new Date().toISOString(), mentions: p.mentions.slice(), quotes: p.quotes.map(qCopy) }); mine.local = true; mine.payload = p;
     var think = normMsg({ role: 'assistant' }); think.thinking = true;
     S.msgs.push(mine, think); S.busy = true; var my = ++S.seq;
-    if (!payload) { ta.value = ''; S.mentions = []; renderChips(); }
+    if (!payload) { ta.value = ''; S.mentions = []; S.quotes = []; renderChips(); renderQuotes(); }
     render();
     var done = function () { S.busy = false; var k = S.msgs.indexOf(think); if (k >= 0) S.msgs.splice(k, 1); };
-    var putBack = function () { var k = S.msgs.indexOf(mine); if (k >= 0) S.msgs.splice(k, 1); if (!String(ta.value || '').trim()) { ta.value = p.text; S.mentions = p.mentions.slice(); renderChips(); } };
-    call(Object.assign({ op: 'ownerChatSend', text: p.text, tier: p.tier }, p.mentions.length ? { mentions: p.mentions.map(function (m) { return m.contactId; }) } : {})).then(function (d) {
+    var putBack = function () {   /* 回 true＝引用小卡也放回去了（順序跟送出時一樣） */
+      var k = S.msgs.indexOf(mine); if (k >= 0) S.msgs.splice(k, 1);
+      var clean = !String(ta.value || '').trim() && !S.quotes.length;
+      notBack = !clean;
+      if (!clean) return false;
+      ta.value = p.text; S.mentions = p.mentions.slice(); renderChips();
+      if (p.quotes.length) { S.quotes = p.quotes.map(qCopy); renderQuotes(); }
+      return p.quotes.length > 0;
+    };
+    var notBack = false, LOST_NOTE = '　剛才那句沒有送出，也沒有放回輸入框（你已經在打新的內容或掛了新的引用），需要的話請重新輸入。';
+    call(Object.assign({ op: 'ownerChatSend', text: p.text, tier: p.tier }, p.mentions.length ? { mentions: p.mentions.map(function (m) { return m.contactId; }) } : {}, p.quotes.length ? { quotes: p.quotes.map(qApi) } : {})).then(function (d) {
       if (my !== S.seq) return; done();
       if (d.ok === true) {
-        delete mine.local;
+        delete mine.local; if (objs(d.quotes).length) mine.quotes = objs(d.quotes);
         var m = normMsg({ id: d.messageId, role: 'assistant', text: d.reply, at: new Date().toISOString(), actions: d.actions, actionItems: d.actionItems, proposals: d.proposals, known: d.known, pendingActions: d.pendingActions, pendingActionItems: d.pendingActionItems, timedOut: d.timedOut, tier: d.tier });
         if (m.timedOut && !didSome(m)) { m.retry = true; m.payload = p; }
         if (d.saved === false) m.unsaved = true;
@@ -2432,11 +2514,13 @@ var yzOc = (function () {
         if (m.pendingActions.length || m.pendingActionItems.length) lateWatch();
         return;
       }
-      putBack(); render();   /* 後端明確沒收：這句不留在對話裡，字放回輸入框；不是核可人（owner_only）時畫面已經收掉，不顯示錯誤 */
-      if (d.error !== 'owner_only') say(errText(d), 'err');
+      var qb = putBack(); render();   /* 後端明確沒收：這句不留在對話裡，字放回輸入框；不是核可人（owner_only）時畫面已經收掉，不顯示錯誤 */
+      var qe = quoteErr(d, p, qb);
+      if (qe) { say(qe, 'err'); return; }
+      if (d.error !== 'owner_only') say(errText(d) + (notBack ? LOST_NOTE : ''), 'err');
     }, function (e) {   /* 斷線或等太久：不確定後端有沒有收到，不可以自動重送 */
       if (my !== S.seq) return; done();
-      if (isAuthErr(e)) { putBack(); render(); say(errText(e), 'err'); return; }
+      if (isAuthErr(e)) { putBack(); render(); say(errText(e) + (notBack ? LOST_NOTE : ''), 'err'); return; }
       mine.failed = '沒有收到回應，不確定 AI 有沒有收到這一句。'; mine.unsure = true; render();
     });
   }
@@ -2445,12 +2529,13 @@ var yzOc = (function () {
   }
 
   // ── 開關
-  function hide() { S.open = false; if (box) box.classList.remove('on'); document.body.classList.remove('oc-open'); pick(false); }
+  function hide() { menuOff(); S.open = false; if (box) box.classList.remove('on'); document.body.classList.remove('oc-open'); pick(false); }
   function open(opt) {
     if (!box || !S.owner) return;
     if (!S.open) { S.open = true; box.classList.add('on'); document.body.classList.add('oc-open'); try { history.pushState({ yzOc: 1 }, ''); S.pushed = true; } catch (e) { S.pushed = false; } }
-    say(''); renderTier(); renderChips(); render();
+    say(''); renderTier(); renderChips(); renderQuotes(); render();
     if (opt && opt.mention) addMention(opt.mention);
+    if (opt && opt.quote) { addQuote(opt.quote); var ta0 = $('ocText'); try { if (ta0) ta0.focus({ preventScroll: true }); } catch (eF) {} }
     rememberAps();
     if (!S.busy) load(false);
   }
@@ -2458,6 +2543,45 @@ var yzOc = (function () {
   function back() { var p = $('ocPick'); if (p && p.classList.contains('on')) { pick(false); return; } close(); }
   window.addEventListener('popstate', function (ev) { if (S.open && !(ev.state && (ev.state.yzOc || ev.state.yzHb))) { S.pushed = false; hide(); } });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && S.open && !(window.yzHb && yzHb.isOpen())) back(); });
+
+  // ── 三個入口：客戶對話的「問 AI」、稿上的「跟 AI 討論這張稿」、AI 對話裡的「引用」；手機另外可以長按泡泡叫出同一個選項
+  function askMsg(mid) {
+    var t = THREAD; if (!t || !t.contactId || !S.owner) return;
+    var m = (t.messages || []).filter(function (x) { return x && String(x.id == null ? '' : x.id) === String(mid); })[0]; if (!m) return;
+    var txt = m.kind === 'image' ? '［照片］' : String(m.text || '').replace('[卡片]', '').trim();
+    open({ quote: { type: 'message', contactId: String(t.contactId), messageId: String(mid), name: String(t.name || cname(t.contactId) || ''), short: txt } });
+  }
+  function askDraft(ap) {
+    if (!S.owner || !/^AP-\d+$/.test(String(ap || ''))) return;
+    var tp = THREAD && THREAD.pending && THREAD.pending.id === ap ? THREAD.pending : null, ov = (OV.pending || []).concat(OV.scheduled || []).filter(function (x) { return x && x.id === ap; })[0] || null;
+    var src = tp || ov || {}, cid = String((ov && ov.contactId) || (tp && THREAD.contactId) || '');
+    open({ quote: { type: 'draft', apId: String(ap), contactId: cid, name: cid ? String((THREAD && THREAD.contactId === cid && THREAD.name) || cname(cid) || '') : '', short: String(src.text || '') } });
+  }
+  function quoteChat(mid) {
+    var m = S.msgs.filter(function (x) { return x.id === String(mid) && !x.local && !x.thinking; })[0]; if (!m) return;
+    if (addQuote({ type: 'chat', messageId: m.id, role: m.role, short: m.text })) { var ta = $('ocText'); try { if (ta) ta.focus({ preventScroll: true }); } catch (eF) {} }
+  }
+  var MENU = { run: null, at: 0 }, LP = { t: 0, x: 0, y: 0, fired: 0 };
+  function menuOff() { var mn = $('qMenu'); if (mn) mn.classList.remove('on'); MENU.run = null; }
+  function menuOn(label, run, x, y) {
+    var mn = $('qMenu'); if (!mn) return;
+    $('qMenuGo').textContent = label; MENU.run = run; MENU.at = Date.now();
+    mn.classList.add('on');
+    var W = document.documentElement.clientWidth, H = window.innerHeight, w = mn.offsetWidth || 130, h = mn.offsetHeight || 96;
+    mn.style.left = Math.max(6, Math.min(x - w / 2, W - w - 6)) + 'px'; mn.style.top = Math.max(6, Math.min(y - h - 12, H - h - 6)) + 'px';
+  }
+  function longPress(root, sel, act) {   /* 長按 0.5 秒叫出選單；手指移動就取消。不靠長按也可以：泡泡旁有小按鈕 */
+    if (!root) return;
+    root.addEventListener('touchstart', function (ev) {
+      var el = ev.target.closest && ev.target.closest(sel); clearTimeout(LP.t);
+      if (!el || ev.touches.length !== 1 || ev.target.closest('a,button,textarea,input,select') || !S.owner) return;
+      LP.x = ev.touches[0].clientX; LP.y = ev.touches[0].clientY;
+      LP.t = setTimeout(function () { var a = act(el); if (!a) return; LP.fired = Date.now(); menuOn(a[0], a[1], LP.x, LP.y); }, 500);
+    }, { passive: true });
+    root.addEventListener('touchmove', function (ev) { var t0 = ev.touches[0]; if (t0 && (Math.abs(t0.clientX - LP.x) > 10 || Math.abs(t0.clientY - LP.y) > 10)) clearTimeout(LP.t); }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(function (n) { root.addEventListener(n, function () { clearTimeout(LP.t); }, { passive: true }); });
+    root.addEventListener('contextmenu', function (ev) { if (LP.fired && Date.now() - LP.fired < 1500 && ev.target.closest && ev.target.closest(sel)) ev.preventDefault(); });
+  }
 
   // ── 花費（設定頁、習慣頁共用）
   function usageHtml(u) {
@@ -2486,10 +2610,24 @@ var yzOc = (function () {
     $('ocPickClose').onclick = function () { pick(false); };
     $('ocPickQ').oninput = function () { pickList(this.value); };
     $('ocPickList').onclick = function (ev) { var b = ev.target.closest && ev.target.closest('.oc-pick-it'); if (!b) return; if (addMention(b.getAttribute('data-cid'))) pick(false); };
+    $('ocQuotes').onclick = function (ev) { var b = ev.target.closest && ev.target.closest('[data-qrm]'); if (!b) return; S.quotes.splice(Number(b.getAttribute('data-qrm')), 1); renderQuotes(); if (!S.quotes.some(function (q) { return q._bad; }) && $('ocMsg') && /引用/.test($('ocMsg').textContent)) say(''); };
+    $('qMenuGo').onclick = function () { var r = MENU.run; menuOff(); if (r) r(); };
+    $('qMenuNo').onclick = menuOff;
+    document.addEventListener('click', function (ev) {
+      var mn = $('qMenu'), t = ev.target, a;
+      if (mn && mn.classList.contains('on') && !mn.contains(t) && Date.now() - MENU.at > 400) menuOff();
+      if (!t.closest) return;
+      if ((a = t.closest('#chat .askQ'))) { ev.preventDefault(); askMsg(a.getAttribute('data-mid')); return; }
+      if ((a = t.closest('#btnAskDraft'))) { ev.preventDefault(); askDraft(a.getAttribute('data-ap')); }
+    });
+    longPress($('chat'), '.msg[data-mid]', function (el) { var mid = el.getAttribute('data-mid'); return ['問 AI', function () { askMsg(mid); }]; });
+    longPress($('ocList'), '.msg[data-mid]', function (el) { var mid = el.getAttribute('data-mid'); return ['引用', function () { quoteChat(mid); }]; });
     $('ocChips').onclick = function (ev) { var b = ev.target.closest && ev.target.closest('[data-rm]'); if (!b) return; S.mentions.splice(Number(b.getAttribute('data-rm')), 1); renderChips(); };
     $('ocList').onclick = function (ev) {
       var t = ev.target, a;
       if ((a = t.closest && t.closest('[data-pa]'))) { var card = a.closest('.oc-prop'); propAct(card.getAttribute('data-prop'), a.getAttribute('data-pa'), a); return; }
+      if ((a = t.closest && t.closest('.oc-q'))) { ev.preventDefault(); quoteChat(a.getAttribute('data-mid')); return; }
+      if ((a = t.closest && t.closest('.oc-qchat'))) { ev.preventDefault(); var tg = $('ocList').querySelector('.msg[data-mid="' + String(a.getAttribute('data-mid')).replace(/[^0-9]/g, '') + '"]'); if (tg) tg.scrollIntoView({ block: 'center' }); else say('那一則在更早的對話裡，請按上面的「看更早的對話」。'); return; }
       if ((a = t.closest && t.closest('.oc-goto'))) { ev.preventDefault(); var cid = a.getAttribute('data-cid'); hide(); try { if (S.pushed) { S.pushed = false; history.back(); } } catch (e) {} setTimeout(function () { openThread(cid); }, 0); return; }
       if ((a = t.closest && t.closest('.oc-hbgo'))) { ev.preventDefault(); if (window.yzHb) yzHb.open({ focus: a.getAttribute('data-hid') }); return; }
       if ((a = t.closest && t.closest('.oc-retry'))) { ev.preventDefault(); var m = S.msgs[Number(a.getAttribute('data-i'))]; if (!m || !m.payload || S.busy || (m.role !== 'user' && didSome(m))) return; var pl = m.payload; if (m.role === 'user') S.msgs.splice(S.msgs.indexOf(m), 1); else m.retry = false; send(pl); return; }
@@ -2503,7 +2641,7 @@ var yzOc = (function () {
     var authView = function () {
       var on = !!(appEl && appEl.style.display !== 'none' && !gateOn());
       if (on && !authSeen) { authSeen = true; probe(); }
-      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.usage = null; S.cost = null; S.owner = false; S.canAdd = false; document.documentElement.classList.remove('oc-owner'); }
+      else if (!on && authSeen) { authSeen = false; if (S.open) hide(); if (window.yzHb && yzHb.isOpen()) yzHb.hide(); S.loaded = false; S.msgs = []; S.quotes = []; renderQuotes(); S.usage = null; S.cost = null; S.owner = false; S.canAdd = false; document.documentElement.classList.remove('oc-owner'); }
     };
     if (appEl && window.MutationObserver) new MutationObserver(authView).observe(appEl, { attributes: true, attributeFilter: ['style'] });
     authView();
