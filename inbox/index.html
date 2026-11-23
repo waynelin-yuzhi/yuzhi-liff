@@ -2467,11 +2467,12 @@ var yzOc = (function () {
     var e = d && d.error; if (e !== 'quotes_invalid' && e !== 'quote_unknown' && e !== 'quote_draft_closed') return '';
     var idx = Number(d.index), q = (Number.isInteger(idx) && p.quotes[idx]) || null, live = back && q ? S.quotes[idx] : null;
     if (live) { live._bad = true; renderQuotes(); }
-    if (e === 'quotes_invalid') return '引用的內容有問題（一次最多 ' + (Number(d.max) || Q_MAX) + ' 則）。請按 × 移掉引用，重新引用後再送。';
-    var nth = q ? '第 ' + (idx + 1) + ' 個引用（' + qPlain(q) + '）' : '有一個引用';
-    if (e === 'quote_unknown') return nth + '已經找不到，可能被清掉了。請按 × 移掉再送。';
+    if (e === 'quotes_invalid') return '引用的內容有問題（一次最多 ' + (Number(d.max) || Q_MAX) + ' 則）。' + (back ? '請按 × 移掉引用，重新引用後再送。' : '剛才那句沒有送出，請重新引用後再送一次。');
+    var nth = q ? (back ? '第 ' + (idx + 1) + ' 個引用（' + qPlain(q) + '）' : '剛才那句的引用（' + qPlain(q) + '）') : '有一個引用';
+    var tail = back ? '請按 × 移掉再送。' : '剛才那句沒有送出，請重新引用後再送一次。';
+    if (e === 'quote_unknown') return nth + '已經找不到，可能被清掉了。' + tail;
     try { refreshAll(true); } catch (eR) {}
-    return '引用的稿 ' + String(d.apId || (q && q.apId) || '') + ' 已經處理過了（狀態：' + String(d.status || '不明') + '）。請按 × 移掉再送。';
+    return '引用的稿 ' + String(d.apId || (q && q.apId) || '') + ' 已經處理過了（狀態：' + String(d.status || '不明') + '）。' + tail;
   }
 
   // ── 送出
@@ -2490,7 +2491,7 @@ var yzOc = (function () {
     var done = function () { S.busy = false; var k = S.msgs.indexOf(think); if (k >= 0) S.msgs.splice(k, 1); };
     var putBack = function () {   /* 回 true＝引用小卡也放回去了（順序跟送出時一樣） */
       var k = S.msgs.indexOf(mine); if (k >= 0) S.msgs.splice(k, 1);
-      var empty = !String(ta.value || '').trim(), qBack = p.quotes.length > 0 && (empty || !S.quotes.length);
+      var empty = !String(ta.value || '').trim(), qBack = p.quotes.length > 0 && !S.quotes.length;
       if (empty) { ta.value = p.text; S.mentions = p.mentions.slice(); renderChips(); }
       if (qBack) { S.quotes = p.quotes.map(qCopy); renderQuotes(); }
       return qBack;
