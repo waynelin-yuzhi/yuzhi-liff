@@ -208,9 +208,19 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
   $('gasLink').href = CFG.gas + '?page=publish';
   function showGate() { $('gate').style.display = 'block'; $('app').style.display = 'none'; $('leave').style.display = 'none'; }
   function showApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; $('leave').style.display = 'inline-block'; }
+  var ME = '';
+  function goFix(url, email) {
+    var u = null; try { u = new URL(String(url || '')); } catch (eG) { return String(url || ''); }
+    var em = String(email || '').trim().toLowerCase(), dom = em.indexOf('@') > 0 ? em.split('@')[1] : '';
+    if (u.protocol !== 'https:' || u.hostname !== 'script.google.com' || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(dom)) return u.href;
+    if (dom !== 'gmail.com' && dom !== 'googlemail.com' && u.pathname.indexOf('/macros/s/') === 0) u.pathname = '/a/macros/' + dom + u.pathname.slice('/macros'.length);
+    u.searchParams.set('authuser', em);
+    return u.href;
+  }
   function api(payload) {
     return sb.auth.getSession().then(function (r) {
       var s = r.data && r.data.session; if (!s) { showGate(); throw new Error('請先登入'); }
+      ME = String((s.user && s.user.email) || '');
       return fetch(CFG.engine + '?action=adminApprovals', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(payload || {}) });
     }).then(function (res) { if (res.status === 401 || res.status === 403) { sb.auth.signOut({ scope: 'local' }); showGate(); throw new Error('連線已失效，請重新進入'); } return res.json(); });
   }
@@ -245,9 +255,9 @@ input[type=email],input[type=text],input[type=search]{width:100%;padding:10px 12
     if (!isPending && it.decidedAt) meta.push('決定 ' + esc(String(it.decidedAt).slice(5, 16)));
     var acts = '';
     if (isPending) {
-      acts += '<a href="' + esc(it.goUrl) + '" target="_blank">開核可頁</a>';
+      acts += '<a href="' + esc(goFix(it.goUrl, ME)) + '" target="_blank">開核可頁</a>';
       if (it.contactId) acts += '<a href="#" data-cid="' + esc(it.contactId) + '">收件匣</a>';
-    } else acts += '<a href="' + esc(it.goUrl) + '" target="_blank">看結果</a>';
+    } else acts += '<a href="' + esc(goFix(it.goUrl, ME)) + '" target="_blank">看結果</a>';
     var r = resultLine(it);
     var chip = sent === 'run' ? '<span class="chip run">已送出，執行中</span>' : sent === 'unsure' ? '<span class="chip warn">不確定，請開卡確認</span>' : sent === 'fail' ? '<span class="chip bad">沒送成，請重開這張卡</span>' : '<span class="chip ' + chipCls(it.status) + '">' + esc(it.status) + '</span>';
     return '<div class="row' + (sent === 'run' ? ' sent' : '') + '"><div class="n"><div class="t">' + chip + ' ' + esc(it.title || '(無標題)') + '</div>'

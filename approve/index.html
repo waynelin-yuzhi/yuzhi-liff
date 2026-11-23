@@ -405,6 +405,15 @@ form.busy button{opacity:.5;pointer-events:none;}
     try { var s = JSON.parse(localStorage.getItem(SB_KEY) || 'null'); if (s && s.access_token && Number(s.expires_at || 0) * 1000 > Date.now() + 60000) return String(s.access_token); } catch (eT) {}
     return '';
   }
+  function goFix(url, email) {
+    var u = null; try { u = new URL(String(url || '')); } catch (eG) { return String(url || ''); }
+    var em = String(email || '').trim().toLowerCase(), dom = em.indexOf('@') > 0 ? em.split('@')[1] : '';
+    if (u.protocol !== 'https:' || u.hostname !== 'script.google.com' || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(dom)) return u.href;
+    if (dom !== 'gmail.com' && dom !== 'googlemail.com' && u.pathname.indexOf('/macros/s/') === 0) u.pathname = '/a/macros/' + dom + u.pathname.slice('/macros'.length);
+    u.searchParams.set('authuser', em);
+    return u.href;
+  }
+  function sessionEmail() { try { var s0 = JSON.parse(localStorage.getItem(SB_KEY) || 'null'); return String((s0 && s0.user && s0.user.email) || ''); } catch (eM) { return ''; } }
   function skipIds() { var o = {}; o[CUR.id] = 1; SENTLOG.list().forEach(function (r) { o[r.id] = 1; }); return o; }
   function findNext() {
     if (NEXT) return NEXT;
@@ -418,7 +427,7 @@ form.busy button{opacity:.5;pointer-events:none;}
         if (!left.length) return { none: true };
         var u = null; try { u = new URL(String(left[0].goUrl || '')); } catch (eU) { u = null; }
         if (!u || u.protocol !== 'https:' || u.hostname !== 'script.google.com') return null;
-        return { href: u.href, id: String(left[0].id || ''), title: String(left[0].title || ''), more: left.length - 1 };
+        return { href: goFix(u.href, sessionEmail()), id: String(left[0].id || ''), title: String(left[0].title || ''), more: left.length - 1 };
       })
       .catch(function () { return null; });
     return NEXT;
