@@ -101,6 +101,58 @@ form.busy button{opacity:.5;pointer-events:none;}
 .chs label.on{border-color:#5F6E58;background:#EEF3EA;}
 .chs label.skip span{color:#8A8F86;}
 .chsum{font-size:13px;color:#5F6E58;margin:4px 0 0;}
+.rc-sum{margin:12px 0 10px;padding:12px 13px;background:#FAF7F0;border:1px solid #EDE6D6;border-radius:12px;}
+.rc-sum-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.rc-sum-h b{font-size:16px;color:#2E332C;}.rc-sum-h span{font-size:12.5px;color:#8A8F86;}
+.rc-sum-t{font-size:14px;margin:4px 0 8px;color:#2E332C;}.rc-sum-t b{font-size:18px;}
+.rc-sum-t small{display:block;font-size:12px;color:#B98A2F;}
+.rc-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.rc-sum-n{font-size:12.5px;color:#8A8F86;margin-top:8px;line-height:1.6;}
+.rc-sum-n b{color:#2E332C;font-weight:600;}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap;}
+.t-update{background:#E8F0EA;color:#4F6147;border-color:#C9D6C5;}.t-create{background:#E4EBF4;color:#3F5F8F;border-color:#C8D5E6;}
+.t-ambiguous{background:#F6EEDB;color:#946C1F;border-color:#E8D6AE;}.t-noPrice{background:#F4E7E5;color:#A5524A;border-color:#E3C6C1;}
+.t-skip{background:#EEEDE8;color:#6E716A;border-color:#DAD8D0;}.t-zero{opacity:.45;}
+.rc-row{background:#FFFFFF;border:1px solid #E3DCCB;border-left:4px solid #C9D6C5;border-radius:12px;padding:11px 12px 10px;margin:0 0 10px;}
+.rc-row.a-create{border-left-color:#9DB3D3;}.rc-row.a-ambiguous{border-left-color:#D8B566;background:#FFFCF3;}.rc-row.a-noPrice{border-left-color:#D3A29B;background:#FFF9F7;}.rc-row.a-skip{border-left-color:#CFCDC5;background:#F7F6F2;}
+.rc-row.a-skip .rc-name b{text-decoration:line-through;color:#8A8F86;}
+.rc-top{display:flex;gap:10px;align-items:flex-start;}
+.rc-no{flex:none;width:22px;height:22px;border-radius:50%;background:#EEF1EA;color:#5F6E58;font-size:12px;line-height:22px;text-align:center;font-weight:600;margin-top:1px;}
+.rc-name{flex:1;min-width:0;}.rc-name b{display:block;font-size:15.5px;line-height:1.4;word-break:break-word;}
+.rc-name span{display:block;font-size:12.5px;color:#8A8F86;margin-top:1px;word-break:break-word;}
+.rc-th{flex:none;width:52px;height:52px;border-radius:8px;object-fit:cover;background:#EEF1EA;display:block;border:1px solid #E3DCCB;}
+.rc-thn{flex:none;font-size:10.5px;color:#8A8F86;text-align:center;width:52px;margin-top:2px;}
+.rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0 0;}
+.rc-cell{background:#FAF7F0;border-radius:8px;padding:6px 9px;min-width:0;}
+.rc-cell label{display:block;font-size:11px;color:#8A8F86;letter-spacing:1px;}
+.rc-cell b{font-size:15.5px;font-weight:600;color:#2E332C;}.rc-cell small{font-size:11.5px;color:#8A8F86;margin-left:4px;}
+.rc-do{margin:8px 0 0;font-size:13.5px;line-height:1.65;color:#2E332C;word-break:break-word;}
+.rc-line{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-top:3px;}
+.rc-line .k{flex:none;min-width:30px;font-size:11.5px;color:#8A8F86;letter-spacing:1px;}
+.up{color:#A5524A;font-weight:700;}.down{color:#4F6147;font-weight:700;}.chg{color:#3F5F8F;font-weight:700;}.same{color:#8A8F86;}
+.rc-warn{font-size:12.5px;color:#946C1F;margin-top:5px;line-height:1.55;}
+.rc-err{font-size:12.5px;color:#A5524A;margin-top:5px;line-height:1.55;}
+.rc-btn{font-family:inherit;font-size:13px;background:#FFFFFF;border:1px solid #C9D2C5;color:#5F6E58;border-radius:8px;padding:6px 14px;cursor:pointer;margin-top:9px;}
+.rc-btn.main{background:#5F6E58;color:#FFFCF5;border-color:#5F6E58;}.rc-btn[disabled]{opacity:.5;}
+.rc-ed{margin-top:10px;padding-top:10px;border-top:1px dashed #E3DCCB;}
+.rc-ed .f{display:block;margin:0 0 8px;font-size:12px;color:#8A8F86;}
+.rc-ed .f input{display:block;width:100%;box-sizing:border-box;margin-top:3px;border:1px solid #D8D2C2;border-radius:8px;padding:9px 10px;font-size:16px;font-family:inherit;background:#FFFDF8;color:#2E332C;}
+.rc-ed .f2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rc-ed .ck{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:#2E332C;margin:0 0 8px;}
+.rc-ed .ck input{width:18px;height:18px;margin:1px 0 0;accent-color:#5F6E58;flex:none;}
+.rc-tg{margin:4px 0 8px;}.rc-tg .lab{font-size:12px;color:#8A8F86;margin-bottom:4px;}
+.rc-tg label{display:flex;gap:8px;align-items:flex-start;padding:9px 10px;margin:0 0 5px;border:1px solid #EDE6D6;border-radius:8px;background:#FAF7F0;font-size:13.5px;line-height:1.45;cursor:pointer;}
+.rc-tg label input{flex:none;width:18px;height:18px;margin:0;accent-color:#5F6E58;}
+.rc-tg label.on{border-color:#5F6E58;background:#EEF3EA;}
+.rc-tg label small{display:block;color:#8A8F86;font-size:12px;}
+.rc-srch{display:flex;gap:6px;margin:4px 0 6px;}.rc-srch input{flex:1;min-width:0;border:1px solid #D8D2C2;border-radius:8px;padding:8px 10px;font-size:16px;font-family:inherit;background:#FFFDF8;}
+.rc-srch button{font-family:inherit;font-size:13px;border:1px solid #C9D2C5;background:#fff;color:#5F6E58;border-radius:8px;padding:0 12px;}
+.rc-acts{display:flex;gap:8px;}.rc-acts .rc-btn{flex:1;margin-top:4px;padding:10px 0;font-size:14px;}
+.rc-flash{margin:0 0 10px;padding:9px 12px;border-radius:10px;background:#EEF3EA;border:1px solid #C9D6C5;color:#4F6147;font-size:13px;line-height:1.55;}
+.rc-flash.bad{background:#FBEDE8;border-color:#E3C6C1;color:#8A3B24;}
+.rc-flash button{font-family:inherit;font-size:12.5px;margin-left:6px;border:1px solid #C9A49A;background:#fff;color:#8A3B24;border-radius:6px;padding:2px 10px;}
+.rc-note{font-size:12.5px;color:#8A8F86;line-height:1.6;margin:0 0 10px;}
+details.rawtxt{margin:4px 0 10px;}details.rawtxt .textbox{font-size:13px;margin-top:6px;}
 </style>
 </head>
 <body>
@@ -302,6 +354,223 @@ form.busy button{opacity:.5;pointer-events:none;}
     upd();
   }
 
+
+  // 單據類核可卡的結構化明細（2026-11-24 Wayne：採購單據入庫卡改表格、可在這頁更正）
+  // 資料來自 GAS ?page=approve&respond=json 的 detail（主系統 public-approval-detail.gs）；更正 POST approvalDetailEdit=1 存回單據本身、不是改卡片文字
+  // 之後別種單據要用：主系統加 provider，這裡在 DETAIL_KINDS 加 match／mount 兩支
+  var DETAIL = null, EXTRAS_OK = false, DETAIL_BUSY = '';
+  var DETAIL_KINDS = {
+    materialReceipt: { match: function (pl) { var o = pl && pl.onApprove; return !!(o && o.action === 'materialReceiptApply' && o.receiptId); }, mount: function (d) { rcMount(d); } }
+  };
+  function detailKindOf(pl) { var ks = Object.keys(DETAIL_KINDS); for (var i = 0; i < ks.length; i++) { if (DETAIL_KINDS[ks[i]].match(pl)) return ks[i]; } return ''; }
+  function detailSlot(pl) {
+    return '<div id="ph-detail" class="ph loading">明細載入中…</div>'
+      + (pl.text ? '<details class="rawtxt" id="rawtxt"><summary>原始文字（投稿當下的內容、未含更正，備查）</summary><div class="textbox">' + linkify(esc(pl.text)) + '</div></details>' : '');
+  }
+  function syncApprove() {
+    var ba = document.getElementById('btnApprove'); if (!ba) return;
+    ba.disabled = !EXTRAS_OK || !!DETAIL_BUSY;
+    var bh = document.getElementById('approveHint');
+    if (DETAIL_BUSY) {
+      if (!bh) { bh = document.createElement('span'); bh.id = 'approveHint'; bh.style.cssText = 'display:block;font-size:11px;font-weight:400;letter-spacing:0;opacity:.85;'; ba.appendChild(bh); }
+      bh.textContent = DETAIL_BUSY;
+    } else if (EXTRAS_OK && bh) bh.parentNode.removeChild(bh);
+  }
+  function mountDetail(d) {
+    var K = DETAIL && DETAIL_KINDS[DETAIL.kind];
+    if (!K) return;
+    if (!d || !d.ok || d.kind !== DETAIL.kind) { detailFallback(d ? (d.detail || d.error || '') : ''); return; }
+    K.mount(d);
+  }
+  function detailFallback(why) {
+    put('ph-detail', '<div class="rc-note">' + esc(why ? '明細暫時讀不到（' + String(why).slice(0, 80) + '），先顯示投稿時的原始文字。' : '主系統還沒更新到表格版，先顯示投稿時的原始文字。') + '這段文字只供閱讀，改了也不會改到入庫的資料。</div>');
+    var rt = document.getElementById('rawtxt'); if (rt) rt.open = true;
+    var pv = document.getElementById('ph-preview'); if (pv) pv.style.display = '';
+  }
+
+  var RC = { d: null, open: -1, thumbs: {}, flash: null, saving: false };
+  var RC_ACT = { update: '更新', create: '新增', ambiguous: '待判斷', noPrice: '缺價格', skip: '不入庫' };
+  var RC_FLD = { name: '品名', spec: '規格', unit: '單位', listPrice: '牌價', paid: '實付', listConfirmed: '確認沒折扣', target: '動作' };
+  function rcN(n) { return (n === null || n === undefined || n === '' || isNaN(Number(n))) ? '—' : Number(n).toLocaleString(); }
+  function rcArrow(a, b, cls) {
+    a = Number(a); b = Number(b);
+    if (!isFinite(a) || !isFinite(b) || a === b) return '<span class="same">不變</span>';
+    var d = b - a; return '<span class="' + (cls || (d > 0 ? 'up' : 'down')) + '">' + (d > 0 ? '▲ ' : '▼ ') + rcN(Math.abs(d)) + '</span>';
+  }
+  function rcLine(k, v) { return '<div class="rc-line"><span class="k">' + k + '</span><span>' + v + '</span></div>'; }
+  function rcSummary(d) {
+    var s = d.summary || {}, chip = function (k, n) { return '<span class="tag t-' + k + (n ? '' : ' t-zero') + '">' + RC_ACT[k] + ' ' + (n || 0) + '</span>'; };
+    var diff = Math.round(Number(s.lineSum) || 0) !== Math.round(Number(d.total) || 0);
+    return '<div class="rc-sum"><div class="rc-sum-h"><b>' + esc(d.supplier) + '</b><span>' + esc(d.date) + '・' + esc(d.receiptId) + '</span></div>'
+      + '<div class="rc-sum-t">合計 <b>' + rcN(d.total) + '</b> 元' + (diff ? '<small>明細加總 ' + rcN(s.lineSum) + ' 元，跟單據合計不同，請核對</small>' : '') + '</div>'
+      + '<div class="rc-chips">' + chip('update', s.update) + chip('create', s.create) + chip('ambiguous', s.ambiguous) + chip('noPrice', s.noPrice) + (s.skip ? chip('skip', s.skip) : '') + '</div>'
+      + '<div class="rc-sum-n">成本會變 <b>' + (s.costChanged || 0) + '</b> 筆・售價會變 <b>' + (s.sellChanged || 0) + '</b> 筆・這次入庫 <b>' + rcN(s.applySum) + '</b> 元'
+      + (d.edits ? '<br>這頁更正過 ' + d.edits + ' 處' + (d.lastEdit && d.lastEdit.at ? '（最後 ' + esc(String(d.lastEdit.at).slice(5, 16)) + '）' : '') : '') + '</div></div>';
+  }
+  function rcThumb(r) {
+    if (!r.photos || !r.photos.length) return '';
+    var id = String(r.photos[0]), src = RC.thumbs[id] || '', href = 'https://drive.google.com/file/d/' + encodeURIComponent(id) + '/view';
+    return '<a href="' + esc(href) + '" target="_blank" rel="noopener" style="text-decoration:none;flex:none;">' + (src ? '<img class="rc-th" alt="" src="' + esc(src) + '">' : '<i class="rc-th"></i>') + '<div class="rc-thn">照片 ' + r.photos.length + '</div></a>';
+  }
+  function rcRow(r, d) {
+    var sub = [r.spec || '規格未填', r.unit, r.qty > 1 ? '×' + r.qty : ''].filter(Boolean).join('・');
+    var h2 = '<div class="rc-row a-' + esc(r.action) + '" id="rc-row-' + r.i + '"><div class="rc-top"><span class="rc-no">' + (r.i + 1) + '</span><div class="rc-name"><b>' + esc(r.name) + '</b><span>' + esc(sub) + '</span></div>' + rcThumb(r) + '</div>';
+    h2 += '<div class="rc-grid"><div class="rc-cell"><label>牌價</label>' + (r.listPrice ? '<b>' + rcN(r.listPrice) + '</b><small>' + esc(r.discount || '') + '</small>' : '<b class="same">—</b><small>單據沒寫</small>') + '</div>'
+      + '<div class="rc-cell"><label>實付成本</label>' + (r.paid > 0 ? '<b>' + rcN(r.paid) + '</b>' + (r.qty > 1 ? '<small>×' + r.qty + '＝' + rcN(r.paid * r.qty) + '</small>' : '') : '<b class="up">缺價格</b>') + '</div></div>';
+    var tag = '<span class="tag t-' + esc(r.action) + '">' + RC_ACT[r.action] + '</span> ', mine = r.manual ? ' <span class="same">（你指定的）</span>' : '';
+    var doH = '';
+    if (r.action === 'update') doH = tag + esc(r.materialId) + ' ' + esc(r.matName || '') + (r.matchedSpec ? '（' + esc(r.matchedSpec) + '）' : '') + mine + rcLine('成本', rcN(r.oldCost) + ' → <b>' + rcN(r.paid) + '</b> ' + rcArrow(r.oldCost, r.paid));
+    else if (r.action === 'create') doH = tag + '新品項' + mine + rcLine('成本', '<b>' + rcN(r.paid) + '</b>');
+    else if (r.action === 'ambiguous') doH = tag + '同名有 ' + (r.alts || []).length + ' 筆，不知道是哪一個，核可會跳過這筆。';
+    else if (r.action === 'noPrice') doH = tag + '單據沒有價格，核可會跳過這筆。';
+    else doH = tag + '你標記這筆不入庫，核可會跳過。';
+    if (r.sell) {
+      if (r.sell.now === null || r.sell.now === undefined) doH += rcLine('售價', '<span class="same">沒有定價規則可算</span>');
+      else if (r.sell.mode === 'manual') doH += rcLine('售價', rcN(r.sell.now) + ' <span class="same">手動定價、不動</span>');
+      else if (r.sell.old !== null && r.sell.old !== undefined) doH += rcLine('售價', rcN(r.sell.old) + ' → <b' + (r.sell.old !== r.sell.now ? ' class="chg"' : '') + '>' + rcN(r.sell.now) + '</b> ' + rcArrow(r.sell.old, r.sell.now, 'chg'));
+      else doH += rcLine('售價', '<b>' + rcN(r.sell.now) + '</b> <span class="same">' + esc(r.sell.rule || '') + '</span>');
+    }
+    h2 += '<div class="rc-do">' + doH + '</div>';
+    var w = [];
+    if (r.missing) w.push('對到的 ' + r.materialId + ' 在材料主檔找不到，核可會跳過');
+    if (r.hint) w.push(r.hint);
+    if (r.action === 'create' && r.needSpec) w.push('規格待補（入庫後到材料主檔補）');
+    if (r.listConfirmed && r.listPrice && r.listPrice <= r.paid) w.push('牌價等於實付，已確認沒折扣');
+    if (w.length) h2 += '<div class="rc-warn">' + w.map(esc).join('<br>') + '</div>';
+    if (d.editable) h2 += RC.open === r.i ? rcEditor(r) : (RC.open < 0 && !RC.unsure ? '<button type="button" class="rc-btn" data-rc="edit" data-i="' + r.i + '">更正這筆</button>' : '');   // 有一筆在更正時不給別筆的鈕：切過去會無聲丟掉沒存的輸入
+    return h2 + '</div>';
+  }
+  function rcCur(r) { return r.action === 'skip' ? 'skip' : (r.manual && r.action === 'create' ? 'create' : (r.manual && r.action === 'update' ? r.materialId : 'auto')); }
+  function rcOpt(val, title, sub, cur) { return '<label' + (val === cur ? ' class="on"' : '') + '><input type="radio" name="rct" value="' + esc(val) + '"' + (val === cur ? ' checked' : '') + '><span>' + esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span></label>'; }
+  function rcAltOpt(a, cur) { return rcOpt(a.materialId, '對到 ' + a.materialId + ' ' + a.name, [a.spec || '無規格', '成本 ' + rcN(a.cost), a.supplier].filter(Boolean).join('・'), cur); }
+  function rcEditor(r) {
+    var f = function (k, lab, v, mode) { return '<label class="f">' + lab + '<input data-f="' + k + '" value="' + esc(v) + '"' + (mode ? ' inputmode="' + mode + '"' : '') + ' autocomplete="off"></label>'; };
+    var cur = rcCur(r);
+    var autoSub = r.manual ? '照品名與規格重新找' : (r.action === 'update' ? '目前自動對到 ' + r.materialId : (r.action === 'create' ? '目前自動判斷為新增' : (r.action === 'ambiguous' ? '目前同名多筆、無法判斷' : '照品名與規格找')));
+    return '<div class="rc-ed" data-i="' + r.i + '">' + f('name', '品名', r.name) + '<div class="f2">' + f('spec', '規格', r.spec) + f('unit', '單位', r.unit) + '</div>'
+      + '<div class="f2">' + f('listPrice', '牌價（沒有就留空）', r.listPrice || '', 'decimal') + f('paid', '實付成本（單價）', r.paid || '', 'decimal') + '</div>'
+      + '<label class="ck"><input type="checkbox" data-f="listConfirmed"' + (r.listConfirmed ? ' checked' : '') + '><span>牌價等於實付、確認沒折扣<small style="display:block;color:#8A8F86;font-size:11.5px;">單據上只有一個價格時，牌價留空就好，不用勾</small></span></label>'
+      + '<div class="rc-tg"><div class="lab">這筆要做什麼</div>' + rcOpt('auto', '自動比對', autoSub, cur)
+      + (r.alts || []).map(function (a) { return rcAltOpt(a, cur); }).join('') + '<div data-rc-res></div>'
+      + '<div class="rc-srch"><input data-rc-q placeholder="找其他材料（品名關鍵字或 M- 編號）" enterkeyhint="search" autocomplete="off"><button type="button" data-rc="search">搜尋</button></div>'
+      + rcOpt('create', '新增成新品項', '規格空著會標「待補」', cur) + rcOpt('skip', '這筆不入庫', '核可時跳過這筆', cur) + '</div>'
+      + '<div class="rc-err" data-rc-err></div>'
+      + '<div class="rc-acts"><button type="button" class="rc-btn" data-rc="cancel">取消</button><button type="button" class="rc-btn main" data-rc="save">存檔</button></div></div>';
+  }
+  function rcDraw() {
+    var d = RC.d, el = document.getElementById('ph-detail'); if (!el || !d) return;
+    var fl = RC.flash ? '<div class="rc-flash' + (RC.flash.bad ? ' bad' : '') + '">' + esc(RC.flash.text) + (RC.flash.reload ? '<button type="button" data-rc="reload">重新整理</button>' : '') + '</div>' : '';
+    var note = d.editable ? '核可＝照下面這個版本寫進材料主檔；待判斷、缺價格、不入庫的會跳過。哪一筆不對就按「更正這筆」，存檔後表格會重算。'
+      : (d.status === '已入庫' ? '這張單據已入庫，以下是入庫時的明細。' : (d.lockReason ? d.lockReason + '，不能再更正。' : ''));
+    el.classList.remove('loading');
+    el.innerHTML = rcSummary(d) + fl + (note ? '<div class="rc-note">' + esc(note) + '</div>' : '') + (d.rows || []).map(function (r) { return rcRow(r, d); }).join('');
+  }
+  function rcMount(d) {
+    (d.rows || []).forEach(function (r) { if (r.thumb && r.photos && r.photos[0]) RC.thumbs[r.photos[0]] = r.thumb; });
+    RC.d = d;
+    var dv = document.getElementById('detailVer'); if (dv) dv.value = d.ver || '';
+    var s = d.summary || {}, ba = document.getElementById('btnApprove'), skipN = (s.ambiguous || 0) + (s.noPrice || 0) + (s.skip || 0);
+    if (ba) ba.setAttribute('data-confirm', '確定核可？會照頁面上的表格寫進材料主檔：更新 ' + (s.update || 0) + ' 筆、新增 ' + (s.create || 0) + ' 筆' + (skipN ? '，跳過 ' + skipN + ' 筆' : '') + '。');
+    if (!RC.wired) {
+      RC.wired = true;
+      var el = document.getElementById('ph-detail');
+      if (el) { el.addEventListener('click', rcClick); el.addEventListener('change', rcChange); el.addEventListener('keydown', rcKey); }
+    }
+    rcDraw();
+  }
+  // 不確定狀態（沒收到回覆、存了沒重算、單據已被別處改動）：只能重新整理，取消或點別筆都不會解鎖核可
+  function rcUnsure(msg) { RC.unsure = msg; RC.flash = { bad: true, text: msg, reload: true }; rcBusy(msg); }
+  function rcBusy(t) { if (!t && RC.unsure) t = RC.unsure; DETAIL_BUSY = t || ''; syncApprove(); }
+  function rcPost(params) {
+    var b = new URLSearchParams(); b.append('approvalDetailEdit', '1'); b.append('h', h); b.append('kind', 'materialReceipt');
+    Object.keys(params).forEach(function (k) { b.append(k, params[k]); });
+    // 逾時 50 秒：主系統拿鎖最多等十幾秒，超過就當沒收到回覆（可能已存），不要一直停在存檔中
+    var ac = window.AbortController ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, 50000) : null;
+    return fetch(GAS, { method: 'POST', body: b, redirect: 'follow', signal: ac ? ac.signal : undefined }).then(function (r) { return r.json(); })
+      .then(function (j) { if (tm) clearTimeout(tm); return j; }, function (e) { if (tm) clearTimeout(tm); throw e; });
+  }
+  function rcEdEl() { return document.querySelector('#ph-detail .rc-ed'); }
+  function rcErr(t, reload) { var e = document.querySelector('#ph-detail [data-rc-err]'); if (e) e.innerHTML = esc(t) + (reload ? ' <button type="button" class="rc-btn" data-rc="reload" style="margin:4px 0 0;">重新整理</button>' : ''); }
+  function rcClick(ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-rc]') : null; if (!b) return;
+    var act = b.getAttribute('data-rc');
+    if (act === 'reload') { location.reload(); return; }
+    if (RC.saving || SENT) return;
+    if (act === 'edit') {
+      if (RC.unsure) return;
+      RC.open = Number(b.getAttribute('data-i')); RC.flash = null; rcDraw(); rcBusy('還有一筆更正沒存，存檔或取消後才能核可');
+      var row = document.getElementById('rc-row-' + RC.open); if (row) { try { row.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (eS) {} }
+      return;
+    }
+    if (act === 'cancel') { RC.open = -1; rcDraw(); rcBusy(''); return; }
+    if (act === 'search') { rcSearch(); return; }
+    if (act === 'save') rcSave();
+  }
+  function rcChange(ev) {
+    var t = ev.target; if (!t || t.name !== 'rct') return;
+    Array.prototype.forEach.call(document.querySelectorAll('#ph-detail .rc-tg label'), function (lb) { var i = lb.querySelector('input'); if (i && i.checked) lb.classList.add('on'); else lb.classList.remove('on'); });
+  }
+  function rcKey(ev) {
+    if (ev.key !== 'Enter' || !ev.target || ev.target.tagName !== 'INPUT') return;
+    ev.preventDefault();
+    if (ev.target.hasAttribute('data-rc-q')) rcSearch();
+  }
+  function rcSearch() {
+    var ed = rcEdEl(); if (!ed) return;
+    var q = String((ed.querySelector('[data-rc-q]') || {}).value || '').trim(), box = ed.querySelector('[data-rc-res]');
+    if (!q || !box) return;
+    box.innerHTML = '<div class="rc-note">搜尋中…</div>';
+    rcPost({ op: 'search', q: q }).then(function (j) {
+      if (!j || !j.ok) { box.innerHTML = '<div class="rc-err">' + esc((j && j.detail) || '搜尋失敗') + '</div>'; return; }
+      var have = {}; Array.prototype.forEach.call(ed.querySelectorAll('input[name=rct]'), function (i) { have[i.value] = 1; });
+      var cur = (ed.querySelector('input[name=rct]:checked') || {}).value || '';
+      var items = (j.items || []).filter(function (a) { return !have[a.materialId]; });
+      box.innerHTML = items.length ? items.map(function (a) { return rcAltOpt(a, cur); }).join('') : '<div class="rc-note">找不到其他符合「' + esc(q) + '」的材料</div>';
+    }).catch(function () { box.innerHTML = '<div class="rc-err">沒連上，請再按一次搜尋</div>'; });
+  }
+  function rcSave() {
+    var ed = rcEdEl(), d = RC.d; if (!ed || !d) return;
+    var i = Number(ed.getAttribute('data-i')), r = (d.rows || [])[i]; if (!r) return;
+    var val = function (k) { var x = ed.querySelector('[data-f="' + k + '"]'); return x ? String(x.value).trim() : ''; };
+    var set = {}, numStr = function (n) { return n ? String(n) : ''; };
+    if (val('name') !== r.name) set.name = val('name');
+    if (val('spec') !== String(r.spec || '')) set.spec = val('spec');
+    if (val('unit') !== String(r.unit || '')) set.unit = val('unit');
+    if (val('listPrice').replace(/,/g, '') !== numStr(r.listPrice)) set.listPrice = val('listPrice');
+    if (val('paid').replace(/,/g, '') !== numStr(r.paid)) set.paid = val('paid');
+    var ck = ed.querySelector('[data-f="listConfirmed"]'); if (ck && ck.checked !== !!r.listConfirmed) set.listConfirmed = ck.checked;
+    var pick = (ed.querySelector('input[name=rct]:checked') || {}).value || 'auto', target = pick === rcCur(r) ? 'keep' : pick;
+    if (!set.name && set.name !== undefined) { rcErr('品名不可空白'); return; }
+    if (!Object.keys(set).length && target === 'keep') { RC.open = -1; RC.flash = { text: '第 ' + (i + 1) + ' 筆沒有改動' }; rcDraw(); rcBusy(''); return; }
+    RC.saving = true; rcBusy('更正存檔中…');
+    Array.prototype.forEach.call(ed.querySelectorAll('button'), function (x) { x.disabled = true; });
+    rcErr('存檔中…');
+    rcPost({ op: 'edit', req: JSON.stringify({ ver: d.ver, ops: [{ i: i, set: set, target: target }] }) }).then(function (j) {
+      RC.saving = false;
+      if (j && j.ok && !(j.view && j.view.ok)) {   // 存了但沒帶回重算結果：頁面上的表格已經不是最新，核可鎖住、請他重新整理
+        rcErr('已存檔，但表格沒重算成功，請重新整理看最新明細再核可。', true);
+        rcUnsure('已存檔，但表格沒重算成功，請重新整理看最新明細再核可。');
+        return;
+      }
+      if (j && j.ok && j.view && j.view.ok) {
+        RC.open = -1;
+        var ch = (j.changed || []).map(function (c) { return (RC_FLD[c.field] || c.field) + ' ' + (c.from === '' ? '空白' : c.from) + ' → ' + (c.to === '' ? '空白' : c.to); });
+        RC.flash = { text: '已存檔：第 ' + (i + 1) + ' 筆' + (ch.length ? '，' + ch.join('、') : '（沒有改動）') + '。表格已重算。' };
+        rcBusy(''); rcMount(j.view);
+        return;
+      }
+      Array.prototype.forEach.call(ed.querySelectorAll('button'), function (x) { x.disabled = false; });
+      var reload = j && /^(stale|approval_closed|receipt_closed|not_owner|not_found)$/.test(String(j.error || ''));
+      rcErr('沒有存到：' + ((j && (j.detail || j.error)) || '後台沒回報原因'), reload);
+      if (reload) rcUnsure('沒有存到：' + ((j && (j.detail || j.error)) || '單據已變動') + '　請重新整理。'); else rcBusy('還有一筆更正沒存，存檔或取消後才能核可');
+    }).catch(function () {
+      RC.saving = false;
+      Array.prototype.forEach.call(ed.querySelectorAll('button'), function (x) { x.disabled = false; });
+      rcErr('沒收到回覆，不確定有沒有存到，請重新整理看最新明細。', true);   // 斷線、逾時、回應讀不懂：伺服器可能已經存了，不叫他重按
+      rcUnsure('沒收到回覆，不確定更正有沒有存到，請重新整理看最新明細。');
+    });
+  }
+
   function render(it) {
     var pl = it.payload || {}, res = it.result || it, status = it.status, type = it.type, isPub = (type === 'reels' || type === 'post');
     LOADED_STATUS = status || '';
@@ -309,6 +578,8 @@ form.busy button{opacity:.5;pointer-events:none;}
     CUR = { id: String(it.id || ''), title: String(it.title || ''), isCs: !!pl.lineReplyTo };
     SENTLOG.start(document.getElementById('sentBar'), { hide: CUR.id });
     HAS_PRESELECT = choiceList(pl).some(function (c) { return preIdx(c) >= 0; });
+    var DK = isPub ? '' : detailKindOf(pl);
+    DETAIL = DK ? { kind: DK, status: status } : null;
     var title = it.title || '', id = it.id, from = it.from;
     if (pl.reviewUrl && status === '待核可') {   // 專屬審核頁（排班等）：只跳我們自己的網域，其他當普通連結顯示
       var ru = null; try { ru = new URL(pl.reviewUrl, location.href); } catch (eU) { ru = null; }
@@ -335,16 +606,18 @@ form.busy button{opacity:.5;pointer-events:none;}
     if (pl.context) html += '<div class="ctx"><b>客戶脈絡</b>：' + esc(pl.context) + '</div>';
     (Array.isArray(pl.alertLines) ? pl.alertLines : []).forEach(function (al) { al = String(al == null ? '' : al).trim(); if (al) html += '<div class="alert-line">' + esc(al) + '</div>'; });
     if (pl.brief) html += '<div class="brief">' + esc(pl.brief) + '</div>';
-    if (pl.previewImages && pl.previewImages.length) html += '<div id="ph-preview" style="margin:8px 0;">' + pl.previewImages.map(function (pi) { return '<span class="pimg"><i></i>' + esc(pi.label) + '</span>'; }).join('') + '</div>';
+    if (pl.previewImages && pl.previewImages.length) html += '<div id="ph-preview" style="margin:8px 0;' + (DK ? 'display:none;' : '') + '">' + pl.previewImages.map(function (pi) { return '<span class="pimg"><i></i>' + esc(pi.label) + '</span>'; }).join('') + '</div>';
     if (pl.lineReplyTo && status === '待核可') html += '<div class="note" style="margin:6px 0 10px;"><a style="color:#5F6E58;font-size:14px;" href="' + esc(INBOX + '?cid=' + pl.lineReplyTo + '&t=' + Date.now() + '&openExternalBrowser=1') + '" target="_top">到對話收件匣處理這位（看整段對話、改稿、給意見、排程）</a></div>';
     html += '<div id="ph-conv" class="ph' + (status === '待核可' && pl.lineReplyTo ? ' loading' : '') + '">' + (status === '待核可' && pl.lineReplyTo ? '最近對話載入中…' : '') + '</div>';
     html += '<div id="ph-media" class="ph"></div>';
     if (status !== '待核可') {
       if (isPub) { if (pl.caption) html += '<div class="textbox">' + esc(pl.caption) + '</div>'; if (pl.firstComment) html += '<div class="note">首則留言：' + esc(pl.firstComment) + '</div>'; }
+      else if (DK) html += detailSlot(pl);
       else if (pl.text) html += '<div class="textbox">' + linkify(esc(pl.text)) + '</div>';
     }
     if (status === '待核可') {
       var confirmMsg = isPub ? '確定核可並發佈？（照頁面上的文案與排程時間）' : (pl.lineReplyTo ? '確定核可？定案文字會自動回覆給客戶。' : '確定核可？');
+      if (DK) html += detailSlot(pl);   // 放在核可表單外面：更正欄位按 Enter 不會變成按核可
       html += formHead();
       if (isPub) {
         if (pl.coverUrl) html += '<div class="editbox"><div class="schedlabel">封面標題（改字上方封面即時預覽；核可後系統通知植影所重燒新封面）</div><input type="text" name="coverTitle" maxlength="80" value="' + esc(pl.coverTitle || '') + '" oninput="var t=document.getElementById(\'covttl-' + esc(id) + '\');if(t)t.textContent=this.value;"></div>';
@@ -354,7 +627,8 @@ form.busy button{opacity:.5;pointer-events:none;}
         html += '<div class="schedbox"><div class="schedlabel">排程發佈時間（留空＝立即發佈）' + (pl.suggestAt ? '<span class="schedhint">投稿方建議：' + esc(pl.suggestAt) + '</span>' : '') + (reqAt ? '<span class="schedhint">投稿方請求排程 ' + esc(reqAt) + '（已預填、可改可清）</span>' : '') + '</div><input type="datetime-local" name="publishAt" value="' + esc(reqAt ? reqAt.replace(' ', 'T') : '') + '"></div>';
       } else {
         if (pl.fileLines && pl.fileLines.length) html += '<div class="editbox"><div class="schedlabel">附件連結（點開看內容）</div>' + pl.fileLines.map(function (l) { return '<div class="note">' + linkify(esc(l)) + '</div>'; }).join('') + '</div>';
-        html += '<div class="editbox"><div class="schedlabel">內容（可直接修改、核可以此版本為準）</div><textarea name="text" style="min-height:140px;">' + esc(pl.text || '') + '</textarea></div>';
+        if (DK) html += '<input type="hidden" name="detailVer" id="detailVer" value="">';   // 單據類卡：改卡片文字不會改到入庫資料，不給文字框；核可帶明細版本、主系統比對一致才入庫
+        else html += '<div class="editbox"><div class="schedlabel">內容（可直接修改、核可以此版本為準）</div><textarea name="text" style="min-height:140px;">' + esc(pl.text || '') + '</textarea></div>';
         if (pl.lineReplyTo) { var reqAtC = pl.publishAt || ''; html += '<div class="schedbox"><div class="schedlabel">指定發送時間（留空＝核可後立即發送）' + (reqAtC ? '<span class="schedhint">投稿方建議 ' + esc(reqAtC) + '（已預填、可改可清）</span>' : '') + '</div><input type="datetime-local" name="publishAt" value="' + esc(reqAtC ? reqAtC.replace(' ', 'T') : '') + '"></div>'; }
       }
       html += choicesHtml(pl);
@@ -560,7 +834,8 @@ form.busy button{opacity:.5;pointer-events:none;}
         put('ph-stage', fr.stage); put('ph-conv', fr.conv); put('ph-media', fr.media); put('ph-attach', fr.attach); put('ph-cal', fr.calendar);
         if (fr.previewImages && fr.previewImages.length) put('ph-preview', fr.previewImages.map(function (pi) { return '<span class="pimg">' + (pi.src ? '<img src="' + esc(pi.src) + '">' : '<i></i>') + esc(pi.label) + '</span>'; }).join(''));
         var fp = document.getElementById('fp'); if (fp && j.fp) fp.value = j.fp;
-        var ba = document.getElementById('btnApprove'), bh = document.getElementById('approveHint'); if (ba) ba.disabled = false; if (bh) bh.parentNode.removeChild(bh);
+        if (DETAIL) mountDetail(j.detail);
+        EXTRAS_OK = true; syncApprove();
         if (j.status && j.status !== status) { var n = document.createElement('div'); n.className = 'stale-banner'; n.innerHTML = '<span>這件的狀態剛變成「' + esc(j.status) + '」</span><span class="stale-hint">重新整理看最新內容。</span>'; app.insertBefore(n, app.firstChild); }
         var ver = document.getElementById('ver'); if (ver && j.serverVersion) ver.textContent = 'Pages · ' + j.serverVersion;
       })
@@ -571,6 +846,7 @@ form.busy button{opacity:.5;pointer-events:none;}
           : '';
         ['ph-conv', 'ph-attach'].forEach(function (id) { var el = document.getElementById(id); if (el && el.classList.contains('loading')) { el.classList.remove('loading'); el.innerHTML = failNote ? '<div class="note">' + esc(failNote) + '</div>' : '<div class="note">附掛項目這次沒載到，為了不發出你沒看過的內容，核可鈕保持鎖住；請用<a href="' + esc(gasPage) + '" target="_top">備用頁面</a>核可，或重新整理再試。退回與略過仍可在這裡按。</div>'; } });
         var bh = document.getElementById('approveHint'); if (bh) bh.textContent = '附掛項目沒載到、這裡不能核可';
+        if (DETAIL) detailFallback('連線失敗');
       });
   }
 
