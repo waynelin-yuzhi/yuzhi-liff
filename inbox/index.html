@@ -558,8 +558,8 @@ body.ns-open{overflow:hidden}
     t.value = before + ins + after; var pos = (before + ins).length; t.focus(); t.setSelectionRange(pos, pos);
     t.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; }
-  function showApp() { document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
+  function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; var fb = document.getElementById('fwdBox'); if (fb) fb.style.display = 'none'; }
+  function showApp() { document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block'; var fb = document.getElementById('fwdBox'); if (fb) fb.style.display = 'flex'; }   // 轉給員工的框沒關：重新進入後帶回來，字還在
   document.getElementById('gateSend').onclick = function () {
     var em = document.getElementById('gateEmail').value.trim(); if (!em) return; var btn = this; busy(btn, true, '寄送中');
     sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) {
@@ -1150,12 +1150,20 @@ body.ns-open{overflow:hidden}
   // 轉給員工的背景送出紀錄（2026-11-24 Wayne：按送出不用停在畫面上等）：存本機、重新整理還在；結果一律向主系統查 reqId 的實際狀態，不因請求送出去就算成功
   // 每筆綁登入者（Supabase 使用者 id）：登入過期不清（老闆的字不會不見），換別人登入看不到也不動；登出照舊全清
   var FWDLOG = (function () {
-    var KEY = 'yz_fwd_log', MAX = 10, DONE_SHOW = 6000, DONE_TTL = 600000, KEEP = 86400000, NONE_FAIL = 300000, UNSURE_CHECK = 1800000, LIVE = {}, lastHtml = null, el = null, ME = null, MEM = null;
+    var KEY = 'yz_fwd_log', MAX = 10, DONE_SHOW = 6000, DONE_TTL = 600000, KEEP = 86400000, NONE_FAIL = 300000, UNSURE_CHECK = 1800000, LIVE = {}, lastHtml = null, el = null, ME = null, MEM = null, MINE_NOW = {};
     // 主系統明確表示「一列都沒寫、卡也沒發」的代碼才算沒送出；其他 ok:false（換版、轉址落空、逾時、500）主系統可能已發卡，交給查狀態決定
     var FAIL_CODES = { send_failed: 1, employee_required: 1, text_required: 1, busy: 1, owner_only: 1, contactId_required: 1 };
     function read() { if (MEM) return MEM.slice(); try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (r) { return r && r.id && r.cid; }) : []; } catch (eR) { return []; } }
     function write(a) { if (MEM) { MEM = a; return; } try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) { MEM = a; } }   // 本機寫不進去：改記在記憶體，狀態列照常、提示重新整理後會不見
-    function who() { return sb.auth.getSession().then(function (r) { var ss = r && r.data && r.data.session; ME = ss ? String((ss.user && ss.user.id) || '') : null; return ME; }, function () { return ME; }); }
+    function who() { return sb.auth.getSession().then(function (r) { var ss = r && r.data && r.data.session; ME = ss ? String((ss.user && ss.user.id) || '') : null; if (ME !== null) claim(); return ME; }, function () { return ME; }); }
+    // 這個分頁這次開啟期間建的、當下沒拿到登入者的紀錄：由下一次拿到的登入者認領。別的分頁或之前留下的空白紀錄不認領（換人登入不可以看到上一位的內容）
+    function claim() {
+      var ids = Object.keys(MINE_NOW).filter(function (id) { return MINE_NOW[id]; }); if (!ids.length) return;
+      var a = read(), hit = false;
+      a.forEach(function (r) { if (MINE_NOW[r.id] && !r.u) { r.u = ME; r.checkedAt = 0; hit = true; } });
+      ids.forEach(function (id) { MINE_NOW[id] = 0; });
+      if (hit) write(prune(a));
+    }
     function mine(r) { return !!r && ME !== null && String(r.u || '') === ME; }
     function prune(a, now) {
       now = now || Date.now();
@@ -1188,7 +1196,7 @@ body.ns-open{overflow:hidden}
         update(r.id, { state: 'unsure', note: '連線中斷或逾時，正在向主系統確認有沒有送出', checkedAt: 0 });
       });
     }
-    function add(r) { who().then(function (u) { r.u = u || ''; r.state = 'run'; r.at = Date.now(); var a = read().filter(function (x) { return x.id !== r.id; }); a.unshift(r); write(prune(a)); draw(); send(r); }); }
+    function add(r) { MINE_NOW[r.id] = 1; who().then(function (u) { r.u = u || ''; if (u !== null) MINE_NOW[r.id] = 0; r.state = 'run'; r.at = Date.now(); var a = read().filter(function (x) { return x.id !== r.id; }); a.unshift(r); write(prune(a)); draw(); send(r); }); }
     function retry(id) { var r = get(id); if (!r || LIVE[id]) return; update(id, { state: 'run', note: '', at: Date.now(), nocheck: false }); send(get(id)); }
     function check(r) {
       update(r.id, r.state === 'fail' ? { failChecked: true } : { checkedAt: Date.now() });
@@ -1243,7 +1251,7 @@ body.ns-open{overflow:hidden}
     }
     function cycle() { if (document.getElementById('app').style.display === 'none') { draw(); return; } who().then(function () { var now = Date.now(); list().forEach(function (r) { if (due(r, now)) check(r); }); draw(); }); }
     setInterval(cycle, 2000);
-    return { add: add, retry: retry, list: list, cycle: cycle, draw: draw };
+    return { add: add, retry: retry, list: list, cycle: cycle, draw: draw, who: who };
   })();
   // 客訴轉負責員工：名單與預設負責人先回（不等 AI），交代文字另一個呼叫擬好再補；按送出就關框、背景交代（直接發老闆交代卡，不投核可）
   function openFwd(t, i) {
@@ -1311,7 +1319,12 @@ body.ns-open{overflow:hidden}
       if (!text) { msgEl.textContent = '交代內容不能空白'; return; }
       var opt = sel.options[sel.selectedIndex], empName = opt ? String(opt.textContent || '').replace(/（.*$|　.*$/, '') : empId;
       var rec = { id: fwdReq, cid: cid, cust: custName, emp: empId, empName: empName, text: text, msgText: msgText, photos: phSel() };
-      close(); FWDLOG.add(rec);
+      goB.disabled = true;
+      FWDLOG.who().then(function (u) {   // 先確定登入者才關框：讀不到就留在框裡（字不會不見），帶出登入畫面，重新進入後框會回來
+        goB.disabled = false;
+        if (u === null) { msgEl.textContent = '登入已過期，請重新進入後再送（你打的字留在這裡）'; showGate(); return; }
+        close(); FWDLOG.add(rec);
+      });
     };
   }
   // 群組／聊天室沒綁客戶、或對象類型不是客戶：算內部對話，只有本人放右邊
