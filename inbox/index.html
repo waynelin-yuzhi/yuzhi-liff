@@ -1180,9 +1180,10 @@ body.ns-open{overflow:hidden}
   // 標頭只講一件事，優先序：手動回覆 > 等你核可 > AI 正在擬稿 > 封鎖／黑名單 > 上次擬稿失敗（客戶還在等）> 稿已產生正在載入 > 引擎目前的判斷 > 上一輪沒擬的原因 > 客戶在等 > 沒事
   function headState(t) {
     var d = t.dossier || {}, lj = t.lastJob || null, fs = d.skip ? String(d.skipReason || '') : '';
-    if (t.manual || fs === 'manual_mode') return HEAD_WHY.manual_mode;
-    if (t.pending) return ['稿已擬好，等你核可', 'wait'];
+    var man = t.manual || fs === 'manual_mode';
+    if (t.pending) return [man ? '手動回覆中，有一份稿等你核可' : '稿已擬好，等你核可', 'wait'];
     if ((t.queue || []).length) return ['AI 正在擬稿', 'ap'];
+    if (man) return HEAD_WHY.manual_mode;
     if (fs === 'blocked' || fs === 'blocked_manual') return HEAD_WHY[fs];
     if (lj && (lj.runStatus === 'error' || (lj.state === 'dead' && !lj.apId)) && t.awaitingReply) return ['上次擬稿沒成功，可以按重擬', 'warn'];
     var settled = t.extrasLoaded === true && !t.extrasFailed;
