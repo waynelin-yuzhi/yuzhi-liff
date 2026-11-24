@@ -1271,6 +1271,7 @@ body.ns-open{overflow:hidden}
     var photos = []; (t.messages || []).forEach(function (x, j) { var ours = x.side === 'out' || x.side === 'owner' || x.side === 'employee'; if (!ours && x.kind === 'image' && x.img && STORAGE_OK.test(x.img)) photos.push({ url: x.img, on: Math.abs(j - i) <= 3 }); });
     var box = document.getElementById('fwdBox');
     if (!box) { box = document.createElement('div'); box.id = 'fwdBox'; box.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(27,26,23,.45);display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(box); }
+    box.style.display = 'flex'; box.removeAttribute('data-u');   // 沿用到先前被藏起來的框：一律重新顯示並重記開框的人
     box.innerHTML = '<div style="background:#FFFCF5;width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px 16px 22px"><div style="display:flex;justify-content:space-between;align-items:center"><b>轉給員工</b><button class="btn link" id="fwdX">關閉</button></div>'
       + '<div class="small muted" style="margin:6px 0">客戶反映：' + esc(msgText || '（照片）').slice(0, 160) + '</div>'
       + '<div class="small" style="margin-top:8px">收件員工</div><select id="fwdEmp" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff"><option value="">載入中…</option></select>'
@@ -1332,8 +1333,9 @@ body.ns-open{overflow:hidden}
       var rec = { id: fwdReq, cid: cid, cust: custName, emp: empId, empName: empName, text: text, msgText: msgText, photos: phSel() };
       goB.disabled = true;
       FWDLOG.who().then(function (u) {   // 先確定登入者才關框：讀不到就留在框裡（字不會不見），帶出登入畫面，重新進入後框會回來
+        if (!alive()) return;   // 等登入者回來的空檔，老闆已按取消或關閉：不送
         goB.disabled = false;
-        if (u === null) { msgEl.textContent = '登入已過期，請重新進入後再送（你打的字留在這裡）'; showGate(); return; }
+        if (u === null) { msgEl.textContent = '登入已過期，請重新進入後再送（你打的字留在這裡，先別重新整理或關掉 App）'; showGate(); return; }
         close(); FWDLOG.add(rec);
       });
     };
