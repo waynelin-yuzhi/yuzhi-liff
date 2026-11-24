@@ -101,6 +101,11 @@
   .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
   .small{font-size:12px}.muted{color:var(--muted)}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid #D9D3C4;border-top-color:var(--moss);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;margin-right:6px}
+  #fwdBar{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:75;max-width:520px;margin:0 auto;display:none;flex-direction:column;gap:6px;pointer-events:none}
+  #fwdBar .fb-row{pointer-events:auto;background:#fff;border:1px solid var(--line);border-left:4px solid #8A9A7B;border-radius:8px;box-shadow:0 2px 10px rgba(27,26,23,.12);padding:8px 10px;font-size:13px;line-height:1.5;color:var(--ink)}
+  #fwdBar .fb-row.done{border-left-color:#5F6E58} #fwdBar .fb-row.fail{border-left-color:#B5533C;background:#FBF1EC} #fwdBar .fb-row.unsure{border-left-color:#C9A227;background:#FBF6E6}
+  #fwdBar .fb-t{color:var(--muted);font-size:12px;overflow-wrap:anywhere} #fwdBar .fb-a{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px} #fwdBar .fb-a button{font-size:12px;padding:4px 10px}
+  body.has-fwdbar{padding-bottom:96px} @media(max-width:820px){ body:not(.view-thread) #fwdBar{bottom:calc(70px + env(safe-area-inset-bottom))} body.has-fwdbar:not(.view-thread){padding-bottom:calc(150px + env(safe-area-inset-bottom))} }
   @keyframes sp{to{transform:rotate(360deg)}}
   .loading{padding:18px 8px;color:var(--muted);font-size:13px}
   .att{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
@@ -553,8 +558,15 @@ body.ns-open{overflow:hidden}
     t.value = before + ins + after; var pos = (before + ins).length; t.focus(); t.setSelectionRange(pos, pos);
     t.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; }
-  function showApp() { document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
+  function showGate() { document.getElementById('gate').style.display = 'block'; document.getElementById('app').style.display = 'none'; var fb = document.getElementById('fwdBox'); if (fb) fb.style.display = 'none'; if (typeof FWDLOG !== 'undefined') FWDLOG.lock(); }
+  function showApp() {
+    document.getElementById('gate').style.display = 'none'; document.getElementById('app').style.display = 'block';
+    if (typeof FWDLOG === 'undefined') return;
+    FWDLOG.who().then(function (u) {   // 轉給員工的框沒關：同一個人重新進入才帶回來（字還在）；換了別人就整個移除，不露出上一位打的字與客戶訊息
+      var fb = document.getElementById('fwdBox'); if (fb && fb.style.display === 'none') { if (u !== null && fb.getAttribute('data-u') === u) fb.style.display = 'flex'; else if (u !== null) fb.remove(); }
+      FWDLOG.draw();
+    });
+  }
   document.getElementById('gateSend').onclick = function () {
     var em = document.getElementById('gateEmail').value.trim(); if (!em) return; var btn = this; busy(btn, true, '寄送中');
     sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: false } }).then(function (r) {
@@ -570,7 +582,7 @@ body.ns-open{overflow:hidden}
       showApp(); boot();
     });
   };
-  document.getElementById('leave').onclick = function () { clearLocalEdits(); sb.auth.signOut().then(function () { location.reload(); }); };
+  document.getElementById('leave').onclick = function () { clearLocalEdits(); try { localStorage.removeItem('yz_fwd_log'); } catch (eFl) {} sb.auth.signOut().then(function () { location.reload(); }); };
   // 動作完成後的刷新一律走 quiet（保留輸入）；force 指定剛被動作用掉的區塊要重畫，其餘區塊有沒送出的輸入就留著（2026-11-18）
   function refreshAll(fresh, force) { if (fresh) OV.stale = true; forcePaint(force); loadList(null, fresh); if (cur) openThread(cur, true); }
 
@@ -1142,46 +1154,190 @@ body.ns-open{overflow:hidden}
       + '<div class="row"><textarea id="memNote" rows="2" placeholder="你的補充（引擎每次都會讀、不會被覆蓋）" style="flex:1;min-width:200px;font-size:12px;padding:6px;border:1px solid var(--line);font-family:inherit">' + esc(memo.note || '') + '</textarea><button class="btn ghost small" id="memSave">存補充</button></div>'
       + '</div></details>';
   }
-  // 客訴轉負責員工：先向後台拿預設負責人＋交代文案（引擎同事口吻），Wayne 改完按送出＝直接發老闆交代卡（不再投核可）
+  // 轉給員工的背景送出紀錄（2026-11-24 Wayne：按送出不用停在畫面上等）：存本機、重新整理還在；結果一律向主系統查 reqId 的實際狀態，不因請求送出去就算成功
+  // 每筆綁登入者（Supabase 使用者 id）：登入過期不清（老闆的字不會不見），換別人登入看不到也不動；登出照舊全清
+  var FWDLOG = (function () {
+    var KEY = 'yz_fwd_log', MAX = 10, DONE_SHOW = 6000, DONE_TTL = 600000, KEEP = 86400000, NONE_FAIL = 300000, UNSURE_CHECK = 1800000, LIVE = {}, lastHtml = null, el = null, ME = null, MEM = null, MINE_NOW = {}, LAST_ME = null;
+    // 主系統明確表示「一列都沒寫、卡也沒發」的代碼才算沒送出；其他 ok:false（換版、轉址落空、逾時、500）主系統可能已發卡，交給查狀態決定
+    var FAIL_CODES = { send_failed: 1, employee_required: 1, text_required: 1, busy: 1, owner_only: 1, contactId_required: 1 };
+    function read() { if (MEM) return MEM.slice(); try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (r) { return r && r.id && r.cid; }) : []; } catch (eR) { return []; } }
+    function write(a) { if (MEM) { MEM = a; return; } try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) { MEM = a; } }   // 本機寫不進去：改記在記憶體，狀態列照常、提示重新整理後會不見
+    function lock() { ME = null; lastHtml = null; if (el) { el.innerHTML = ''; el.style.display = 'none'; } document.body.classList.remove('has-fwdbar'); }   // 登入畫面期間：狀態列清空、不認得任何人，等重新取得登入者再畫（換人登入不會先閃出上一位的列）
+    function who() { return sb.auth.getSession().then(function (r) { var ss = r && r.data && r.data.session; ME = ss ? String((ss.user && ss.user.id) || '') : null; if (ME !== null) { claim(LAST_ME); LAST_ME = ME; } return ME; }, function () { return ME; }); }
+    // 這個分頁這次開啟期間建的、當下沒拿到登入者的紀錄：只有「這個分頁上一位登入者」重新進入時才認領。
+    // 換了別人登入、或這個分頁從沒認得過誰，一律不認領（換人登入不可以看到上一位的內容）；別的分頁或之前留下的空白紀錄也不認領
+    function claim(prev) {
+      var ids = Object.keys(MINE_NOW).filter(function (id) { return MINE_NOW[id]; }); if (!ids.length) return;
+      if (prev === null || prev !== ME) { ids.forEach(function (id) { MINE_NOW[id] = 0; }); return; }
+      var a = read(), hit = false;
+      a.forEach(function (r) { if (MINE_NOW[r.id] && !r.u) { r.u = ME; r.checkedAt = 0; hit = true; } });
+      ids.forEach(function (id) { MINE_NOW[id] = 0; });
+      if (hit) write(prune(a));
+    }
+    function mine(r) { return !!r && ME !== null && String(r.u || '') === ME; }
+    function prune(a, now) {
+      now = now || Date.now();
+      a = a.filter(function (r) { return r.state === 'done' ? now - (r.doneAt || r.at || 0) < DONE_TTL : now - (r.at || 0) < KEEP; });
+      a.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
+      return a.slice(0, MAX);
+    }
+    function list() { return prune(read()).filter(mine); }
+    function get(id) { var r = read().filter(function (x) { return x.id === id; })[0] || null; return mine(r) ? r : null; }
+    function update(id, patch) {
+      var a = read();
+      a.forEach(function (r) { if (r.id !== id) return; var was = r.state; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== was) r.doneAt = Date.now(); });
+      write(prune(a)); draw();
+    }
+    function remove(id) { if (!get(id)) return; write(read().filter(function (r) { return r.id !== id; })); draw(); }
+    function send(r) {
+      LIVE[r.id] = 1;
+      api({ app: { op: 'staffForward', contactId: r.cid, employeeId: r.emp, text: r.text, msgText: r.msgText, photoUrls: r.photos || [], reqId: r.id } }, true).then(function (d) {
+        delete LIVE[r.id];
+        if (d && d.ok) { update(r.id, { state: 'done', note: String(d.result || '') }); if (cur === r.cid) setTimeout(function () { refreshAll(true); }, 1500); return; }
+        var err = String((d && d.error) || '');
+        if (err === 'in_progress') { update(r.id, { state: 'run', checkedAt: Date.now() }); return; }
+        if (err === 'state_unknown') { update(r.id, { state: 'unsure', note: String((d && d.detail) || '主系統沒有回報結果'), nocheck: true }); return; }
+        if (FAIL_CODES[err]) { update(r.id, { state: 'fail', note: friendlyErr((d && (d.detail || d.error)) || '主系統沒回報原因'), failChecked: false }); return; }
+        update(r.id, { state: 'unsure', note: '主系統回應不明，可能已經送到，正在確認；確認前先別自己再傳一次', checkedAt: 0, nocheck: false });
+      }).catch(function (e) {
+        delete LIVE[r.id];
+        var em = String((e && e.message) || '');
+        if (/連線已失效|請先進入/.test(em)) { update(r.id, { state: 'unsure', note: '登入失效，重新進入後會自動確認有沒有送出', checkedAt: 0 }); return; }
+        update(r.id, { state: 'unsure', note: '連線中斷或逾時，正在向主系統確認有沒有送出', checkedAt: 0 });
+      });
+    }
+    function add(r) { MINE_NOW[r.id] = 1; who().then(function (u) { r.u = u || ''; if (u !== null) MINE_NOW[r.id] = 0; r.state = 'run'; r.at = Date.now(); var a = read().filter(function (x) { return x.id !== r.id; }); a.unshift(r); write(prune(a)); draw(); send(r); }); }
+    function retry(id) { var r = get(id); if (!r || LIVE[id]) return; update(id, { state: 'run', note: '', at: Date.now(), nocheck: false }); send(get(id)); }
+    function check(r) {
+      update(r.id, r.state === 'fail' ? { failChecked: true } : { checkedAt: Date.now() });
+      // employeeId 給一個不存在的代號：舊主系統不認 status，會當一般 dryRun 回名單但不擬稿（不花 AI、不送）
+      api({ app: { op: 'staffForward', contactId: r.cid, dryRun: 'status', reqId: r.id, employeeId: '-' } }, true).then(function (d) {
+        if (LIVE[r.id] || !d || !d.ok || !get(r.id)) return;
+        var now = Date.now(), fs = String(d.fwdStatus || '');
+        if (r.state === 'fail') {   // 標了沒送出的也查一次：查到已完成或還在送就改，其餘維持沒送出
+          if (fs === 'done') { update(r.id, { state: 'done', note: String(d.result || '') }); if (cur === r.cid) setTimeout(function () { refreshAll(true); }, 1500); }
+          else if (fs === 'pending') update(r.id, { state: 'run' });
+          return;
+        }
+        if (!fs) { update(r.id, { state: 'unsure', note: '主系統還不能查交代結果，請先看員工有沒有收到；再交代一次可能會重複', nocheck: true }); return; }
+        if (fs === 'done') { update(r.id, { state: 'done', note: String(d.result || '') }); if (cur === r.cid) setTimeout(function () { refreshAll(true); }, 1500); }
+        else if (fs === 'failed') update(r.id, { state: 'fail', note: friendlyErr(d.detail || '指導紀錄沒寫成') });
+        else if (fs === 'pending') { if (r.state !== 'run') update(r.id, { state: 'run' }); }
+        else if (fs === 'stale') update(r.id, { state: 'unsure', note: '主系統沒有回報結果，請先看員工有沒有收到', nocheck: true });
+        else if (fs === 'none' && now - (r.at || 0) > NONE_FAIL) update(r.id, { state: 'fail', note: '主系統查不到這筆，可能沒收到。先看員工有沒有收到，沒有再按重試', failChecked: true });
+      }).catch(function () {});
+    }
+    function due(r, now) {
+      if (LIVE[r.id] || document.hidden) return false;
+      if (r.state === 'run') return now - (r.checkedAt || 0) >= 5000;
+      if (r.state === 'unsure' && !r.nocheck) return now - (r.at || 0) < UNSURE_CHECK && now - (r.checkedAt || 0) >= ((r.checkedAt || 0) ? 30000 : 0);
+      if (r.state === 'fail' && r.failChecked === false) return now - (r.doneAt || 0) >= 3000;
+      return false;
+    }
+    function shown(r, now) { return r.state !== 'done' || now - (r.doneAt || 0) < DONE_SHOW || r.cid === cur; }
+    function copy(id, btn) {
+      var r = get(id); if (!r) return;
+      var said = function (t) { if (btn) { btn.textContent = t; setTimeout(function () { if (btn.isConnected) btn.textContent = '複製文字'; }, 2000); } };
+      var fallback = function () { var ta = document.createElement('textarea'); ta.value = r.text; ta.style.cssText = 'position:fixed;top:-200px;opacity:0'; document.body.appendChild(ta); ta.select(); var okC = false; try { okC = document.execCommand('copy'); } catch (eC) {} ta.remove(); said(okC ? '已複製' : '複製失敗'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(r.text).then(function () { said('已複製'); }, fallback); else fallback();
+    }
+    function row(r, now) {
+      var who = esc(r.empName || r.emp || '員工'), cust = r.cust ? '<span class="fb-t">（' + esc(r.cust) + '）</span>' : '';
+      var snip = '<div class="fb-t">交代內容：' + esc(String(r.text || '').slice(0, 80)) + (String(r.text || '').length > 80 ? '…' : '') + '</div>';
+      var x = '<button type="button" class="btn ghost" data-fb="x" data-id="' + esc(r.id) + '">知道了</button>', cp = '<button type="button" class="btn ghost" data-fb="copy" data-id="' + esc(r.id) + '">複製文字</button>';
+      if (r.state === 'run') { var sec = Math.round((now - (r.at || now)) / 1000); return '<div class="fb-row run"><span class="spin"></span>正在交代給 ' + who + cust + (sec >= 10 ? '<span class="fb-t">　已 ' + sec + ' 秒，可以先做別的</span>' : '') + '</div>'; }
+      if (r.state === 'done') return '<div class="fb-row done">已交代給 ' + who + cust + (r.note ? '<div class="fb-t">' + esc(r.note) + '</div>' : '') + (r.cid === cur && now - (r.doneAt || 0) >= DONE_SHOW ? '<div class="fb-a">' + x + '</div>' : '') + '</div>';
+      if (r.state === 'fail') return '<div class="fb-row fail">交代給 ' + who + ' 沒送出' + cust + '<div class="fb-t">' + esc(r.note || '') + '</div>' + snip + '<div class="fb-a"><button type="button" class="btn main" data-fb="retry" data-id="' + esc(r.id) + '">重試</button>' + cp + x + '</div></div>';
+      return '<div class="fb-row unsure">不確定有沒有交代到 ' + who + cust + '<div class="fb-t">' + esc(r.note || '') + '</div>' + snip + '<div class="fb-a">' + cp + x + '</div></div>';
+    }
+    function draw() {
+      if (!el) { el = document.createElement('div'); el.id = 'fwdBar'; el.setAttribute('role', 'status'); document.body.appendChild(el);
+        el.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-fb]') : null; if (!b) return; var id = b.getAttribute('data-id'), k = b.getAttribute('data-fb'); if (k === 'x') remove(id); else if (k === 'retry') retry(id); else if (k === 'copy') copy(id, b); }); }
+      var now = Date.now(), appOn = document.getElementById('app').style.display !== 'none';
+      var a = appOn ? list().filter(function (r) { return shown(r, now); }) : [];
+      var h = (a.length && MEM ? '<div class="fb-row unsure">這台裝置無法在本機記錄，重新整理或關掉 App 後，這裡的紀錄會不見；結果出來前先別離開</div>' : '') + a.map(function (r) { return row(r, now); }).join('');
+      if (h !== lastHtml) { el.innerHTML = h; lastHtml = h; }
+      el.style.display = a.length ? 'flex' : 'none'; document.body.classList.toggle('has-fwdbar', !!a.length);
+    }
+    function cycle() { if (document.getElementById('app').style.display === 'none') { draw(); return; } who().then(function () { var now = Date.now(); list().forEach(function (r) { if (due(r, now)) check(r); }); draw(); }); }
+    setInterval(cycle, 2000);
+    return { add: add, retry: retry, list: list, cycle: cycle, draw: draw, who: who, lock: lock, me: function () { return ME; } };
+  })();
+  // 客訴轉負責員工：名單與預設負責人先回（不等 AI），交代文字另一個呼叫擬好再補；按送出就關框、背景交代（直接發老闆交代卡，不投核可）
   function openFwd(t, i) {
     var m = (t.messages || [])[i]; if (!m) return;
     var msgText = m.kind === 'text' ? String(m.text || '') : '';
+    var cid = cur, custName = String(t.name || '');
     var photos = []; (t.messages || []).forEach(function (x, j) { var ours = x.side === 'out' || x.side === 'owner' || x.side === 'employee'; if (!ours && x.kind === 'image' && x.img && STORAGE_OK.test(x.img)) photos.push({ url: x.img, on: Math.abs(j - i) <= 3 }); });
     var box = document.getElementById('fwdBox');
     if (!box) { box = document.createElement('div'); box.id = 'fwdBox'; box.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(27,26,23,.45);display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(box); }
+    box.style.display = 'flex'; box.removeAttribute('data-u');   // 沿用到先前被藏起來的框：一律重新顯示並重記開框的人
     box.innerHTML = '<div style="background:#FFFCF5;width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px 16px 22px"><div style="display:flex;justify-content:space-between;align-items:center"><b>轉給員工</b><button class="btn link" id="fwdX">關閉</button></div>'
       + '<div class="small muted" style="margin:6px 0">客戶反映：' + esc(msgText || '（照片）').slice(0, 160) + '</div>'
       + '<div class="small" style="margin-top:8px">收件員工</div><select id="fwdEmp" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff"><option value="">載入中…</option></select>'
-      + '<div class="small" style="margin-top:8px">交代內容（送出前可再改）</div><textarea id="fwdText" rows="6" style="width:100%" placeholder="客服擬稿中…"></textarea>'
+      + '<div class="small" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span>交代內容（可以直接打，送出前可再改）</span><button type="button" class="btn ghost small" id="fwdUseAi" style="display:none">用客服擬的</button></div><textarea id="fwdText" rows="6" style="width:100%" placeholder="可以先自己打；客服擬好會自動填進來，你打過字就不會蓋掉"></textarea>'
+      + '<div class="small muted" id="fwdAiPrev" style="display:none;white-space:pre-wrap;margin-top:4px;padding:6px 8px;border:1px dashed var(--line);border-radius:6px"></div>'
       + (photos.length ? '<div class="small" style="margin-top:8px">附客戶照片</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + photos.map(function (ph, k) { return '<label style="display:block;width:84px"><img src="' + esc(ph.url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=200') + '" style="width:84px;height:84px;object-fit:cover;border-radius:6px;display:block"><input type="checkbox" class="fwdPh" value="' + esc(ph.url) + '"' + (ph.on ? ' checked' : '') + '> 附上</label>'; }).join('') + '</div>' : '')
       + '<div class="small muted" id="fwdMsg" style="margin-top:8px"></div>'
-      + '<div class="actions" style="margin-top:10px"><button class="btn main" id="fwdGo" disabled>送出給員工</button><button class="btn ghost" id="fwdCancel">取消</button></div></div>';
+      + '<div class="actions" style="margin-top:10px"><button class="btn main" id="fwdGo" disabled>送出給員工</button><button class="btn ghost" id="fwdCancel">取消</button></div><div class="small muted" style="margin-top:6px">送出後這個框會關掉，可以繼續做別的；結果顯示在畫面下方。</div></div>';
     var close = function () { box.remove(); };
-    var fwdReq = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // 同一次開框只送一次（逾時重按不會重複發卡）
+    if (FWDLOG.me() !== null) box.setAttribute('data-u', FWDLOG.me()); else FWDLOG.who().then(function (u) { if (u !== null && !box.hasAttribute('data-u')) box.setAttribute('data-u', u); });   // 記下開框的人：登入失效後換人登入不帶回這個框
+    var fwdReq = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // 同一次開框一個 reqId：重試沿用，主系統只發一次卡
+    var sel = document.getElementById('fwdEmp'), ta = document.getElementById('fwdText'), msgEl = document.getElementById('fwdMsg'), goB = document.getElementById('fwdGo'), useB = document.getElementById('fwdUseAi'), prevEl = document.getElementById('fwdAiPrev');
+    var alive = function () { return document.body.contains(sel); };
+    var autoText = '', aiText = '', touched = false, draftSeq = 0;
     document.getElementById('fwdX').onclick = close; document.getElementById('fwdCancel').onclick = close;
+    ta.addEventListener('input', function () { touched = ta.value !== autoText; });
     var phSel = function () { return Array.prototype.map.call(box.querySelectorAll('.fwdPh:checked'), function (c) { return c.value; }); };
-    run('csInboxStaffForward', [{ contactId: cur, msgText: msgText, photoUrls: photos.filter(function (x) { return x.on; }).map(function (x) { return x.url; }), dryRun: true }], function (r) {
-      if (!r || !r.ok) { document.getElementById('fwdMsg').textContent = '讀取失敗：' + friendlyErr((r && (r.detail || r.error)) || ''); return; }
-      var sel = document.getElementById('fwdEmp'); sel.innerHTML = '<option value="">（選員工）</option>' + (r.employees || []).map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.id === r.employeeId ? ' selected' : '') + '>' + esc(e.name) + (e.nick ? '（' + esc(e.nick) + '）' : '') + (e.id === r.defaultEmployeeId ? '　現任負責人' : '') + '</option>'; }).join('');
-      document.getElementById('fwdText').value = r.text || ''; document.getElementById('fwdGo').disabled = false;
-      if (!r.defaultEmployeeId) document.getElementById('fwdMsg').textContent = '這位客戶查不到現任負責人，請自己選；選了之後客服會擬交代。';
-      sel.onchange = function () {   // 換人＝重擬（稱呼與口吻跟著人走）；Wayne 已改過的字不動
-        var ta = document.getElementById('fwdText'); if (!sel.value) return; if (ta.value && ta.value !== (ta.getAttribute('data-auto') || '')) return;
-        document.getElementById('fwdMsg').textContent = '客服擬稿中…';
-        run('csInboxStaffForward', [{ contactId: cur, employeeId: sel.value, msgText: msgText, photoUrls: phSel(), dryRun: true }], function (r2) { if (r2 && r2.ok && r2.text) { ta.value = r2.text; ta.setAttribute('data-auto', r2.text); } document.getElementById('fwdMsg').textContent = ''; });
-      };
-      document.getElementById('fwdText').setAttribute('data-auto', r.text || '');
-    });
-    document.getElementById('fwdGo').onclick = function () {
-      var empId = document.getElementById('fwdEmp').value, text = document.getElementById('fwdText').value.trim();
-      if (!empId) { document.getElementById('fwdMsg').textContent = '請選收件員工'; return; }
-      if (!text) { document.getElementById('fwdMsg').textContent = '交代內容不能空白'; return; }
-      var b = this; busy(b, true, '送出中');
-      run('csInboxStaffForward', [{ contactId: cur, employeeId: empId, text: text, msgText: msgText, photoUrls: phSel(), reqId: fwdReq }], function (r) {
-        busy(b, false);
-        if (r && r.ok) { close(); stat(r.result || '已送給員工'); setTimeout(function () { refreshAll(true); }, 1500); }
-        else document.getElementById('fwdMsg').textContent = '失敗：' + friendlyErr((r && (r.detail || r.error)) || '');
-      }, function () { b.disabled = true; b.textContent = '結果未知'; document.getElementById('fwdMsg').textContent = '連線逾時、不確定有沒有送出。先關掉這個框、重新整理看員工有沒有收到，別直接再按（再按也只會送一次）。'; });
+    var fill = function (txt) { ta.value = txt; autoText = txt; touched = false; useB.style.display = 'none'; prevEl.style.display = 'none'; };
+    useB.onclick = function () { if (aiText) fill(aiText); };
+    var offer = function (txt) {   // 他還沒動過（或清空了）才直接填；打過字就放旁邊讓他選
+      aiText = txt;
+      if (!touched || !ta.value.trim()) { fill(txt); return; }
+      prevEl.textContent = '客服擬的：' + txt; prevEl.style.display = 'block'; useB.style.display = '';
+    };
+    var draft = function (empId) {
+      var my = ++draftSeq; msgEl.textContent = '客服擬稿中…（可以先自己打或直接送出）';
+      useB.style.display = 'none'; prevEl.style.display = 'none';
+      run('csInboxStaffForward', [{ contactId: cid, employeeId: empId, msgText: msgText, photoUrls: phSel(), dryRun: true }], function (r2) {
+        if (!alive() || my !== draftSeq || sel.value !== empId) return;
+        msgEl.textContent = (r2 && r2.ok && r2.text) ? '' : '這次客服沒擬出來，請自己打交代內容。';
+        if (r2 && r2.ok && r2.text) offer(r2.text);
+      }, function () { if (alive() && my === draftSeq) msgEl.textContent = '客服擬稿沒回來，請自己打交代內容。'; });
+    };
+    var loadNames = function () {
+      msgEl.textContent = '';
+      // employeeId 給不存在的代號：舊主系統不認 dryRun='list'，這樣它也只回名單、不擬稿
+      run('csInboxStaffForward', [{ contactId: cid, msgText: msgText, photoUrls: photos.filter(function (x) { return x.on; }).map(function (x) { return x.url; }), dryRun: 'list', employeeId: '-' }], function (r) {
+        if (!alive()) return;
+        if (!r || !r.ok) { msgEl.innerHTML = '讀取員工名單失敗：' + esc(friendlyErr((r && (r.detail || r.error)) || '')) + ' <button type="button" class="btn link" id="fwdReload">再試一次</button>'; document.getElementById('fwdReload').onclick = loadNames; return; }
+        var dflt = String(r.defaultEmployeeId || '');
+        sel.innerHTML = '<option value="">（選員工）</option>' + (r.employees || []).map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.id === dflt ? ' selected' : '') + '>' + esc(e.name) + (e.nick ? '（' + esc(e.nick) + '）' : '') + (e.id === dflt ? '　現任負責人' : '') + '</option>'; }).join('');
+        goB.disabled = false;
+        if (r.customer && r.customer.name && !custName) custName = String(r.customer.name);
+        if (r.text && sel.value) offer(String(r.text));
+        else if (sel.value) draft(sel.value);
+        else msgEl.textContent = '這位客戶查不到現任負責人，請自己選；選了之後客服會擬交代。';
+        sel.onchange = function () {   // 換人＝重擬（稱呼與口吻跟著人走）；他已改過的字不動
+          if (!sel.value) return; if (ta.value && ta.value !== autoText) { useB.style.display = 'none'; prevEl.style.display = 'none'; return; }
+          draft(sel.value);
+        };
+      }, function () { if (alive()) { msgEl.innerHTML = '讀取員工名單沒回來 <button type="button" class="btn link" id="fwdReload">再試一次</button>'; document.getElementById('fwdReload').onclick = loadNames; } });
+    };
+    loadNames();
+    goB.onclick = function () {
+      var empId = sel.value, text = ta.value.trim();
+      if (!empId) { msgEl.textContent = '請選收件員工'; return; }
+      if (!text) { msgEl.textContent = '交代內容不能空白'; return; }
+      var opt = sel.options[sel.selectedIndex], empName = opt ? String(opt.textContent || '').replace(/（.*$|　.*$/, '') : empId;
+      var rec = { id: fwdReq, cid: cid, cust: custName, emp: empId, empName: empName, text: text, msgText: msgText, photos: phSel() };
+      goB.disabled = true;
+      FWDLOG.who().then(function (u) {   // 先確定登入者才關框：讀不到就留在框裡（字不會不見），帶出登入畫面，重新進入後框會回來
+        if (!alive()) return;   // 等登入者回來的空檔，老闆已按取消或關閉：不送
+        goB.disabled = false;
+        if (u === null) { msgEl.textContent = '登入已過期，請重新進入後再送（你打的字留在這裡，先別重新整理或關掉 App）'; showGate(); return; }
+        close(); FWDLOG.add(rec);
+      });
     };
   }
   // 群組／聊天室沒綁客戶、或對象類型不是客戶：算內部對話，只有本人放右邊
@@ -1712,7 +1868,7 @@ body.ns-open{overflow:hidden}
   document.getElementById('back').onclick = function () { stashSave(); try { sessionStorage.removeItem('yz_open'); } catch (eBk) {} document.body.classList.remove('view-thread'); cur = null; THREAD = null; renderList(); window.scrollTo(0, 0); };
   document.getElementById('reload').onclick = function () { refreshAll(true, ['dossier', 'pend', 'compose']); };   // 自己按的重新整理：三區都重畫，輸入照樣保留
   var BOOTED = false;
-  function boot() { if (BOOTED) return; BOOTED = true; var startCid = INIT_CID || '';
+  function boot() { if (BOOTED) return; BOOTED = true; FWDLOG.who(); var startCid = INIT_CID || '';
     /* 分頁被回收或整頁重載：有沒送出的內容、或有結果不明待確認的件，就直接回到那位的對話（打開時會自動回查） */ if (!startCid) { try { var yo = JSON.parse(sessionStorage.getItem('yz_open') || 'null'); if (yo && yo.cid && Date.now() - Number(yo.at || 0) < 30 * 60000 && (stashGet(yo.cid) || hasUnsure(yo.cid))) startCid = String(yo.cid).replace(/[^A-Za-z0-9]/g, '').substring(0, 40); } catch (eYo) {} }
     if (INIT_CID) { try { history.replaceState(null, '', location.pathname); } catch (eH) {} } loadList(function () { if (startCid) { openThread(startCid); INIT_CID = ''; } }); poll(); }
   sb.auth.getSession().then(function (r) { if (r.data && r.data.session) { showApp(); boot(); } else showGate(); });
