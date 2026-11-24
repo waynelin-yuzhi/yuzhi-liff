@@ -437,7 +437,7 @@ details.rawtxt{margin:4px 0 10px;}details.rawtxt .textbox{font-size:13px;margin-
     if (r.action === 'create' && r.needSpec) w.push('規格待補（入庫後到材料主檔補）');
     if (r.listConfirmed && r.listPrice && r.listPrice <= r.paid) w.push('牌價等於實付，已確認沒折扣');
     if (w.length) h2 += '<div class="rc-warn">' + w.map(esc).join('<br>') + '</div>';
-    if (d.editable) h2 += RC.open === r.i ? rcEditor(r) : (RC.open < 0 ? '<button type="button" class="rc-btn" data-rc="edit" data-i="' + r.i + '">更正這筆</button>' : '');   // 有一筆在更正時不給別筆的鈕：切過去會無聲丟掉沒存的輸入
+    if (d.editable) h2 += RC.open === r.i ? rcEditor(r) : (RC.open < 0 && !RC.unsure ? '<button type="button" class="rc-btn" data-rc="edit" data-i="' + r.i + '">更正這筆</button>' : '');   // 有一筆在更正時不給別筆的鈕：切過去會無聲丟掉沒存的輸入
     return h2 + '</div>';
   }
   function rcCur(r) { return r.action === 'skip' ? 'skip' : (r.manual && r.action === 'create' ? 'create' : (r.manual && r.action === 'update' ? r.materialId : 'auto')); }
@@ -478,7 +478,9 @@ details.rawtxt{margin:4px 0 10px;}details.rawtxt .textbox{font-size:13px;margin-
     }
     rcDraw();
   }
-  function rcBusy(t) { DETAIL_BUSY = t || ''; syncApprove(); }
+  // 不確定狀態（沒收到回覆、存了沒重算、單據已被別處改動）：只能重新整理，取消或點別筆都不會解鎖核可
+  function rcUnsure(msg) { RC.unsure = msg; RC.flash = { bad: true, text: msg, reload: true }; rcBusy(msg); }
+  function rcBusy(t) { if (!t && RC.unsure) t = RC.unsure; DETAIL_BUSY = t || ''; syncApprove(); }
   function rcPost(params) {
     var b = new URLSearchParams(); b.append('approvalDetailEdit', '1'); b.append('h', h); b.append('kind', 'materialReceipt');
     Object.keys(params).forEach(function (k) { b.append(k, params[k]); });
@@ -495,6 +497,7 @@ details.rawtxt{margin:4px 0 10px;}details.rawtxt .textbox{font-size:13px;margin-
     if (act === 'reload') { location.reload(); return; }
     if (RC.saving || SENT) return;
     if (act === 'edit') {
+      if (RC.unsure) return;
       RC.open = Number(b.getAttribute('data-i')); RC.flash = null; rcDraw(); rcBusy('還有一筆更正沒存，存檔或取消後才能核可');
       var row = document.getElementById('rc-row-' + RC.open); if (row) { try { row.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (eS) {} }
       return;
@@ -546,7 +549,7 @@ details.rawtxt{margin:4px 0 10px;}details.rawtxt .textbox{font-size:13px;margin-
       RC.saving = false;
       if (j && j.ok && !(j.view && j.view.ok)) {   // 存了但沒帶回重算結果：頁面上的表格已經不是最新，核可鎖住、請他重新整理
         rcErr('已存檔，但表格沒重算成功，請重新整理看最新明細再核可。', true);
-        rcBusy('已存檔但表格沒重算，請重新整理');
+        rcUnsure('已存檔，但表格沒重算成功，請重新整理看最新明細再核可。');
         return;
       }
       if (j && j.ok && j.view && j.view.ok) {
@@ -559,12 +562,12 @@ details.rawtxt{margin:4px 0 10px;}details.rawtxt .textbox{font-size:13px;margin-
       Array.prototype.forEach.call(ed.querySelectorAll('button'), function (x) { x.disabled = false; });
       var reload = j && /^(stale|approval_closed|receipt_closed|not_owner|not_found)$/.test(String(j.error || ''));
       rcErr('沒有存到：' + ((j && (j.detail || j.error)) || '後台沒回報原因'), reload);
-      rcBusy(reload ? '單據已變動，請重新整理' : '還有一筆更正沒存，存檔或取消後才能核可');
+      if (reload) rcUnsure('沒有存到：' + ((j && (j.detail || j.error)) || '單據已變動') + '　請重新整理。'); else rcBusy('還有一筆更正沒存，存檔或取消後才能核可');
     }).catch(function () {
       RC.saving = false;
       Array.prototype.forEach.call(ed.querySelectorAll('button'), function (x) { x.disabled = false; });
       rcErr('沒收到回覆，不確定有沒有存到，請重新整理看最新明細。', true);   // 斷線、逾時、回應讀不懂：伺服器可能已經存了，不叫他重按
-      rcBusy('不確定更正有沒有存到，請重新整理');
+      rcUnsure('沒收到回覆，不確定更正有沒有存到，請重新整理看最新明細。');
     });
   }
 
