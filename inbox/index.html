@@ -1148,24 +1148,29 @@ body.ns-open{overflow:hidden}
       + '</div></details>';
   }
   // 轉給員工的背景送出紀錄（2026-11-24 Wayne：按送出不用停在畫面上等）：存本機、重新整理還在；結果一律向主系統查 reqId 的實際狀態，不因請求送出去就算成功
+  // 每筆綁登入者（Supabase 使用者 id）：登入過期不清（老闆的字不會不見），換別人登入看不到也不動；登出照舊全清
   var FWDLOG = (function () {
-    var KEY = 'yz_fwd_log', MAX = 10, DONE_SHOW = 6000, DONE_TTL = 600000, KEEP = 86400000, NONE_FAIL = 120000, UNSURE_CHECK = 1800000, LIVE = {}, lastHtml = null, el = null;
-    function read() { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (r) { return r && r.id && r.cid; }) : []; } catch (eR) { return []; } }
-    function write(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) {} }
+    var KEY = 'yz_fwd_log', MAX = 10, DONE_SHOW = 6000, DONE_TTL = 600000, KEEP = 86400000, NONE_FAIL = 300000, UNSURE_CHECK = 1800000, LIVE = {}, lastHtml = null, el = null, ME = null, MEM = null;
+    // 主系統明確表示「一列都沒寫、卡也沒發」的代碼才算沒送出；其他 ok:false（換版、轉址落空、逾時、500）主系統可能已發卡，交給查狀態決定
+    var FAIL_CODES = { send_failed: 1, employee_required: 1, text_required: 1, busy: 1, owner_only: 1, contactId_required: 1 };
+    function read() { if (MEM) return MEM.slice(); try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (r) { return r && r.id && r.cid; }) : []; } catch (eR) { return []; } }
+    function write(a) { if (MEM) { MEM = a; return; } try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (eW) { MEM = a; } }   // 本機寫不進去：改記在記憶體，狀態列照常、提示重新整理後會不見
+    function who() { return sb.auth.getSession().then(function (r) { var ss = r && r.data && r.data.session; ME = ss ? String((ss.user && ss.user.id) || '') : null; return ME; }, function () { return ME; }); }
+    function mine(r) { return !!r && ME !== null && String(r.u || '') === ME; }
     function prune(a, now) {
       now = now || Date.now();
       a = a.filter(function (r) { return r.state === 'done' ? now - (r.doneAt || r.at || 0) < DONE_TTL : now - (r.at || 0) < KEEP; });
       a.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
       return a.slice(0, MAX);
     }
-    function list() { return prune(read()); }
-    function get(id) { return read().filter(function (r) { return r.id === id; })[0] || null; }
+    function list() { return prune(read()).filter(mine); }
+    function get(id) { var r = read().filter(function (x) { return x.id === id; })[0] || null; return mine(r) ? r : null; }
     function update(id, patch) {
       var a = read();
       a.forEach(function (r) { if (r.id !== id) return; var was = r.state; Object.keys(patch).forEach(function (k) { r[k] = patch[k]; }); if (patch.state && patch.state !== was) r.doneAt = Date.now(); });
       write(prune(a)); draw();
     }
-    function remove(id) { write(read().filter(function (r) { return r.id !== id; })); draw(); }
+    function remove(id) { if (!get(id)) return; write(read().filter(function (r) { return r.id !== id; })); draw(); }
     function send(r) {
       LIVE[r.id] = 1;
       api({ app: { op: 'staffForward', contactId: r.cid, employeeId: r.emp, text: r.text, msgText: r.msgText, photoUrls: r.photos || [], reqId: r.id } }, true).then(function (d) {
@@ -1174,7 +1179,8 @@ body.ns-open{overflow:hidden}
         var err = String((d && d.error) || '');
         if (err === 'in_progress') { update(r.id, { state: 'run', checkedAt: Date.now() }); return; }
         if (err === 'state_unknown') { update(r.id, { state: 'unsure', note: String((d && d.detail) || '主系統沒有回報結果'), nocheck: true }); return; }
-        update(r.id, { state: 'fail', note: friendlyErr((d && (d.detail || d.error)) || '主系統沒回報原因') });
+        if (FAIL_CODES[err]) { update(r.id, { state: 'fail', note: friendlyErr((d && (d.detail || d.error)) || '主系統沒回報原因'), failChecked: false }); return; }
+        update(r.id, { state: 'unsure', note: '主系統回應不明，可能已經送到，正在確認；確認前先別自己再傳一次', checkedAt: 0, nocheck: false });
       }).catch(function (e) {
         delete LIVE[r.id];
         var em = String((e && e.message) || '');
@@ -1182,26 +1188,32 @@ body.ns-open{overflow:hidden}
         update(r.id, { state: 'unsure', note: '連線中斷或逾時，正在向主系統確認有沒有送出', checkedAt: 0 });
       });
     }
-    function add(r) { r.state = 'run'; r.at = Date.now(); var a = read().filter(function (x) { return x.id !== r.id; }); a.unshift(r); write(prune(a)); draw(); send(r); }
+    function add(r) { who().then(function (u) { r.u = u || ''; r.state = 'run'; r.at = Date.now(); var a = read().filter(function (x) { return x.id !== r.id; }); a.unshift(r); write(prune(a)); draw(); send(r); }); }
     function retry(id) { var r = get(id); if (!r || LIVE[id]) return; update(id, { state: 'run', note: '', at: Date.now(), nocheck: false }); send(get(id)); }
     function check(r) {
-      update(r.id, { checkedAt: Date.now() });
+      update(r.id, r.state === 'fail' ? { failChecked: true } : { checkedAt: Date.now() });
       // employeeId 給一個不存在的代號：舊主系統不認 status，會當一般 dryRun 回名單但不擬稿（不花 AI、不送）
       api({ app: { op: 'staffForward', contactId: r.cid, dryRun: 'status', reqId: r.id, employeeId: '-' } }, true).then(function (d) {
-        if (LIVE[r.id] || !d || !d.ok) return;
+        if (LIVE[r.id] || !d || !d.ok || !get(r.id)) return;
         var now = Date.now(), fs = String(d.fwdStatus || '');
+        if (r.state === 'fail') {   // 標了沒送出的也查一次：查到已完成或還在送就改，其餘維持沒送出
+          if (fs === 'done') { update(r.id, { state: 'done', note: String(d.result || '') }); if (cur === r.cid) setTimeout(function () { refreshAll(true); }, 1500); }
+          else if (fs === 'pending') update(r.id, { state: 'run' });
+          return;
+        }
         if (!fs) { update(r.id, { state: 'unsure', note: '主系統還不能查交代結果，請先看員工有沒有收到；再交代一次可能會重複', nocheck: true }); return; }
         if (fs === 'done') { update(r.id, { state: 'done', note: String(d.result || '') }); if (cur === r.cid) setTimeout(function () { refreshAll(true); }, 1500); }
         else if (fs === 'failed') update(r.id, { state: 'fail', note: friendlyErr(d.detail || '指導紀錄沒寫成') });
         else if (fs === 'pending') { if (r.state !== 'run') update(r.id, { state: 'run' }); }
         else if (fs === 'stale') update(r.id, { state: 'unsure', note: '主系統沒有回報結果，請先看員工有沒有收到', nocheck: true });
-        else if (fs === 'none' && now - (r.at || 0) > NONE_FAIL) update(r.id, { state: 'fail', note: '主系統沒收到這筆，可以重試（不會重複發）' });
+        else if (fs === 'none' && now - (r.at || 0) > NONE_FAIL) update(r.id, { state: 'fail', note: '主系統查不到這筆，可能沒收到。先看員工有沒有收到，沒有再按重試', failChecked: true });
       }).catch(function () {});
     }
     function due(r, now) {
       if (LIVE[r.id] || document.hidden) return false;
       if (r.state === 'run') return now - (r.checkedAt || 0) >= 5000;
       if (r.state === 'unsure' && !r.nocheck) return now - (r.at || 0) < UNSURE_CHECK && now - (r.checkedAt || 0) >= ((r.checkedAt || 0) ? 30000 : 0);
+      if (r.state === 'fail' && r.failChecked === false) return now - (r.doneAt || 0) >= 3000;
       return false;
     }
     function shown(r, now) { return r.state !== 'done' || now - (r.doneAt || 0) < DONE_SHOW || r.cid === cur; }
@@ -1225,11 +1237,11 @@ body.ns-open{overflow:hidden}
         el.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-fb]') : null; if (!b) return; var id = b.getAttribute('data-id'), k = b.getAttribute('data-fb'); if (k === 'x') remove(id); else if (k === 'retry') retry(id); else if (k === 'copy') copy(id, b); }); }
       var now = Date.now(), appOn = document.getElementById('app').style.display !== 'none';
       var a = appOn ? list().filter(function (r) { return shown(r, now); }) : [];
-      var h = a.map(function (r) { return row(r, now); }).join('');
+      var h = (a.length && MEM ? '<div class="fb-row unsure">這台裝置無法在本機記錄，重新整理或關掉 App 後，這裡的紀錄會不見；結果出來前先別離開</div>' : '') + a.map(function (r) { return row(r, now); }).join('');
       if (h !== lastHtml) { el.innerHTML = h; lastHtml = h; }
       el.style.display = a.length ? 'flex' : 'none'; document.body.classList.toggle('has-fwdbar', !!a.length);
     }
-    function cycle() { var now = Date.now(); list().forEach(function (r) { if (due(r, now)) check(r); }); draw(); }
+    function cycle() { if (document.getElementById('app').style.display === 'none') { draw(); return; } who().then(function () { var now = Date.now(); list().forEach(function (r) { if (due(r, now)) check(r); }); draw(); }); }
     setInterval(cycle, 2000);
     return { add: add, retry: retry, list: list, cycle: cycle, draw: draw };
   })();
