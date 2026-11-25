@@ -27,6 +27,11 @@
   .kick { font-size: 12px; color: #8a8275; line-height: 1.5; }
   .head { font-size: 18px; font-weight: 700; color: #1B1A17; line-height: 1.45; margin: 1px 0 4px; }
   .spec { font-size: 12.5px; color: #6B675E; line-height: 1.6; }
+  .comp { display: flex; align-items: flex-end; gap: 20px; margin: 6px 0 8px; }
+  .comp .c { display: flex; align-items: flex-end; gap: 7px; }
+  .comp svg { display: block; flex: none; }
+  .comp .n { font-size: 17px; font-weight: 700; color: #5F6E58; line-height: 1.15; font-feature-settings: "tnum"; }
+  .comp .z { font-size: 11px; color: #8a8275; letter-spacing: .08em; line-height: 1.4; }
   .buy { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #EDE9DE; }
   .price { font-size: 15px; font-weight: 700; color: #3A3A33; line-height: 1.4; }
   .price small { font-size: 11.5px; font-weight: 400; color: #8a8275; }
@@ -131,6 +136,49 @@ function el(tag, cls, text) {
   if (cls) e.className = cls;
   if (text != null) e.textContent = String(text);
   return e;
+}
+/* 盆數圖示（Wayne 2026-11-26 選定：一個盆栽圖示加「× N」）。只有品名看得出「幾吋幾盆」的聖誕紅品項才畫，其他商品不顯示 */
+var SVG_NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs) {
+  var e = document.createElementNS(SVG_NS, tag);
+  for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function potIcon(px) {
+  var svg = svgEl('svg', { width: px, height: Math.round(px * 1.15), viewBox: '0 0 100 115', 'aria-hidden': 'true', focusable: 'false' });
+  var g = svgEl('g', { transform: 'translate(50,44)' });
+  var i, a;
+  var leaf = [-100, -62, 62, 100], deep = [-72, -36, 0, 36, 72], red = [-54, -18, 18, 54];
+  for (i = 0; i < leaf.length; i++) g.appendChild(svgEl('path', { d: 'M0,0 C9,-8 8,-26 0,-34 C-8,-26 -9,-8 0,0Z', fill: '#4F6147', transform: 'rotate(' + leaf[i] + ') translate(0,-4)' }));
+  for (i = 0; i < deep.length; i++) g.appendChild(svgEl('path', { d: 'M0,0 C10,-9 9,-28 0,-38 C-9,-28 -10,-9 0,0Z', fill: '#9E2A23', transform: 'rotate(' + deep[i] + ')' }));
+  for (i = 0; i < red.length; i++) g.appendChild(svgEl('path', { d: 'M0,0 C8,-7 7,-22 0,-29 C-7,-22 -8,-7 0,0Z', fill: '#C4382F', transform: 'rotate(' + red[i] + ')' }));
+  a = [[-3, -4], [3, -5], [0, -1]];
+  for (i = 0; i < a.length; i++) g.appendChild(svgEl('circle', { cx: a[i][0], cy: a[i][1], r: 2.6, fill: '#E2B84B' }));
+  svg.appendChild(g);
+  svg.appendChild(svgEl('path', { d: 'M22,50 L78,50 L70,110 L30,110Z', fill: '#C39B6A' }));
+  svg.appendChild(svgEl('path', { d: 'M22,50 L78,50 L75,62 L50,58 L25,62Z', fill: '#A9824F' }));
+  svg.appendChild(svgEl('path', { d: 'M38,74 C44,70 56,70 62,74', stroke: '#F2EDE3', 'stroke-width': 2.4, fill: 'none', 'stroke-linecap': 'round' }));
+  return svg;
+}
+function parseComp(name) {
+  var s = String(name || ''), out = [], re = /(\d{1,2})\s*吋\s*[・·x×]?\s*(\d{1,2})\s*盆/g, m;
+  if (s.indexOf('聖誕紅') < 0) return out;
+  while ((m = re.exec(s)) && out.length < 3) out.push({ size: Number(m[1]), n: Number(m[2]) });
+  out.sort(function (x, y) { return y.size - x.size; });
+  return out;
+}
+function compRow(name) {
+  var comp = parseComp(name);
+  if (!comp.length) return null;
+  var row = el('div', 'comp');
+  comp.forEach(function (c) {
+    var b = el('div', 'c'), t = el('div');
+    b.appendChild(potIcon(c.size >= 7 ? 46 : 34));
+    add(t, el('div', 'n', '× ' + c.n), el('div', 'z', c.size + ' 吋'));
+    b.appendChild(t);
+    row.appendChild(b);
+  });
+  return row;
 }
 function add(parent) { for (var i = 1; i < arguments.length; i++) if (arguments[i]) parent.appendChild(arguments[i]); return parent; }
 function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
@@ -283,6 +331,8 @@ function renderMain() {
     var card = el('div', 'item');
     if (names[i].kick) card.appendChild(el('div', 'kick', names[i].kick));
     card.appendChild(el('div', 'head', names[i].head));
+    var compEl = compRow(it.name);
+    if (compEl) card.appendChild(compEl);
     if (it.spec) card.appendChild(el('div', 'spec', it.spec));
     var buy = el('div', 'buy');
     var left = el('div');

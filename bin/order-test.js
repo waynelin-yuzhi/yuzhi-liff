@@ -105,6 +105,8 @@ const plus = (pg, i, n) => pg.evaluate(([i, n]) => { const b = document.querySel
       ok(await r.pg.$eval('.hero img', (i) => i.className === 'on'), '主圖載入後顯示');
       const ar = await r.pg.$eval('.hero', (h) => h.offsetWidth / h.offsetHeight);
       ok(Math.abs(ar - 4 / 3) < 0.02, '主圖框 4:3');
+      // 盆數圖示（D 款）：5 吋組一個、混搭兩個（大的在前）、7 吋組一個
+      eq(JSON.stringify(await r.pg.$$eval('.item', (a) => a.map((e) => Array.from(e.querySelectorAll('.comp .c')).map((c) => c.querySelector('.n').textContent + '|' + c.querySelector('.z').textContent + '|' + c.querySelector('svg').getAttribute('width'))))), JSON.stringify([['× 12|5 吋|34'], ['× 6|7 吋|46', '× 6|5 吋|34'], ['× 12|7 吋|46']]), '盆數圖示：各組的盆數、尺寸與大小圖示');
       // 加減與上限
       await plus(r.pg, 0, 2); await plus(r.pg, 1, 1);
       eq(await txt(r.pg, '#cnt'), '共 3 組　含稅合計', '組數即時更新');
