@@ -107,6 +107,7 @@ var IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0
 var API_OVERRIDE = QS.get('api') || '';
 var API = (IS_LOCAL && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(API_OVERRIDE)) ? API_OVERRIDE : API_LIVE;
 var TIMEOUT_MS = 30000;
+var SUBMIT_TIMEOUT_MS = 60000;   /* 送出要建報價單，後端較慢：等久一點，少一點「結果不明」 */
 
 document.getElementById('pgver').textContent = 'order' + (PGV ? ' v' + PGV : '');
 var app = document.getElementById('app');
@@ -120,7 +121,7 @@ var MSG = {
 };
 var ERR_TITLE = { invalid: '連結無效', expired: '預購已截止', closed: '暫停訂購', not_eligible: '無法訂購' };
 var FINAL_ERRORS = { invalid: 1, expired: 1, closed: 1, not_eligible: 1 };
-var TXT_NET_FAIL = '沒有送出成功，請再試一次';
+var TXT_NET_FAIL = '還沒收到送出結果，請再按一次「確認送出」，同一份訂購不會重複成立。';   /* 逾時或斷線時後端可能已收到：後端同一份重送只回同一張 */
 
 var S = { d: null, items: [], qty: {}, max: 20, existing: null, preview: false, sending: false };
 
@@ -135,7 +136,7 @@ function clear(node) { while (node.firstChild) node.removeChild(node.firstChild)
 function money(n) { return 'NT$' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? u : ''; }
 
-function fetchJson(url, opt) {
+function fetchJson(url, opt, timeoutMs) {
   return new Promise(function (resolve, reject) {
     var settled = false;
     var ctl = window.AbortController ? new AbortController() : null;
@@ -145,7 +146,7 @@ function fetchJson(url, opt) {
       settled = true;
       if (ctl) ctl.abort();
       reject(new Error('timeout'));
-    }, TIMEOUT_MS);
+    }, timeoutMs || TIMEOUT_MS);
     fetch(url, opt)
       .then(function (r) { return r.text(); })
       .then(function (tx) {
@@ -453,7 +454,7 @@ function submit() {
     lines: sel.map(function (s) { return { id: s.item.id, qty: s.qty }; }),
     who: String(S.who || '').trim()
   };
-  fetchJson(API + '?publicOrder=set&respond=json', { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' })
+  fetchJson(API + '?publicOrder=set&respond=json', { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' }, SUBMIT_TIMEOUT_MS)
     .then(function (res) {
       if (res.ok === true) {
         S.sending = false;

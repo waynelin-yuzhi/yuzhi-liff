@@ -157,7 +157,7 @@ const plus = (pg, i, n) => pg.evaluate(([i, n]) => { const b = document.querySel
     {
       const r = await open(browser, LOCAL_PAGE, Q('tok2'), { post: 'abort' });
       await plus(r.pg, 1, 2); await r.pg.click('#go'); await r.pg.click('#cok'); await r.pg.waitForTimeout(300);
-      eq(await txt(r.pg, '#cerr'), '沒有送出成功，請再試一次', '網路斷：確認層顯示重試句');
+      eq(await txt(r.pg, '#cerr'), '還沒收到送出結果，請再按一次「確認送出」，同一份訂購不會重複成立。', '網路斷：確認層顯示重試句');
       ok(await vis(r.pg, '#confirm') && !(await r.pg.$('#done')), '網路斷：停在確認層、沒有成功畫面');
       ok(!(await r.pg.$eval('#cok', (b) => b.disabled)) && (await txt(r.pg, '#cok')) === '確認送出', '網路斷：按鈕解鎖可再送');
       await r.pg.click('#cback');
@@ -187,10 +187,10 @@ const plus = (pg, i, n) => pg.evaluate(([i, n]) => { const b = document.querySel
     {
       const r = await open(browser, LOCAL_PAGE, Q('tok6'), { post: 'hang', clock: true });
       await plus(r.pg, 0, 3); await r.pg.click('#go'); await r.pg.click('#cok');
-      await r.pg.clock.runFor(29000);
-      eq(await txt(r.pg, '#cok'), '送出中…', '29 秒時仍在送出中');
+      await r.pg.clock.runFor(59000);
+      eq(await txt(r.pg, '#cok'), '送出中…', '59 秒時仍在送出中');
       await r.pg.clock.runFor(1500);
-      eq(await txt(r.pg, '#cerr'), '沒有送出成功，請再試一次', '30 秒逾時：顯示重試句');
+      eq(await txt(r.pg, '#cerr'), '還沒收到送出結果，請再按一次「確認送出」，同一份訂購不會重複成立。', '60 秒逾時：顯示重試句');
       ok(!(await r.pg.$('#done')), '逾時：沒有成功畫面');
       r.release();
       await r.pg.waitForTimeout(200);
