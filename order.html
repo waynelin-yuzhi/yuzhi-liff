@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>植間設計｜訂購</title>
+<style>
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: "Noto Sans TC", -apple-system, sans-serif; background: #F2EDE3; color: #1B1A17; line-height: 1.7; padding: 24px 14px 40px; margin: 0; font-feature-settings: "tnum"; }
+  body.has-bar { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+  body.has-pv { padding-top: 58px; }
+  body.lock { overflow: hidden; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  h1 { font-size: 21px; text-align: center; margin: 0 0 2px; line-height: 1.45; }
+  .sub { font-size: 12.5px; color: #8a8275; text-align: center; margin-bottom: 16px; }
+  .card { background: #FFFCF5; border: 1px solid #E6DFD0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .hero { position: relative; aspect-ratio: 4 / 3; background: #E4DDCD; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+  .hero img.on { opacity: 1; }
+  .note { font-size: 14px; color: #4A4A45; background: #FFFCF5; border: 1px solid #E6DFD0; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; white-space: pre-line; }
+  .sec { font-size: 11px; letter-spacing: .15em; color: #A09A8C; margin: 0 0 8px 2px; }
+  .item { background: #FFFCF5; border: 1px solid #E6DFD0; border-left: 4px solid #E6DFD0; border-radius: 8px; padding: 14px 14px 12px 14px; margin-bottom: 10px; }
+  .item.sel { border-color: #C9D2C5; border-left-color: #5F6E58; background: #F7F9F3; }
+  .kick { font-size: 12px; color: #8a8275; line-height: 1.5; }
+  .head { font-size: 18px; font-weight: 700; color: #1B1A17; line-height: 1.45; margin: 1px 0 4px; }
+  .spec { font-size: 12.5px; color: #6B675E; line-height: 1.6; }
+  .buy { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #EDE9DE; }
+  .price { font-size: 15px; font-weight: 700; color: #3A3A33; line-height: 1.4; }
+  .price small { font-size: 11.5px; font-weight: 400; color: #8a8275; }
+  .subt { font-size: 12.5px; color: #5F6E58; font-weight: 700; line-height: 1.5; visibility: hidden; }
+  .item.sel .subt { visibility: visible; }
+  .step { display: flex; align-items: center; flex: none; }
+  .step button { width: 44px; height: 44px; border: 1.5px solid #5F6E58; background: #FFFCF5; color: #5F6E58; border-radius: 6px; font-size: 22px; line-height: 1; font-family: inherit; cursor: pointer; padding: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .step button.plus { background: #5F6E58; color: #FFFCF5; }
+  .step button[disabled] { border-color: #D6D0C2; background: #F4F1E8; color: #C2BCAE; cursor: default; }
+  .step .q { width: 46px; text-align: center; font-size: 20px; font-weight: 700; color: #1B1A17; }
+  .item:not(.sel) .step .q { color: #A09A8C; }
+  .field label { display: block; font-size: 11px; color: #A09A8C; letter-spacing: .1em; margin: 0 0 6px; }
+  .field input { width: 100%; padding: 11px 12px; border: 1px solid #C9C2B0; border-radius: 6px; font-size: 16px; font-family: inherit; background: #fff; }
+  .btn { display: block; width: 100%; min-height: 48px; padding: 12px; background: #5F6E58; color: #FFFCF5; border: none; border-radius: 6px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; text-align: center; text-decoration: none; line-height: 1.5; }
+  .btn[disabled] { background: #B9B3A5; cursor: default; }
+  .ghost { display: block; width: 100%; min-height: 46px; padding: 11px; background: none; color: #5F6E58; border: 1.5px solid #5F6E58; border-radius: 6px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; text-align: center; text-decoration: none; line-height: 1.5; }
+  .ghost[disabled] { color: #B9B3A5; border-color: #D6D0C2; cursor: default; }
+  .exist { background: #FBF3E4; border: 1px solid #E3C990; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 13.5px; color: #6E5524; }
+  .exist .btn { margin-top: 10px; min-height: 44px; font-size: 15px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #FFFCF5; border-top: 1px solid #DCD4C3; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); z-index: 20; }
+  .bar-in { max-width: 520px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .bar-sum { flex: 1; min-width: 0; line-height: 1.35; }
+  .bar-cnt { font-size: 12px; color: #8a8275; }
+  .bar-tot { font-size: 20px; font-weight: 700; color: #5F6E58; white-space: nowrap; }
+  .bar .btn { width: auto; flex: none; padding: 12px 18px; }
+  .pv { position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: #8a6a2e; color: #FFFCF5; font-size: 13.5px; font-weight: 700; text-align: center; padding: 10px 14px; letter-spacing: .05em; }
+  .ov { position: fixed; inset: 0; z-index: 40; background: rgba(27,26,23,.55); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: #FFFCF5; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border-radius: 10px 10px 0 0; padding: 20px 18px calc(18px + env(safe-area-inset-bottom)); }
+  @media (min-width: 600px) { .ov { align-items: center; } .sheet { border-radius: 10px; } }
+  .sheet h2 { font-size: 18px; margin: 0 0 10px; text-align: center; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #EDE9DE; font-size: 14px; }
+  .row .nm { flex: 1; min-width: 0; color: #3A3A33; }
+  .row .nm span { color: #5F6E58; font-weight: 700; white-space: nowrap; }
+  .row .am { flex: none; color: #3A3A33; }
+  .kv { font-size: 13px; color: #6B675E; margin-bottom: 4px; }
+  .amt { background: #F4F1E8; border-radius: 6px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+  .amt span { font-size: 12px; color: #6B675E; letter-spacing: .1em; }
+  .amt b { font-size: 20px; color: #5F6E58; }
+  .tip { font-size: 13.5px; color: #4A4A45; background: #f0f3ee; border-radius: 6px; padding: 10px 12px; margin-top: 12px; line-height: 1.7; }
+  .tip.warn { background: #FBF3E4; color: #6E5524; }
+  .errline { font-size: 14px; color: #A4392D; font-weight: 700; text-align: center; margin-top: 12px; }
+  .btns { display: flex; gap: 10px; margin-top: 16px; }
+  .btns > * { flex: 1; }
+  .done-card { background: #FFFCF5; border: 1px solid #E6DFD0; border-radius: 8px; padding: 26px 18px; text-align: center; }
+  .done-card h2 { color: #5F6E58; font-size: 19px; margin: 0 0 8px; }
+  .done-card h2.err { color: #A4392D; }
+  .done-card p { font-size: 14px; color: #4A4A45; margin: 0; }
+  .done-card .ghost, .done-card .btn { margin-top: 14px; }
+  .done-list { text-align: left; margin-top: 14px; }
+  .qno { font-size: 13px; color: #6B675E; margin-top: 10px; text-align: left; }
+  .done-card p.small { font-size: 12.5px; color: #8a8275; margin-top: 12px; }
+  .sk { background: #E9E3D6; border-radius: 6px; }
+  .ft { margin: 26px auto 12px; text-align: center; font-size: 10.5px; color: #A09A8C; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">YUZHI PLANT DESIGN</div>
+  <div id="app">
+    <div class="sk" style="height:30px;width:55%;margin:6px auto 6px"></div>
+    <div class="sk" style="height:16px;width:45%;margin:0 auto 18px"></div>
+    <div class="hero"></div>
+    <div class="sk" style="height:66px;margin-bottom:18px"></div>
+    <div class="sk" style="height:150px;margin-bottom:10px"></div>
+    <div class="sk" style="height:150px;margin-bottom:10px"></div>
+    <div class="sk" style="height:150px;margin-bottom:10px"></div>
+    <div style="text-align:center;font-size:13px;color:#8a8275;margin-top:6px">載入中…</div>
+  </div>
+  <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgver">order</span></div>
+</div>
+<script>
+var API_LIVE = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+var QS = new URLSearchParams(location.search);
+var TOKEN = QS.get('t') || '';
+var PGV = QS.get('v') || '';
+/* 本機測試才准用 ?api= 換後端，而且只能換成本機位址。線上網域一律忽略，免得有人做一條連結把客人的訂單導去別的伺服器 */
+var IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+var API_OVERRIDE = QS.get('api') || '';
+var API = (IS_LOCAL && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(API_OVERRIDE)) ? API_OVERRIDE : API_LIVE;
+var TIMEOUT_MS = 30000;
+var SUBMIT_TIMEOUT_MS = 60000;   /* 送出要建報價單，後端較慢：等久一點，少一點「結果不明」 */
+
+document.getElementById('pgver').textContent = 'order' + (PGV ? ' v' + PGV : '');
+var app = document.getElementById('app');
+
+var MSG = {
+  invalid: '連結無效，請從 LINE 訊息重新開啟。',
+  expired: '這次預購已經截止，需要的話請直接在 LINE 跟我們說。',
+  closed: '目前暫停訂購，請直接在 LINE 跟我們說。',
+  not_eligible: '這個連結目前無法訂購，請直接在 LINE 跟我們說，我們協助您。',
+  other: '系統忙碌中，請稍後再試一次。'
+};
+var ERR_TITLE = { invalid: '連結無效', expired: '預購已截止', closed: '暫停訂購', not_eligible: '無法訂購' };
+var FINAL_ERRORS = { invalid: 1, expired: 1, closed: 1, not_eligible: 1 };
+var TXT_NET_FAIL = '還沒收到送出結果，請再按一次「確認送出」，同一份訂購不會重複成立。';   /* 逾時或斷線時後端可能已收到：後端同一份重送只回同一張 */
+
+var S = { d: null, items: [], qty: {}, max: 20, existing: null, preview: false, sending: false };
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = String(text);
+  return e;
+}
+function add(parent) { for (var i = 1; i < arguments.length; i++) if (arguments[i]) parent.appendChild(arguments[i]); return parent; }
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+function money(n) { return 'NT$' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? u : ''; }
+
+function fetchJson(url, opt, timeoutMs) {
+  return new Promise(function (resolve, reject) {
+    var settled = false;
+    var ctl = window.AbortController ? new AbortController() : null;
+    if (ctl) opt.signal = ctl.signal;
+    var timer = setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      if (ctl) ctl.abort();
+      reject(new Error('timeout'));
+    }, timeoutMs || TIMEOUT_MS);
+    fetch(url, opt)
+      .then(function (r) { return r.text(); })
+      .then(function (tx) {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        var j = null;
+        try { j = JSON.parse(tx); } catch (e) {}
+        if (j && typeof j === 'object') resolve(j); else reject(new Error('bad_json'));
+      }, function (e) {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        reject(e);
+      });
+  });
+}
+
+function errorCard(code, msg, retry) {
+  closeConfirm();
+  hideBar();
+  clear(app);
+  var c = el('div', 'done-card');
+  add(c, el('h2', 'err', ERR_TITLE[code] || '暫時無法使用'), el('p', '', msg || MSG[code] || MSG.other));
+  if (retry) {
+    var b = el('button', 'ghost', '重新載入');
+    b.type = 'button';
+    b.addEventListener('click', function () { location.reload(); });
+    c.appendChild(b);
+  }
+  app.appendChild(c);
+  window.scrollTo(0, 0);
+}
+
+/* 品名「聖誕紅 5吋・12盆一組（含套袋）」拆成：共同字頭＋括號收成小字一行，區分用的那段做主標 */
+function splitNames(items) {
+  var parts = items.map(function (it) {
+    var name = String(it.name || '').trim();
+    var m = name.match(/^(.*?)[\s]*[（(]([^（）()]*)[）)]\s*$/);
+    var base = m ? m[1].trim() : name, extra = m ? m[2].trim() : '';
+    var sp = base.indexOf(' ');
+    return { base: base, extra: extra, first: sp > 0 ? base.slice(0, sp) : '', rest: sp > 0 ? base.slice(sp + 1).trim() : '' };
+  });
+  var common = items.length > 1 && parts.every(function (p) { return p.first && p.rest && p.first === parts[0].first; });
+  return parts.map(function (p) {
+    var kick = [];
+    if (common) kick.push(p.first);
+    if (p.extra) kick.push(p.extra);
+    return { head: common ? p.rest : p.base, kick: kick.join('・') };
+  });
+}
+
+function load() {
+  if (!TOKEN) { errorCard('invalid'); return; }
+  fetchJson(API + '?page=set-order&t=' + encodeURIComponent(TOKEN) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
+    .then(function (d) {
+      if (!d || d.ok !== true) {
+        var code = (d && d.error) || 'busy';
+        errorCard(code, d && d.msg, !FINAL_ERRORS[code]);
+        return;
+      }
+      var items = Array.isArray(d.items) ? d.items.filter(function (it) { return it && it.id != null && it.name; }) : [];
+      if (!items.length) { errorCard('closed', '目前沒有可以訂購的品項，請直接在 LINE 跟我們說。'); return; }
+      S.d = d;
+      S.items = items;
+      S.preview = d.preview === true;
+      var mx = Math.floor(Number(d.maxQtyEach));
+      S.max = mx > 0 ? mx : 20;
+      S.existing = d.existing && typeof d.existing === 'object' ? d.existing : null;
+      items.forEach(function (it) { S.qty[it.id] = 0; });
+      if (S.existing && Array.isArray(S.existing.lines)) {
+        S.existing.lines.forEach(function (ln) {
+          if (ln && Object.prototype.hasOwnProperty.call(S.qty, ln.id)) {
+            S.qty[ln.id] = Math.max(0, Math.min(S.max, Math.floor(Number(ln.qty) || 0)));
+          }
+        });
+      }
+      if (d.title) document.title = '植間設計｜' + d.title;
+      renderMain();
+    })
+    .catch(function () { errorCard('busy', '', true); });
+}
+
+var REFS = {};
+
+function renderMain() {
+  var d = S.d;
+  document.body.className = 'has-bar' + (S.preview ? ' has-pv' : '');
+  clear(app);
+  REFS = { rows: {} };
+
+  if (S.preview && !document.getElementById('pvbar')) {
+    var pv = el('div', 'pv', '預覽模式，送出不會成立訂單');
+    pv.id = 'pvbar';
+    document.body.appendChild(pv);
+  }
+
+  if (S.existing) {
+    var ex = el('div', 'exist');
+    ex.id = 'existing';
+    var exs = '您已送出過訂購（報價單 ' + (S.existing.quoteNo || '') + '，含稅 ' + money(S.existing.total) + '），還沒完成簽名';
+    ex.appendChild(el('div', '', exs));
+    var exUrl = safeUrl(S.existing.signUrl);
+    if (exUrl) {
+      var ea = el('a', 'btn', '前往簽署');
+      ea.href = exUrl;
+      ex.appendChild(ea);
+    }
+    app.appendChild(ex);
+  }
+
+  add(app, el('h1', '', d.title || '訂購'));
+  if (d.client && d.client.name) app.appendChild(el('div', 'sub', '訂購單位：' + d.client.name));
+  else app.appendChild(el('div', 'sub', ''));
+
+  var heroUrl = safeUrl(d.heroImage);
+  if (heroUrl) {
+    var hero = el('div', 'hero');
+    var img = el('img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.addEventListener('load', function () { img.className = 'on'; });
+    img.addEventListener('error', function () { hero.style.display = 'none'; });
+    img.src = heroUrl;
+    hero.appendChild(img);
+    app.appendChild(hero);
+  }
+
+  if (d.note) app.appendChild(el('div', 'note', d.note));
+
+  app.appendChild(el('div', 'sec', '選擇組合與數量'));
+  var names = splitNames(S.items);
+  S.items.forEach(function (it, i) {
+    var unit = it.unit || '組';
+    var card = el('div', 'item');
+    if (names[i].kick) card.appendChild(el('div', 'kick', names[i].kick));
+    card.appendChild(el('div', 'head', names[i].head));
+    if (it.spec) card.appendChild(el('div', 'spec', it.spec));
+    var buy = el('div', 'buy');
+    var left = el('div');
+    var price = el('div', 'price', money(it.priceIncTax) + '／' + unit + ' ');
+    price.appendChild(el('small', '', '含稅'));
+    var subt = el('div', 'subt', '小計 ' + money(0));
+    add(left, price, subt);
+    var step = el('div', 'step');
+    var minus = el('button', 'minus', '−');
+    minus.type = 'button';
+    minus.setAttribute('aria-label', '減少一' + unit);
+    var q = el('div', 'q', '0');
+    q.setAttribute('aria-live', 'polite');
+    var plus = el('button', 'plus', '+');
+    plus.type = 'button';
+    plus.setAttribute('aria-label', '增加一' + unit);
+    minus.addEventListener('click', function () { setQty(it.id, S.qty[it.id] - 1); });
+    plus.addEventListener('click', function () { setQty(it.id, S.qty[it.id] + 1); });
+    add(step, minus, q, plus);
+    add(buy, left, step);
+    card.appendChild(buy);
+    app.appendChild(card);
+    REFS.rows[it.id] = { card: card, q: q, minus: minus, plus: plus, subt: subt, item: it };
+  });
+
+  var nf = el('div', 'card field');
+  nf.style.marginTop = '14px';
+  var lb = el('label', '', '下單人姓名（選填）');
+  lb.setAttribute('for', 'who');
+  var inp = el('input');
+  inp.id = 'who';
+  inp.maxLength = 30;
+  inp.autocomplete = 'name';
+  inp.placeholder = '方便我們聯繫時稱呼您';
+  if (S.who) inp.value = S.who;
+  inp.addEventListener('input', function () { S.who = inp.value; });
+  add(nf, lb, inp);
+  app.appendChild(nf);
+
+  var bar = document.getElementById('bar');
+  if (!bar) {
+    bar = el('div', 'bar');
+    bar.id = 'bar';
+    var bin = el('div', 'bar-in');
+    var sum = el('div', 'bar-sum');
+    var cnt = el('div', 'bar-cnt');
+    cnt.id = 'cnt';
+    var tot = el('div', 'bar-tot');
+    tot.id = 'tot';
+    add(sum, cnt, tot);
+    var go = el('button', 'btn');
+    go.id = 'go';
+    go.type = 'button';
+    go.addEventListener('click', openConfirm);
+    add(bin, sum, go);
+    bar.appendChild(bin);
+    document.body.appendChild(bar);
+  }
+  bar.style.display = '';
+  refresh();
+}
+
+function setQty(id, n) {
+  if (S.sending) return;
+  S.qty[id] = Math.max(0, Math.min(S.max, n));
+  refresh();
+}
+
+function selected() {
+  return S.items.filter(function (it) { return S.qty[it.id] > 0; }).map(function (it) {
+    return { item: it, qty: S.qty[it.id], amount: S.qty[it.id] * (Number(it.priceIncTax) || 0) };
+  });
+}
+
+function refresh() {
+  var count = 0, total = 0;
+  S.items.forEach(function (it) {
+    var r = REFS.rows[it.id], n = S.qty[it.id];
+    if (!r) return;
+    r.q.textContent = String(n);
+    r.minus.disabled = n <= 0;
+    r.plus.disabled = n >= S.max;
+    r.card.className = 'item' + (n > 0 ? ' sel' : '');
+    r.subt.textContent = '小計 ' + money(n * (Number(it.priceIncTax) || 0));
+    count += n;
+    total += n * (Number(it.priceIncTax) || 0);
+  });
+  document.getElementById('cnt').textContent = '共 ' + count + ' ' + ((S.items[0] && S.items[0].unit) || '組') + '　含稅合計';
+  document.getElementById('tot').textContent = money(total);
+  var go = document.getElementById('go');
+  go.disabled = count === 0;
+  go.textContent = count === 0 ? '請先選擇數量' : '送出訂購';
+}
+
+function openConfirm() {
+  var sel = selected();
+  if (!sel.length || S.sending) return;
+  closeConfirm();
+  var ov = el('div', 'ov');
+  ov.id = 'confirm';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  var sh = el('div', 'sheet');
+  sh.appendChild(el('h2', '', '請確認訂購內容'));
+  if (S.d.client && S.d.client.name) sh.appendChild(el('div', 'kv', '訂購單位：' + S.d.client.name));
+  var total = 0;
+  sel.forEach(function (s) {
+    var row = el('div', 'row');
+    var nm = el('div', 'nm', s.item.name + ' ');
+    nm.appendChild(el('span', '', '× ' + s.qty + ' ' + (s.item.unit || '組')));
+    add(row, nm, el('div', 'am', money(s.amount)));
+    sh.appendChild(row);
+    total += s.amount;
+  });
+  var amt = el('div', 'amt');
+  add(amt, el('span', '', '含稅合計'), el('b', '', money(total)));
+  sh.appendChild(amt);
+  sh.appendChild(el('div', 'tip', '送出後我們會傳報價單給您，線上簽名後才完成訂購。'));
+  if (S.existing) sh.appendChild(el('div', 'tip warn', '重新送出會取代上一張還沒簽的報價單。'));
+  if (S.preview) sh.appendChild(el('div', 'tip warn', '預覽模式，送出不會成立訂單。'));
+  var err = el('div', 'errline');
+  err.id = 'cerr';
+  err.style.display = 'none';
+  sh.appendChild(err);
+  var btns = el('div', 'btns');
+  var back = el('button', 'ghost', '返回修改');
+  back.id = 'cback';
+  back.type = 'button';
+  back.addEventListener('click', function () { if (!S.sending) closeConfirm(); });
+  var ok = el('button', 'btn', '確認送出');
+  ok.id = 'cok';
+  ok.type = 'button';
+  ok.addEventListener('click', submit);
+  add(btns, back, ok);
+  sh.appendChild(btns);
+  ov.appendChild(sh);
+  document.body.appendChild(ov);
+  document.body.classList.add('lock');
+}
+
+function closeConfirm() {
+  var ov = document.getElementById('confirm');
+  if (ov) ov.parentNode.removeChild(ov);
+  document.body.classList.remove('lock');
+}
+
+function confirmError(msg) {
+  S.sending = false;
+  var err = document.getElementById('cerr');
+  if (!err) { openConfirm(); err = document.getElementById('cerr'); }
+  if (!err) return;
+  err.textContent = msg;
+  err.style.display = '';
+  var ok = document.getElementById('cok'), back = document.getElementById('cback');
+  if (ok) { ok.disabled = false; ok.textContent = '確認送出'; }
+  if (back) back.disabled = false;
+}
+
+function submit() {
+  if (S.sending) return;
+  var sel = selected();
+  if (!sel.length) { closeConfirm(); return; }
+  S.sending = true;
+  var ok = document.getElementById('cok'), back = document.getElementById('cback'), err = document.getElementById('cerr');
+  ok.disabled = true; ok.textContent = '送出中…';
+  back.disabled = true;
+  err.style.display = 'none';
+  var payload = {
+    t: TOKEN,
+    lines: sel.map(function (s) { return { id: s.item.id, qty: s.qty }; }),
+    who: String(S.who || '').trim()
+  };
+  fetchJson(API + '?publicOrder=set&respond=json', { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' }, SUBMIT_TIMEOUT_MS)
+    .then(function (res) {
+      if (res.ok === true) {
+        S.sending = false;
+        closeConfirm();
+        if (res.preview === true) renderPreviewDone(res);
+        else renderDone(res, sel);
+        return;
+      }
+      var code = res.error || '';
+      if (FINAL_ERRORS[code]) { S.sending = false; errorCard(code, res.msg); return; }
+      confirmError(res.msg || MSG.other);
+    })
+    .catch(function () { confirmError(TXT_NET_FAIL); });
+}
+
+function hideBar() {
+  var bar = document.getElementById('bar');
+  if (bar) bar.style.display = 'none';
+  document.body.className = S.preview ? 'has-pv' : '';
+}
+
+function backToMain() {
+  renderMain();
+  window.scrollTo(0, 0);
+}
+
+function renderDone(res, sel) {
+  hideBar();
+  clear(app);
+  var nameOf = {};
+  S.items.forEach(function (it) { nameOf[it.id] = it; });
+  var lines = Array.isArray(res.lines) && res.lines.length
+    ? res.lines.map(function (ln) { var it = nameOf[ln.id] || {}; return { name: ln.name || it.name || ln.id, qty: ln.qty, unit: it.unit || '組' }; })
+    : sel.map(function (s) { return { name: s.item.name, qty: s.qty, unit: s.item.unit || '組' }; });
+  var c = el('div', 'done-card');
+  c.id = 'done';
+  c.appendChild(el('h2', '', '已收到您的訂購'));
+  if (S.d.client && S.d.client.name) c.appendChild(el('div', 'kv', '訂購單位：' + S.d.client.name));
+  var list = el('div', 'done-list');
+  lines.forEach(function (ln) {
+    var row = el('div', 'row');
+    var nm = el('div', 'nm', ln.name + ' ');
+    nm.appendChild(el('span', '', '× ' + ln.qty + ' ' + ln.unit));
+    row.appendChild(nm);
+    list.appendChild(row);
+  });
+  c.appendChild(list);
+  var total = res.total != null ? res.total : sel.reduce(function (a, s) { return a + s.amount; }, 0);
+  var amt = el('div', 'amt');
+  add(amt, el('span', '', '含稅合計'), el('b', '', money(total)));
+  c.appendChild(amt);
+  if (res.quoteNo) c.appendChild(el('div', 'qno', '報價單號：' + res.quoteNo));
+  var url = safeUrl(res.signUrl);
+  if (url) {
+    var a = el('a', 'btn', '前往確認並簽署報價單');
+    a.id = 'sign';
+    a.href = url;
+    c.appendChild(a);
+  }
+  c.appendChild(el('p', 'small', '報價單也會傳到 LINE 對話，簽名後才完成訂購。'));
+  var again = el('button', 'ghost', '重新選擇');
+  again.type = 'button';
+  again.addEventListener('click', backToMain);
+  c.appendChild(again);
+  app.appendChild(c);
+  if (res.quoteNo) {
+    S.existing = { quoteNo: res.quoteNo, total: total, lines: res.lines, signUrl: res.signUrl };
+  }
+  window.scrollTo(0, 0);
+}
+
+function renderPreviewDone(res) {
+  hideBar();
+  clear(app);
+  var c = el('div', 'done-card');
+  c.id = 'done';
+  add(c, el('h2', '', '預覽送出完成'), el('p', '', res.msg || '這是預覽，沒有成立任何訂單。'));
+  var again = el('button', 'ghost', '返回');
+  again.type = 'button';
+  again.addEventListener('click', backToMain);
+  c.appendChild(again);
+  app.appendChild(c);
+  window.scrollTo(0, 0);
+}
+
+load();
+</script>
+</body>
+</html>
