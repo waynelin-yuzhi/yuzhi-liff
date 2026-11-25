@@ -179,6 +179,12 @@ const plus = (pg, i, n) => pg.evaluate(([i, n]) => { const b = document.querySel
       await r.ctx.close();
     }
     {
+      const r = await open(browser, LOCAL_PAGE, Q('tok5h'), { post: { ok: false, error: 'handoff', msg: '這次沒有自動完成，我們已收到您選的組合，確認後會再跟您聯繫。' } });
+      await plus(r.pg, 0, 1); await r.pg.click('#go'); await r.pg.click('#cok'); await r.pg.waitForTimeout(300);
+      ok((await txt(r.pg, '.done-card p')) === '這次沒有自動完成，我們已收到您選的組合，確認後會再跟您聯繫。' && (await txt(r.pg, '.done-card h2')) === '我們會再跟您聯繫' && !(await r.pg.$('#confirm')), '送出後轉人工：顯示終局訊息、確認層關閉不可重按');
+      await r.ctx.close();
+    }
+    {
       const r = await open(browser, LOCAL_PAGE, Q('tok5'), { post: { ok: false, error: 'expired' } });
       await plus(r.pg, 0, 1); await r.pg.click('#go'); await r.pg.click('#cok'); await r.pg.waitForTimeout(300);
       ok((await txt(r.pg, '.done-card p')) === '這次預購已經截止，需要的話請直接在 LINE 跟我們說。' && !(await vis(r.pg, '#bar')) && !(await r.pg.$('#confirm')), '送出時已截止：改顯示截止訊息卡');

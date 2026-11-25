@@ -117,10 +117,11 @@ var MSG = {
   expired: '這次預購已經截止，需要的話請直接在 LINE 跟我們說。',
   closed: '目前暫停訂購，請直接在 LINE 跟我們說。',
   not_eligible: '這個連結目前無法訂購，請直接在 LINE 跟我們說，我們協助您。',
+  handoff: '這次沒有自動完成，我們已收到您選的組合，確認後會再跟您聯繫。',
   other: '系統忙碌中，請稍後再試一次。'
 };
-var ERR_TITLE = { invalid: '連結無效', expired: '預購已截止', closed: '暫停訂購', not_eligible: '無法訂購' };
-var FINAL_ERRORS = { invalid: 1, expired: 1, closed: 1, not_eligible: 1 };
+var ERR_TITLE = { invalid: '連結無效', expired: '預購已截止', closed: '暫停訂購', not_eligible: '無法訂購', handoff: '我們會再跟您聯繫' };
+var FINAL_ERRORS = { invalid: 1, expired: 1, closed: 1, not_eligible: 1, handoff: 1 };   /* handoff＝後端已轉人工處理：不讓客人留在確認層一直重按 */
 var TXT_NET_FAIL = '還沒收到送出結果，請再按一次「確認送出」，同一份訂購不會重複成立。';   /* 逾時或斷線時後端可能已收到：後端同一份重送只回同一張 */
 
 var S = { d: null, items: [], qty: {}, max: 20, existing: null, preview: false, sending: false };
