@@ -1980,12 +1980,15 @@ body.ns-open{overflow:hidden}
    } catch (eShell) { console.error('shell', eShell); }
   })();
   document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { TAB = b.getAttribute('data-tab'); renderList(); }; });
+  /* 同一位聯絡人綁了好幾家客戶時，搜尋結果只列一顆（點進去都是同一串對話） */
+  function findMerge(list) { var seen = {}, out = []; (list || []).forEach(function (c) { var id = String((c && c.contactId) || ''); if (!id) return; var m = seen[id]; if (!m) { m = seen[id] = { contactId: id, name: c.name || '', type: c.type || '', clients: [] }; out.push(m); } var cl = String(c.clientId || ''); if (cl && m.clients.indexOf(cl) < 0) m.clients.push(cl); }); return out; }
+  function findKind(c) { var k = String(c.contactId || '').charAt(0); return k === 'U' ? '個人' : (k === 'C' || k === 'R') ? '群組' : String(c.type || ''); }
   document.getElementById('findBtn').onclick = function () {
     var q = document.getElementById('findQ').value.trim(); if (!q) return;
     document.getElementById('findRes').innerHTML = '<div class="small muted">找中…</div>';
     run('csInboxFind', [q], function (r) {
-      var cs = r.candidates || [];
-      document.getElementById('findRes').innerHTML = cs.length ? cs.map(function (c) { return '<button class="btn ghost small" style="margin:0 4px 6px 0" data-find="' + esc(c.contactId) + '">' + esc(c.name) + '（' + esc(c.type) + (c.clientId ? '・' + esc(c.clientId) : '') + '）</button>'; }).join('') : '<div class="small muted">' + esc(r.note || '查無') + '</div>';
+      var cs = findMerge(r.candidates || []);
+      document.getElementById('findRes').innerHTML = cs.length ? cs.map(function (c) { return '<button class="btn ghost small" style="margin:0 4px 6px 0" data-find="' + esc(c.contactId) + '">' + esc(c.name) + '（' + esc(findKind(c)) + (c.clients.length > 1 ? '・' + c.clients.length + ' 家客戶' : c.clients.length ? '・' + esc(c.clients[0]) : '') + '）</button>'; }).join('') : '<div class="small muted">' + esc(r.note || '查無') + '</div>';
       document.querySelectorAll('#findRes [data-find]').forEach(function (b) { b.onclick = function () { document.getElementById('findRes').innerHTML = ''; openThread(b.getAttribute('data-find')); }; });
     });
   };
