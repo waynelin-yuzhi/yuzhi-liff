@@ -8,6 +8,8 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const LOCAL_PAGE = 'http://127.0.0.1:8799/order.html';
 const LIVE_PAGE = 'https://waynelin-yuzhi.github.io/yuzhi-liff/order.html';
 const MOCK_API = 'http://127.0.0.1:8798/exec';
+const MOCK_GW = 'http://127.0.0.1:8797/functions/v1/api';
+const GW_LIVE = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
 const GAS_RE = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/;
 const SIGN = 'https://waynelin-yuzhi.github.io/yuzhi-liff/quote-sign.html?h=abc';
 
@@ -43,15 +45,24 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 async function open(browser, page, query, o) {
   o = o || {};
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const st = { gets: [], posts: [], dialogs: 0, errors: [] };
+  const st = { gets: [], posts: [], snaps: [], dialogs: 0, errors: [] };
   let hang = null;
   await ctx.route('**/*', async (route) => {
     const req = route.request(), u = req.url();
     if (u.split('?')[0] === page) return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: SRC });
     if (u.indexOf('/hero.png') > 0) return o.heroFail ? route.fulfill({ status: 404, body: '' }) : route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    if (u.split('?')[0] === MOCK_GW || u.split('?')[0] === GW_LIVE) {
+      // 閘道快照：snap＝物件（包成 {ok:true, snapshot}）、'notfound'（預設，同閘道查無）、'abort'
+      st.snaps.push({ url: u, method: req.method(), body: req.postData(), ct: req.headers()['content-type'] || '', hdrs: Object.keys(req.headers()) });
+      if (o.snapDelay) await new Promise((r) => setTimeout(r, o.snapDelay));
+      if (o.snap === 'abort') return route.abort('failed');
+      if (o.snap && typeof o.snap === 'object') return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: true, snapshot: o.snap }) });
+      return route.fulfill({ status: 404, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: false, error: 'not_found' }) });
+    }
     if (u.split('?')[0] === MOCK_API || GAS_RE.test(u)) {
       if (req.method() === 'GET') {
         st.gets.push(u);
+        if (o.getDelay) await new Promise((r) => setTimeout(r, o.getDelay));
         if (o.get === 'abort') return route.abort('failed');
         return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o.get || DATA()) });
       }
@@ -276,13 +287,115 @@ const plus = (pg, i, n) => pg.evaluate(([i, n]) => { const b = document.querySel
       ok(!(await r2.pg.$('.hero')), '主圖網址不是 http(s)：不顯示');
       await r2.ctx.close();
     }
+    // 8. 快照先畫、正本對正（2026-11-26）
+    {
+      const SNAP = () => { const d = DATA(); delete d.existing; return d; };
+      const QG = (t) => Q(t, '&gw=' + encodeURIComponent(MOCK_GW));
+      // 快照先到立刻渲染
+      const r = await open(browser, LOCAL_PAGE, QG('snap1'), { snap: SNAP(), getDelay: 1500, wait: 400 });
+      eq(await txt(r.pg, 'h1'), '聖誕紅加購', '快照先到：正本還沒回就畫出主畫面');
+      eq(await r.pg.$$eval('.item', (a) => a.length), 3, '快照先到：三個品項可以選');
+      ok(!(await r.pg.$('#existing')) && !(await r.pg.$('.tip')), '快照畫面沒有多餘提示');
+      const s0 = r.st.snaps[0] || {};
+      ok(r.st.snaps.length === 1 && s0.method === 'POST' && s0.url === MOCK_GW && JSON.stringify(JSON.parse(s0.body || '{}')) === JSON.stringify({ action: 'orderPageGet', t: 'snap1' }), '快照用 POST、token 只放 body、網址不帶 token');
+      ok(/^text\/plain/.test(s0.ct) && s0.hdrs.indexOf('x-api-key') < 0 && s0.hdrs.indexOf('authorization') < 0, '快照請求不設自訂 header（text/plain、免預檢）');
+      // 正本後到：價格更新、保留已選數量、版面不重畫（主圖節點還是同一個）
+      await plus(r.pg, 0, 2); await plus(r.pg, 2, 1);
+      await r.pg.evaluate(() => { document.querySelector('.hero img').dataset.keep = '1'; window.__y0 = document.querySelector('.item').getBoundingClientRect().top; });
+      await r.pg.waitForTimeout(1500);
+      eq(r.st.gets.length, 1, '正本照舊讀一次');
+      eq(await r.pg.$$eval('.q', (a) => a.map((e) => e.textContent)), ['2', '0', '1'], '正本對正後保留客人已選數量');
+      ok(await r.pg.$eval('.hero img', (i) => i.dataset.keep === '1') && await r.pg.evaluate(() => document.querySelector('.item').getBoundingClientRect().top === window.__y0), '價格品項沒變：原地對正、版面不跳');
+      await r.ctx.close();
+      {
+        // 審查修正：正本在送出期間才回來，先擱著；送出失敗回到確認層後要用正本價格，不可一直停在快照價
+        const liveP = DATA({ items: [Object.assign({}, ITEMS[0], { priceIncTax: 3900 }), ITEMS[1], ITEMS[2]] });
+        const rp = await open(browser, LOCAL_PAGE, QG('snapP'), { snap: SNAP(), get: liveP, getDelay: 1500, post: { ok: false, error: 'busy', msg: '系統忙碌，這次沒有送出，請稍後再試一次。' }, postDelay: 2500, wait: 300 });
+        await plus(rp.pg, 0, 2); await rp.pg.click('#go');
+        ok((await txt(rp.pg, '#confirm')).indexOf('NT$7,200') >= 0, '送出前確認層是快照價');
+        await rp.pg.click('#cok');
+        await rp.pg.waitForTimeout(3200);
+        ok((await txt(rp.pg, '#confirm')).indexOf('NT$7,800') >= 0 && (await txt(rp.pg, '#cerr')).indexOf('系統忙碌') >= 0, '送出期間回來的正本，在送出失敗後補對：確認層改用正本價格且錯誤句還在', await txt(rp.pg, '#confirm'));
+        await rp.ctx.close();
+        // 審查修正：送出成功後才到的正本（existing 是空的）不可把剛建好的那張蓋掉
+        const rq = await open(browser, LOCAL_PAGE, QG('snapQ'), { snap: SNAP(), get: DATA(), getDelay: 2500, post: { ok: true, quoteNo: 'Q-2026-777', total: 3600, lines: [{ id: ITEMS[0].id, name: ITEMS[0].name, qty: 1 }], signUrl: 'https://example.com/sign', msg: '已收到' }, wait: 300 });
+        await plus(rq.pg, 0, 1); await rq.pg.click('#go'); await rq.pg.click('#cok');
+        await rq.pg.waitForTimeout(3000);
+        await rq.pg.click('text=重新選擇');
+        await rq.pg.waitForTimeout(200);
+        ok((await rq.pg.evaluate(() => document.body.textContent)).indexOf('Q-2026-777') >= 0, '送出成功後才到的正本不蓋掉剛建好的那張：回主畫面仍顯示這張待簽');
+        await rq.ctx.close();
+      }
+      const live2 = DATA({ items: [Object.assign({}, ITEMS[0], { priceIncTax: 3900 }), ITEMS[1]] });
+      const r2 = await open(browser, LOCAL_PAGE, QG('snap2'), { snap: SNAP(), get: live2, getDelay: 1200, wait: 400 });
+      await plus(r2.pg, 0, 2); await plus(r2.pg, 2, 1);
+      eq(await txt(r2.pg, '#tot'), 'NT$13,800', '快照價格計算');
+      await r2.pg.waitForTimeout(1400);
+      eq(await r2.pg.$$eval('.item', (a) => a.length), 2, '正本拿掉一個品項：畫面跟著拿掉');
+      eq(await r2.pg.$$eval('.q', (a) => a.map((e) => e.textContent)), ['2', '0'], '還在的品項保留數量、被拿掉的歸零');
+      eq(await txt(r2.pg, '#tot'), 'NT$7,800', '合計改用正本價格');
+      ok((await r2.pg.$$eval('.price', (a) => a.map((e) => e.textContent)))[0].indexOf('NT$3,900') === 0, '價格改成正本');
+      await r2.pg.click('#go');
+      ok((await txt(r2.pg, '#confirm')).indexOf('NT$7,800') >= 0, '確認層用正本價格');
+      await r2.ctx.close();
+      // 正本回終局錯誤：改錯誤卡
+      for (const code of ['expired', 'not_eligible']) {
+        const r3 = await open(browser, LOCAL_PAGE, QG('snap3'), { snap: SNAP(), get: { ok: false, error: code, msg: '後端句' }, getDelay: 800, wait: 400 });
+        ok(!!(await r3.pg.$('.item')), '終局錯誤前先看到快照（' + code + '）');
+        await r3.pg.waitForTimeout(900);
+        ok(!(await r3.pg.$('.item')) && (await txt(r3.pg, '.done-card h2')) === ({ expired: '預購已截止', not_eligible: '無法訂購' })[code] && !(await vis(r3.pg, '#bar')), '正本回 ' + code + '：改顯示錯誤卡、收掉送出列');
+        await r3.ctx.close();
+      }
+      // 正本暫時失敗：保留快照畫面
+      for (const [nm, g] of [['busy', { ok: false, error: 'busy', msg: 'x' }], ['斷線', 'abort']]) {
+        const r4 = await open(browser, LOCAL_PAGE, QG('snap4'), { snap: SNAP(), get: g, getDelay: 600, wait: 400 });
+        await plus(r4.pg, 1, 1);
+        await r4.pg.waitForTimeout(700);
+        ok(!!(await r4.pg.$('.item')) && !(await r4.pg.$('.done-card')) && (await txt(r4.pg, '#tot')) === 'NT$5,100', '正本暫時失敗（' + nm + '）：保留快照畫面與已選數量');
+        await r4.ctx.close();
+      }
+      // 快照 not_found：等正本
+      const r5 = await open(browser, LOCAL_PAGE, QG('snap5'), { getDelay: 900, wait: 400 });
+      ok(!(await r5.pg.$('h1')) && (await r5.pg.textContent('#app')).indexOf('載入中') >= 0, '快照 not_found：還在載入、不出錯誤卡');
+      await r5.pg.waitForTimeout(800);
+      eq(await txt(r5.pg, 'h1'), '聖誕紅加購', '快照 not_found：正本回來照常畫');
+      await r5.ctx.close();
+      const r5b = await open(browser, LOCAL_PAGE, QG('snap5b'), { snap: 'abort', getDelay: 500, wait: 900 });
+      eq(await txt(r5b.pg, 'h1'), '聖誕紅加購', '快照斷線：正本回來照常畫');
+      await r5b.ctx.close();
+      // 正本先到：忽略之後才到的快照
+      const r6 = await open(browser, LOCAL_PAGE, QG('snap6'), { snap: Object.assign(SNAP(), { title: '舊快照標題', items: [ITEMS[0]] }), snapDelay: 700, wait: 300 });
+      await plus(r6.pg, 1, 1);
+      await r6.pg.waitForTimeout(800);
+      ok(r6.st.snaps.length === 1 && (await txt(r6.pg, 'h1')) === '聖誕紅加購' && (await r6.pg.$$eval('.item', (a) => a.length)) === 3 && (await txt(r6.pg, '#tot')) === 'NT$5,100', '正本先到：之後到的快照不覆蓋');
+      await r6.ctx.close();
+      // existing：客人沒動過＝照原規則預帶；動過＝不覆蓋，提示塊出現在最上方
+      const ex = { quoteNo: 'Q-2026-120', total: 10800, lines: [{ id: 'M-0868', name: 'x', qty: 3 }], signUrl: SIGN };
+      const r7 = await open(browser, LOCAL_PAGE, QG('snap7'), { snap: SNAP(), get: DATA({ existing: ex }), getDelay: 600, wait: 300 });
+      await plus(r7.pg, 1, 1);
+      await r7.pg.waitForTimeout(800);
+      eq(await r7.pg.$$eval('.q', (a) => a.map((e) => e.textContent)), ['0', '1', '0'], 'existing：客人已動過數量就不覆蓋');
+      ok(await r7.pg.evaluate(() => document.getElementById('app').firstChild.id === 'existing') && (await txt(r7.pg, '#existing')).indexOf('Q-2026-120') >= 0, 'existing：已送出過還沒簽的提示出現在最上方');
+      await r7.ctx.close();
+      const r8 = await open(browser, LOCAL_PAGE, QG('snap8'), { snap: SNAP(), get: DATA({ existing: ex }), getDelay: 600, wait: 1000 });
+      eq(await r8.pg.$$eval('.q', (a) => a.map((e) => e.textContent)), ['3', '0', '0'], 'existing：客人沒動過照原規則預帶');
+      await r8.ctx.close();
+      // 快照的字串一樣只走 textContent、主圖一樣過 safeUrl
+      const r9 = await open(browser, LOCAL_PAGE, QG('snap9'), { snap: Object.assign(SNAP(), { title: '<img src=x onerror=alert(1)>', heroImage: 'javascript:alert(1)' }), getDelay: 3000, wait: 400 });
+      ok((await txt(r9.pg, 'h1')) === '<img src=x onerror=alert(1)>' && !(await r9.pg.$('h1 img')) && !(await r9.pg.$('.hero')) && r9.st.dialogs === 0, '快照字串只當文字、主圖網址不是 http(s) 不顯示');
+      await r9.ctx.close();
+    }
     // 7. api 參數：本機才生效、只准本機位址；線上一律打正式後端
     {
-      const r = await open(browser, LIVE_PAGE, Q('live'));
+      const r = await open(browser, LIVE_PAGE, Q('live', '&gw=' + encodeURIComponent(MOCK_GW)));
       ok(r.st.gets.length === 1 && GAS_RE.test(r.st.gets[0]), '線上網域忽略 api 參數、打正式後端');
+      ok(r.st.snaps.length === 1 && r.st.snaps[0].url === GW_LIVE, '線上網域忽略 gw 參數、快照打正式閘道');
       await r.ctx.close();
       const r2 = await open(browser, LOCAL_PAGE, '?t=a&api=' + encodeURIComponent('https://evil.example/exec'));
       ok(r2.st.gets.length === 1 && GAS_RE.test(r2.st.gets[0]), '本機但 api 指向外部網域：忽略');
+      const r2g = await open(browser, LOCAL_PAGE, '?t=a&gw=' + encodeURIComponent('https://evil.example/functions/v1/api'));
+      ok(r2g.st.snaps.length === 1 && r2g.st.snaps[0].url === GW_LIVE, '本機但 gw 指向外部網域：忽略');
+      await r2g.ctx.close();
       await r2.ctx.close();
       const r3 = await open(browser, LOCAL_PAGE, '?t=a');
       ok(r3.st.gets.length === 1 && GAS_RE.test(r3.st.gets[0]), '本機沒帶 api：打正式後端');
