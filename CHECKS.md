@@ -40,4 +40,5 @@
 - 不確定有沒有送出（斷線、30 秒逾時、回應不是 JSON）一律回確認層顯示「沒有送出成功，請再試一次」、數量保留，絕不顯示成功；晚到的回應也不翻成成功。
 - POST 不設 Content-Type（text/plain 簡單請求、無預檢）；後端字串一律 textContent，全檔不准出現 innerHTML。
 - `?api=` 只在 localhost／127.0.0.1 且目標也是本機位址時生效，線上網域一律打正式後端。
-- 驗收：`node bin/order-test.js`（靜態檢查＋假後端行為，含連按、逾時、existing、預覽、各錯誤、防注入）。
+- 快照先畫（2026-11-26）：打開時同時向閘道 `POST GW` body `{action:"orderPageGet", t}`（不設 header、6 秒逾時）讀快照、向主系統讀正本（30 秒）。快照先到就立刻畫主畫面；正本回來對正（價格品項變了就更新、保留已選數量、被拿掉的歸零；有 existing 時客人沒動過數量才預帶；回 invalid／expired／closed／not_eligible 改錯誤卡；忙碌、逾時、斷線保留快照畫面）；正本先到就忽略快照；快照失敗或 not_found 照舊等正本。送出只打主系統。`?gw=` 規則同 `?api=`。
+- 驗收：`node bin/order-test.js`（靜態檢查＋假後端行為，含連按、逾時、existing、預覽、各錯誤、防注入、快照先畫與對正）。

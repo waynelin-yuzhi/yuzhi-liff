@@ -111,6 +111,11 @@ var PGV = QS.get('v') || '';
 var IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 var API_OVERRIDE = QS.get('api') || '';
 var API = (IS_LOCAL && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(API_OVERRIDE)) ? API_OVERRIDE : API_LIVE;
+/* 訂購頁快照（2026-11-26）：主系統組卡時推到閘道，打開先讀快照立刻畫面，正本仍向主系統讀、回來再對正；送出只打主系統。gw 覆寫規則同 api */
+var GW_LIVE = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+var GW_OVERRIDE = QS.get('gw') || '';
+var GW = (IS_LOCAL && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(GW_OVERRIDE)) ? GW_OVERRIDE : GW_LIVE;
+var SNAP_TIMEOUT_MS = 6000;
 var TIMEOUT_MS = 30000;
 var SUBMIT_TIMEOUT_MS = 60000;   /* 送出要建報價單，後端較慢：等久一點，少一點「結果不明」 */
 
@@ -126,10 +131,11 @@ var MSG = {
   other: '系統忙碌中，請稍後再試一次。'
 };
 var ERR_TITLE = { invalid: '連結無效', expired: '預購已截止', closed: '暫停訂購', not_eligible: '無法訂購', handoff: '我們會再跟您聯繫' };
+var READ_FINAL = { invalid: 1, expired: 1, closed: 1, not_eligible: 1 };   /* 讀正本回這幾個＝就算快照畫面已出來也改顯示錯誤卡；其他（忙碌、逾時、斷線）保留快照畫面 */
 var FINAL_ERRORS = { invalid: 1, expired: 1, closed: 1, not_eligible: 1, handoff: 1 };   /* handoff＝後端已轉人工處理：不讓客人留在確認層一直重按 */
 var TXT_NET_FAIL = '還沒收到送出結果，請再按一次「確認送出」，同一份訂購不會重複成立。';   /* 逾時或斷線時後端可能已收到：後端同一份重送只回同一張 */
 
-var S = { d: null, items: [], qty: {}, max: 20, existing: null, preview: false, sending: false };
+var S = { d: null, items: [], qty: {}, max: 20, existing: null, preview: false, sending: false, src: '', touched: false };
 
 function el(tag, cls, text) {
   var e = document.createElement(tag);
@@ -246,38 +252,124 @@ function splitNames(items) {
   });
 }
 
+function cleanItems(d) {
+  return Array.isArray(d.items) ? d.items.filter(function (it) { return it && it.id != null && it.name; }) : [];
+}
+function clampQty(n) { return Math.max(0, Math.min(S.max, Math.floor(Number(n) || 0))); }
+function prefillExisting() {
+  if (!S.existing || !Array.isArray(S.existing.lines)) return;
+  S.existing.lines.forEach(function (ln) {
+    if (ln && Object.prototype.hasOwnProperty.call(S.qty, ln.id)) S.qty[ln.id] = clampQty(ln.qty);
+  });
+}
+function applyData(d, items, src) {
+  S.d = d;
+  S.items = items;
+  S.src = src;
+  S.preview = d.preview === true;
+  var mx = Math.floor(Number(d.maxQtyEach));
+  S.max = mx > 0 ? mx : 20;
+  S.existing = src === 'live' && d.existing && typeof d.existing === 'object' ? d.existing : null;
+  S.qty = {};
+  items.forEach(function (it) { S.qty[it.id] = 0; });
+  prefillExisting();
+  if (d.title) document.title = '植間設計｜' + d.title;
+  renderMain();
+}
+
 function load() {
   if (!TOKEN) { errorCard('invalid'); return; }
+  var liveDone = false;
+  fetchJson(GW, { method: 'POST', body: JSON.stringify({ action: 'orderPageGet', t: TOKEN }), cache: 'no-store' }, SNAP_TIMEOUT_MS)
+    .then(function (r) {
+      if (liveDone || S.d || !r || r.ok !== true || !r.snapshot || typeof r.snapshot !== 'object' || r.snapshot.ok !== true) return;
+      var items = cleanItems(r.snapshot);
+      if (!items.length) return;
+      applyData(r.snapshot, items, 'snap');
+    })
+    .catch(function () {});
   fetchJson(API + '?page=set-order&t=' + encodeURIComponent(TOKEN) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
     .then(function (d) {
+      liveDone = true;
       if (!d || d.ok !== true) {
         var code = (d && d.error) || 'busy';
+        if (S.d && (!READ_FINAL[code] || S.sending)) return;
         errorCard(code, d && d.msg, !FINAL_ERRORS[code]);
         return;
       }
-      var items = Array.isArray(d.items) ? d.items.filter(function (it) { return it && it.id != null && it.name; }) : [];
-      if (!items.length) { errorCard('closed', '目前沒有可以訂購的品項，請直接在 LINE 跟我們說。'); return; }
-      S.d = d;
-      S.items = items;
-      S.preview = d.preview === true;
-      var mx = Math.floor(Number(d.maxQtyEach));
-      S.max = mx > 0 ? mx : 20;
-      S.existing = d.existing && typeof d.existing === 'object' ? d.existing : null;
-      items.forEach(function (it) { S.qty[it.id] = 0; });
-      if (S.existing && Array.isArray(S.existing.lines)) {
-        S.existing.lines.forEach(function (ln) {
-          if (ln && Object.prototype.hasOwnProperty.call(S.qty, ln.id)) {
-            S.qty[ln.id] = Math.max(0, Math.min(S.max, Math.floor(Number(ln.qty) || 0)));
-          }
-        });
-      }
-      if (d.title) document.title = '植間設計｜' + d.title;
-      renderMain();
+      var items = cleanItems(d);
+      if (!items.length) { if (S.sending) return; errorCard('closed', '目前沒有可以訂購的品項，請直接在 LINE 跟我們說。'); return; }
+      if (S.d) reconcile(d, items);
+      else applyData(d, items, 'live');
     })
-    .catch(function () { errorCard('busy', '', true); });
+    .catch(function () { liveDone = true; if (!S.d) errorCard('busy', '', true); });
+}
+
+/* 正本回來對快照：品項或價格有變就更新、保留客人已選的數量（被拿掉的品項歸零）；existing 只在客人還沒動過數量時預帶 */
+function sameShape(a, b, ia, ib) {
+  if (a.title !== b.title || a.note !== b.note || safeUrl(a.heroImage) !== safeUrl(b.heroImage) || (a.preview === true) !== (b.preview === true)) return false;
+  if (((a.client && a.client.name) || '') !== ((b.client && b.client.name) || '')) return false;
+  if (ia.length !== ib.length) return false;
+  for (var i = 0; i < ia.length; i++) {
+    if (String(ia[i].id) !== String(ib[i].id) || ia[i].name !== ib[i].name || (ia[i].spec || '') !== (ib[i].spec || '') || (ia[i].unit || '組') !== (ib[i].unit || '組')) return false;
+  }
+  return true;
+}
+function reconcile(d, items) {
+  if (S.sending) return;
+  var inPlace = !!document.getElementById('bar') && document.getElementById('bar').style.display !== 'none' && sameShape(S.d, d, S.items, items);
+  var old = S.qty;
+  S.d = d;
+  S.items = items;
+  S.src = 'live';
+  S.preview = d.preview === true;
+  var mx = Math.floor(Number(d.maxQtyEach));
+  S.max = mx > 0 ? mx : 20;
+  S.existing = d.existing && typeof d.existing === 'object' ? d.existing : null;
+  S.qty = {};
+  items.forEach(function (it) { S.qty[it.id] = Object.prototype.hasOwnProperty.call(old, it.id) ? clampQty(old[it.id]) : 0; });
+  if (!S.touched) prefillExisting();
+  if (d.title) document.title = '植間設計｜' + d.title;
+  var onMain = !!document.getElementById('bar') && document.getElementById('bar').style.display !== 'none';
+  if (!onMain) return;   /* 已在完成畫面：資料更新就好，回主畫面時照新資料畫 */
+  var hadConfirm = !!document.getElementById('confirm');
+  if (inPlace) {
+    items.forEach(function (it) {
+      var r = REFS.rows[it.id];
+      if (!r) return;
+      r.item = it;
+      fillPrice(r.price, it);
+    });
+    if (S.existing && !document.getElementById('existing')) app.insertBefore(existingEl(), app.firstChild);
+    refresh();
+  } else {
+    var y = window.scrollY;
+    renderMain();
+    window.scrollTo(0, y);
+  }
+  if (hadConfirm) openConfirm();
 }
 
 var REFS = {};
+
+function existingEl() {
+  var ex = el('div', 'exist');
+  ex.id = 'existing';
+  var exs = '您已送出過訂購（報價單 ' + (S.existing.quoteNo || '') + '，含稅 ' + money(S.existing.total) + '），還沒完成簽名';
+  ex.appendChild(el('div', '', exs));
+  var exUrl = safeUrl(S.existing.signUrl);
+  if (exUrl) {
+    var ea = el('a', 'btn', '前往簽署');
+    ea.href = exUrl;
+    ex.appendChild(ea);
+  }
+  return ex;
+}
+function fillPrice(node, it) {
+  clear(node);
+  node.appendChild(document.createTextNode(money(it.priceIncTax) + '／' + (it.unit || '組') + ' '));
+  node.appendChild(el('small', '', '含稅'));
+}
 
 function renderMain() {
   var d = S.d;
@@ -291,19 +383,7 @@ function renderMain() {
     document.body.appendChild(pv);
   }
 
-  if (S.existing) {
-    var ex = el('div', 'exist');
-    ex.id = 'existing';
-    var exs = '您已送出過訂購（報價單 ' + (S.existing.quoteNo || '') + '，含稅 ' + money(S.existing.total) + '），還沒完成簽名';
-    ex.appendChild(el('div', '', exs));
-    var exUrl = safeUrl(S.existing.signUrl);
-    if (exUrl) {
-      var ea = el('a', 'btn', '前往簽署');
-      ea.href = exUrl;
-      ex.appendChild(ea);
-    }
-    app.appendChild(ex);
-  }
+  if (S.existing) app.appendChild(existingEl());
 
   add(app, el('h1', '', d.title || '訂購'));
   if (d.client && d.client.name) app.appendChild(el('div', 'sub', '訂購單位：' + d.client.name));
@@ -336,8 +416,8 @@ function renderMain() {
     if (it.spec) card.appendChild(el('div', 'spec', it.spec));
     var buy = el('div', 'buy');
     var left = el('div');
-    var price = el('div', 'price', money(it.priceIncTax) + '／' + unit + ' ');
-    price.appendChild(el('small', '', '含稅'));
+    var price = el('div', 'price');
+    fillPrice(price, it);
     var subt = el('div', 'subt', '小計 ' + money(0));
     add(left, price, subt);
     var step = el('div', 'step');
@@ -355,7 +435,7 @@ function renderMain() {
     add(buy, left, step);
     card.appendChild(buy);
     app.appendChild(card);
-    REFS.rows[it.id] = { card: card, q: q, minus: minus, plus: plus, subt: subt, item: it };
+    REFS.rows[it.id] = { card: card, q: q, minus: minus, plus: plus, subt: subt, price: price, item: it };
   });
 
   var nf = el('div', 'card field');
@@ -397,6 +477,7 @@ function renderMain() {
 
 function setQty(id, n) {
   if (S.sending) return;
+  S.touched = true;
   S.qty[id] = Math.max(0, Math.min(S.max, n));
   refresh();
 }
