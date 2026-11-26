@@ -118,15 +118,37 @@ function fastLoad() {
     .then(function (x) { to.done(); if (x[1] && Date.now() - t0 <= GW_TIMEOUT) drawFast(x[0]); })
     .catch(function () { to.done(); });
 }
+/* 效期跟主系統 _qsignValidUntil_ 同一套（正本一律帶實際到期日，兩邊 HTML 才會一字不差）：
+   請款單不帶；有延長覆寫用覆寫日並標 extended；否則報價日＋validityDays（缺值或 0 用 30 天）；一律 yyyy/M/d。
+   只做日曆加減（台北無日光節約，與主系統在台北時區 setDate 結果相同）；日期讀不出來就照主系統退回下一步 */
+var QS_DEFAULT_VALIDITY_DAYS = 30;
+function ymdOf(v) {
+  var m = String(v == null ? '' : v).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+function ymdFmt(y, m, d) {
+  var t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() + '/' + (t.getUTCMonth() + 1) + '/' + t.getUTCDate();
+}
+function validOpts(r) {
+  if (/請款單/.test(String(r.typeName || ''))) return {};
+  var ov = String(r.validUntilOverride || '').trim(), extended = !!ov, until = '';
+  var o = ymdOf(ov);
+  if (o) until = ymdFmt(o[0], o[1], o[2]);
+  else {
+    var b = ymdOf(r.doc && r.doc.date);
+    if (!b) return {};
+    until = ymdFmt(b[0], b[1], b[2] + (Number(r.doc.validityDays) || QS_DEFAULT_VALIDITY_DAYS));
+  }
+  return { validUntil: until, validUntilExtended: extended };
+}
 function drawFast(r) {
   if (OFFICIAL_DONE || FAST) return;
   if (!r || r.ok !== true || r.expired || r.legacy || r.signed || !r.doc || typeof r.doc !== 'object') return;
   var html;
   try {
     QUOTE_DEFAULT_STAMP_URI = String(r.stampDefault || '');
-    var opts = {};
-    if (r.validUntilOverride) { opts.validUntil = String(r.validUntilOverride); opts.validUntilExtended = true; }
-    html = _quoteDocHtml_(r.doc, opts);
+    html = _quoteDocHtml_(r.doc, validOpts(r));
   } catch (e) { return; }
   if (!html) return;
   var isStmt = isStmtOf(r);
@@ -271,8 +293,11 @@ function render(d) {
 function finalizeFast(d, isStmt) {
   setHead(isStmt, d.clientShort || d.customer);
   if (d.docHtml !== FAST.docHtml) {
+    /* 換內容：先關放大檢視（免得還在看閘道那版）；高度維持上鎖值，新內容載入量好後只設一次（scaleDoc 上鎖後不改高度） */
+    closeDocZoom();
     var fr = document.getElementById('docfr');
     window.__docHtml = d.docHtml;
+    DOC_LOCKED = true;
     if (fr) fr.srcdoc = d.docHtml;
   }
   window.__pdfUrl = d.pdfViewUrl || d.pdfUrl || '';
@@ -341,6 +366,11 @@ function scaleDoc(fr) {
   var sc = wrap.clientWidth / 794;
   fr.style.transform = 'scale(' + sc + ')';
   fr.__scale = sc;
+  if (DOC_LOCKED) {   /* 上鎖後只跟著縮放比例換算外框，不重量內容（換內容的載入中、網址列收合都不會先縮後長） */
+    var lh = parseFloat(fr.style.height);
+    if (lh > 200) wrap.style.height = Math.ceil(lh * sc) + 'px';
+    return;
+  }
   try {
     var h = fr.contentDocument.body.scrollHeight;
     if (h > 200) { fr.style.height = h + 'px'; wrap.style.height = Math.ceil(h * sc) + 'px'; }

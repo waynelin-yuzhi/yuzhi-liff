@@ -2,6 +2,7 @@
 // 用法：node bin/quote-sign-fast-test.js [quote-sign.html 路徑] [截圖資料夾]
 //   環境變數 PW_CORE＝playwright-core 位置（預設 /tmp/inbox-redraw-test/node_modules/playwright-core）
 //   BASELINE＝舊版 quote-sign.html 路徑（有給就多拍一張舊版正本畫面做比對）
+process.env.TZ = 'Asia/Taipei';   // 主系統 GAS 專案時區；照抄 _qsignValidUntil_ 時 Date 要用同一個時區
 const path = require('path'), fs = require('fs'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const FILE = process.argv[2] || path.join(ROOT, 'quote-sign.html');
@@ -33,8 +34,30 @@ const docHtmlOf = (doc, validUntil) => { R.QUOTE_DEFAULT_STAMP_URI = STAMP; retu
 // 閘道回應（形狀同 quoteSignView）
 const GWR = (o) => Object.assign({ ok: true, title: '辦公室植栽', quoteNo: 'Q-2026-TEST', pdfId: 'P1', doc: DOC(), validUntilOverride: '', signed: null, stampDefault: STAMP,
   customer: '測試設計股份有限公司', clientShort: '測試設計', typeName: '單次採購', subtitle: '辦公室植栽', backend: 'local' }, o || {});
-// 主系統正本（形狀同 quoteSignInfoByHash_）；docHtml 預設跟閘道那份畫出來的一模一樣
-const OFF = (o) => Object.assign({ status: 'success', docHtml: docHtmlOf(DOC()), customer: '測試設計股份有限公司', clientShort: '測試設計', subtitle: '辦公室植栽',
+// 主系統 _qsignValidUntil_＋quoteSignInfoByHash_ 產 docHtml 的照抄（public-quote-sign.gs）：請款單不帶；覆寫日 new Date；否則 new Date(報價日)＋setDate(validityDays||30)；Utilities.formatDate 'yyyy/M/d'
+function gasValidUntil(rec, json) {
+  if (/請款單/.test(String(rec.type || ''))) return null;
+  let d = null;
+  if (rec.validUntilOverride) d = new Date(rec.validUntilOverride);
+  if (!d || isNaN(d.getTime())) {
+    const days = Number(json.validityDays) || 30;
+    d = new Date(rec.date);
+    if (isNaN(d.getTime())) return null;
+    d.setDate(d.getDate() + days);
+  }
+  d.setHours(23, 59, 59, 0);
+  return d;
+}
+const gasFmt = (d) => { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(d).reduce((o, x) => (o[x.type] = x.value, o), {}); return p.year + '/' + Number(p.month) + '/' + Number(p.day); };
+function gasDocHtml(doc, rec) {
+  const opts = {}, vu = gasValidUntil(rec, doc);
+  if (vu) { opts.validUntil = gasFmt(vu); opts.validUntilExtended = !!rec.validUntilOverride; }
+  R.QUOTE_DEFAULT_STAMP_URI = STAMP;
+  return R._quoteDocHtml_(doc, opts);
+}
+const REC = (o) => Object.assign({ date: '2026/11/20', type: '單次採購', validUntilOverride: '' }, o || {});
+// 主系統正本（形狀同 quoteSignInfoByHash_；docHtml 跟主系統一樣一律帶實際到期日）
+const OFF = (o) => Object.assign({ status: 'success', docHtml: gasDocHtml(DOC(), REC()), customer: '測試設計股份有限公司', clientShort: '測試設計', subtitle: '辦公室植栽',
   typeName: '單次採購', total: 19950, date: '2026/11/20', shareUrl: '', pdfId: 'P1', pdfUrl: 'https://drive.google.com/uc?export=download&id=P1',
   pdfViewUrl: BASE + 'doc-view.html?id=P1', quoteNo: 'Q-2026-TEST', sub: null, alreadySigned: false, signedAt: '', signer: '', signedPdfUrl: '' }, o || {});
 
@@ -132,21 +155,69 @@ const wait = (pg, ms) => pg.waitForTimeout(ms);
       await r.ctx.close();
     }
 
-    // 2. 正本內容跟閘道不同（效期不同）：換成正本、位置不變、高度最多在載入後重量一次
-    {
-      const offHtml = docHtmlOf(DOC(), '2026/12/31');
-      const r = await open(browser, { gwDelay: 100, offDelay: 2000, off: OFF({ docHtml: offHtml, clientShort: '測試設計二' }) });
-      await wait(r.pg, 1200);
+    // 2. 真實形狀的資料：一般單、延長過、跨月跨年、validityDays 缺值、月日不補零、閏年、ISO 日期，兩邊 HTML 一字不差、不重畫
+    for (const [name, doc, rec, gwOv, want] of [
+      ['一般單', DOC(), REC(), '', '2026/12/4'],
+      ['延長過（鏡像日期是 yyyy-MM-dd）', DOC(), REC({ validUntilOverride: '2026/12/31' }), '2026-12-31', '2026/12/31'],
+      ['延長過（同格式、跨年）', DOC(), REC({ validUntilOverride: '2027/1/15' }), '2027/1/15', '2027/1/15'],
+      ['跨月跨年', DOC({ date: '2026/12/25' }), REC({ date: '2026/12/25' }), '', '2027/1/8'],
+      ['validityDays 缺值用 30 天', DOC({ validityDays: undefined }), REC(), '', '2026/12/20'],
+      ['validityDays 是 0 用 30 天', DOC({ validityDays: 0 }), REC(), '', '2026/12/20'],
+      ['月日不補零＋閏年二月', DOC({ date: '2028/2/5', validityDays: 30 }), REC({ date: '2028/2/5' }), '', '2028/3/6'],
+      ['ISO 日期', DOC({ date: '2026-01-31', validityDays: 31 }), REC({ date: '2026-01-31' }), '', '2026/3/3'],
+    ]) {
+      const offHtml = gasDocHtml(doc, rec);
+      ok(offHtml.indexOf('至 ' + want) >= 0, name + '：主系統照抄算出 ' + want);
+      const r = await open(browser, { gwDelay: 80, offDelay: 1400, gw: GWR({ doc, validUntilOverride: gwOv }), off: OFF({ docHtml: offHtml }) });
+      await wait(r.pg, 900);
+      const f = await frState(r.pg);
+      ok(f && f.srcdoc === offHtml, name + '：閘道預覽與正本 HTML 字串完全相同');
+      await countLoads(r.pg);
       const b1 = await box(r.pg);
-      await wait(r.pg, 1800);
-      ok((await frState(r.pg)).srcdoc === offHtml, '內容不同時換成正本版本');
-      ok(await r.pg.evaluate((h) => window.__docHtml === h, offHtml), '放大檢視也換成正本');
+      await wait(r.pg, 900);
+      ok(await has(r.pg, '#go'), name + '：正本到後簽名區出現');
+      eq((await frState(r.pg)).loads, 0, name + '：不重畫 iframe');
+      eq(await box(r.pg), b1, name + '：版面不動');
+      await r.ctx.close();
+    }
+
+    // 2b. 正本內容真的不同（多一項／少一項）：先關放大檢視、換成正本；docwrap 高度最多變一次、不先縮後長
+    for (const [name, offDoc] of [['正本較長', DOC({ items: DOC().items.concat([{ name: '測試植栽 6', spec: '加購', unit: '盆', qty: 1, price: 900, total: 900, area: '會議室' }]) })], ['正本較短', DOC({ items: DOC().items.slice(0, 3) })]]) {
+      const offHtml = gasDocHtml(offDoc, REC());
+      const r = await open(browser, { gwDelay: 80, offDelay: 2000, off: OFF({ docHtml: offHtml, clientShort: '測試設計二' }) });
+      await wait(r.pg, 1100);
+      const b1 = await box(r.pg);
+      await r.pg.evaluate(() => { const w = document.getElementById('docwrap'); window.__hs = [w.getBoundingClientRect().height]; new ResizeObserver(() => { const h = w.getBoundingClientRect().height; if (h !== window.__hs[window.__hs.length - 1]) window.__hs.push(h); }).observe(w); });
+      await r.pg.click('#zoombtn');
+      ok(await has(r.pg, '#doczoom'), name + '：放大檢視已打開（閘道版）');
+      await wait(r.pg, 1600);
+      ok(!(await has(r.pg, '#doczoom')), name + '：換內容時先關放大檢視');
+      ok((await frState(r.pg)).srcdoc === offHtml && await r.pg.evaluate((h) => window.__docHtml === h, offHtml), name + '：文件與放大檢視來源都換成正本');
+      const hs = await r.pg.evaluate(() => window.__hs);
+      ok(hs.length <= 2, name + '：docwrap 高度最多變一次（' + hs.map(Math.round).join(' → ') + '）');
+      ok(Math.min.apply(null, hs) >= Math.min(hs[0], hs[hs.length - 1]) - 0.5, name + '：過程中沒有縮到比前後都小');
       const b2 = await box(r.pg);
-      eq(b2.top, b1.top, '換正本時報價單位置不變');
-      ok(Math.abs(b2.h - b1.h) <= 40, '高度只微調一次（' + b1.h + ' → ' + b2.h + '）');
-      eq(await txt(r.pg, '#qssub'), '測試設計二', '頁首副標換成正本');
-      eq(await r.pg.evaluate(() => getComputedStyle(document.getElementById('qssub')).height), '20px', '副標高度固定');
-      ok(await has(r.pg, '#go'), '簽名區出現');
+      eq(b2.top, b1.top, name + '：報價單位置不變');
+      ok(name === '正本較長' ? b2.h > b1.h : b2.h < b1.h, name + '：最終高度跟著正本（' + b1.h + ' → ' + b2.h + '）');
+      await r.pg.click('#zoombtn');
+      await wait(r.pg, 300);
+      ok(await r.pg.evaluate((h) => document.querySelector('#doczoom iframe').srcdoc === h, offHtml), name + '：再打開放大檢視是正本');
+      eq(await txt(r.pg, '#qssub'), '測試設計二', name + '：頁首副標換成正本');
+      eq(await r.pg.evaluate(() => getComputedStyle(document.getElementById('qssub')).height), '20px', name + '：副標高度固定');
+      eq(r.st.errors, [], name + '：沒有頁面錯誤');
+      await r.ctx.close();
+    }
+
+    // 2c. 上鎖後視窗高度變動（網址列收合）不改報價單高度
+    {
+      const r = await open(browser, { gwDelay: 80, offDelay: 600 });
+      await wait(r.pg, 1500);
+      const b1 = await box(r.pg);
+      await r.pg.setViewportSize({ width: 390, height: 760 });
+      await wait(r.pg, 300);
+      await r.pg.setViewportSize({ width: 390, height: 844 });
+      await wait(r.pg, 300);
+      eq(await box(r.pg), b1, '視窗高度變動後報價單高度不變');
       await r.ctx.close();
     }
 
