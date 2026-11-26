@@ -44,6 +44,9 @@
   .pill{display:inline-block;font-size:11px;padding:1px 7px;border:1px solid #D9D3C4;border-radius:10px;color:#5F6E58;vertical-align:middle;font-weight:400}
   .pill.ap{background:var(--tint);border-color:#B9C4AE}
   .pill.man{background:var(--amber);border-color:#E0CF93;color:#7a5a12}
+  .pill.kind{margin:0;font-size:10.5px;padding:1px 6px;letter-spacing:.04em;flex:none}
+  .pill.kind.g{background:#5F6E58;border-color:#5F6E58;color:#fff}
+  .pill.kind.u{background:#fff;border-color:#C9C2B0;color:#8a8275}
   .pill.tag{background:#EEF2E6;border-color:#C9D3B8;color:#4B5A42}.pill.wait{background:#F7E4DC;border-color:#E4B9A8;color:var(--brick)}
   .sched{padding:8px;border-bottom:1px solid var(--line);font-size:13px}
   .head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -690,11 +693,13 @@ body.ns-open{overflow:hidden}
       var badges = (c.pending ? '<span class="pill ap">待核可</span>' : '') + (c.awaitingReply && !c.pending ? '<span class="pill wait">待回</span>' : '') + (c.scheduled ? '<span class="pill ap">排程 ' + c.scheduled + '</span>' : '') + (c.manual ? '<span class="pill man">手動</span>' : '') + (c.role && c.role !== '員工' ? '<span class="pill">' + esc(c.role) + '</span>' : '') + (c.tags || []).filter(function (g) { return g !== '不跟進' && g !== '要跟進'; }).map(function (g) { return '<span class="pill tag">' + esc(g) + '</span>'; }).join('');
       var pv0 = c.pending ? ((OV.pending || []).filter(function (p) { return p.id === c.pending.id; })[0] || {}) : {};
       var snip = c.pending ? '稿：' + esc(pv0.snippet || String(pv0.text || '').substring(0, 160) || c.pending.title) : esc(c.lastText || '');
-      return '<div class="ct' + (cur === c.contactId ? ' on' : '') + (c.pending ? ' hot' : '') + '" data-cid="' + esc(c.contactId) + '"><span class="t">' + esc((c.lastTs || '').slice(5, 16)) + '</span><div class="n">' + esc((clientShort(c.clientId) ? clientShort(c.clientId) + '｜' : '') + c.name) + badges + '</div><div class="m">' + snip + '</div></div>';
+      return '<div class="ct' + (cur === c.contactId ? ' on' : '') + (c.pending ? ' hot' : '') + '" data-cid="' + esc(c.contactId) + '"><span class="t">' + esc((c.lastTs || '').slice(5, 16)) + '</span><div class="n">' + kindTag(c.contactId) + esc((clientShort(c.clientId) ? clientShort(c.clientId) + '｜' : '') + c.name) + badges + '</div><div class="m">' + snip + '</div></div>';
     }).join('') : '<div class="small muted" style="padding:8px">（這一頁沒有東西）</div>';
     box.querySelectorAll('.ct').forEach(function (el) { el.onclick = function () { openThread(el.getAttribute('data-cid')); }; });
   }
 
+  // 列表一眼分群組或個人（Wayne 2026-11-26：回覆跑到個人那次，列表看不出哪一串是群組）。LINE 對象代碼開頭 C＝群組、R＝多人聊天室、U＝個人
+  function kindTag(cid) { var k = String(cid || '').charAt(0); if (k === 'C' || k === 'R') return '<span class="pill kind g">' + (k === 'R' ? '聊天室' : '群組') + '</span>'; if (k === 'U') return '<span class="pill kind u">個人</span>'; return ''; }
   var OPEN_GEN = 0, FORCE_DOSSIER = {};
   function apNum(id) { return Number(String(id || '').replace(/\D/g, '')) || 0; }
   // 同一位有多則待核可（例：一人管四家、各發一張卡）：照件號由小到大排、先出最早那則，核可完下一則才接著出現
