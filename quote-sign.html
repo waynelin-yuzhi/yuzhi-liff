@@ -11,7 +11,8 @@
   .wrap { max-width: 520px; margin: 0 auto; }
   .brand { font-size: 11px; letter-spacing: .3em; color: #5F6E58; font-weight: 700; text-align: center; margin-bottom: 4px; }
   h1 { font-size: 19px; text-align: center; margin: 0 0 4px; }
-  .sub { font-size: 12px; color: #8a8275; text-align: center; margin-bottom: 16px; }
+  .sub { font-size: 12px; color: #8a8275; text-align: center; margin-bottom: 16px; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .signph { height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: #8a8275; }
   .card { background: #FFFCF5; border-radius: 12px; padding: 20px 18px; box-shadow: 0 4px 16px rgba(0,0,0,.06); margin-bottom: 14px; }
   .row { display: flex; gap: 12px; padding: 7px 0; border-bottom: .5px solid #EDE9DE; font-size: 13.5px; }
   .row:last-child { border-bottom: none; }
@@ -47,18 +48,25 @@
 <body>
 <div class="wrap">
   <div class="brand">YUZHI PLANT DESIGN</div>
-  <div id="app"><div class="done-card"><h2>載入中…</h2><p>正在讀取報價單</p></div></div>
+  <div id="app"><div class="done-card"><h2>正在開啟報價單，大約需要幾秒鐘</h2></div></div>
   <div class="ft">此頁面由植間設計 Workspace 系統發出<br>植間設計股份有限公司｜統編 90877240<br><span style="opacity:.55" id="pgver">quote-sign</span></div>
 </div>
 <script src="pad.js?v=2"></script>
 <script>
 /* LINE 內建瀏覽器：簽名體驗不穩（Rene 實案）→ 自動再導一次觸發 openExternalBrowser 跳外部；跳不出去顯示指引 */
 var IN_LINE = (navigator.userAgent || '').indexOf('Line/') >= 0;
+var REDIRECTING = false;
 if (IN_LINE && !sessionStorage.getItem('yzQsExt')) {
   sessionStorage.setItem('yzQsExt', '1');
+  REDIRECTING = true;
   location.replace(location.href);
 }
 var API = 'https://script.google.com/macros/s/AKfycbxBqNeM8AKbKVn4VIUcrAe73WRMJzH5x31e2VjhE9uSRdtmcU3i7029tR35K6vKA90B/exec';
+/* 快速預覽（2026-11-26）：主系統冷啟動要 9 到 11 秒，打開時同時向閘道讀報價文件，用同一支排版器先畫出報價單；
+   可不可以簽、已簽、過期、作廢一律等主系統正本。閘道失敗、逾時或還沒上線就照舊等正本 */
+var GW = 'https://ytlakkxrbookftluulbo.supabase.co/functions/v1/api';
+var GW_TIMEOUT = 6000, OFFICIAL_TIMEOUT = 45000;
+var OFFICIAL_DONE = false, FAST = null;
 var HASH = new URLSearchParams(location.search).get('h') || '';
 var PGV = new URLSearchParams(location.search).get('v') || '';
 if (PGV) { var _pv = document.getElementById('pgver'); if (_pv) _pv.textContent = 'quote-sign v' + PGV; }
@@ -68,6 +76,7 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function doneCard(title, msg, err, extraHtml) {
+  closeDocZoom();
   app.innerHTML = '<div class="done-card"><h2' + (err ? ' class="err"' : '') + '>' + esc(title) + '</h2><p>' + esc(msg) + '</p>' + (extraHtml || '') + '</div>';
   window.scrollTo(0, 0);
 }
@@ -75,10 +84,92 @@ function doneCard(title, msg, err, extraHtml) {
 if (!HASH) {
   doneCard('連結無效', '找不到這張報價單；請與植間聯繫。', true);
 } else {
-  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json&_=' + Date.now(), { cache: 'no-store' })
+  if (!REDIRECTING) fastLoad();
+  officialLoad();
+}
+
+function withTimeout(ms) {
+  var ctl = window.AbortController ? new AbortController() : null;
+  var tm = ctl ? setTimeout(function () { ctl.abort(); }, ms) : null;
+  return { signal: ctl ? ctl.signal : undefined, done: function () { if (tm) clearTimeout(tm); } };
+}
+function officialLoad() {
+  var to = withTimeout(OFFICIAL_TIMEOUT);
+  fetch(API + '?page=quote-sign&h=' + encodeURIComponent(HASH) + '&fmt=json&_=' + Date.now(), { cache: 'no-store', signal: to.signal })
     .then(function (r) { return r.json(); })
-    .then(render)
-    .catch(function () { doneCard('載入失敗', '請關閉頁面後重新點一次卡片按鈕。', true); });
+    .then(function (d) { to.done(); OFFICIAL_DONE = true; render(d); })
+    .catch(function () { to.done(); OFFICIAL_DONE = true; officialFailed(); });
+}
+function loadRenderer() {
+  return new Promise(function (res) {
+    var s = document.createElement('script');
+    s.src = 'quote/quote-doc-render.js?v=15';
+    s.onload = function () { res(typeof _quoteDocHtml_ === 'function'); };
+    s.onerror = function () { res(false); };
+    document.head.appendChild(s);
+  });
+}
+/* POST、body 是字串（瀏覽器帶 text/plain、不觸發預檢）；簽署 hash 不放網址 */
+function fastLoad() {
+  var t0 = Date.now(), to = withTimeout(GW_TIMEOUT);
+  var gw = fetch(GW, { method: 'POST', body: JSON.stringify({ action: 'quoteSignView', s: HASH }), cache: 'no-store', signal: to.signal })
+    .then(function (r) { return r.json(); });
+  Promise.all([gw, loadRenderer()])
+    .then(function (x) { to.done(); if (x[1] && Date.now() - t0 <= GW_TIMEOUT) drawFast(x[0]); })
+    .catch(function () { to.done(); });
+}
+/* 效期跟主系統 _qsignValidUntil_ 同一套（正本一律帶實際到期日，兩邊 HTML 才會一字不差）：
+   請款單不帶；有延長覆寫用覆寫日並標 extended；否則報價日＋validityDays（缺值或 0 用 30 天）；一律 yyyy/M/d。
+   只做日曆加減（台北無日光節約，與主系統在台北時區 setDate 結果相同）；日期讀不出來就照主系統退回下一步 */
+var QS_DEFAULT_VALIDITY_DAYS = 30;
+function ymdOf(v) {
+  var m = String(v == null ? '' : v).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+function ymdFmt(y, m, d) {
+  var t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() + '/' + (t.getUTCMonth() + 1) + '/' + t.getUTCDate();
+}
+function validOpts(r) {
+  if (/請款單/.test(String(r.typeName || ''))) return {};
+  var ov = String(r.validUntilOverride || '').trim(), extended = !!ov, until = '';
+  var o = ymdOf(ov);
+  if (o) until = ymdFmt(o[0], o[1], o[2]);
+  else {
+    var b = ymdOf(r.doc && r.doc.date);
+    if (!b) return {};
+    until = ymdFmt(b[0], b[1], b[2] + (Number(r.doc.validityDays) || QS_DEFAULT_VALIDITY_DAYS));
+  }
+  return { validUntil: until, validUntilExtended: extended };
+}
+function drawFast(r) {
+  if (OFFICIAL_DONE || FAST) return;
+  if (!r || r.ok !== true || r.expired || r.legacy || r.signed || !r.doc || typeof r.doc !== 'object') return;
+  var html;
+  try {
+    QUOTE_DEFAULT_STAMP_URI = String(r.stampDefault || '');
+    html = _quoteDocHtml_(r.doc, validOpts(r));
+  } catch (e) { return; }
+  if (!html) return;
+  var isStmt = isStmtOf(r);
+  FAST = { docHtml: html, isStmt: isStmt };
+  app.innerHTML = headHtml(isStmt) + docBlockHtml('<a class="ghost" id="pdfdl" style="margin:16px 0 22px;opacity:.5;pointer-events:none">下載報價單 PDF</a>')
+    + payHtml(isStmt) + '<div id="signslot">' + (isStmt
+        ? '<div style="text-align:center;margin:4px 0 26px"><span style="font-size:12px;color:#A09A8C">公司內部需要簽收確認？簽收區準備中</span></div>'
+        : '<div class="card signph">簽名區準備中，請先看報價單內容</div>') + '</div>';
+  setHead(isStmt, r.clientShort || r.customer);
+  fitDoc();
+  loadDoc({ docHtml: html });
+  window.addEventListener('resize', fitDoc);
+  bindPay();
+}
+/* 正本讀取失敗：快速預覽已畫出來就保留報價單、簽名區改成重新整理（絕不顯示成可以簽）；沒畫出來照舊整頁載入失敗 */
+function officialFailed() {
+  var slot = FAST && document.getElementById('signslot');
+  if (!slot) { doneCard('載入失敗', '請關閉頁面後重新點一次卡片按鈕。', true); return; }
+  slot.innerHTML = '<div class="card signph"><div>簽名區載入失敗，請重新整理再試一次</div>'
+    + '<button type="button" class="ghost" id="reloadbtn" style="width:auto;padding:10px 28px;margin-top:14px">重新整理</button></div>';
+  document.getElementById('reloadbtn').addEventListener('click', function () { location.reload(); });
 }
 
 // 簽完之後匯款帳號整個消失＝客戶要付款時找不到（Wayne 2026-07-31）：已完成畫面保留匯款區＋一鍵複製
@@ -108,36 +199,37 @@ document.addEventListener('click', function (ev) {
   }
 });
 
-function render(d) {
-  if (!d || d.status !== 'success') { doneCard('連結無效', (d && d.msg) || '找不到這張報價單；請與植間聯繫。', true); return; }
-  if (d.alreadySigned) {
-    doneCard('已完成簽回', (d.signer || '') + '　' + (d.signedAt || '') + ' 已簽署留存，感謝您！',
-      false, (d.signedPdfUrl ? '<a class="ghost" href="' + esc(d.signedPdfUrl) + '" target="_blank">查看簽回確認書</a>' : '') + bankBlock());
-    return;
-  }
-  var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
-  var isStmt = (String(d.typeName || '') + String(d.subtitle || '')).indexOf('請款單') >= 0;
+function isStmtOf(d) { return (String(d.typeName || '') + String(d.subtitle || '')).indexOf('請款單') >= 0; }
+function headHtml(isStmt) {
   var lineWarn = (IN_LINE && !isStmt)
     ? '<div class="card" style="background:#FBF3E4;border:1px solid #E3C990;padding:12px 14px;font-size:12.5px;color:#8a6a2e">現在是 LINE 內建瀏覽器、簽名可能不順。建議點畫面角落「…」選「<b>以預設瀏覽器開啟</b>」再簽。</div>'
     : '';
-  app.innerHTML = '<h1>' + (isStmt ? '請款單' : '報價單簽回') + '</h1><div class="sub">' + esc(d.clientShort || d.customer) + '</div>' + lineWarn
-    + ((d.docHtml || d.shareUrl)
-        ? '<div id="docwrap" style="overflow:hidden;margin:10px -6px 0;position:relative;cursor:zoom-in">'
-          + '<iframe id="docfr" style="border:0;display:block;width:100%" scrolling="no"></iframe>'
-          + '<button id="zoombtn" aria-label="放大檢視" style="position:absolute;right:12px;bottom:12px;width:46px;height:46px;border-radius:50%;border:1px solid #C9D2C5;background:rgba(95,110,88,0.92);color:#FFFCF5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)">'
-          + '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/></svg></button></div>'
-          + '<div style="font-size:11.5px;color:#A09A8C;margin:6px 0 0;text-align:center">點報價單或放大鏡＝全螢幕檢視、可雙指縮放看金額細節</div>'
-          + (d.pdfUrl ? '<a class="ghost" style="margin:16px 0 22px" href="' + esc(d.pdfUrl) + '" target="_blank">下載報價單 PDF</a>' : '')
-        : '<div class="card">' + row('報價類型', (d.typeName || '') + (d.subtitle ? '（' + d.subtitle + '）' : '')) + row('報價日期', d.date)
-          + '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">總計金額</span><b>NT$ ' + Number(d.total || 0).toLocaleString() + '</b></div></div>')
-    + '<div class="card"><div style="font-size:11px;color:#A09A8C;letter-spacing:.15em;margin-bottom:8px">匯款帳號　PAYMENT</div>'
+  return '<h1 id="qsh1"></h1><div class="sub" id="qssub"></div>' + lineWarn;
+}
+function setHead(isStmt, sub) {
+  document.getElementById('qsh1').textContent = isStmt ? '請款單' : '報價單簽回';
+  document.getElementById('qssub').textContent = sub || '';
+}
+function docBlockHtml(pdfHtml) {
+  return '<div id="docwrap" style="overflow:hidden;margin:10px -6px 0;position:relative;cursor:zoom-in">'
+    + '<iframe id="docfr" style="border:0;display:block;width:100%" scrolling="no"></iframe>'
+    + '<button id="zoombtn" aria-label="放大檢視" style="position:absolute;right:12px;bottom:12px;width:46px;height:46px;border-radius:50%;border:1px solid #C9D2C5;background:rgba(95,110,88,0.92);color:#FFFCF5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)">'
+    + '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/></svg></button></div>'
+    + '<div style="font-size:11.5px;color:#A09A8C;margin:6px 0 0;text-align:center">點報價單或放大鏡＝全螢幕檢視、可雙指縮放看金額細節</div>'
+    + pdfHtml;
+}
+function pdfLinkHtml(d) {
+  return d.pdfUrl ? '<a class="ghost" id="pdfdl" style="margin:16px 0 22px" href="' + esc(d.pdfUrl) + '" target="_blank">下載報價單 PDF</a>' : '';
+}
+function payHtml(isStmt) {
+  return '<div class="card"><div style="font-size:11px;color:#A09A8C;letter-spacing:.15em;margin-bottom:8px">匯款帳號　PAYMENT</div>'
     + '<div style="font-size:13.5px;color:#4A4A45;line-height:2">國泰世華銀行（013）連城分行<br>戶名　植間設計股份有限公司</div>'
     + '<div class="amt" style="margin-top:8px"><b id="bkacct" style="letter-spacing:.12em;font-size:17px">128035009074</b>'
     + '<button class="ghost" id="bkcopy" style="margin:0;width:auto;padding:8px 16px;font-size:13px">複製帳號</button></div></div>'
-    + (isStmt
-        ? '<div class="card" style="text-align:center;font-size:13px;color:#5A5750;line-height:1.9">核對明細無誤後，於期限內匯款即可，無需簽回。<br>金額或內容有疑問，回 LINE 對話告訴我們就好。</div>'
-          + '<div style="text-align:center;margin:4px 0 26px"><a href="#" id="showsign" style="font-size:12px;color:#A09A8C">公司內部需要簽收確認？點此簽名</a></div>'
-        : '')
+    + (isStmt ? '<div class="card" style="text-align:center;font-size:13px;color:#5A5750;line-height:1.9">核對明細無誤後，於期限內匯款即可，無需簽回。<br>金額或內容有疑問，回 LINE 對話告訴我們就好。</div>' : '');
+}
+function confirmHtml(d, isStmt) {
+  return (isStmt ? '<div style="text-align:center;margin:4px 0 26px"><a href="#" id="showsign" style="font-size:12px;color:#A09A8C">公司內部需要簽收確認？點此簽名</a></div>' : '')
     + '<div id="confirmwrap"' + (isStmt ? ' style="display:none"' : '') + '>'
     + (isStmt ? '' : '<div class="card" style="padding:14px 16px">'
         + '<div style="font-size:11px;color:#A09A8C;letter-spacing:.15em;margin-bottom:10px">確認本報價單，請擇一完成</div>'
@@ -151,16 +243,17 @@ function render(d) {
     + '</div>'
     + (isStmt ? '' : stampBlock(d))
     + '</div>';
+}
+function bindPay() {
+  var bk = document.getElementById('bkcopy');
+  if (bk) bk.addEventListener('click', copyAcct);
+}
+function bindConfirm() {
   initPad();
-  fitDoc();
-  loadDoc(d);
-  window.addEventListener('resize', fitDoc);
   var ss = document.getElementById('showsign');
   if (ss) ss.addEventListener('click', function (ev) { ev.preventDefault(); document.getElementById('confirmwrap').style.display = ''; ss.parentNode.style.display = 'none'; initPad(); });
   document.getElementById('clr').addEventListener('click', cvClear);
   document.getElementById('go').addEventListener('click', doSign);
-  var bk = document.getElementById('bkcopy');
-  if (bk) bk.addEventListener('click', copyAcct);
   var tA = document.getElementById('tabA'), tB = document.getElementById('tabB');
   if (tA && tB) {
     tA.addEventListener('click', function () { switchTab('A'); });
@@ -169,6 +262,54 @@ function render(d) {
     document.getElementById('stampfile').addEventListener('change', function () { stampProc(this); });
     document.getElementById('stampgo').addEventListener('click', doStamp);
   }
+}
+
+function render(d) {
+  if (!d || d.status !== 'success') { doneCard('連結無效', (d && d.msg) || '找不到這張報價單；請與植間聯繫。', true); return; }
+  if (d.alreadySigned) {
+    doneCard('已完成簽回', (d.signer || '') + '　' + (d.signedAt || '') + ' 已簽署留存，感謝您！',
+      false, (d.signedPdfUrl ? '<a class="ghost" href="' + esc(d.signedPdfUrl) + '" target="_blank">查看簽回確認書</a>' : '') + bankBlock());
+    return;
+  }
+  var isStmt = isStmtOf(d);
+  if (FAST && d.docHtml && FAST.isStmt === isStmt && document.getElementById('signslot')) { finalizeFast(d, isStmt); return; }
+  closeDocZoom();
+  var row = function (k, val) { return '<div class="row"><div class="k">' + k + '</div><div>' + esc(val || '—') + '</div></div>'; };
+  app.innerHTML = headHtml(isStmt)
+    + ((d.docHtml || d.shareUrl)
+        ? docBlockHtml(pdfLinkHtml(d))
+        : '<div class="card">' + row('報價類型', (d.typeName || '') + (d.subtitle ? '（' + d.subtitle + '）' : '')) + row('報價日期', d.date)
+          + '<div class="amt"><span style="font-size:11px;color:#6B675E;letter-spacing:.15em">總計金額</span><b>NT$ ' + Number(d.total || 0).toLocaleString() + '</b></div></div>')
+    + payHtml(isStmt)
+    + confirmHtml(d, isStmt);
+  setHead(isStmt, d.clientShort || d.customer);
+  fitDoc();
+  loadDoc(d);
+  window.addEventListener('resize', fitDoc);
+  bindPay();
+  bindConfirm();
+}
+/* 快速預覽已在畫面上：只對正，不重畫整頁。文件字串相同就不動 iframe；不同才換成正本（高度只在載入後重量一次） */
+function finalizeFast(d, isStmt) {
+  setHead(isStmt, d.clientShort || d.customer);
+  if (d.docHtml !== FAST.docHtml) {
+    /* 換內容：先關放大檢視（免得還在看閘道那版）；高度維持上鎖值，新內容載入量好後只設一次（scaleDoc 上鎖後不改高度） */
+    closeDocZoom();
+    var fr = document.getElementById('docfr');
+    window.__docHtml = d.docHtml;
+    DOC_LOCKED = true;
+    if (fr) fr.srcdoc = d.docHtml;
+  }
+  window.__pdfUrl = d.pdfViewUrl || d.pdfUrl || '';
+  var pl = document.getElementById('pdfdl');
+  if (pl) {
+    if (d.pdfUrl) { pl.setAttribute('href', d.pdfUrl); pl.setAttribute('target', '_blank'); pl.style.opacity = ''; pl.style.pointerEvents = ''; }
+    else pl.parentNode.removeChild(pl);
+  }
+  var slot = document.getElementById('signslot');
+  slot.insertAdjacentHTML('beforebegin', confirmHtml(d, isStmt));
+  slot.parentNode.removeChild(slot);
+  bindConfirm();
 }
 
 /* B 公司用印回傳：下載 PDF 蓋章、回到本頁上傳、完成（Wayne 2026-09 定向；A 線上簽名照舊） */
@@ -225,6 +366,11 @@ function scaleDoc(fr) {
   var sc = wrap.clientWidth / 794;
   fr.style.transform = 'scale(' + sc + ')';
   fr.__scale = sc;
+  if (DOC_LOCKED) {   /* 上鎖後只跟著縮放比例換算外框，不重量內容（換內容的載入中、網址列收合都不會先縮後長） */
+    var lh = parseFloat(fr.style.height);
+    if (lh > 200) wrap.style.height = Math.ceil(lh * sc) + 'px';
+    return;
+  }
   try {
     var h = fr.contentDocument.body.scrollHeight;
     if (h > 200) { fr.style.height = h + 'px'; wrap.style.height = Math.ceil(h * sc) + 'px'; }
