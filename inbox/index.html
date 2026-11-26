@@ -47,6 +47,16 @@
   .pill.kind{margin:0;font-size:10.5px;padding:1px 6px;letter-spacing:.04em;flex:none}
   .pill.kind.g{background:#5F6E58;border-color:#5F6E58;color:#fff}
   .pill.kind.u{background:#fff;border-color:#C9C2B0;color:#8a8275}
+  .pill.pay{margin:0 0 0 4px;font-size:10.5px;padding:1px 6px;letter-spacing:.04em;background:#F6E7C4;border-color:#DDBF7E;color:#7A5212;font-weight:600}
+  .payBox{margin:6px 0 8px;padding:10px 12px;border:1px solid #DDBF7E;border-radius:8px;background:#FCF6E8}
+  .payBox .payHead{font-size:16px;font-weight:700;color:#5A3C0C}
+  .payBox .payMatch{margin-top:4px;font-size:14px;font-weight:600;color:#7A5212}
+  .payBox .payMatch.bad{color:#B3261E}
+  .payBox .payRows{margin-top:6px;font-size:13px;color:#5b5446}
+  .payBtns{display:flex;gap:8px;margin:8px 0 6px}
+  .payBtns button{flex:1;padding:12px 8px;font-size:16px;font-weight:700;border-radius:8px;border:1px solid #C9C2B0;background:#fff;color:#3d3a33;cursor:pointer}
+  .payBtns button.on{background:#5F6E58;border-color:#5F6E58;color:#fff}
+  .payHint{font-size:13px;color:#8C3B25;margin:4px 0}
   .pill.tag{background:#EEF2E6;border-color:#C9D3B8;color:#4B5A42}.pill.wait{background:#F7E4DC;border-color:#E4B9A8;color:var(--brick)}
   .sched{padding:8px;border-bottom:1px solid var(--line);font-size:13px}
   .head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -668,7 +678,7 @@ body.ns-open{overflow:hidden}
       batch.innerHTML += '<details class="small" style="margin:0 0 8px;padding:6px 10px;border:1px solid #E5E0D3;border-radius:8px;background:#FBF9F3"><summary style="cursor:pointer;color:#8a8275">另有 ' + OV.other.length + ' 件非客服的待核可（LINE 核可卡處理）</summary><div style="margin-top:6px">' + OV.other.slice(0, 8).map(function (o) { return '・' + esc(o.id) + ' ' + esc(o.title) + '（' + esc(String(o.ts).substring(5, 16)) + '）'; }).join('<br>') + '</div></details>';   // 收合成一行，點開才列（Wayne 2026-10-07：黃色區塊太佔空間）
     }
     if (TAB === 'todo') {
-      var withAt = (OV.pending || []).filter(function (p) { return !apHidden(p.id) && p.publishAt && Date.parse(String(p.publishAt).replace(' ', 'T') + ':00') > Date.now() + 60000; });   // 建議時間已經過的不能批次送，照舊路會立刻發給客戶
+      var withAt = (OV.pending || []).filter(function (p) { return !apHidden(p.id) && !p.payNotice && p.publishAt && Date.parse(String(p.publishAt).replace(' ', 'T') + ':00') > Date.now() + 60000; });   // 建議時間已經過的不能批次送，照舊路會立刻發給客戶
       var batchLabel = function () { return '送出中（第 ' + BATCH.i + ' 張／共 ' + BATCH.n + ' 張）'; };
       if (BATCH) batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll" disabled>' + esc(batchLabel()) + '</button></div>';   // 批次進行中清單重畫：只畫停用的進度鈕，不可以再出現可按的批次鈕
       else if (withAt.length > 1) { batch.innerHTML += '<div class="row" style="margin:0 0 8px"><button class="btn small" id="sendAll">全部照建議時間送出（' + withAt.length + '）</button><span class="small muted">內容有疑問的先點進去看</span></div>';
@@ -692,13 +702,28 @@ body.ns-open{overflow:hidden}
     box.innerHTML = rows.length ? rows.map(function (c) {
       var badges = (c.pending ? '<span class="pill ap">待核可</span>' : '') + (c.awaitingReply && !c.pending ? '<span class="pill wait">待回</span>' : '') + (c.scheduled ? '<span class="pill ap">排程 ' + c.scheduled + '</span>' : '') + (c.manual ? '<span class="pill man">手動</span>' : '') + (c.role && c.role !== '員工' ? '<span class="pill">' + esc(c.role) + '</span>' : '') + (c.tags || []).filter(function (g) { return g !== '不跟進' && g !== '要跟進'; }).map(function (g) { return '<span class="pill tag">' + esc(g) + '</span>'; }).join('');
       var pv0 = c.pending ? ((OV.pending || []).filter(function (p) { return p.id === c.pending.id; })[0] || {}) : {};
-      var snip = c.pending ? '稿：' + esc(pv0.snippet || String(pv0.text || '').substring(0, 160) || c.pending.title) : esc(c.lastText || '');
-      return '<div class="ct' + (cur === c.contactId ? ' on' : '') + (c.pending ? ' hot' : '') + '" data-cid="' + esc(c.contactId) + '"><span class="t">' + esc((c.lastTs || '').slice(5, 16)) + '</span><div class="n">' + kindTag(c.contactId) + esc((clientShort(c.clientId) ? clientShort(c.clientId) + '｜' : '') + c.name) + badges + '</div><div class="m">' + snip + '</div></div>';
+      var snip = (c.pending && pv0.payNotice) ? '客戶說已匯款' + esc(payNum(pv0.payNotice.amount) ? ' ' + payNum(pv0.payNotice.amount) : '') + '，待你選回覆' : c.pending ? '稿：' + esc(pv0.snippet || String(pv0.text || '').substring(0, 160) || c.pending.title) : esc(c.lastText || '');
+      return '<div class="ct' + (cur === c.contactId ? ' on' : '') + (c.pending ? ' hot' : '') + '" data-cid="' + esc(c.contactId) + '"><span class="t">' + esc((c.lastTs || '').slice(5, 16)) + '</span><div class="n">' + kindTag(c.contactId) + esc((clientShort(c.clientId) ? clientShort(c.clientId) + '｜' : '') + c.name) + payTag(pv0) + badges + '</div><div class="m">' + snip + '</div></div>';
     }).join('') : '<div class="small muted" style="padding:8px">（這一頁沒有東西）</div>';
     box.querySelectorAll('.ct').forEach(function (el) { el.onclick = function () { openThread(el.getAttribute('data-cid')); }; });
   }
 
   // 列表一眼分群組或個人（Wayne 2026-11-26：回覆跑到個人那次，列表看不出哪一串是群組）。LINE 對象代碼開頭 C＝群組、R＝多人聊天室、U＝個人
+  // 待處理的匯款通知卡（客戶說已匯款）：名字後面一個「款」字（Wayne 2026-11-26）
+  function payTag(pv) { return pv && pv.payNotice ? '<span class="pill pay" title="客戶說已匯款，待你選回覆">款</span>' : ''; }
+  // 匯款通知卡頂部：客戶說的金額、比對結論、未收應收；兩顆大按鈕把固定句填進稿子欄（後端字串一律 esc）
+  function payNum(n) { var v = Number(n); return (n !== null && n !== '' && isFinite(v)) ? 'NT$' + Math.round(v).toLocaleString('en-US') : ''; }
+  function payBoxHtml(pn) {
+    var amt = payNum(pn.amount), m = pn.match || {}, open = Array.isArray(pn.open) ? pn.open : [];
+    var l5 = pn.last5 ? '付款帳號末五碼 ' + pn.last5 : ((pn.last5List || []).length ? '末五碼 ' + pn.last5List.join('、') + '（分不出哪組是付款帳號）' : '');
+    return '<div class="payBox" id="payBox"><div class="payHead">客戶說已匯款' + (amt ? ' ' + esc(amt) : '（沒寫金額）') + '</div>'
+      + '<div class="payMatch' + (m.kind === 'mismatch' || m.kind === 'none_open' || m.kind === 'unknown' ? ' bad' : '') + '">' + esc(m.text || '') + '</div>'
+      + '<div class="payRows">' + (open.length ? '未收應收（' + open.length + ' 筆，合計 ' + esc(payNum(pn.openTotal)) + '）' + open.map(function (r) { return '<div>・' + esc(r.item) + '　' + esc(payNum(r.balance)) + '</div>'; }).join('') : (m.kind === 'unknown' ? '' : '帳上沒有未收款項'))
+      + (l5 ? '<div>' + esc(l5) + '</div>' : '') + (pn.note ? '<div>補充：' + esc(pn.note) + '</div>' : '') + '<div class="muted" style="margin-top:4px">選了只回覆客人，不會銷帳</div></div></div>'
+      + '<div class="payBtns">' + (pn.replies || []).map(function (r) { return '<button type="button" class="payPick" data-key="' + esc(r.key) + '">' + esc(r.label) + '</button>'; }).join('') + '</div>'
+      + '<div class="payHint" id="payHint">先選「已入帳」或「還沒入帳」（可再改字），或自己打字，送出鈕才會亮</div>';
+  }
+  function payBlocked(pn, txt) { var t = String(txt || ''); return !t.trim() || (!!pn.placeholder && t.indexOf(pn.placeholder) >= 0) || t.indexOf('這句不會發出') >= 0; }
   function kindTag(cid) { var k = String(cid || '').charAt(0); if (k === 'C' || k === 'R') return '<span class="pill kind g" title="' + (k === 'R' ? '聊天室' : '群組') + '">群</span>'; if (k === 'U') return '<span class="pill kind u" title="個人">個</span>'; return ''; }
   var OPEN_GEN = 0, FORCE_DOSSIER = {};
   function apNum(id) { return Number(String(id || '').replace(/\D/g, '')) || 0; }
@@ -708,7 +733,7 @@ body.ns-open{overflow:hidden}
     if (OV.stale) return null;
     var mine = ovPendingAll(cid), ovp = mine[0];
     if (!ovp || !ovp.text) return null;
-    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], queued: mine.length - 1, attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [], alertLines: ovp.alertLines || [], attachWarnings: ovp.attachWarnings, inheritedFrom: ovp.inheritedFrom };
+    return { id: ovp.id, ts: ovp.ts, from: ovp.from, title: ovp.title, text: ovp.text, context: ovp.context || '', brief: ovp.brief || '', confidence: ovp.confidence, cards: [], mods: ovp.mods || [], queued: mine.length - 1, attach: Number(ovp.attach || ovp.cards || 0), publishAt: ovp.publishAt || '', suggestAt: ovp.suggestAt || '', images: ovp.images || [], fileLines: ovp.fileLines || [], quickReplies: ovp.quickReplies || [], ownerQuestions: ovp.ownerQuestions || [], alertLines: ovp.alertLines || [], payNotice: ovp.payNotice || null, attachWarnings: ovp.attachWarnings, inheritedFrom: ovp.inheritedFrom };
   }
   // 「正在編輯」一律掃描畫面上的輸入元件，不靠寫死的 id 清單：新加的欄位才不會漏（2026-11-18 Wayne 回報改到一半被重畫）
   var REGION_BOX = { dossier: 'dossier', pend: 'pendBox', compose: 'manualBox' };
@@ -837,7 +862,7 @@ body.ns-open{overflow:hidden}
   // 手動回覆、送出我的字（csInboxReply）：public-cs-inbox.gs csInboxReply_、public-line-relay.gs coworkSendLineReply_ 呼叫 LINE 前的 return，加引擎 cs-run/index.ts app 分支
   var REPLY_DEFINITE = { owner_only: 1, pending_exists: 1, forceApId_required: 1, pending_changed: 1, scheduled_exists: 1, params_required: 1, quiet_hours: 1, attachment_rejected: 1, skip_failed: 1, outside_customer_hours: 1, empty_message: 1, message_too_long: 1, recipient_required: 1, recipient_no_line_uid: 1, recipient_ambiguous: 1, recipient_invalid_type: 1, recipient_is_owner: 1, junk_content: 1, use_approval_center: 1, dry_run_required: 1, scheduleAt_invalid: 1, app_key_missing: 1, app_op_invalid: 1 };
   // 待核可稿送出（csInboxSend）：public-cs-inbox.gs csInboxSend_、_csInboxDecide_ 呼叫核可送出前的 return；line_send_failed 只有 detail 是 HTTP 4xx 才算確定（舊後台把 LINE 沒回應 HTTP -1 也回成 line_send_failed）
-  var SEND_DEFINITE = { owner_only: 1, apId_required: 1, publishAt_invalid: 1, publishAt_past: 1, attachment_rejected: 1, not_found: 1, needs_approve_page: 1, bad_status: 1, superseded: 1, review_only: 1, quiet_hours: 1, line_send_failed: 1, app_key_missing: 1, app_op_invalid: 1 };
+  var SEND_DEFINITE = { pay_choice_required: 1, owner_only: 1, apId_required: 1, publishAt_invalid: 1, publishAt_past: 1, attachment_rejected: 1, not_found: 1, needs_approve_page: 1, bad_status: 1, superseded: 1, review_only: 1, quiet_hours: 1, line_send_failed: 1, app_key_missing: 1, app_op_invalid: 1 };
   // 發文件卡（csInboxDocSend）：public-cs-inbox.gs csInboxDocSend 投核可前的 return
   var DOC_DEFINITE = { owner_only: 1, contactId_invalid: 1, quoteNo_invalid: 1, quote_not_found: 1, voided: 1, already_signed: 1, quote_owner_mismatch: 1, already_bound: 1, kind_invalid: 1, scheduled_exists: 1, already_attached: 1, app_key_missing: 1, app_op_invalid: 1 };
   var TRANSPORT_RE = /http|error|timeout|not found|fetch|abort/i;
@@ -1601,6 +1626,7 @@ body.ns-open{overflow:hidden}
     if (!p && t.extrasFailed) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">待核可稿讀取失敗，按 ↻ 重試</div>'; return; }
     if (!p && /^already_submitted/.test(String((t.dossier || {}).skipReason || ''))) { pb.innerHTML = '<div class="small muted" style="margin-top:8px">上一稿已處理；客戶再來訊時引擎會重新判斷。你也可以直接在下面回，或請客服擬一則主動訊息。</div>'; return; }
     if (!p) { pb.innerHTML = (t.awaitingReply && !t.manual) ? '<div class="small muted" style="margin-top:8px">客戶在等回覆。引擎' + (t.dossier && t.dossier.skip ? '目前不擬稿（' + esc(skipWhy(t.dossier.skipReason)[0]) + '）' : '擬稿中或尚未觸發') + '，你也可以直接在下面回。</div>' : ''; return; }
+    var isPay = !!(p.payNotice && typeof p.payNotice === 'object');   // 匯款通知卡：沒有預設稿，選了或打字才送得出
     var nCards = (p.cards || []).length || Number(p.attach) || 0;
     var modsHtml = (p.mods || []).length ? '<div class="small" id="modsBox" style="margin:8px 0 2px"><div style="display:flex;justify-content:space-between;align-items:center"><b>會一起發的附掛 ' + p.mods.length + ' 項</b><a href="#" id="modsNone" class="muted">這次全部不附</a></div>' + p.mods.map(function (m) { return '<label style="display:block;margin:3px 0"><input type="checkbox" class="modChk" value="' + esc(m.key) + '" checked> ' + esc(m.title || m.key) + '</label>' + (m.url && /^https:\/\//.test(m.url) ? '<a href="#" class="qView" data-url="' + esc(m.url) + '" style="color:#5F6E58;font-weight:600;margin-left:22px">看內容</a><div class="qFrame"></div>' : ''); }).join('') + '<div class="muted" style="font-size:11px">沒勾的不會發給客戶；只發文字就全部取消。</div></div>' : '';
     var cards = (p.cards || []).length ? '<details><summary>會一起發的小卡 ' + p.cards.length + ' 張</summary>' + p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') + '</details>' : (nCards ? '<details id="cardsLazy"><summary>小卡預覽（點開載入）</summary><div id="cardsBox" class="small muted">點開預覽</div></details>' : '');
@@ -1611,7 +1637,8 @@ body.ns-open{overflow:hidden}
       + (/^規格卡沒附上/.test(p.context || '') ? '<div class="small" style="color:#B85A3D;font-weight:600;margin:6px 0">' + esc(String(p.context).split('\n')[0]) + '</div>' : '')
       + alertLinesHtml(p.alertLines)
       + ((p.ownerQuestions || []).length ? '<div class="fbbox on" id="oqBox" style="margin-bottom:8px"><div class="small" style="margin-bottom:4px"><b>客服想問你</b>：答了就用你的答案重擬完整回覆（下面是目前的過渡稿，也可以直接核可）</div>' + p.ownerQuestions.map(function (q, i) { return '<div class="row"><span class="small" style="flex:1">' + (i + 1) + '. ' + esc(q) + '</span></div><input id="oqA' + i + '" placeholder="你的答案" style="width:100%;box-sizing:border-box;margin-bottom:6px">'; }).join('') + '<div class="row"><label class="small"><input type="checkbox" id="oqLearn"> 這些資訊以後也適用（學成常見問答）</label></div><div class="row"><button class="btn" id="oqSend">回答並重擬</button></div></div>' : '')
-      + '<textarea id="draft" rows="6" data-ap="' + esc(p.id) + '">' + esc(p.text) + '</textarea><div class="small muted" style="margin-top:4px"><a href="#" class="splitBtn" data-for="draft" style="color:#5F6E58;font-weight:600;text-decoration:none">＋ 切下一則泡泡</a>　游標處插入「---」一行＝客戶會收到下一則泡泡（同一次送出）' + (String(p.text || '').indexOf('\n---') >= 0 ? '；引用回覆會自動帶' : '') + '</div>' + ((p.quickReplies || []).length ? '<div class="small muted" style="margin-top:4px">客戶端快速回覆按鈕：' + p.quickReplies.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join(' ') + '</div>' : '')
+      + (isPay ? payBoxHtml(p.payNotice) : '')
+      + '<textarea id="draft" rows="6" data-ap="' + esc(p.id) + '"' + (isPay ? ' placeholder="按上面一句，或自己打要回客人的話"' : '') + '>' + esc(isPay ? '' : p.text) + '</textarea><div class="small muted" style="margin-top:4px"><a href="#" class="splitBtn" data-for="draft" style="color:#5F6E58;font-weight:600;text-decoration:none">＋ 切下一則泡泡</a>　游標處插入「---」一行＝客戶會收到下一則泡泡（同一次送出）' + (String(p.text || '').indexOf('\n---') >= 0 ? '；引用回覆會自動帶' : '') + '</div>' + ((p.quickReplies || []).length ? '<div class="small muted" style="margin-top:4px">客戶端快速回覆按鈕：' + p.quickReplies.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join(' ') + '</div>' : '')
       + (p.context ? '<details><summary>為什麼這樣回</summary><div class="brief">' + esc(p.context) + '</div></details>' : '') + (p.brief ? '<details><summary>案件收斂與建議時段</summary><div class="brief">' + esc(p.brief) + '</div></details>' : '') + modsHtml + cards
       + (p.images && p.images.length ? '<div class="att">' + p.images.map(function (u) { return STORAGE_OK.test(u) ? '<div class="it"><img src="' + esc(u) + '"></div>' : ''; }).join('') + '</div>' : '')
       + '<div class="att" id="att-draft"></div>'
@@ -1629,7 +1656,12 @@ body.ns-open{overflow:hidden}
     var cl = document.getElementById('cardsLazy');
     if (cl) cl.ontoggle = function () { if (!cl.open || cl.getAttribute('data-loaded')) return; cl.setAttribute('data-loaded', '1'); var cb0 = document.getElementById('cardsBox'); if (cb0) cb0.innerHTML = '<span class="spin"></span>載入中…小卡預覽要向後台取，後台慢的時候會等比較久。預覽只是給你看的，載不出來不影響送出。'; var cfail = function (m) { var b = document.getElementById('cardsBox'); if (!b) return; cl.removeAttribute('data-loaded'); b.innerHTML = esc(m) + ' <a href="#" id="cardsRetry">再試一次</a>'; var rt = document.getElementById('cardsRetry'); if (rt) rt.onclick = function (ev) { ev.preventDefault(); cl.ontoggle(); }; }; api({ app: { op: 'cardsPreview', apId: p.id } }).then(function (r) { var box = document.getElementById('cardsBox'); if (!box) return; if (!r || !r.ok) { cfail('小卡預覽讀取失敗（' + friendlyErr((r && (r.detail || r.error)) || '後台沒回應') + '）。'); return; } p.cards = r.cards || []; box.innerHTML = p.cards.map(function (cd) { return '<div class="small muted" style="margin-top:6px">' + esc(cd.title || '') + '</div>' + (cd.img && String(cd.img).indexOf('data:image/') === 0 ? '<img src="' + esc(cd.img) + '" style="max-width:240px;border:1px solid #E5E0D3;border-radius:6px">' : (cd.html ? '<div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;max-width:330px">' + cd.html + '</div>' : '')); }).join('') || '（沒有可預覽的小卡）'; }).catch(function (e) { cfail('小卡預覽讀取失敗（' + friendlyErr(e && e.message) + '）。'); }); };
     bindAddArea(p);
-    var ta = document.getElementById('draft'); ta.oninput = function () { dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = (dirty ? '修改後送出' : '送出') + (p.exec && p.exec.short ? '並' + p.exec.short : ''); try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} resendTextSync(cur, p.id, ta.value); };
+    var ta = document.getElementById('draft'); ta.oninput = function () { if (isPay) payGate(); dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = (dirty && !isPay ? '修改後送出' : '送出') + (p.exec && p.exec.short ? '並' + p.exec.short : ''); try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} resendTextSync(cur, p.id, ta.value); };
+    function payGate() { if (!isPay) return; var bs = document.getElementById('btnSend'), hint = document.getElementById('payHint'), blk = payBlocked(p.payNotice, ta.value); if (bs) bs.disabled = blk; if (hint) hint.style.display = blk ? '' : 'none'; document.querySelectorAll('.payPick').forEach(function (b) { var r = (p.payNotice.replies || []).filter(function (x) { return x.key === b.getAttribute('data-key'); })[0]; b.classList.toggle('on', !!r && ta.value === r.text); }); }
+    if (isPay) {
+      document.querySelectorAll('.payPick').forEach(function (b) { b.onclick = function () { var r = (p.payNotice.replies || []).filter(function (x) { return x.key === b.getAttribute('data-key'); })[0]; if (!r) return; ta.value = r.text; var rk = document.getElementById('remKeep'); if (rk) rk.checked = r.key !== 'received'; ta.oninput(); try { ta.focus(); } catch (eF) {} }; });
+      payGate();
+    }
     try {   // 上一份稿改到一半被換掉：本機還留著他的字，給一鍵貼回（2026-10-05 臻實案後加）
       var savedD = JSON.parse(localStorage.getItem('yz_draft:' + cur) || 'null');
       var unsR = unsureGet(cur).draft, mineOn = !!(unsR && unsR.ap === p.id && unsR.resend && typeof unsR.textMine === 'string');   /* 再送一次後他改過的字已經由不明紀錄帶回框裡：不再問要不要貼回 */
@@ -1660,7 +1692,7 @@ body.ns-open{overflow:hidden}
     var modKeep = function () { var box = document.getElementById('modsBox'); if (!box) return undefined; return Array.prototype.map.call(box.querySelectorAll('.modChk:checked'), function (c) { return c.value; }); };
     var mn = document.getElementById('modsNone'); if (mn) mn.onclick = function (ev) { ev.preventDefault(); document.querySelectorAll('#modsBox .modChk').forEach(function (c) { c.checked = false; }); };
     renderAtt('draft'); document.getElementById('btnAtt').onclick = function () { pickAtt('draft', 'pendMsg'); };
-    document.getElementById('btnSend').onclick = function () { if (inflight('ap:' + p.id)) return; var at = whenVal(), edited = dirty, nightOk = false, tSend = Date.now();
+    document.getElementById('btnSend').onclick = function () { if (inflight('ap:' + p.id)) return; if (isPay && payBlocked(p.payNotice, ta.value)) { payGate(); var pmP = document.getElementById('pendMsg'); if (pmP) pmP.textContent = '先選「已入帳」或「還沒入帳」，或自己打字再送出。'; return; } var at = whenVal(), edited = dirty, nightOk = false, tSend = Date.now();
       if (at) {   // 選了時間但已經到了（手機時間選擇器預設帶「現在」、按送出時早就過）：直接當現在送，不要讓後台退件卡在半路
         var atMs = Date.parse(String(at).replace(' ', 'T'));
         if (atMs && atMs < Date.now() + 2 * 60000) {
@@ -1678,7 +1710,7 @@ body.ns-open{overflow:hidden}
         else if (confirm('確定現在就送給客戶？')) nightOk = true;
         else return;
       }
-      if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); inflightOn('ap:' + p.id, this); var uPrev = unsureGet(cur).draft; if (uPrev && uPrev.ap === p.id && uPrev.resend) { unsureClear(cur, 'draft'); var unB = document.getElementById('unsureNote'); if (unB) unB.remove(); }   /* 「確定沒送、再送一次」的標記：送出真的發出去才清 */ document.getElementById('pendMsg').textContent = '送出中，結果回來前不用再按。'; var sendBtn = this;
+      if (!confirm((at ? '排程在 ' + at + ' ' : (nightOk ? '現在（靜默時段）' : '現在')) + (edited && !isPay ? '用修改後的版本送出？客服會學這次修改。' : '送出這則給客戶？'))) return; busy(this, true, '送出中'); inflightOn('ap:' + p.id, this); var uPrev = unsureGet(cur).draft; if (uPrev && uPrev.ap === p.id && uPrev.resend) { unsureClear(cur, 'draft'); var unB = document.getElementById('unsureNote'); if (unB) unB.remove(); }   /* 「確定沒送、再送一次」的標記：送出真的發出去才清 */ document.getElementById('pendMsg').textContent = '送出中，結果回來前不用再按。'; var sendBtn = this;
       var cid0 = cur, taTxt = String(ta.value || ''), sentTxt = edited ? taTxt : p.text, attD = ATT.draft.slice();   // 按下當時就記住是哪位、送了什麼：回應回來時他可能已切到別位（2026-11-18 第四輪審查）
       var pmNow = function () { return (cur === cid0 && document.getElementById('pendMsg')) || awaySink(cid0, 'pend'); };   // 還在這位就寫畫面；已切走就存成那位的結果留言
       var pm = pmNow(), here = function () { return cur === cid0; };
