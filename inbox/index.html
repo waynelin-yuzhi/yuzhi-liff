@@ -50,8 +50,6 @@
   .pill.pay{margin:0 0 0 4px;font-size:10.5px;padding:1px 6px;letter-spacing:.04em;background:#F6E7C4;border-color:#DDBF7E;color:#7A5212;font-weight:600}
   .payBox{margin:6px 0 8px;padding:10px 12px;border:1px solid #DDBF7E;border-radius:8px;background:#FCF6E8}
   .payBox .payHead{font-size:16px;font-weight:700;color:#5A3C0C}
-  .payBox .payMatch{margin-top:4px;font-size:14px;font-weight:600;color:#7A5212}
-  .payBox .payMatch.bad{color:#B3261E}
   .payBox .payRows{margin-top:6px;font-size:13px;color:#5b5446}
   .payBtns{display:flex;gap:8px;margin:8px 0 6px}
   .payBtns button{flex:1;padding:12px 8px;font-size:16px;font-weight:700;border-radius:8px;border:1px solid #C9C2B0;background:#fff;color:#3d3a33;cursor:pointer}
@@ -711,15 +709,13 @@ body.ns-open{overflow:hidden}
   // 列表一眼分群組或個人（Wayne 2026-11-26：回覆跑到個人那次，列表看不出哪一串是群組）。LINE 對象代碼開頭 C＝群組、R＝多人聊天室、U＝個人
   // 待處理的匯款通知卡（客戶說已匯款）：名字後面一個「款」字（Wayne 2026-11-26）
   function payTag(pv) { return pv && pv.payNotice ? '<span class="pill pay" title="客戶說已匯款，待你選回覆">款</span>' : ''; }
-  // 匯款通知卡頂部：客戶說的金額、比對結論、未收應收；兩顆大按鈕把固定句填進稿子欄（後端字串一律 esc）
+  // 匯款通知卡頂部：客戶說的金額、末五碼、補充說明（不接帳務，入帳由你自己對帳）；兩顆大按鈕把固定句填進稿子欄（後端字串一律 esc）
   function payNum(n) { var v = Number(n); return (n !== null && n !== '' && isFinite(v)) ? 'NT$' + Math.round(v).toLocaleString('en-US') : ''; }
   function payBoxHtml(pn) {
-    var amt = payNum(pn.amount), m = pn.match || {}, open = Array.isArray(pn.open) ? pn.open : [];
+    var amt = payNum(pn.amount);
     var l5 = pn.last5 ? '付款帳號末五碼 ' + pn.last5 : ((pn.last5List || []).length ? '末五碼 ' + pn.last5List.join('、') + '（分不出哪組是付款帳號）' : '');
     return '<div class="payBox" id="payBox"><div class="payHead">客戶說已匯款' + (amt ? ' ' + esc(amt) : '（沒寫金額）') + '</div>'
-      + '<div class="payMatch' + (m.kind === 'mismatch' || m.kind === 'none_open' || m.kind === 'unknown' ? ' bad' : '') + '">' + esc(m.text || '') + '</div>'
-      + '<div class="payRows">' + (open.length ? '未收應收（' + open.length + ' 筆，合計 ' + esc(payNum(pn.openTotal)) + '）' + open.map(function (r) { return '<div>・' + esc(r.item) + '　' + esc(payNum(r.balance)) + '</div>'; }).join('') : (m.kind === 'unknown' ? '' : '帳上沒有未收款項'))
-      + (l5 ? '<div>' + esc(l5) + '</div>' : '') + (pn.note ? '<div>補充：' + esc(pn.note) + '</div>' : '') + '<div class="muted" style="margin-top:4px">選了只回覆客人，不會銷帳</div></div></div>'
+      + '<div class="payRows">' + (l5 ? '<div>' + esc(l5) + '</div>' : '') + (pn.note ? '<div>補充：' + esc(pn.note) + '</div>' : '') + '<div class="muted" style="margin-top:4px">自己對帳後選一句；選了只回覆客人</div></div></div>'
       + '<div class="payBtns">' + (pn.replies || []).map(function (r) { return '<button type="button" class="payPick" data-key="' + esc(r.key) + '">' + esc(r.label) + '</button>'; }).join('') + '</div>'
       + '<div class="payHint" id="payHint">先選「已入帳」或「還沒入帳」（可再改字），或自己打字，送出鈕才會亮</div>';
   }
@@ -1659,7 +1655,7 @@ body.ns-open{overflow:hidden}
     var ta = document.getElementById('draft'); ta.oninput = function () { if (isPay) payGate(); dirty = ta.value !== p.text; document.getElementById('btnSend').textContent = (dirty && !isPay ? '修改後送出' : '送出') + (p.exec && p.exec.short ? '並' + p.exec.short : ''); try { if (dirty) localStorage.setItem('yz_draft:' + cur, JSON.stringify({ ap: p.id, text: ta.value, at: Date.now() })); else localStorage.removeItem('yz_draft:' + cur); } catch (eLs) {} resendTextSync(cur, p.id, ta.value); };
     function payGate() { if (!isPay) return; var bs = document.getElementById('btnSend'), hint = document.getElementById('payHint'), blk = payBlocked(p.payNotice, ta.value); if (bs) bs.disabled = blk; if (hint) hint.style.display = blk ? '' : 'none'; document.querySelectorAll('.payPick').forEach(function (b) { var r = (p.payNotice.replies || []).filter(function (x) { return x.key === b.getAttribute('data-key'); })[0]; b.classList.toggle('on', !!r && ta.value === r.text); }); }
     if (isPay) {
-      document.querySelectorAll('.payPick').forEach(function (b) { b.onclick = function () { var r = (p.payNotice.replies || []).filter(function (x) { return x.key === b.getAttribute('data-key'); })[0]; if (!r) return; ta.value = r.text; var rk = document.getElementById('remKeep'); if (rk) rk.checked = r.key !== 'received'; ta.oninput(); try { ta.focus(); } catch (eF) {} }; });
+      document.querySelectorAll('.payPick').forEach(function (b) { b.onclick = function () { var r = (p.payNotice.replies || []).filter(function (x) { return x.key === b.getAttribute('data-key'); })[0]; if (!r) return; var isFixed = (p.payNotice.replies || []).some(function (x) { return x.text === ta.value; }); if (isFixed) ta.value = r.text; else if (!pasteBack(ta, r.text)) return;   /* 框裡是他自己打或改過的字：先問再換 */ var rk = document.getElementById('remKeep'); if (rk) rk.checked = r.key !== 'received'; ta.oninput(); try { ta.focus(); } catch (eF) {} }; });
       payGate();
     }
     try {   // 上一份稿改到一半被換掉：本機還留著他的字，給一鍵貼回（2026-10-05 臻實案後加）
