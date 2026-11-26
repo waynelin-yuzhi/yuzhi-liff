@@ -699,7 +699,7 @@ body.ns-open{overflow:hidden}
   }
 
   // 列表一眼分群組或個人（Wayne 2026-11-26：回覆跑到個人那次，列表看不出哪一串是群組）。LINE 對象代碼開頭 C＝群組、R＝多人聊天室、U＝個人
-  function kindTag(cid) { var k = String(cid || '').charAt(0); if (k === 'C' || k === 'R') return '<span class="pill kind g">' + (k === 'R' ? '聊天室' : '群組') + '</span>'; if (k === 'U') return '<span class="pill kind u">個人</span>'; return ''; }
+  function kindTag(cid) { var k = String(cid || '').charAt(0); if (k === 'C' || k === 'R') return '<span class="pill kind g" title="' + (k === 'R' ? '聊天室' : '群組') + '">群</span>'; if (k === 'U') return '<span class="pill kind u" title="個人">個</span>'; return ''; }
   var OPEN_GEN = 0, FORCE_DOSSIER = {};
   function apNum(id) { return Number(String(id || '').replace(/\D/g, '')) || 0; }
   // 同一位有多則待核可（例：一人管四家、各發一張卡）：照件號由小到大排、先出最早那則，核可完下一則才接著出現
