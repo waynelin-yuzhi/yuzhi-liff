@@ -315,8 +315,14 @@ function sameShape(a, b, ia, ib) {
   }
   return true;
 }
+function flushPendingLive() {   /* 送出結束後，把送出期間回來、先擱著的正本補對一次 */
+  var p = S.pendingLive;
+  if (!p || S.sending) return;
+  S.pendingLive = null;
+  reconcile(p.d, p.items);
+}
 function reconcile(d, items) {
-  if (S.sending) return;
+  if (S.sending) { S.pendingLive = { d: d, items: items }; return; }   /* 送出中不重畫：先擱著，送出結束再對 */
   var inPlace = !!document.getElementById('bar') && document.getElementById('bar').style.display !== 'none' && sameShape(S.d, d, S.items, items);
   var old = S.qty;
   S.d = d;
@@ -325,7 +331,7 @@ function reconcile(d, items) {
   S.preview = d.preview === true;
   var mx = Math.floor(Number(d.maxQtyEach));
   S.max = mx > 0 ? mx : 20;
-  S.existing = d.existing && typeof d.existing === 'object' ? d.existing : null;
+  if (!S.existingLocal) S.existing = d.existing && typeof d.existing === 'object' ? d.existing : null;   /* 這次剛送出成功的那張比正本帶來的新，不覆蓋 */
   S.qty = {};
   items.forEach(function (it) { S.qty[it.id] = Object.prototype.hasOwnProperty.call(old, it.id) ? clampQty(old[it.id]) : 0; });
   if (!S.touched) prefillExisting();
@@ -562,6 +568,7 @@ function closeConfirm() {
 
 function confirmError(msg) {
   S.sending = false;
+  flushPendingLive();
   var err = document.getElementById('cerr');
   if (!err) { openConfirm(); err = document.getElementById('cerr'); }
   if (!err) return;
@@ -593,6 +600,7 @@ function submit() {
         closeConfirm();
         if (res.preview === true) renderPreviewDone(res);
         else renderDone(res, sel);
+        flushPendingLive();
         return;
       }
       var code = res.error || '';
@@ -654,6 +662,7 @@ function renderDone(res, sel) {
   app.appendChild(c);
   if (res.quoteNo) {
     S.existing = { quoteNo: res.quoteNo, total: total, lines: res.lines, signUrl: res.signUrl };
+    S.existingLocal = true;
   }
   window.scrollTo(0, 0);
 }

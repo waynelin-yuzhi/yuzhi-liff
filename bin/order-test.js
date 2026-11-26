@@ -307,6 +307,25 @@ const plus = (pg, i, n) => pg.evaluate(([i, n]) => { const b = document.querySel
       eq(await r.pg.$$eval('.q', (a) => a.map((e) => e.textContent)), ['2', '0', '1'], '正本對正後保留客人已選數量');
       ok(await r.pg.$eval('.hero img', (i) => i.dataset.keep === '1') && await r.pg.evaluate(() => document.querySelector('.item').getBoundingClientRect().top === window.__y0), '價格品項沒變：原地對正、版面不跳');
       await r.ctx.close();
+      {
+        // 審查修正：正本在送出期間才回來，先擱著；送出失敗回到確認層後要用正本價格，不可一直停在快照價
+        const liveP = DATA({ items: [Object.assign({}, ITEMS[0], { priceIncTax: 3900 }), ITEMS[1], ITEMS[2]] });
+        const rp = await open(browser, LOCAL_PAGE, QG('snapP'), { snap: SNAP(), get: liveP, getDelay: 1500, post: { ok: false, error: 'busy', msg: '系統忙碌，這次沒有送出，請稍後再試一次。' }, postDelay: 2500, wait: 300 });
+        await plus(rp.pg, 0, 2); await rp.pg.click('#go');
+        ok((await txt(rp.pg, '#confirm')).indexOf('NT$7,200') >= 0, '送出前確認層是快照價');
+        await rp.pg.click('#cok');
+        await rp.pg.waitForTimeout(3200);
+        ok((await txt(rp.pg, '#confirm')).indexOf('NT$7,800') >= 0 && (await txt(rp.pg, '#cerr')).indexOf('系統忙碌') >= 0, '送出期間回來的正本，在送出失敗後補對：確認層改用正本價格且錯誤句還在', await txt(rp.pg, '#confirm'));
+        await rp.ctx.close();
+        // 審查修正：送出成功後才到的正本（existing 是空的）不可把剛建好的那張蓋掉
+        const rq = await open(browser, LOCAL_PAGE, QG('snapQ'), { snap: SNAP(), get: DATA(), getDelay: 2500, post: { ok: true, quoteNo: 'Q-2026-777', total: 3600, lines: [{ id: ITEMS[0].id, name: ITEMS[0].name, qty: 1 }], signUrl: 'https://example.com/sign', msg: '已收到' }, wait: 300 });
+        await plus(rq.pg, 0, 1); await rq.pg.click('#go'); await rq.pg.click('#cok');
+        await rq.pg.waitForTimeout(3000);
+        await rq.pg.click('text=重新選擇');
+        await rq.pg.waitForTimeout(200);
+        ok((await rq.pg.evaluate(() => document.body.textContent)).indexOf('Q-2026-777') >= 0, '送出成功後才到的正本不蓋掉剛建好的那張：回主畫面仍顯示這張待簽');
+        await rq.ctx.close();
+      }
       const live2 = DATA({ items: [Object.assign({}, ITEMS[0], { priceIncTax: 3900 }), ITEMS[1]] });
       const r2 = await open(browser, LOCAL_PAGE, QG('snap2'), { snap: SNAP(), get: live2, getDelay: 1200, wait: 400 });
       await plus(r2.pg, 0, 2); await plus(r2.pg, 2, 1);
