@@ -2017,7 +2017,7 @@ body.ns-open{overflow:hidden}
   var PN = CAP.Plugins && CAP.Plugins.PushNotifications, APP = CAP.Plugins && CAP.Plugins.App;
   var VIEW_EVERY = 20000;   // 後端 VIEW_MS＝60 秒沒回報就當沒在看：每 20 秒補報一次
   var CID_OK = /^[A-Za-z0-9]{1,40}$/;   // 與網址 cid 參數同一套清洗
-  var REG = { token: '', state: 'idle', appVer: '', tokenWait: null };   // state：idle／working／ok／kept／failed／unsure／denied（kept＝這次重新報到暫時失敗，但先前的登記仍有效）
+  var REG = { token: '', state: 'idle', appVer: '', tokenWait: null, uid: '' };   // uid：這次 pushStart 讀到的登入者，成功記錄要綁同一人   // state：idle／working／ok／kept／failed／unsure／denied（kept＝這次重新報到暫時失敗，但先前的登記仍有效）
   var PAUSED = false, MEM_DEV = '', STARTED = false, PENDING_CID = '';   // STARTED：這次登入已跑過註冊流程；PENDING_CID：登入失效時點的通知，重新登入後開
 
   function rand() { var a = new Uint8Array(16); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach(function (v, i) { a[i] = Math.floor(Math.random() * 256); }); return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
@@ -2053,14 +2053,14 @@ body.ns-open{overflow:hidden}
     return { msg: msg, code: code || raw.slice(0, 40), transient: /SERVICE_NOT_AVAILABLE|TIMEOUT|NETWORK|IOEXCEPTION|INTERNAL_SERVER_ERROR/.test(u) };
   }
 
-  // 先前登記仍有效：上次 pushRegister 成功的時間與裝置代號記在本機。後台沒有「查這個裝置登記狀態」的 op，所以只看本機記錄。
+  // 先前登記仍有效：上次 pushRegister 成功的時間、裝置代號與登入者記在本機（換人登入不沿用；後台說失敗或結果不明就清掉）。後台沒有「查這個裝置登記狀態」的 op，所以只看本機記錄。
   // 這支手機向 Google 重新拿代碼時常會暫時失敗，但舊代碼通常仍有效、通知照常送得到；這時不出紅框，背景重試就好
   var OK_KEY = 'yz_push_ok', OK_FRESH_MS = 14 * 86400000, RETRY_MS = [60000, 300000, 900000], FG_RETRY_MS = 60000;
   var KEEP = { n: 0, timer: null, lastTry: 0 };
-  function okMark() { try { localStorage.setItem(OK_KEY, JSON.stringify({ dev: devId(), at: Date.now() })); } catch (e) {} }
+  function okMark() { if (!REG.uid) { okClear(); return; } try { localStorage.setItem(OK_KEY, JSON.stringify({ dev: devId(), uid: REG.uid, at: Date.now() })); } catch (e) {} }
   function okClear() { try { localStorage.removeItem(OK_KEY); } catch (e) {} }
   function okFresh() {
-    try { var o = JSON.parse(localStorage.getItem(OK_KEY) || 'null'), age = Date.now() - Number((o && o.at) || 0); return !!(o && o.dev === devId() && age >= 0 && age < OK_FRESH_MS); } catch (e) { return false; }
+    try { var o = JSON.parse(localStorage.getItem(OK_KEY) || 'null'), age = Date.now() - Number((o && o.at) || 0); return !!(o && REG.uid && o.uid === REG.uid && o.dev === devId() && age >= 0 && age < OK_FRESH_MS); } catch (e) { return false; }
   }
   function keepReset() { clearTimeout(KEEP.timer); KEEP.timer = null; KEEP.n = 0; }
   function keepRetry() { KEEP.timer = null; KEEP.lastTry = Date.now(); pushStart(); }
@@ -2083,9 +2083,10 @@ body.ns-open{overflow:hidden}
     if (gateOn()) return;
     if (!PN) { bar('這一版 App 沒有推播元件，收不到通知，請安裝新版 App。', false); return; }
     if (REG.state === 'working') return;
-    REG.state = 'working'; STARTED = true; barOff();
+    REG.state = 'working'; STARTED = true; REG.uid = ''; barOff();
     var info = (APP && APP.getInfo) ? APP.getInfo().then(function (i) { REG.appVer = String((i && i.version) || '') + (i && i.build ? '+' + i.build : ''); }, function () {}) : Promise.resolve();
-    info.then(function () { return PN.checkPermissions(); }).then(function (p) {
+    var who = sb.auth.getSession().then(function (r) { var ss = r && r.data && r.data.session; REG.uid = String((ss && ss.user && ss.user.id) || ''); }, function () { REG.uid = ''; });
+    Promise.all([info, who]).then(function () { return PN.checkPermissions(); }).then(function (p) {
       var s = p && p.receive;
       return (s === 'prompt' || s === 'prompt-with-rationale') ? PN.requestPermissions() : p;
     }).then(function (p) {
@@ -2102,11 +2103,11 @@ body.ns-open{overflow:hidden}
     pushApi({ op: 'pushRegister', deviceId: devId(), fcmToken: REG.token, platform: 'android', appVer: REG.appVer }).then(function (r) {
       if (r && r.ok === true) { REG.state = 'ok'; okMark(); keepReset(); barOff(); viewTick(true); return; }
       if (r && r.ok === false && r.error === 'device_owned_by_other' && !retried) { devId(true); sendRegister(true); return; }   // 這個裝置代號掛在別人名下：換一個新代號再登記一次
-      if (r && r.ok === false && r.error) { REG.state = 'failed'; bar('推播註冊失敗（' + friendlyErr(r.detail || r.error) + '），這支手機暫時收不到通知。', true); return; }
-      REG.state = 'unsure'; bar('推播註冊沒有收到明確結果，不確定這支手機有沒有登記成功。', true);   // 結果不明：不說成功也不說失敗
+      if (r && r.ok === false && r.error) { REG.state = 'failed'; okClear(); bar('推播註冊失敗（' + friendlyErr(r.detail || r.error) + '），這支手機暫時收不到通知。', true); return; }
+      REG.state = 'unsure'; okClear(); bar('推播註冊沒有收到明確結果，不確定這支手機有沒有登記成功。', true);   // 結果不明：不說成功也不說失敗
     }).catch(function (e) {
       if (noSession(e) || /連線已失效/.test(String((e && e.message) || ''))) { REG.state = 'idle'; return; }   // 登入失效：登入門已經出來，重新登入後會再註冊
-      REG.state = 'unsure'; bar('推播註冊沒有收到後台回應（' + errText(e) + '），不確定這支手機有沒有登記成功。', true);
+      REG.state = 'unsure'; okClear(); bar('推播註冊沒有收到後台回應（' + errText(e) + '），不確定這支手機有沒有登記成功。', true);
     });
   }
 
