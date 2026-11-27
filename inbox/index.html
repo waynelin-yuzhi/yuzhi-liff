@@ -217,6 +217,35 @@ body.st-open{overflow:hidden}
 .st-info b{font-weight:500;color:var(--ink)}
 .st-out{color:var(--brick)}
 
+/* 客服資料（#dvBox，設定頁進入，唯讀）：智能客服接上了哪些資料；分類、名稱、說明全由後台回傳。外框沿用 .ns-bar／.ns-in */
+#dvBox{display:none;position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;overscroll-behavior:contain}
+#dvBox.on{display:block}
+body.dv-open{overflow:hidden}
+.dv-lead{font-size:13px;line-height:1.6;color:var(--body);margin:2px 2px 10px}
+.dv-row{display:block;width:100%;padding:12px 14px;border:none;background:none;font-family:inherit;text-align:left;color:var(--ink);cursor:pointer}
+.dv-row:active{background:var(--tint)}
+.dv-top{display:flex;align-items:baseline;gap:8px}
+.dv-name{flex:1;font-size:15px;font-weight:500}
+.dv-n{font-size:15px;color:var(--ink)}
+.dv-row i{font-style:normal;color:var(--muted);font-size:18px}
+.dv-sub{font-size:12px;line-height:1.6;color:var(--muted);margin-top:2px}
+.dv-tags{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px}
+.dv-tag{display:inline-block;padding:0 7px;border-radius:9px;font-size:11px;line-height:19px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.dv-tag.yes{border-color:var(--moss);color:var(--moss);background:#E9EDE3}
+.dv-tag.ext{border-color:#D8C38A;color:#7A5D12;background:var(--amber)}
+.dv-tag.off{color:var(--brick);border-color:#E4B9A8}
+.dv-state{font-size:12px;font-weight:600}
+.dv-state.empty{color:var(--muted)}
+.dv-state.error{color:var(--brick)}
+.dv-row.error{background:#FBF1EC}
+.dv-head{background:#fff;border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.7;color:var(--body)}
+.dv-head b{font-size:15px;color:var(--ink);font-weight:600}
+.dv-it{padding:10px 14px}
+.dv-it .dv-t{font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.dv-it .dv-b{font-size:12px;line-height:1.6;color:var(--body);margin-top:2px;overflow-wrap:anywhere}
+.dv-it.off .dv-t{color:var(--muted)}
+.dv-empty{padding:22px 14px;text-align:center;font-size:13px;line-height:1.7;color:var(--muted)}
+.dv-more{display:block;margin:0 auto 12px}
 /* 跟 AI 討論（#ocBox）與我的習慣（#hbBox）：只有核可人看得到入口（html.oc-owner）；外框沿用 .ns-bar／.ns-in，泡泡沿用 .msg */
 html:not(.oc-owner) .oc-only{display:none !important}
 #ocBox{display:none;position:fixed;inset:0;z-index:78;background:var(--paper);flex-direction:column}
@@ -502,6 +531,7 @@ body.ns-open{overflow:hidden}
 <div class="yz-sheet" id="yz-sheet"><h3>全部工具<button type="button" id="yz-sheet-close">關閉</button></h3><button type="button" class="btn ghost ns-entry" id="nsOpen2"><svg><use href="#icon-bell"/></svg>通知設定</button><div class="yz-sheet-grid" id="yz-sheet-grid"></div><div class="yz-sheet-foot"><span class="small muted">Workspace 工具會另開瀏覽器（需要 Google 登入）</span><button type="button" class="btn link" id="leave2">登出這台裝置</button></div></div>
 <div id="stBox" role="dialog" aria-label="設定"><div class="ns-bar"><button type="button" id="stClose">關閉</button><h2>設定</h2><span class="ns-sp"></span></div><div class="ns-in">
   <div class="st-list"><button type="button" class="st-go" id="stNs"><svg><use href="#icon-bell"/></svg><span>通知設定</span><i>›</i></button></div>
+  <div class="st-list"><button type="button" class="st-go" id="stDv"><svg><use href="#icon-folder"/></svg><span>客服資料（客服用了哪些資料）</span><i>›</i></button></div>
   <div class="st-list oc-only"><button type="button" class="st-go" id="stHb"><svg><use href="#yzs-chat"/></svg><span>我的習慣（AI 記下的規矩）</span><i>›</i></button><div class="oc-usage" id="stOcUsage"></div></div>
   <div class="st-list"><div class="st-info">登入信箱<b id="stEmail">讀取中</b></div><div class="st-info">App 版本<b id="stVer">讀取中</b></div></div>
   <div class="st-list"><button type="button" class="st-go st-out" id="stLeave"><span>登出這台裝置</span></button></div>
@@ -520,6 +550,7 @@ body.ns-open{overflow:hidden}
 </div>
 <div id="qMenu" role="menu"><button type="button" id="qMenuGo"></button><button type="button" id="qMenuNo">取消</button></div>
 <div id="hbBox" role="dialog" aria-label="我的習慣"><div class="ns-bar"><button type="button" id="hbClose">關閉</button><h2>我的習慣</h2><span class="ns-sp"></span></div><div class="ns-in" id="hbBody"></div></div>
+<div id="dvBox" role="dialog" aria-label="客服資料"><div class="ns-bar"><button type="button" id="dvBack">關閉</button><h2 id="dvTitle">客服資料</h2><button type="button" id="dvReload">重新整理</button></div><div class="ns-in" id="dvBody"></div></div>
 <div id="nsBox" role="dialog" aria-label="通知設定"><div class="ns-bar"><button type="button" id="nsClose">關閉</button><h2>通知設定</h2><span class="ns-sp"></span></div><div class="ns-in" id="nsBody"></div></div>
 <div class="page">
 <h1>對話收件匣</h1>
@@ -2212,6 +2243,7 @@ body.ns-open{overflow:hidden}
     if (z && z.classList.contains('on')) { history.back(); return; }
     if (window.yzNs && yzNs.isOpen()) { yzNs.close(); return; }
     if (window.yzHb && yzHb.isOpen()) { yzHb.close(); return; }
+    if (window.yzDv && yzDv.isOpen()) { yzDv.back(); return; }
     if (window.yzOc && yzOc.isOpen()) { yzOc.back(); return; }
     if (window.yzSt && yzSt.isOpen()) { yzSt.close(); return; }
     if (document.body.classList.contains('view-thread')) { document.getElementById('back').click(); return; }
@@ -2514,13 +2546,149 @@ var yzSt = (function () {
     hide();
   }
   window.addEventListener('popstate', function (ev) { if (isOpen && !(ev.state && ev.state.yzSt)) { pushed = false; hide(); } });   // 從通知設定返回時回到設定這一層（state 仍是 yzSt），不跟著關
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && isOpen && !(window.yzNs && yzNs.isOpen())) close(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && isOpen && !(window.yzNs && yzNs.isOpen()) && !(window.yzDv && yzDv.isOpen())) close(); });
   ['stOpen', 'stOpen2'].forEach(function (id) { var el = document.getElementById(id); if (el) el.onclick = open; });
   document.getElementById('stClose').onclick = close;
   document.getElementById('stNs').onclick = function () { yzNs.open(); };
   document.getElementById('stHb').onclick = function () { if (window.yzHb) yzHb.open(); };
+  document.getElementById('stDv').onclick = function () { if (window.yzDv) yzDv.open(); };
   document.getElementById('stLeave').onclick = function () { document.getElementById('leave').click(); };
   return { open: open, close: close, isOpen: function () { return isOpen; } };
+})();
+</script>
+<script>
+/* 客服資料（2026-11-27，第一階段唯讀）：智能客服目前接上了哪些資料、各幾筆、最後更新、自動擬稿與 AI 討論有沒有用到、能不能在 App 自己管。
+   後端 cs-run dataview.ts：dataOverview（總覽）、dataItems（某一類的清單，分頁）。分類、名稱、說明、標示文字全由後台回傳，這裡不寫死任何分類；只限老闆，同事回 owner_only。 */
+var yzDv = (function () {
+  var box = document.getElementById('dvBox'), body = document.getElementById('dvBody');
+  var D = { open: false, pushed: 0, view: 'ov', ov: null, ovErr: '', ovBusy: false, cat: '', list: null, listErr: '', listBusy: false, moreBusy: false, moreErr: '', denied: '', seq: 0 };
+  if (!box) return { open: function () {}, close: function () {}, back: function () {}, isOpen: function () { return false; } };
+  function day(x) { var ms = Date.parse(x || ''); return ms ? tpeMinute(ms).slice(0, 10) : ''; }
+  function num(n) { n = Number(n) || 0; return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function arr(x) { return Array.isArray(x) ? x.filter(function (v) { return v && typeof v === 'object'; }) : []; }
+  function errText(d) {
+    if (!d || d instanceof Error || typeof d !== 'object') return /請先進入|連線已失效/.test(String((d && d.message) || '')) ? '登入已失效，請重新進入' : '連線中斷或等太久，沒有收到回應';
+    if (d.message) return String(d.message);
+    return { data_read_failed: '這一類暫時讀不到', cat_invalid: '找不到這一類資料', data_failed: '系統暫時出錯' }[d.error] || '系統暫時出錯';
+  }
+  var DENIED = '這一頁只有老闆可以看。如果你需要看客服用了哪些資料，請跟老闆說。';
+  function call(app) { return api({ app: app }, true).then(function (d) { return (d && typeof d === 'object') ? d : {}; }); }
+  function usageTags(c, labels) {
+    var u = c.usedBy || {}, L = labels || {};
+    return '<span class="dv-tag' + (u.draft ? ' yes' : '') + '">' + esc(L.draft || '自動擬稿') + (u.draft ? '有用到' : '沒用到') + '</span>'
+      + '<span class="dv-tag' + (u.ownerChat ? ' yes' : '') + '">' + esc(L.ownerChat || 'AI 討論') + (u.ownerChat ? '有用到' : '沒用到') + '</span>'
+      + (c.manageLabel ? '<span class="dv-tag' + (c.manage === 'external' ? ' ext' : '') + '">' + esc(c.manageLabel) + '</span>' : '');
+  }
+  function rowHtml(c, labels) {
+    var st = c.status === 'ok' ? '' : c.status === 'error' ? '<span class="dv-state error">讀取失敗</span>' : '<span class="dv-state empty">還沒有資料</span>';
+    var n = c.status === 'ok' ? '<span class="dv-n">' + num(c.count) + ' 筆</span>' : st;
+    var sub = [];
+    if (c.status === 'ok') { if (c.extra) sub.push(esc(c.extra)); if (c.updatedAt) sub.push('最後更新 ' + esc(day(c.updatedAt))); }
+    else if (c.status === 'error') sub.push('這一類這次沒讀到，其他類不受影響。可以按右上「重新整理」再試。');
+    return '<button type="button" class="dv-row' + (c.status === 'error' ? ' error' : '') + '" data-dv="' + esc(c.key) + '"><div class="dv-top"><span class="dv-name">' + esc(c.name) + '</span>' + n + '<i>›</i></div>'
+      + (sub.length ? '<div class="dv-sub">' + sub.join('　') + '</div>' : '')
+      + '<div class="dv-sub">' + esc(c.desc || '') + '</div><div class="dv-tags">' + usageTags(c, labels) + '</div></button>';
+  }
+  function retryHtml(msg, id) { return '<div class="ns-sec"><div class="ns-msg err">' + esc(msg) + '</div><div class="row"><button type="button" class="btn small" id="' + id + '">再試一次</button></div></div>'; }
+  function render() {
+    if (!D.open) return;
+    var back = document.getElementById('dvBack'), title = document.getElementById('dvTitle');
+    back.textContent = D.view === 'list' ? '返回' : '關閉';
+    if (D.denied) { title.textContent = '客服資料'; body.innerHTML = '<div class="ns-sec"><div class="dv-lead" id="dvDenied">' + esc(D.denied) + '</div></div>'; return; }
+    if (D.view === 'list') return renderList();
+    title.textContent = '客服資料';
+    if (!D.ov) { body.innerHTML = D.ovErr ? retryHtml('讀不到客服資料（' + D.ovErr + '）。', 'dvRetry') : '<div class="loading" id="dvLoading"><span class="spin"></span>正在讀取客服資料</div>'; return; }
+    var cats = arr(D.ov.categories), labels = D.ov.labels || {};
+    var allEmpty = cats.length && cats.every(function (c) { return c.status === 'empty'; });
+    var h = '<div class="dv-lead">智能客服回覆客人時會用到下面這些資料。點一類可以看裡面有哪些。</div>';
+    if (!cats.length) h += '<div class="st-list"><div class="dv-empty">目前沒有任何資料分類。</div></div>';
+    else {
+      if (allEmpty) h += '<div class="ns-sec"><div class="dv-lead" style="margin:0">目前還沒有接上任何資料，客服只能用基本的方式回覆。之後可以在這裡載入你們自己的資料。</div></div>';
+      h += '<div class="st-list" id="dvList">' + cats.map(function (c) { return rowHtml(c, labels); }).join('') + '</div>';
+    }
+    if (D.ovBusy) h += '<div class="loading"><span class="spin"></span>更新中</div>';
+    body.innerHTML = h;
+  }
+  function renderList() {
+    var title = document.getElementById('dvTitle');
+    var c = (D.list && D.list.cat) || arr(D.ov && D.ov.categories).filter(function (x) { return x.key === D.cat; })[0] || { name: '客服資料' };
+    title.textContent = c.name || '客服資料';
+    if (!D.list) { body.innerHTML = D.listErr ? retryHtml('讀不到這一類的內容（' + D.listErr + '）。', 'dvListRetry') : '<div class="loading" id="dvLoading"><span class="spin"></span>正在讀取' + esc(c.name || '') + '</div>'; return; }
+    var L = D.list, items = arr(L.items), labels = (D.ov && D.ov.labels) || {};
+    var meta = ['共 ' + num(L.total) + ' 筆'];
+    if (c.homeLabel) meta.push('資料來源：' + esc(c.homeLabel));
+    var h = '<div class="dv-head"><b>' + esc(c.name || '') + '</b><br>' + esc(c.desc || '') + '<br>' + meta.join('　')
+      + (c.usageNote ? '<br>' + esc(c.usageNote) : '') + (L.note ? '<br>' + esc(L.note) : '')
+      + '<div class="dv-tags">' + usageTags(c, labels) + '</div></div>';
+    if (!items.length) h += '<div class="st-list"><div class="dv-empty" id="dvItemsEmpty">這一類還沒有資料。' + (c.manage === 'external' ? '這類資料目前由外部系統提供，接上後會出現在這裡。' : '客服用到或你新增後會出現在這裡。') + '</div></div>';
+    else h += '<div class="st-list" id="dvItems">' + items.map(function (it) {
+      var tags = (Array.isArray(it.tags) ? it.tags : []).map(function (t) { return '<span class="dv-tag">' + esc(t) + '</span>'; });
+      if (it.on === false) tags.unshift('<span class="dv-tag off">關閉中</span>');
+      if (it.at) tags.push('<span class="dv-tag">' + esc(day(it.at)) + '</span>');
+      return '<div class="dv-it' + (it.on === false ? ' off' : '') + '"><div class="dv-t">' + esc(it.title || '') + '</div>' + (it.body ? '<div class="dv-b">' + esc(it.body) + '</div>' : '') + (tags.length ? '<div class="dv-tags">' + tags.join('') + '</div>' : '') + '</div>';
+    }).join('') + '</div>';
+    if (L.more) h += (D.moreErr ? '<div class="ns-msg err">' + esc(D.moreErr) + '</div>' : '') + '<button type="button" class="btn ghost small dv-more" id="dvMore"' + (D.moreBusy ? ' disabled' : '') + '>' + (D.moreBusy ? '讀取中' : '再多看一些') + '</button>';
+    body.innerHTML = h;
+  }
+  function loadOv() {
+    var my = ++D.seq; D.ovErr = ''; D.ovBusy = !!D.ov; render();
+    return call({ op: 'dataOverview' }).then(function (d) {
+      if (my !== D.seq) return;
+      D.ovBusy = false;
+      if (d.ok === true && Array.isArray(d.categories)) { D.ov = d; D.denied = ''; }
+      else if (d.error === 'owner_only' || d.error === 'staff_forbidden') D.denied = DENIED;
+      else { D.ovErr = errText(d); if (D.ov) D.ov = null; }
+      render();
+    }, function (e) { if (my !== D.seq) return; D.ovBusy = false; D.ov = null; D.ovErr = errText(e); render(); });
+  }
+  function loadList(more) {
+    var my = ++D.seq, cat = D.cat;
+    if (more) { D.moreBusy = true; D.moreErr = ''; } else { D.list = null; D.listErr = ''; }
+    render();
+    return call({ op: 'dataItems', cat: cat, offset: more && D.list ? D.list.nextOffset : 0, limit: 30 }).then(function (d) {
+      if (my !== D.seq || cat !== D.cat) return;
+      D.moreBusy = false;
+      if (d.ok === true && Array.isArray(d.items)) {
+        if (more && D.list) { d.items = arr(D.list.items).concat(arr(d.items)); }
+        D.list = d;
+      } else if (d.error === 'owner_only' || d.error === 'staff_forbidden') D.denied = d.error === 'owner_only' && d.message ? String(d.message) : DENIED;
+      else if (more) D.moreErr = '沒有讀到更多（' + errText(d) + '）';
+      else D.listErr = errText(d);
+      render();
+    }, function (e) { if (my !== D.seq) return; D.moreBusy = false; if (more) D.moreErr = '沒有讀到更多（' + errText(e) + '）'; else D.listErr = errText(e); render(); });
+  }
+  function hide() { D.open = false; D.view = 'ov'; D.seq++; box.classList.remove('on'); document.body.classList.remove('dv-open'); }
+  function open() {
+    if (!D.open) { D.open = true; D.view = 'ov'; D.denied = ''; box.classList.add('on'); document.body.classList.add('dv-open'); box.scrollTop = 0; try { history.pushState({ yzSt: 1, yzDv: 1 }, ''); D.pushed = 1; } catch (e) { D.pushed = 0; } }
+    loadOv();
+  }
+  function showList(key) {
+    D.cat = key; D.view = 'list'; D.moreErr = ''; box.scrollTop = 0;
+    try { history.pushState({ yzSt: 1, yzDv: 2 }, ''); D.pushed = 2; } catch (e) {}
+    loadList(false);
+  }
+  function toOverview() { var wasBusy = D.ovBusy; D.view = 'ov'; D.list = null; D.seq++; D.ovBusy = false; box.scrollTop = 0; render(); if ((!D.ov && !D.ovErr) || wasBusy) loadOv(); }   /* 總覽更新到一半被切走：回來重讀一次，不留著轉不停的「更新中」 */
+  function close() { if (!D.open) return; if (D.pushed) { var n = D.pushed; D.pushed = 0; try { history.go(-n); return; } catch (e) {} } hide(); }
+  function back() { if (D.view === 'list') { if (D.pushed === 2) { try { history.back(); return; } catch (e) {} } toOverview(); return; } close(); }
+  window.addEventListener('popstate', function (ev) {
+    if (!D.open) return;
+    var st = ev.state || {};
+    if (st.yzDv === 1) { D.pushed = 1; if (D.view !== 'ov') toOverview(); return; }
+    if (st.yzDv === 2) { D.pushed = 2; return; }
+    D.pushed = 0; hide();
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && D.open) back(); });
+  document.getElementById('dvBack').onclick = back;
+  document.getElementById('dvReload').onclick = function () { if (D.view === 'list') loadList(false); else loadOv(); };
+  body.addEventListener('click', function (ev) {
+    var t = ev.target, b;
+    if (!t || !t.closest) return;
+    if ((b = t.closest('[data-dv]'))) { showList(b.getAttribute('data-dv')); return; }
+    if (t.closest('#dvRetry')) { loadOv(); return; }
+    if (t.closest('#dvListRetry')) { loadList(false); return; }
+    if (t.closest('#dvMore') && !D.moreBusy) { loadList(true); return; }
+  });
+  return { open: open, close: close, back: back, isOpen: function () { return D.open; } };
 })();
 </script>
 <script>
