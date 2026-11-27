@@ -2017,7 +2017,7 @@ body.ns-open{overflow:hidden}
   var PN = CAP.Plugins && CAP.Plugins.PushNotifications, APP = CAP.Plugins && CAP.Plugins.App;
   var VIEW_EVERY = 20000;   // 後端 VIEW_MS＝60 秒沒回報就當沒在看：每 20 秒補報一次
   var CID_OK = /^[A-Za-z0-9]{1,40}$/;   // 與網址 cid 參數同一套清洗
-  var REG = { token: '', state: 'idle', appVer: '', tokenWait: null };   // state：idle／working／ok／failed／unsure／denied
+  var REG = { token: '', state: 'idle', appVer: '', tokenWait: null };   // state：idle／working／ok／kept／failed／unsure／denied（kept＝這次重新報到暫時失敗，但先前的登記仍有效）
   var PAUSED = false, MEM_DEV = '', STARTED = false, PENDING_CID = '';   // STARTED：這次登入已跑過註冊流程；PENDING_CID：登入失效時點的通知，重新登入後開
 
   function rand() { var a = new Uint8Array(16); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach(function (v, i) { a[i] = Math.floor(Math.random() * 256); }); return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
@@ -2050,7 +2050,32 @@ body.ns-open{overflow:hidden}
     else if (/MISSING_INSTANCEID_SERVICE|PLAY.?SERVICES/.test(u)) msg = '這支手機的 Google Play 服務無法使用，收不到通知；請更新 Google Play 服務後按重試。';
     else if (/TOO_MANY_REGISTRATIONS/.test(u)) msg = '這支手機登記通知的 App 太多，請移除不用的 App 後按重試。';
     else msg = '手機暫時拿不到通知代碼，請稍後按重試。';
-    return { msg: msg, code: code || raw.slice(0, 40) };
+    return { msg: msg, code: code || raw.slice(0, 40), transient: /SERVICE_NOT_AVAILABLE|TIMEOUT|NETWORK|IOEXCEPTION|INTERNAL_SERVER_ERROR/.test(u) };
+  }
+
+  // 先前登記仍有效：上次 pushRegister 成功的時間與裝置代號記在本機。後台沒有「查這個裝置登記狀態」的 op，所以只看本機記錄。
+  // 這支手機向 Google 重新拿代碼時常會暫時失敗，但舊代碼通常仍有效、通知照常送得到；這時不出紅框，背景重試就好
+  var OK_KEY = 'yz_push_ok', OK_FRESH_MS = 14 * 86400000, RETRY_MS = [60000, 300000, 900000], FG_RETRY_MS = 60000;
+  var KEEP = { n: 0, timer: null, lastTry: 0 };
+  function okMark() { try { localStorage.setItem(OK_KEY, JSON.stringify({ dev: devId(), at: Date.now() })); } catch (e) {} }
+  function okClear() { try { localStorage.removeItem(OK_KEY); } catch (e) {} }
+  function okFresh() {
+    try { var o = JSON.parse(localStorage.getItem(OK_KEY) || 'null'), age = Date.now() - Number((o && o.at) || 0); return !!(o && o.dev === devId() && age >= 0 && age < OK_FRESH_MS); } catch (e) { return false; }
+  }
+  function keepReset() { clearTimeout(KEEP.timer); KEEP.timer = null; KEEP.n = 0; }
+  function keepRetry() { KEEP.timer = null; KEEP.lastTry = Date.now(); pushStart(); }
+  // 暫時性錯誤且先前登記仍有效：回 true＝已改成背景重試（1、5、15 分鐘後各一次，之後只在回到前景時再試），不出紅框
+  function keepPrev(re) {
+    if (!(re && re.transient) || !okFresh()) return false;
+    REG.state = 'kept'; barOff();
+    if (!KEEP.timer && KEEP.n < RETRY_MS.length) KEEP.timer = setTimeout(keepRetry, RETRY_MS[KEEP.n++]);
+    return true;
+  }
+  function regFail(e, text) {
+    clearTimeout(REG.tokenWait);
+    var re = regErr(e);
+    if (keepPrev(re)) return;
+    REG.state = 'failed'; bar(text || ('這支手機暫時收不到通知：' + re.msg), true, text ? '' : re.code);
   }
 
   // 1. 註冊：登入後（boot）才請求通知權限；拿到 token 交給後台 pushRegister；token 換了 FCM 會再發 registration，照樣重送
@@ -2066,16 +2091,16 @@ body.ns-open{overflow:hidden}
     }).then(function (p) {
       if (!p || p.receive !== 'granted') { REG.state = 'denied'; bar('通知權限沒有打開，這支手機收不到新訊息通知。請到手機「設定 > 應用程式 > 本 App > 通知」打開，再按重試。', true); return; }
       clearTimeout(REG.tokenWait);
-      REG.tokenWait = setTimeout(function () { if (REG.state === 'working') { REG.state = 'failed'; bar('推播註冊失敗：手機一直拿不到通知代碼（可能沒有 Google Play 服務或網路不穩）。', true); } }, 30000);
+      REG.tokenWait = setTimeout(function () { if (REG.state === 'working') regFail({ error: 'TIMEOUT' }, '推播註冊失敗：手機一直拿不到通知代碼（可能沒有 Google Play 服務或網路不穩）。'); }, 30000);
       return PN.register();
-    }).catch(function (e) { clearTimeout(REG.tokenWait); REG.state = 'failed'; var re = regErr(e); bar('這支手機暫時收不到通知：' + re.msg, true, re.code); });
+    }).catch(function (e) { regFail(e); });
   }
   function sendRegister(retried) {
     if (!REG.token) return;
     if (gateOn()) { REG.state = 'idle'; return; }   // 還沒登入：登入後 boot 會再跑一次
     REG.state = 'working';
     pushApi({ op: 'pushRegister', deviceId: devId(), fcmToken: REG.token, platform: 'android', appVer: REG.appVer }).then(function (r) {
-      if (r && r.ok === true) { REG.state = 'ok'; barOff(); viewTick(true); return; }
+      if (r && r.ok === true) { REG.state = 'ok'; okMark(); keepReset(); barOff(); viewTick(true); return; }
       if (r && r.ok === false && r.error === 'device_owned_by_other' && !retried) { devId(true); sendRegister(true); return; }   // 這個裝置代號掛在別人名下：換一個新代號再登記一次
       if (r && r.ok === false && r.error) { REG.state = 'failed'; bar('推播註冊失敗（' + friendlyErr(r.detail || r.error) + '），這支手機暫時收不到通知。', true); return; }
       REG.state = 'unsure'; bar('推播註冊沒有收到明確結果，不確定這支手機有沒有登記成功。', true);   // 結果不明：不說成功也不說失敗
@@ -2114,7 +2139,7 @@ body.ns-open{overflow:hidden}
   var VIEW = { sent: null, at: 0, busy: false, fails: 0, nextAt: 0 };
   function viewingCid() { return (!PAUSED && document.visibilityState === 'visible' && !gateOn() && document.body.classList.contains('view-thread') && cur && CID_OK.test(String(cur))) ? String(cur) : ''; }
   function viewTick(force) {   // 回傳 true＝這次真的送出了一筆回報
-    if (REG.state !== 'ok' || VIEW.busy) return false;
+    if ((REG.state !== 'ok' && REG.state !== 'kept') || VIEW.busy) return false;   // kept：後台那列仍有效，照常回報
     if (Date.now() < VIEW.nextAt) return false;   // 上次沒報成功：退避中（5 秒起跳、連續失敗加倍，最多 60 秒）
     var v = viewingCid();
     if (!force && v === VIEW.sent && (!v || Date.now() - VIEW.at < VIEW_EVERY)) return false;
@@ -2131,6 +2156,7 @@ body.ns-open{overflow:hidden}
   // 期間一般判斷若已送出（VIEW.at 剛更新）就不再補。距上次成功回報或上次補報不到 60 秒也不補
   var FG_EVERY = 60000, FG_AT = 0, FG_TIMER = null;
   function foreground() {
+    if (REG.state === 'kept' && !KEEP.timer && Date.now() - KEEP.lastTry >= FG_RETRY_MS) keepRetry();
     viewTick(false);
     if (FG_TIMER) return;
     FG_TIMER = setTimeout(function () {
@@ -2152,7 +2178,7 @@ body.ns-open{overflow:hidden}
     var self = this, args = arguments, done = false;
     var go = function () { if (done) return; done = true; leaveOrig.apply(self, args); };
     if (!PN) { go(); return; }
-    REG.state = 'idle'; VIEW.sent = null;
+    REG.state = 'idle'; VIEW.sent = null; okClear(); keepReset();
     var srv = pushApi({ op: 'pushUnregister', deviceId: devId() }).then(function (r) { return !!(r && r.ok === true); }, function () { return false; });
     var dev = PN.unregister().then(function () { return true; }, function () { return false; });
     var timer = new Promise(function (res) { setTimeout(function () { res('timeout'); }, 8000); });
@@ -2176,7 +2202,7 @@ body.ns-open{overflow:hidden}
 
   if (PN) {
     PN.addListener('registration', function (t) { clearTimeout(REG.tokenWait); REG.token = String((t && t.value) || ''); sendRegister(false); });
-    PN.addListener('registrationError', function (e) { clearTimeout(REG.tokenWait); REG.state = 'failed'; var re = regErr(e); bar('這支手機暫時收不到通知：' + re.msg, true, re.code); });
+    PN.addListener('registrationError', function (e) { regFail(e); });
     PN.addListener('pushNotificationActionPerformed', function (a) { openFromPush(((a && a.notification && a.notification.data) || {}).contactId); });
     PN.addListener('pushNotificationReceived', inAppNote);
   }
@@ -2192,7 +2218,7 @@ body.ns-open{overflow:hidden}
   showGate = function () {
     var r = showGateOrig.apply(this, arguments);
     if (STARTED && PN) {
-      STARTED = false; clearTimeout(REG.tokenWait); REG.state = 'idle'; REG.token = ''; VIEW.sent = null; VIEW.busy = false; VIEW.fails = 0; VIEW.nextAt = 0; barOff();
+      STARTED = false; clearTimeout(REG.tokenWait); REG.state = 'idle'; REG.token = ''; VIEW.sent = null; VIEW.busy = false; VIEW.fails = 0; VIEW.nextAt = 0; barOff(); okClear(); keepReset();
       try { PN.unregister().catch(function () {}); } catch (e) {}
     }
     return r;
