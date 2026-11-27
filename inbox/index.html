@@ -2667,7 +2667,7 @@ var yzDv = (function () {
     try { history.pushState({ yzSt: 1, yzDv: 2 }, ''); D.pushed = 2; } catch (e) {}
     loadList(false);
   }
-  function toOverview() { D.view = 'ov'; D.list = null; D.seq++; box.scrollTop = 0; render(); if (!D.ov && !D.ovErr) loadOv(); }
+  function toOverview() { var wasBusy = D.ovBusy; D.view = 'ov'; D.list = null; D.seq++; D.ovBusy = false; box.scrollTop = 0; render(); if ((!D.ov && !D.ovErr) || wasBusy) loadOv(); }   /* 總覽更新到一半被切走：回來重讀一次，不留著轉不停的「更新中」 */
   function close() { if (!D.open) return; if (D.pushed) { var n = D.pushed; D.pushed = 0; try { history.go(-n); return; } catch (e) {} } hide(); }
   function back() { if (D.view === 'list') { if (D.pushed === 2) { try { history.back(); return; } catch (e) {} } toOverview(); return; } close(); }
   window.addEventListener('popstate', function (ev) {
